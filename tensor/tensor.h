@@ -65,6 +65,12 @@ FORCEINLINE Scalar mag(const Scalar& p) {
 FORCEINLINE Scalar sdiv(const Scalar& p,const Scalar& q) { 
 	return p ? (p / q) : 0; 
 }
+FORCEINLINE Scalar max(const Scalar& p,const Scalar& q) { 
+	return (p >= q) ? p : q; 
+}
+FORCEINLINE Scalar min(const Scalar& p,const Scalar& q) { 
+	return (p <= q) ? p : q; 
+}
 /*********************************
  * loop unroller
  *********************************/
@@ -133,6 +139,8 @@ struct Unroll {
 	Fp2(sqrt,sqrt);
 	Fp2(tan,tan);
 	Fp2(tanh,tanh);
+	Fp(min,min);
+	Fp(max,max);
 #undef Op
 #undef SOp
 #undef Fp
@@ -188,6 +196,8 @@ struct Unroll<0> {
 	Fp2(sqrt);
 	Fp2(tan);
 	Fp2(tanh);
+	Fp(min);
+	Fp(max);
 #undef Op
 #undef SOp
 #undef Fp
@@ -297,6 +307,8 @@ public:
 	Fp2(sqrt);
 	Fp2(tan);
 	Fp2(tanh);
+	Fp(min);
+	Fp(max);
 #undef Op
 #undef SOp
 #undef Fp

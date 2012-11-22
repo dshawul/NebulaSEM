@@ -30,13 +30,9 @@ void RNG_KE_Model::solve() {
 			ScalarCellField magS = sqrt((S & S) * 2);
 			eta = magS * (k / x);
 		}
-		Scalar c;
-		for(Int i = 0;i < eta.size();i++) {
-			c = C2x + Cmu * pow(eta[i],3) * (1 - eta[i] / eta0) / 
-			                       (1 + beta * pow(eta[i],3));
-			if(c < 0) c = 0;
-			C2eStar[i] = c;
-		}
+		C2eStar = C2x + Cmu * pow(eta,3.0) * (1 - eta / eta0) / 
+			            (1 + beta * pow(eta,3.0));
+		C2eStar = max(C2eStar,0.0);
 	}
 
 	/*solve*/

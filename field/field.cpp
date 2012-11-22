@@ -16,7 +16,7 @@ namespace Controls {
 	Scheme interpolation_scheme = CDS;
 	NonOrthoScheme nonortho_scheme = OVER_RELAXED;
 	Scalar time_scheme_factor = 1;
-	Scalar blended_gamma = Scalar(0.2);
+	Scalar blend_factor = Scalar(0.2);
 	Scalar tolerance = Scalar(1e-5f);
 	Scalar dt = Scalar(.1);
 	Scalar SOR_omega = Scalar(1.7);
@@ -242,7 +242,7 @@ void Mesh::enroll() {
 	IntParams::enroll("start_step",&start_step);
 	IntParams::enroll("end_step",&end_step);
 
-    ScalarParams::enroll("blended_gamma",&blended_gamma);
+    ScalarParams::enroll("blend_factor",&blend_factor);
 	ScalarParams::enroll("tolerance",&tolerance);
 	ScalarParams::enroll("dt",&dt);
 	ScalarParams::enroll("SOR_omega",&SOR_omega);
@@ -251,11 +251,13 @@ void Mesh::enroll() {
 	VerticesParams::enroll("probe",&Mesh::probePoints);
 
 	Option* op;
-	op = new Option(&convection_scheme,4,"CDS","UWS","HYBRID","BLENDED");
+	op = new Option(&convection_scheme,14,
+		"CDS","UDS","HYBRID","BLENDED","LUD","MUSCL","QUICK",
+		"VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST");
 	OptionParams::enroll("convection_scheme",op);
 	op = new Option(&higher_scheme,2,"IMPLICIT","DEFERRED");
 	OptionParams::enroll("higher_scheme",op);
-	op = new Option(&interpolation_scheme,2,"CDS","UWS");
+	op = new Option(&interpolation_scheme,2,"CDS","UDS");
 	OptionParams::enroll("interpolation_scheme",op);
 	op = new Option(&nonortho_scheme,4,"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED");
 	OptionParams::enroll("nonortho_scheme",op);

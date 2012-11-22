@@ -7,7 +7,8 @@ References:
 */
 REALIZABLE_KE_Model::REALIZABLE_KE_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
 	KX_Model(tU,tF,trho,tnu,tSteady,"e"),
-	CmuF(0.09)
+	CmuF(0.09),
+	A0(4.04)
 {
 	SigmaK = 1.0;
 	SigmaX = 1.2;
@@ -26,14 +27,9 @@ void REALIZABLE_KE_Model::solve() {
 	/*calculate model constants*/
 	{
 		STensorCellField S = sym(grad(U));
-		magS = sqrt((S & S) * 2);
+		magS = sqrt((S & S) * 2.0);
 		ScalarCellField eta = magS * (k / x);
-		Scalar r;
-		for(Int i = 0;i < C1.size();i++) {
-			r = eta[i] / (5 + eta[i]);
-			if(r < 0.43) r = 0.43;
-			C1[i] = r;
-		}
+		C1 = max(eta/(eta + 5.0),0.43);
 	}
 	/*solve*/
 	ScalarMeshMatrix M;
@@ -70,22 +66,16 @@ void REALIZABLE_KE_Model::solve() {
 
 	/*calculate CmuF*/
 	{
-		const Scalar A0 = 4.04;
 		TensorCellField gradU = grad(U);
 		STensorCellField S = sym(gradU);
 		TensorCellField O = skw(gradU);
 		ScalarCellField Ustar = sqrt((S & S) + (O & O));
 		ScalarCellField Sbar = sqrt(S & S);
-		ScalarCellField W = ((mul(S,S) & S) / pow(Sbar,Scalar(3))) * sqrt(6.);
-		for(Int i = 0;i < W.size();i++) {
-			if(W[i] < Scalar(-1)) W[i] = -1;
-			else if(W[i] > Scalar(1)) W[i] = 1;
-		}
-		ScalarCellField As = sqrt(6.) * cos(acos(W) / 3);
-		CmuF = Scalar(1) / (A0 + As * Ustar / w);
-		for(Int i = 0;i < CmuF.size();i++) {
-			if(CmuF[i] > 0.09) CmuF[i] = 0.09;
-		}
+		ScalarCellField W = ((mul(S,S) & S) / pow(Sbar,3.0)) * sqrt(6.0);
+		W = min(max(W,-1.0),1.0);
+		ScalarCellField As = sqrt(6.0) * cos(acos(W) / 3.0);
+		CmuF = 1.0 / (A0 + As * Ustar * k / x);
+		CmuF = min(CmuF,0.09);
 	}
 	/*end*/
 }

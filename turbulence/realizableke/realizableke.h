@@ -6,6 +6,7 @@
 struct REALIZABLE_KE_Model : public KX_Model {
 	/*model coefficients*/
 	ScalarCellField CmuF;
+	Scalar A0;
 
 	/*constructor*/
 	REALIZABLE_KE_Model(VectorCellField&,ScalarFacetField&,Scalar&,Scalar&,bool&);
@@ -16,7 +17,7 @@ struct REALIZABLE_KE_Model : public KX_Model {
 		eddy_mu = (rho * CmuF * k * k) / x;
 	};
 	Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) {
-		return pow(ustar,Scalar(3)) / (kappa * y);
+		return pow(ustar,3.0) / (kappa * y);
 	}
 };
 

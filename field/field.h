@@ -12,7 +12,8 @@
 namespace Controls {
 
 	enum Scheme{
-		CDS, UWS, HYBRID , BLENDED
+		CDS,UDS,HYBRID,BLENDED,LUD,MUSCL,QUICK,
+		VANLEER,VANALBADA,MINMOD,SUPERBEE,SWEBY,QUICKL,UMIST
 	};
 	enum NonOrthoScheme {
 		NO_CORRECTION,MINIMUM, ORTHOGONAL, OVER_RELAXED
@@ -40,7 +41,7 @@ namespace Controls {
 
 	extern Scalar SOR_omega;
 	extern Scalar tolerance;
-	extern Scalar blended_gamma;
+	extern Scalar blend_factor;
 	extern Scalar time_scheme_factor;
 	extern Scalar dt;
 	
@@ -156,7 +157,7 @@ public:
 	}
 	friend MeshField<Scalar,entity> operator & (const MeshField& p,const MeshField& q) {
 		MeshField<Scalar,entity> r;
-		for(Int i = 0;i < p.size();i++)
+		for(Int i = 0;i < SIZE;i++)
 			r[i] = p[i] & q[i];
 		return r;
 	}
@@ -176,21 +177,21 @@ public:
 #define Fp(name)													\
 	friend MeshField name(const MeshField& p,const MeshField& s) {	\
 		MeshField r;												\
-		for(Int i = 0;i < p.size();i++)								\
+		for(Int i = 0;i < SIZE;i++)								    \
 			r[i] = name(p[i],s[i]);									\
 		return r;													\
 	}
 #define Fp1(name)													\
 	friend MeshField name(const MeshField& p,const Scalar& s) {		\
 		MeshField r;												\
-		for(Int i = 0;i < p.size();i++)								\
+		for(Int i = 0;i < SIZE;i++)								    \
 			r[i] = name(p[i],s);									\
 		return r;													\
 	}
 #define Fp2(name)													\
 	friend MeshField name(const MeshField& p) {						\
 		MeshField r;												\
-		for(Int i = 0;i < p.size();i++)								\
+		for(Int i = 0;i < SIZE;i++)								    \
 			r[i] = name(p[i]);										\
 		return r;													\
 	}
@@ -225,6 +226,10 @@ public:
 	Fp2(sqrt);
 	Fp2(tan);
 	Fp2(tanh);
+	Fp(min);
+	Fp(max);
+	/*additional*/
+	Fp2(unit);
 #undef Op
 #undef SOp
 #undef Fp
@@ -236,12 +241,6 @@ public:
 		MeshField<Scalar,entity> r;
 		for(Int i = 0;i < p.size();i++) 
 			r[i] = mag(p[i]);
-		return r;
-	}
-	friend MeshField unit(const MeshField& p) {
-		MeshField r;
-		for(Int i = 0;i < p.size();i++) 
-			r[i] = unit(p[i]);
 		return r;
 	}
 	friend MeshField dev(const MeshField& p,const Scalar factor = 1.) {
@@ -661,6 +660,7 @@ struct MeshMatrix {
 		r -= q;
 		return r;
 	}
+	/*is equal to*/
 	friend MeshMatrix operator == (const MeshMatrix& p,const MeshMatrix& q) {
 		MeshMatrix r = p;
 		r -= q;
@@ -1023,11 +1023,11 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
 }
 /*upwind*/
 template<class type>
-MeshField<type,FACET> uws(const MeshField<type,CELL>& cF,const ScalarFacetField& flux) {
+MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const ScalarFacetField& flux) {
 	using namespace Mesh;
 	MeshField<type,FACET> fF;
 	for(Int i = 0;i < fF.size();i++) {
-		if(flux[i] > 0) fF[i] = cF[gFO[i]];
+		if(flux[i] >= 0) fF[i] = cF[gFO[i]];
 		else fF[i] = cF[gFN[i]];
 	}
 	return fF;
@@ -1200,10 +1200,10 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 		ScalarFacetField gamma;
 		if(convection_scheme == CDS) 
 			gamma = Scalar(1);
-		else if(convection_scheme == UWS) 
+		else if(convection_scheme == UDS) 
 			gamma = Scalar(0);
 		else if(convection_scheme == BLENDED) 
-			gamma = Scalar(blended_gamma);
+			gamma = Scalar(blend_factor);
 		else if(convection_scheme == HYBRID) {
 			Scalar D;
 			Vector dv;
@@ -1239,11 +1239,77 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 			m.ap[gFO[i]] += m.an[0][i];
 			m.ap[gFN[i]] += m.an[1][i];
 		}
-		if(convection_scheme != UWS) {
-			MeshField<type,FACET> hos;
-			if(convection_scheme == CDS)
-				hos = cds(cF);
-			m.Su = sum(-F * (hos - uws(cF,F))); 
+		if(convection_scheme != UDS) {
+			MeshField<type,FACET> corr;
+
+			if(convection_scheme == CDS) {
+				corr = cds(cF) - uds(cF,flux);
+			} else if(convection_scheme == LUD) {
+				VectorFacetField R = fC - uds(cC,flux);
+				corr = dot(uds(grad(cF),flux),R);
+			} else if(convection_scheme == MUSCL) {
+				VectorFacetField R = fC - uds(cC,flux);
+				corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
+				corr += (1 - blend_factor) * (dot(uds(grad(cF),flux),R));
+			} else {
+				/*calculate r*/
+				MeshField<type,FACET> q,r;
+				{
+					ScalarFacetField nflux = Scalar(0)-flux;
+					VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
+					MeshField<type,FACET> phiDC = uds(cF,nflux) - uds(cF,flux);
+					r = 2 * dot(uds(grad(cF),flux),R) / phiDC - type(1);
+					for(Int i = 0;i < phiDC.size();i++) {
+						if(equal(phiDC[i],type(0)))
+							r[i] = type(0);
+					}
+				}
+				/*TVD schemes*/
+				if(convection_scheme == VANLEER) {
+					q = (r+fabs(r)) / (type(1)+r);
+				} else if(convection_scheme == VANALBADA) {
+					q = (r+r*r) / (type(1)+r*r);
+				} else if(convection_scheme == MINMOD) {
+					q = max(type(0),min(r,type(1)));
+				} else if(convection_scheme == SUPERBEE) {
+					q = max(min(r,type(2)),min(2*r,type(1)));
+					q = max(q,type(0));
+				} else if(convection_scheme == SWEBY) {
+					Scalar beta = 2;
+					q = max(min(r,type(beta)),min(beta*r,type(1)));
+					q = max(q,type(0));
+				} else if(convection_scheme == QUICKL) {
+					q = min(2*r,(type(3)+r)/type(4));
+					q = min(q,type(2));
+					q = max(q,type(0));
+				} else if(convection_scheme == UMIST) {
+					q = min(2*r,(type(3)+r)/type(4));
+					q = min(q,(1+3*r)/type(4));
+					q = min(q,type(2));
+					q = max(q,type(0));
+				/*non-tvd*/
+				} else if(convection_scheme == QUICK) {
+					q = (type(3)+r)/type(4);
+				}
+				/*apply corrections*/
+				Int c1,c2;
+				Scalar fi;
+				for(Int i = 0;i < flux.size();i++) {
+					F = flux[i];
+					if(F >= 0)  {
+						c1 = gFO[i];
+						c2 = gFN[i];
+						fi = 1 - fI[i];
+					} else {
+						c1 = gFN[i];
+						c2 = gFO[i];
+						fi = fI[i];
+					}
+					corr[i] = q[i] * (cF[c2] - cF[c1]) * fi; 
+				}
+				/*end*/
+			}
+			m.Su = sum(flux * corr);
 		}
 	}
 	return m;

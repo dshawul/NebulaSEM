@@ -164,7 +164,8 @@ struct KX_Model : public Turbulence_Model {
 		calcEddyMu();
 		calcG(gradU);
 		addWallContribution();
-		/* Viscous and Reynolds stress
+		/*
+		 * Viscous and Reynolds stress
 		 *   Reynolds stress = R = -mu * U'U'
 		 *   Viscous stress  = V =  mu * gU
 		 * Boussinesq approximation:
