@@ -9,10 +9,12 @@ namespace Mesh {
 	VectorFacetField  fN;
 	ScalarCellField   cV;
 	ScalarFacetField  fI;
+	ScalarCellField   yWall(false);
 }
 namespace Controls {
 	Scheme convection_scheme = HYBRID;
 	HigherOrderScheme higher_scheme = IMPLICIT;
+	Int TVDbruner = 0;
 	Scheme interpolation_scheme = CDS;
 	NonOrthoScheme nonortho_scheme = OVER_RELAXED;
 	Scalar time_scheme_factor = 1;
@@ -204,8 +206,11 @@ void Mesh::initGeomMeshFields() {
 		_fI[i] = 1.f - s1 / (s1 + s2);
 	}
 	/* remove empty faces*/
-	if(gBoundaries.find("delete") != gBoundaries.end())
+	Boundaries::iterator it = gBoundaries.find("delete");
+	if(it != gBoundaries.end()) {
 		removeBoundary(gBoundaries["delete"]);
+		gBoundaries.erase(it);
+	}
 	/*
 	 * Allocate fields
 	 */
@@ -215,6 +220,7 @@ void Mesh::initGeomMeshFields() {
 	fN.allocate(_fN);
 	cV.allocate(_cV);
 	fI.allocate(_fI);
+	yWall.construct("yWall");
 }
 /*
  * Read/Write
@@ -231,40 +237,41 @@ void Mesh::read_fields(Int step) {
 	STensorCellField::read(step);
 	TensorCellField::read(step);
 }
-void Mesh::enroll() {
+void Mesh::enroll(Util::ParamList& params) {
 	using namespace Controls;
 	using namespace Util;
 
-	StringParams::enroll("mesh",&gMeshName);
+	params.enroll("max_iterations",&max_iterations);
+	params.enroll("write_interval",&write_interval);
+	params.enroll("start_step",&start_step);
+	params.enroll("end_step",&end_step);
 
-	IntParams::enroll("max_iterations",&max_iterations);
-	IntParams::enroll("write_interval",&write_interval);
-	IntParams::enroll("start_step",&start_step);
-	IntParams::enroll("end_step",&end_step);
+    params.enroll("blend_factor",&blend_factor);
+	params.enroll("tolerance",&tolerance);
+	params.enroll("dt",&dt);
+	params.enroll("SOR_omega",&SOR_omega);
+	params.enroll("time_scheme_factor",&time_scheme_factor);
 
-    ScalarParams::enroll("blend_factor",&blend_factor);
-	ScalarParams::enroll("tolerance",&tolerance);
-	ScalarParams::enroll("dt",&dt);
-	ScalarParams::enroll("SOR_omega",&SOR_omega);
-	ScalarParams::enroll("time_scheme_factor",&time_scheme_factor);
-
-	VerticesParams::enroll("probe",&Mesh::probePoints);
+	params.enroll("probe",&Mesh::probePoints);
 
 	Option* op;
-	op = new Option(&convection_scheme,14,
+	op = new Option(&convection_scheme,16,
 		"CDS","UDS","HYBRID","BLENDED","LUD","MUSCL","QUICK",
-		"VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST");
-	OptionParams::enroll("convection_scheme",op);
+		"VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST",
+		"DDS","FROMM");
+	params.enroll("convection_scheme",op);
 	op = new Option(&higher_scheme,2,"IMPLICIT","DEFERRED");
-	OptionParams::enroll("higher_scheme",op);
+	params.enroll("higher_scheme",op);
+	op = new BoolOption(&TVDbruner);
+	params.enroll("tvd_bruner",op);
 	op = new Option(&interpolation_scheme,2,"CDS","UDS");
-	OptionParams::enroll("interpolation_scheme",op);
+	params.enroll("interpolation_scheme",op);
 	op = new Option(&nonortho_scheme,4,"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED");
-	OptionParams::enroll("nonortho_scheme",op);
+	params.enroll("nonortho_scheme",op);
 	op = new Option(&Solver,2,"SOR","PCG");
-	OptionParams::enroll("method",op);
+	params.enroll("method",op);
 	op = new Option(&state,2,"STEADY","TRANSIENT");
-	OptionParams::enroll("state",op);
+	params.enroll("state",op);
 	op = new Option(&ghost_exchange,2,"BLOCKED","ASYNCHRONOUS");
-	OptionParams::enroll("ghost_exchange",op);
+	params.enroll("ghost_exchange",op);
 }

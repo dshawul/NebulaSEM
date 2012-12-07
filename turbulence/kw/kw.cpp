@@ -15,32 +15,32 @@ KW_Model::KW_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar&
 void KW_Model::enroll() {
 	using namespace Util;
 	KX_Model::enroll();
-	ScalarParams::enroll("Cmu",&Cmu);
-	ScalarParams::enroll("SigmaK",&SigmaK);
-	ScalarParams::enroll("SigmaW",&SigmaX);
-	ScalarParams::enroll("C1w",&C1x);
-	ScalarParams::enroll("C2w",&C2x);
+	params.enroll("Cmu",&Cmu);
+	params.enroll("SigmaK",&SigmaK);
+	params.enroll("SigmaW",&SigmaX);
+	params.enroll("C1w",&C1x);
+	params.enroll("C2w",&C2x);
 }
 void KW_Model::solve() {
 	ScalarMeshMatrix M;
 	ScalarFacetField mu;
 
 	/*turbulent dissipation*/
-	mu = cds(eddy_mu) / SigmaX;
+	mu = cds(eddy_mu) / SigmaX + rho * nu;;
 	M = div(x,F,mu) 
 		- lap(x,mu);
 	M -= src(x,
-		(C1x * (x / k) * G),                       //Su
+		(C1x * G * x / k),                         //Su
 		-(C2x * x * rho)                           //Sp  
 		);
 	if(Steady)
-		M.Relax(UR);
+		M.Relax(x_UR);
 	else
 		M += ddt(x,rho);
 	Solve(M);
 
 	/*turbulent kinetic energy*/
-	mu = cds(eddy_mu) / SigmaK;
+	mu = cds(eddy_mu) / SigmaK + rho * nu;;
 	M = div(k,F,mu) 
 		- lap(k,mu);
 	M -= src(k,
@@ -48,7 +48,7 @@ void KW_Model::solve() {
 		-(Cmu * x * rho)                           //Sp
 		);
 	if(Steady)
-		M.Relax(UR);
+		M.Relax(k_UR);
 	else
 		M += ddt(k,rho);
 	Solve(M);

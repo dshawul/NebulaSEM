@@ -11,13 +11,17 @@ struct REALIZABLE_KE_Model : public KX_Model {
 	/*constructor*/
 	REALIZABLE_KE_Model(VectorCellField&,ScalarFacetField&,Scalar&,Scalar&,bool&);
 
-	void enroll();
-	void solve();
-	void calcEddyMu() {
+	/*others*/
+	virtual void enroll();
+	virtual void solve();
+	virtual void calcEddyMu() {
 		eddy_mu = (rho * CmuF * k * k) / x;
 	};
-	Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) {
-		return pow(ustar,3.0) / (kappa * y);
+	virtual Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) {
+		return pow(ustar,Scalar(3)) / (kappa * y);
+	}
+	virtual Scalar getCmu(Int i) { 
+		return CmuF[i]; 
 	}
 };
 

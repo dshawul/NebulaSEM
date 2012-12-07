@@ -13,7 +13,8 @@ namespace Controls {
 
 	enum Scheme{
 		CDS,UDS,HYBRID,BLENDED,LUD,MUSCL,QUICK,
-		VANLEER,VANALBADA,MINMOD,SUPERBEE,SWEBY,QUICKL,UMIST
+		VANLEER,VANALBADA,MINMOD,SUPERBEE,SWEBY,QUICKL,UMIST,
+		DDS,FROMM
 	};
 	enum NonOrthoScheme {
 		NO_CORRECTION,MINIMUM, ORTHOGONAL, OVER_RELAXED
@@ -33,6 +34,7 @@ namespace Controls {
 
 	extern Scheme convection_scheme;
 	extern HigherOrderScheme higher_scheme;
+	extern Int TVDbruner;
 	extern Scheme interpolation_scheme;
 	extern NonOrthoScheme nonortho_scheme;
 	extern Solvers Solver; 
@@ -88,8 +90,7 @@ public:
 		for(Int i = 0;i < SIZE;i++) 
 			P[i] = p;
 	}
-	MeshField(const int) {
-		allocated = 0;
+	explicit MeshField(const bool) : allocated(0) {
 	}
 	/*allocators*/
 	void allocate() {
@@ -235,7 +236,10 @@ public:
 #undef Fp
 #undef Fp1
 #undef Fp2
-
+	Operator(MeshField,+);
+	Operator(MeshField,-);
+	Operator(MeshField,*);
+	Operator(MeshField,/);
 	/*friend ops*/
 	friend MeshField<Scalar,entity> mag(const MeshField& p) {
 		MeshField<Scalar,entity> r;
@@ -255,27 +259,6 @@ public:
 			r[i] = hyd(p[i],factor);
 		return r;
 	}
-	/*binary ops*/
-	friend MeshField operator + (const MeshField& p,const MeshField& q) {
-		MeshField r = p;
-		r += q;
-		return r;
-	}
-	friend MeshField operator - (const MeshField& p,const MeshField& q) {
-		MeshField r = p;
-		r -= q;
-		return r;
-	}
-	friend MeshField operator * (const MeshField& p,const MeshField& q) {
-		MeshField r = p;
-		r *= q;
-		return r;
-	}
-	friend MeshField operator / (const MeshField& p,const MeshField& q) {
-		MeshField r = p;
-		r /= q;
-		return r;
-	}
 	/*relax*/
 	void Relax(const MeshField& po,Scalar UR) {
 		for(Int i = 0;i < SIZE;i++) 
@@ -288,37 +271,25 @@ public:
 	}
 	/*end*/
 };
-/* 
- * Default operator overload for scalar fields
- */
-template<class T,ENTITY E>
-MeshField<T,E> operator * (const MeshField<Scalar,E>& p,const MeshField<T,E>& q) { 
-	MeshField<T,E> r;
-	for(Int i = 0;i < p.size();i++)
-		r[i] = p[i] * q[i];
-	return r; 
-}
-template<class T,ENTITY E>
-MeshField<T,E> operator / (const MeshField<Scalar,E>& p,const MeshField<T,E>& q) { 
-	MeshField<T,E> r;
-	for(Int i = 0;i < p.size();i++)
-		r[i] = p[i] / q[i];
-	return r; 
-}
-template<class T,ENTITY E>
-MeshField<T,E> operator * (const MeshField<T,E>& p,const MeshField<Scalar,E>& q) {
-	MeshField<T,E> r;
-	for(Int i = 0;i < p.size();i++)
-		r[i] = p[i] * q[i];
-	return r; 
-}
-template<class T,ENTITY E>
-MeshField<T,E> operator / (const MeshField<T,E>& p,const MeshField<Scalar,E>& q) {
-	MeshField<T,E> r;
-	for(Int i = 0;i < p.size();i++)
-		r[i] = p[i] / q[i];
-	return r; 
-}
+/***********************************
+ *  Specific tensor operations
+ ***********************************/
+
+/* Default operator overload for scalar fields*/
+#define Op(name,F,S)																			\
+	template<class T,ENTITY E>																	\
+	MeshField<T,E> name(const MeshField<F,E>& p,const MeshField<S,E>& q) {						\
+		MeshField<T,E> r;																		\
+		for(Int i = 0;i < p.size();i++)															\
+			r[i] = name(p[i],q[i]);																\
+		return r;																				\
+	}
+Op(operator *,Scalar,T);
+Op(operator /,Scalar,T);
+Op(operator *,T,Scalar);
+Op(operator /,T,Scalar);
+#undef Op
+
 /*multiply*/
 template <ENTITY E>
 MeshField<Tensor,E> mul(const MeshField<Vector,E>& p,const MeshField<Vector,E>& q) {
@@ -365,6 +336,7 @@ MeshField<Tensor,E> skw(const MeshField<Tensor,E>& p) {
 		r[i] = skw(p[i]);
 	return r;
 }
+/*transpose*/
 template <ENTITY E>
 MeshField<Tensor,E> trn(const MeshField<Tensor,E>& p) {
 	MeshField<Tensor,E> r;
@@ -406,11 +378,13 @@ namespace Mesh {
 	extern VectorFacetField  fN;
 	extern ScalarCellField   cV;
 	extern ScalarFacetField  fI;
+	extern ScalarCellField   yWall;
 
 	void   removeBoundary(IntVector&);
 	void   initGeomMeshFields();
 	void   write_fields(Int);
 	void   read_fields(Int);
+	void   calc_walldist(Int);
 }
 /* **********************************************
  *  Input - output operations
@@ -506,9 +480,7 @@ void MeshField<T,E>::write(Int step) {
 			std::stringstream path;
 			path << pf->fName << step;
 			std::ofstream of(path.str().c_str());
-			
 			pf->write(of);
-
 			of.close();
 		}
 	}
@@ -650,16 +622,8 @@ struct MeshMatrix {
 		return *this;
 	}
 	/*binary ops*/
-	friend MeshMatrix operator + (const MeshMatrix& p,const MeshMatrix& q) {
-		MeshMatrix r = p;
-		r += q;
-		return r;
-	}
-	friend MeshMatrix operator - (const MeshMatrix& p,const MeshMatrix& q) {
-		MeshMatrix r = p;
-		r -= q;
-		return r;
-	}
+	Operator(MeshMatrix,+);
+	Operator(MeshMatrix,-);
 	/*is equal to*/
 	friend MeshMatrix operator == (const MeshMatrix& p,const MeshMatrix& q) {
 		MeshMatrix r = p;
@@ -719,7 +683,7 @@ struct MeshMatrix {
 					 Vector dv = cC[c2] - cC[c1];
 					 M.ap[c1] -= (1 - bc->shape) * M.an[1][k];
 					 M.Su[c1] += M.an[1][k] * (bc->shape * bc->value + 
-						 (1 - bc->shape) * bc->tI * mag(dv));
+						 (1 - bc->shape) * bc->tvalue * mag(dv));
 					 cF[c2] = 0;
 				 } else if(bc->cIndex == SYMMETRY) {
 					 M.ap[c1] -= M.an[1][k];
@@ -739,7 +703,6 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 							  bool update_fixed = false
 							  ) {
 	using namespace Mesh;
-	const Int DD = Constants::ZZ; //change this
 	BasicBCondition* bbc;
 	BCondition<T>* bc;
 	Scalar z = Scalar(0),zmin = Scalar(0),zR = Scalar(0),
@@ -772,10 +735,11 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 						C = Vector(0);
 						for(j = 0;j < sz;j++) {
 							ci = gFN[(*bc->bdry)[j]];
-							if(cC[ci][DD] < zmin) 
-								zmin = cC[ci][DD];
-							if(cC[ci][DD] > zmax) 
-								zmax = cC[ci][DD];
+							z = (cC[ci] & bc->dir);
+							if(z < zmin) 
+								zmin = z;
+							if(z > zmax) 
+								zmax = z;
 							C += cC[ci];
 						}
 						C /= Scalar(sz);
@@ -802,7 +766,7 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 				} else if(bc->cIndex == ROBIN) {
 					Vector dv = cC[c2] - cC[c1];
 					cF[c2] = bc->shape * bc->value + 
-						(1 - bc->shape) * (cF[c1] + bc->tI * mag(dv));
+						(1 - bc->shape) * (cF[c1] + bc->tvalue * mag(dv));
 				} else if(bc->cIndex == SYMMETRY) {
 					cF[c2] = sym(cF[c1],fN[k]);
 				} else if(bc->cIndex == CYCLIC) {
@@ -815,7 +779,7 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 				} else { 
 					if(update_fixed) {
 						T v(0);
-						z = cC[c2][DD] - zmin;
+						z = (cC[c2] & bc->dir) - zmin;
 						if(bc->cIndex == DIRICHLET) {
 							v = bc->value;
 						} else if(bc->cIndex == POWER) {
@@ -836,8 +800,8 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 						} else if(bc->cIndex == INVERSE) {
 							v = bc->value / (z + bc->shape);
 						}
-						if(!first && !equal(mag(bc->tI),0)) { 
-							T meanTI = v * (bc->tI * pow (z / (zmax - zmin),-bc->tIshape));
+						if(!first && !equal(mag(bc->tvalue),0)) { 
+							T meanTI = v * (bc->tvalue * pow (z / (zmax - zmin),-bc->tshape));
 							Scalar rFactor = 4 * ((rand() / Scalar(RAND_MAX)) - 0.5);
 							v += ((cF[c2] - v) * 0.9 + (meanTI * rFactor) * 0.1);
 						} 
@@ -854,6 +818,9 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 		exchange_ghost(&cF[0]);
 	}
 }
+/*************************************
+ * Exchange ghost cell information
+ *************************************/
 template <class T> 
 void exchange_ghost(T* P) {
 	using namespace Mesh;
@@ -1077,16 +1044,31 @@ MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
 	return cF;
 }
 /**********************************************************************
- * Gradient field operation
- *   grad(p) = Sum_f ( fN * p) / V
- * This is the only field operation that return per unit volume quantity.
- * Others such as div,lap, ddt and src return terms multiplied by V so
- * they can be used directly in finite volume equations.
+ * Gradient field operation.
+ *   gradV(p) = Sum_f ( fN * p)
+ *   grad(p) = gradV(p) / V
+ * gradV(p) is integrated over the volume so it can be used directly in 
+ * finite volume equations just like div,lap,ddt,src etc...
+ * grad(p) returns per-unit volume gradient at the centre.
  **********************************************************************/
 
 /*Explicit*/
+inline VectorCellField gradV(const ScalarFacetField& p) {
+	return sum(mul(Mesh::fN,p));
+}
+inline VectorCellField gradV(const ScalarCellField& p) {
+	return gradV(cds(p));
+}
+inline TensorCellField gradV(const VectorFacetField& p) {
+	return sum(mul(Mesh::fN,p));
+}
+inline TensorCellField gradV(const VectorCellField& p) {
+	return gradV(cds(p));
+}
+
+/*Explicit*/
 inline VectorCellField grad(const ScalarFacetField& p) {
-	VectorCellField gF = sum(mul(Mesh::fN,p)) / Mesh::cV;
+	VectorCellField gF = gradV(p) / Mesh::cV;
 	gF.FillBoundaryValues();
 	return gF;
 }
@@ -1094,7 +1076,7 @@ inline VectorCellField grad(const ScalarCellField& p) {
 	return grad(cds(p));
 }
 inline TensorCellField grad(const VectorFacetField& p) {
-	TensorCellField gF = sum(mul(Mesh::fN,p)) / Mesh::cV;
+	TensorCellField gF = gradV(p) / Mesh::cV;
 	gF.FillBoundaryValues();
 	return gF;
 }
@@ -1169,19 +1151,31 @@ inline MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& mu) 
 /* ***************************************************
  * Divergence field operation
  * ***************************************************/ 
-
+/*face flux*/
+inline ScalarFacetField flx(const VectorFacetField& p) {
+	return dot(p,Mesh::fN);
+}
+inline ScalarFacetField flx(const VectorCellField& p) {
+	return flx(cds(p));
+}
+inline VectorFacetField flx(const TensorFacetField& p) {
+	return dot(p,Mesh::fN);
+}
+inline VectorFacetField flx(const TensorCellField& p) {
+	return flx(cds(p));
+}
 /* Explicit */
-inline ScalarFacetField div(const VectorFacetField& p) {
-	return dot(p,Mesh::fN);
+inline ScalarCellField div(const VectorFacetField& p) {
+	return sum(flx(p));
 }
-inline ScalarFacetField div(const VectorCellField& p) {
-	return div(cds(p));
+inline ScalarCellField div(const VectorCellField& p) {
+	return sum(flx(p));
 }
-inline VectorFacetField div(const TensorFacetField& p) {
-	return dot(p,Mesh::fN);
+inline VectorCellField div(const TensorFacetField& p) {
+	return sum(flx(p));
 }
-inline VectorFacetField div(const TensorCellField& p) {
-	return div(cds(p));
+inline VectorCellField div(const TensorCellField& p) {
+	return sum(flx(p));
 }
 /* Implicit */
 template<class type>
@@ -1252,23 +1246,53 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 				corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
 				corr += (1 - blend_factor) * (dot(uds(grad(cF),flux),R));
 			} else {
+				/*
+				TVD schemes
+				~~~~~~~~~~~
+				Reference:
+					M.S Darwish and F Moukalled "TVD schemes for unstructured grids"
+					Versteeg and Malaskara
+                Description:
+				    phi = phiU + psi(r) * [(phiD - phiC) * (1 - fi)]
+				Schemes
+				    psi(r) = 0 =>UDS
+					psi(r) = 1 =>CDS
+                R is calculated as ratio of upwind and downwind gradient
+				    r = phiDC / phiCU
+				Further modification to unstructured grid to better fit LUD scheme
+				    r = (phiDC / phiCU) * (fi / (1 - fi))
+				*/
 				/*calculate r*/
-				MeshField<type,FACET> q,r;
+				MeshField<type,FACET> q,r,phiDC,phiCU;
+				ScalarFacetField uFI;
 				{
 					ScalarFacetField nflux = Scalar(0)-flux;
-					VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
-					MeshField<type,FACET> phiDC = uds(cF,nflux) - uds(cF,flux);
-					r = 2 * dot(uds(grad(cF),flux),R) / phiDC - type(1);
+					phiDC = uds(cF,nflux) - uds(cF,flux);
 					for(Int i = 0;i < phiDC.size();i++) {
-						if(equal(phiDC[i],type(0)))
-							r[i] = type(0);
+						if(flux[i] >= 0) G = fI[i];
+						else G = 1 - fI[i];
+						uFI[i] = G;
 					}
+					/*Bruner's or Darwish way of calculating r*/
+					if(TVDbruner) {
+						VectorFacetField R = fC - uds(cC,flux);
+						phiCU = 2 * (dot(uds(grad(cF),flux),R));
+					} else {
+						VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
+						phiCU = 2 * (dot(uds(grad(cF),flux),R)) - phiDC;
+					}
+					/*end*/
+				}
+				r = (phiCU / phiDC) * (uFI / (1 - uFI));
+				for(Int i = 0;i < phiDC.size();i++) {
+					if(equal(phiDC[i] * (1 - uFI[i]),type(0)))
+						r[i] = type(0);
 				}
 				/*TVD schemes*/
 				if(convection_scheme == VANLEER) {
-					q = (r+fabs(r)) / (type(1)+r);
+					q = (r+fabs(r)) / (1+r);
 				} else if(convection_scheme == VANALBADA) {
-					q = (r+r*r) / (type(1)+r*r);
+					q = (r+r*r) / (1+r*r);
 				} else if(convection_scheme == MINMOD) {
 					q = max(type(0),min(r,type(1)));
 				} else if(convection_scheme == SUPERBEE) {
@@ -1279,34 +1303,22 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 					q = max(min(r,type(beta)),min(beta*r,type(1)));
 					q = max(q,type(0));
 				} else if(convection_scheme == QUICKL) {
-					q = min(2*r,(type(3)+r)/type(4));
+					q = min(2*r,(3+r)/4);
 					q = min(q,type(2));
 					q = max(q,type(0));
 				} else if(convection_scheme == UMIST) {
-					q = min(2*r,(type(3)+r)/type(4));
-					q = min(q,(1+3*r)/type(4));
+					q = min(2*r,(3+r)/4);
+					q = min(q,(1+3*r)/4);
 					q = min(q,type(2));
 					q = max(q,type(0));
-				/*non-tvd*/
 				} else if(convection_scheme == QUICK) {
-					q = (type(3)+r)/type(4);
+					q = (3+r)/4;
+				} else if(convection_scheme == DDS) {
+					q = 2;
+				} else if(convection_scheme == FROMM) {
+					q = (1+r)/2;
 				}
-				/*apply corrections*/
-				Int c1,c2;
-				Scalar fi;
-				for(Int i = 0;i < flux.size();i++) {
-					F = flux[i];
-					if(F >= 0)  {
-						c1 = gFO[i];
-						c2 = gFN[i];
-						fi = 1 - fI[i];
-					} else {
-						c1 = gFN[i];
-						c2 = gFO[i];
-						fi = fI[i];
-					}
-					corr[i] = q[i] * (cF[c2] - cF[c1]) * fi; 
-				}
+				corr = q * phiDC * (1 - uFI);
 				/*end*/
 			}
 			m.Su = sum(flux * corr);
@@ -1348,10 +1360,7 @@ MeshMatrix<type> src(MeshField<type,CELL>& cF,const ScalarCellField& Sc,const Sc
 	m.Su = (Sc * Mesh::cV);
 	return m;
 }
-template<class type>
-inline MeshField<type,CELL> src(const MeshField<type,CELL>& Su) {
-	return (Su * Mesh::cV);
-}
+
 /* **************************************
  *   CSR - compressed sparse row format
  *       * Used for on GPU computation

@@ -118,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../../field;../../mesh;../../tensor;../../vtk;../../util;../../mp;../../turbulence;../../turbulence/ke;../../turbulence/kw;../../turbulence/rngke;../../turbulence/les;../../turbulence/realizableke;../../solvers;../../solvers/solver;"
+				AdditionalIncludeDirectories="../../field;../../mesh;../../tensor;../../vtk;../../util;../../mp;../../turbulence;../../turbulence/ke;../../turbulence/kw;../../turbulence/rngke;../../turbulence/les;../../turbulence/realizableke;../../turbulence/mixing_length;../../solvers;../../solvers/solver;"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="3"
@@ -274,6 +274,14 @@
 			</File>
 			<File
 				RelativePath="..\..\turbulence\les\les.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\turbulence\mixing_length\mixing_length.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\turbulence\mixing_length\mixing_length.h"
 				>
 			</File>
 			<File

@@ -17,9 +17,9 @@ REALIZABLE_KE_Model::REALIZABLE_KE_Model(VectorCellField& tU,ScalarFacetField& t
 void REALIZABLE_KE_Model::enroll() {
 	using namespace Util;
 	KX_Model::enroll();
-	ScalarParams::enroll("SigmaK",&SigmaK);
-	ScalarParams::enroll("SigmaE",&SigmaX);
-	ScalarParams::enroll("C2e",&C2x);
+	params.enroll("SigmaK",&SigmaK);
+	params.enroll("SigmaE",&SigmaX);
+	params.enroll("C2e",&C2x);
 }
 void REALIZABLE_KE_Model::solve() {
 	ScalarCellField C1;
@@ -31,13 +31,13 @@ void REALIZABLE_KE_Model::solve() {
 		ScalarCellField eta = magS * (k / x);
 		C1 = max(eta/(eta + 5.0),0.43);
 	}
+
 	/*solve*/
 	ScalarMeshMatrix M;
 	ScalarFacetField mu;
-	ScalarCellField w = (x / k);
 
 	/*turbulent dissipation*/
-	mu = cds(eddy_mu) / SigmaX;
+	mu = cds(eddy_mu) / SigmaX + rho * nu;
 	M = div(x,F,mu) 
 		- lap(x,mu);
 	M -= src(x,
@@ -45,21 +45,21 @@ void REALIZABLE_KE_Model::solve() {
 		-(C2x * rho * x / (k + sqrt(nu * x)))      //Sp  
 		);
 	if(Steady)
-		M.Relax(UR);
+		M.Relax(x_UR);
 	else
 		M += ddt(x,rho);
 	Solve(M);
 
 	/*turbulent kinetic energy*/
-	mu = cds(eddy_mu) / SigmaK;
+	mu = cds(eddy_mu) / SigmaK + rho * nu;
 	M = div(k,F,mu) 
 		- lap(k,mu);
 	M -= src(k,
 		G,                                         //Su
-		-(rho * w)                                 //Sp
+		-(rho * x / k)                             //Sp
 		);
 	if(Steady)
-		M.Relax(UR);
+		M.Relax(k_UR);
 	else
 		M += ddt(k,rho);
 	Solve(M);

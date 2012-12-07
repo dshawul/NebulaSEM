@@ -5,6 +5,8 @@ using namespace std;
 
 namespace Util {
 	bool Terminated = false;
+
+	std::map<std::string,ParamList*> ParamList::list;
 }
 
 Int Util::hash_function(std::string s) {
@@ -29,44 +31,56 @@ void Util::cleanup () {
 	Terminated = true;
 	printf("Exiting application\n");
 }
-static void read(istream& is,string str,bool check) {
-	using namespace Util;
-	if(IntParams::read(str,is));
-	else if(ScalarParams::read(str,is));
-	else if(StringParams::read(str,is));
-	else if(OptionParams::read(str,is));
-	else if(VectorParams::read(str,is));
-	else if(TensorParams::read(str,is));
-	else if(STensorParams::read(str,is));
-	else if(VerticesParams::read(str,is));
-	else if(check) {
-		cout << "UNKNOWN";
-	}
-}
-void Util::read_params(istream& is) {
-	cout << "Reading paramters:" << endl;
+void Util::read_params(istream& is,std::string block) {
 	string str;
-	while(Util::nextc(is)) {
-		is >> str;
-		cout << str << " = ";
-		read(is,str,true);
-		cout << endl;
-	}
-	cout << "Finished reading." << endl;
+	char c;
+	bool output = block.empty();
+
+#define READ() {				\
+	c = Util::nextc(is);		\
+	if(!c) goto END;			\
+	else if(c == '}') {			\
+		is >> c;				\
+		break;					\
+	} else is >> str;			\
 }
-void Util::read_param(istream& is,string param) {
-	string str;
-	while(Util::nextc(is)) {
-		is >> str;
-		if(!compare(str,param)) {
-			cout << str << " = ";
-			read(is,str,false);
-			cout << endl;
-			is.seekg(0,fstream::beg);
-			break;
+
+	while(true) {
+		READ();
+		is >> c;
+
+		map<string,ParamList*>::iterator it = ParamList::list.find(str);
+		if((it == ParamList::list.end()) || 
+			(!block.empty() && compare(str,block))) {
+			int braces = 1;
+			while(c = Util::nextc(is)) {
+				is >> c;
+				if(c == '{') braces++;
+				else if(c == '}') {
+					braces--;
+					if(!braces) break;
+				}
+			}
+			continue;
 		}
+
+		if(output) cout << str << "\n{\n" << endl;
+		ParamList* params = it->second;
+		while(true) {
+			READ();
+			if(output) cout << "\t" << str << " = ";
+			params->read(is,str,true,output);
+			if(output) cout << endl;
+		}
+		if(output) cout << "}\n" << endl;
+		if(!block.empty())
+			break;
 	}
+END:
+	is.clear();
+	is.seekg(0,ios::beg);
 }
+
 /*IntVector output*/
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p) {
 	Int sz = p.size();

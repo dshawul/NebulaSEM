@@ -12,6 +12,21 @@
 
 using namespace std;
 
+/*general properties*/
+namespace GENERAL {
+	Scalar density = 1;
+	Scalar viscosity = 1e-5;
+	Scalar conductivity = 1e-4;
+	Vector gravity = Vector(0,0,-9.81);
+
+	void enroll(Util::ParamList& params) {
+		params.enroll("rho",&density);
+		params.enroll("viscosity",&viscosity);
+		params.enroll("conductivity",&conductivity);
+		params.enroll("gravity",&gravity);
+	}
+};
+
 /*solvers*/
 void piso(istream&);
 void diffusion(istream&);
@@ -27,13 +42,16 @@ int main(int argc,char* argv[]) {
 	MP mp(argc,argv);
 	ifstream input(argv[1]);
 
+	/*main options*/
+	Util::ParamList params("general");
 	string sname;
-	Util::StringParams::enroll("solver",&sname);
-	Util::read_param(input,"solver");
+	params.enroll("solver",&sname);
+	params.enroll("mesh",&Mesh::gMeshName);
+	Mesh::enroll(params);
+	GENERAL::enroll(params);
+	params.read(input);
 
 	/*Mesh*/
-	Mesh::enroll();
-	Util::read_param(input,"mesh");
 	if(mp.n_hosts > 1) {
 		stringstream s;
 		s << Mesh::gMeshName << mp.host_id;
@@ -59,13 +77,52 @@ int main(int argc,char* argv[]) {
 	return 0;
 }
 
-/********************************************
- * Navier stokes solver using PISO algorithm
- ********************************************/
+/***************************************************************************
+ Navier stokes solver using PISO algorithm
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ References:
+	Hrvoje Jasak, "Error analysis and estimation of FVM with 
+	applications to fluid flow".
+ Description:
+    The PISO algorithm is used to solve NS equations on collocated grids 
+	using Rhie-Chow interpolation to avoid wiggles in pressure field.
+
+	Prediction
+	~~~~~~~~~~
+	Discretize and solve the momenum equation with current values of pressure. 
+	The velocities obtained will not satisfy continuity unless exact pressure 
+	was specified. 
+
+	Correction
+	~~~~~~~~~~
+	Step 1) 
+	  Determine velocity with all terms included except pressure gradient contrib.
+	      ap * Up = H(U) - grad(p)
+		  Up = H(U) / ap - grad(p) / ap
+      Droping grad(p) term:
+          Ua = H(U) / ap
+    Step 2)
+      Solve poisson pressure equation to satisfy continuity with fluxes calculated 
+	  from interpolated Ua.
+	      div(Up) = 0
+		  div(1/ap * grad(p)) = div(H(U)/ap)
+		  lap(p,1/ap) = div(Ua)
+    Step 3)
+	  Correct the velocity with gradient of newly found pressure
+	      U -= grad(p)
+    These steps are repeated two or more times for transient solutions.
+	For steady state problems one is enough.
+
+	Deferred correction approach is used to handle explicit terms from higher order 
+	discretization schemes such as CDS and TVD schemes, boundary conditions etc... 
+	Thus we repeat the prediction/correction steps one or more times. 
+	Again for steady state problems once is enough. 
+	
+ *************************************************************************/
 void piso(istream& input) {
 	/*Solver specific parameters*/
-	Scalar rho = 1;
-	Scalar viscosity = 1e-5;
+	Scalar& rho = GENERAL::density;
+	Scalar& viscosity = GENERAL::viscosity;
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar pressure_UR = Scalar(0.5);
 	Int n_PISO = 1;
@@ -73,35 +130,40 @@ void piso(istream& input) {
 	Int n_ORTHO = 0;
 	Int LESaverage = 0;
 
-	Util::ScalarParams::enroll("rho",&rho);
-	Util::ScalarParams::enroll("viscosity",&viscosity);
-	Util::ScalarParams::enroll("velocity_UR",&velocity_UR);
-	Util::ScalarParams::enroll("pressure_UR",&pressure_UR);
-	Util::IntParams::enroll("n_PISO",&n_PISO);
-	Util::IntParams::enroll("n_ORTHO",&n_ORTHO);
-	Util::IntParams::enroll("n_DEFERRED",&n_DEFERRED);
+	/*piso options*/
+	Util::ParamList params("piso");
+	params.enroll("velocity_UR",&velocity_UR);
+	params.enroll("pressure_UR",&pressure_UR);
+	params.enroll("n_PISO",&n_PISO);
+	params.enroll("n_ORTHO",&n_ORTHO);
+	params.enroll("n_DEFERRED",&n_DEFERRED);
 
 	VectorCellField U("U",READWRITE);
 	ScalarCellField p("p",READWRITE);
 
 	/*turbulence model*/
-	enum TurbModel {NONE, KE, RNG_KE,REALIZABLE_KE, KW, LES};
+	enum TurbModel {NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES};
 	TurbModel turb_model = KE;
 	Util::Option* op;
-	op = new Util::Option(&turb_model,6,"NONE","KE","RNG_KE","REALIZABLE_KE","KW","LES");
-	Util::OptionParams::enroll("turbulence_model",op);
-	op = new Util::Option(&LESaverage,2,"NO","YES");
-	Util::OptionParams::enroll("les_average",op);
+	op = new Util::Option(&turb_model,7,
+		"NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES");
+	params.enroll("turbulence_model",op);
+	op = new Util::BoolOption(&LESaverage);
+	params.enroll("les_average",op);
+	params.read(input);
 
 	/*Select turbulence model*/
 	ScalarFacetField F;
-	bool Steady;
+	bool Steady,needWallDist = false;
 
 	Turbulence_Model* turb;
-	Util::read_param(input,"turbulence_model");
 	switch(turb_model) {
 		case KE:   
 			turb = new KE_Model(U,F,rho,viscosity,Steady); 
+			break;
+		case MIXING_LENGTH:   
+			needWallDist = true;
+			turb = new MixingLength_Model(U,F,rho,viscosity,Steady); 
 			break;
 		case RNG_KE:   
 			turb = new RNG_KE_Model(U,F,rho,viscosity,Steady); 
@@ -113,6 +175,7 @@ void piso(istream& input) {
 			turb = new KW_Model(U,F,rho,viscosity,Steady); 
 			break;
 		case LES:  
+			needWallDist = true;
 			turb = new LES_Model(U,F,rho,viscosity,Steady); 
 			break;
 		default:
@@ -122,13 +185,11 @@ void piso(istream& input) {
 	turb->enroll();
 
 	/*read parameters*/
-	std::cout << "**************************\n";
 	Util::read_params(input);
-	std::cout << "==========================\n";
 
 	/*average statistics for LES */
-	VectorCellField Uavg(0),Ustd(0);
-	ScalarCellField pavg(0),pstd(0);
+	VectorCellField Uavg(false),Ustd(false);
+	ScalarCellField pavg(false),pstd(false);
 	if(LESaverage) {
 		Uavg.construct("Uavg",READWRITE);
 		Ustd.construct("Ustd",READWRITE);
@@ -157,14 +218,20 @@ void piso(istream& input) {
 	Mesh::read_fields(step);
 	Util::write_vtk(step);
 
+	/*wall distance*/
+	if(needWallDist) {
+		MP::print("Calculating wall distance.\n");
+		Mesh::calc_walldist(step);
+		MP::print("Finished.\n");
+	}
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	Steady = (Controls::state == Controls::STEADY);
 	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
-	VectorCellField gP = -src(grad(p));
-	F = div(rho * U); 
+	VectorCellField gP = -gradV(p);
+	F = flx(rho * U); 
 
 	for(Int i = start; i <= Controls::end_step; i++) {
 		/*Print step*/
@@ -212,11 +279,7 @@ void piso(istream& input) {
 
 				/*PISO loop*/
 				for(Int j = 0;j < n_PISO;j++) {
-					/* Separate pressure gradient from the rest U = H(U) / ap - grad(p) / ap
-					* Velocity without the effect of pressure is therefore U = H(U) / ap
-					* Later we will correct it by adding the second term
-					* H(U) is calculated with previous estimate of U by doing a jacobi sweep
-					*/
+					/* Ua = H(U) / ap*/
 					U = getRHS(M) * api;
 					updateExplicitBCs(U,true);
 					/*solve pressure poisson equation to satisfy continuity*/
@@ -224,13 +287,12 @@ void piso(istream& input) {
 						ScalarCellField po;
 						if(Steady)
 							po = p;
-						F = div(rho * U);
 						for(Int k = 0;k <= n_ORTHO;k++)
-							Solve((lap(p,rho * api * Mesh::cV) += sum(F)));
+							Solve((lap(p,rho * api * Mesh::cV) += div(rho * U)));
 						if(Steady)
 							p.Relax(po,pressure_UR);
 					}
-					gP = -src(grad(p));
+					gP = -gradV(p);
 					/*explicit velocity correction : add pressure contribution*/
 					U -= gP * api;
 					updateExplicitBCs(U,true);
@@ -239,7 +301,7 @@ void piso(istream& input) {
 			}
 			/*update fluctuations*/
 			updateExplicitBCs(U,true,true);
-			F = div(rho * U);
+			F = flx(rho * U);
 
 			/*solve transport equations*/
 			turb->solve();
@@ -295,68 +357,29 @@ void piso(istream& input) {
 		/*end*/
 	}
 }
-/**************************
- * potential flow solver
- **************************/
-void potential(istream& input) {
-	/*Solver specific parameters*/
-	Int n_ORTHO = 0;
-	Util::IntParams::enroll("n_ORTHO",&n_ORTHO);
-
-	VectorCellField U("U",READWRITE);
-	ScalarCellField p("p",READ);
-	
-	/*read parameters*/
-	std::cout << "**************************\n";
-	Util::read_params(input);
-	std::cout << "==========================\n";
-
-	/*Read at selected start time step*/
-	Int step,start;
-	step = Controls::start_step / Controls::write_interval;
-	start = Controls::write_interval * step + 1;
-	Mesh::read_fields(step);
-
-	/*set internal field to zero*/
-	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
-		U[i] = Vector(0,0,0);
-		p[i] = Scalar(0);
-	}
-	updateExplicitBCs(U,true);
-	updateExplicitBCs(p,true);
-
-	/*solve potential equation*/
-	ScalarFacetField F = div(U),one = Scalar(1);
-	for(Int k = 0;k <= n_ORTHO;k++)
-		Solve(lap(p,one) == sum(F));
-
-	/*correct velocity*/
-	U -= grad(p);
-	updateExplicitBCs(U,true);
-
-	/*write result to file*/
-	Mesh::write_fields(step);
-	Util::write_vtk(step);
-}
 /********************************************
- * laplace diffusion equation solver
+ Diffusion solver
+ ~~~~~~~~~~~~~~~~
+ Solver for pdes of the the parabolic heat equation type:
+       d(rho*u)/dt = lap(T,rho*DT)
  ********************************************/
 void diffusion(istream& input) {
 	/*Solver specific parameters*/
+	Scalar& rho = GENERAL::density;
 	Scalar DT = Scalar(1);
 	Scalar t_UR = Scalar(1);
 	Int n_DEFERRED = 0;
 
-	Util::ScalarParams::enroll("DT",&DT);
-	Util::ScalarParams::enroll("t_UR",&t_UR);
-	Util::IntParams::enroll("n_DEFERRED",&n_DEFERRED);
+	/*diffusion*/
+	Util::ParamList params("diffusion");
+	params.enroll("DT",&DT);
+	params.enroll("t_UR",&t_UR);
+	params.enroll("n_DEFERRED",&n_DEFERRED);
 
 	ScalarCellField T("T",READWRITE);
 
 	/*read parameters*/
-	std::cout << "**************************\n";
 	Util::read_params(input);
-	std::cout << "==========================\n";
 
 	/*Read at selected start time step*/
 	Int step,start;
@@ -371,8 +394,7 @@ void diffusion(istream& input) {
 	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
-	ScalarFacetField mu = DT;
-	ScalarCellField rho = Scalar(1);
+	ScalarFacetField mu = rho * DT;
 
 	for(Int i = start; i <= Controls::end_step; i++) {
 		/*Print step*/
@@ -411,25 +433,30 @@ void diffusion(istream& input) {
 	}
 }
 /***********************************************
- * transport of a scalar with given flow field
+  Transport equation solver
+  ~~~~~~~~~~~~~~~~~~~~~~~~~
+  Given a flow field (U) and values of a scalar at the boundaries, 
+  the solver determines the distribution of the scalar.
+     dT/dt + div(T,F,mu) = lap(T,mu)
  **********************************************/
 void transport(istream& input) {
 	/*Solver specific parameters*/
+	Scalar& rho = GENERAL::density;
 	Scalar DT = Scalar(4e-2);
 	Scalar t_UR = Scalar(1);
 	Int n_DEFERRED = 0;
 
-	Util::ScalarParams::enroll("DT",&DT);
-	Util::ScalarParams::enroll("t_UR",&t_UR);
-	Util::IntParams::enroll("n_DEFERRED",&n_DEFERRED);
+	/*transport*/
+	Util::ParamList params("transport");
+	params.enroll("DT",&DT);
+	params.enroll("t_UR",&t_UR);
+	params.enroll("n_DEFERRED",&n_DEFERRED);
 
 	VectorCellField U("U",READWRITE);
 	ScalarCellField T("T",READWRITE);
 
 	/*read parameters*/
-	std::cout << "**************************\n";
 	Util::read_params(input);
-	std::cout << "==========================\n";
 
 	/*Read at selected start time step*/
 	Int step,start;
@@ -444,8 +471,7 @@ void transport(istream& input) {
 	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
-	ScalarFacetField F,mu = DT,gamma;
-	ScalarCellField rho = Scalar(1);
+	ScalarFacetField F,mu = rho * DT,gamma;
 
 	for(Int i = start; i <= Controls::end_step; i++) {
 		/*Print step*/
@@ -460,7 +486,7 @@ void transport(istream& input) {
 		for(Int n = 0;n <= n_DEFERRED;n++) {
 			ScalarMeshMatrix M;
 
-			F = div(rho * U); 
+			F = flx(rho * U); 
 			M = div(T,F,mu) 
 				- lap(T,mu);
 
@@ -485,6 +511,114 @@ void transport(istream& input) {
 		}
 	}
 }
+/**************************
+    Potential flow solver
+	~~~~~~~~~~~~~~~~~~~~~
+	In potential flow the velocity field is irrotational (vorticity = curl(U) = 0).
+	This assumption fails for boundary layers and wakes that exhibit strong vorticity,
+	but it can still be used to initialize the flow field for further simulations.
 
+	For incompressible flow
+	       div(U) = 0
+    Velocity is the gradient of velocity potential phi
+	       U = grad(phi)
+		   div(grad(phi)) = 0
+		   lap(phi) = 0
+    phi is pressure for this solver. The initial flow field will inevitably not satisfy 
+	continuity due to imposed boundary conditons. Therefore we solve a pressure poisson 
+	equation and then correct the velocity with the gradient of p.
+	       lap(p) = div(U)
+		   U -= grad(p)
+ **************************/
+void potential(istream& input) {
+	/*Solver specific parameters*/
+	Int n_ORTHO = 0;
+
+	/*potential options*/
+	Util::ParamList params("potential");
+	params.enroll("n_ORTHO",&n_ORTHO);
+
+	VectorCellField U("U",READWRITE);
+	ScalarCellField p("p",READ);
+	
+	/*read parameters*/
+	Util::read_params(input);
+
+	/*Read at selected start time step*/
+	Int step,start;
+	step = Controls::start_step / Controls::write_interval;
+	start = Controls::write_interval * step + 1;
+	Mesh::read_fields(step);
+
+	/*set internal field to zero*/
+	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+		U[i] = Vector(0,0,0);
+		p[i] = Scalar(0);
+	}
+	updateExplicitBCs(U,true);
+	updateExplicitBCs(p,true);
+
+	/*solve potential equation*/
+	ScalarCellField divU = div(U);
+	ScalarFacetField one = Scalar(1);
+	for(Int k = 0;k <= n_ORTHO;k++)
+		Solve(lap(p,one) == divU);
+
+	/*correct velocity*/
+	U -= grad(p);
+	updateExplicitBCs(U,true);
+
+	/*write result to file*/
+	Mesh::write_fields(step);
+	Util::write_vtk(step);
+}
+/**********************************************************************************
+ Wall distance
+ ~~~~~~~~~~~~~
+	Reference:
+	   D.B.Spalding, ‘Calculation of turbulent heat transfer in cluttered spaces
+    Description:
+	   Poisson equation is solved to get approximate nearest wall distance.
+	         lap(phi,1) = -cV
+	   The boundary conditions are phi=0 at walls, and grad(phi) = 0 elsewhere.
+**********************************************************************************/
+void Mesh::calc_walldist(Int step) {
+	ScalarCellField phi;
+	/*internal*/
+	phi = Scalar(0);
+	/*boundary*/
+	BCondition<Scalar>* bc;
+	for(Boundaries::iterator it = gBoundaries.begin();it != gBoundaries.end();++it) {
+		string bname = it->first;
+		bc = new BCondition<Scalar>(phi.fName);
+		bc->bname = bname;
+		if(bname.find("WALL") != std::string::npos) {
+			bc->cname = "DIRICHLET";
+			bc->value = Scalar(0);
+		} else {
+			bc->cname = "NEUMANN";
+			bc->value = Scalar(0);
+		}
+		bc->init_indices();
+		AllBConditions.push_back(bc);
+	}
+	updateExplicitBCs(phi,true,true);
+    /*poisson equation*/
+	{
+		ScalarFacetField one = Scalar(1);
+		Solve(lap(phi,one) == -cV);
+	}
+	/*wall distance*/
+	{
+		VectorCellField g = grad(phi);
+		g.FillBoundaryValues();
+		yWall = sqrt((g & g) + 2 * phi) - mag(g);
+	}
+	/*write it*/
+	yWall.access = WRITE;
+	Mesh::write_fields(step);
+	Util::write_vtk(step);
+	yWall.access = NONE;
+}
 
 

@@ -17,8 +17,8 @@ RNG_KE_Model::RNG_KE_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho
 void RNG_KE_Model::enroll() {
 	using namespace Util;
 	KE_Model::enroll();
-	ScalarParams::enroll("eta0",&eta0);
-	ScalarParams::enroll("beta",&beta);
+	params.enroll("eta0",&eta0);
+	params.enroll("beta",&beta);
 }
 void RNG_KE_Model::solve() {
 	/*calculate C2eStar*/
@@ -38,32 +38,31 @@ void RNG_KE_Model::solve() {
 	/*solve*/
 	ScalarMeshMatrix M;
 	ScalarFacetField mu;
-	ScalarCellField w = (x / k);
 
 	/*turbulent dissipation*/
-	mu = cds(eddy_mu) / SigmaX;
+	mu = cds(eddy_mu) / SigmaX + rho * nu;;
 	M = div(x,F,mu) 
 		- lap(x,mu);
 	M -= src(x,
-		(C1x * w * G),                             //Su
-		-(C2eStar * rho * w)                       //Sp  
+		(C1x * G * x / k),                           //Su
+		-(C2eStar * rho * x / k)                     //Sp  
 		);
 	if(Steady)
-		M.Relax(UR);
+		M.Relax(x_UR);
 	else
 		M += ddt(x,rho);
 	Solve(M);
 
 	/*turbulent kinetic energy*/
-	mu = cds(eddy_mu) / SigmaK;
+	mu = cds(eddy_mu) / SigmaK + rho * nu;;
 	M = div(k,F,mu) 
 		- lap(k,mu);
 	M -= src(k,
-		G,                                         //Su
-		-(rho * w)                                 //Sp
+		G,                                          //Su
+		-(rho * x / k)                              //Sp
 		);
 	if(Steady)
-		M.Relax(UR);
+		M.Relax(k_UR);
 	else
 		M += ddt(k,rho);
 	Solve(M);

@@ -31,34 +31,47 @@ typedef unsigned   Int;
 #	define Scalar  float
 #endif
 
-/* 
- * Default operator overload for scalars
- */
-template<class T>
-FORCEINLINE T operator * (const Scalar& p,const T& q) { 
-	T r = q;
-	r *= p;
-	return r; 
-}
-template<class T>
-FORCEINLINE T operator / (const Scalar& p,const T& q) { 
-	T r = p;
-	r /= q;
-	return r; 
-}
-template<class T>
-FORCEINLINE T operator * (const T& p,const Scalar& q) {
-	T r = p;
-	r *= q;
-	return r;
-}
-template<class T>
-FORCEINLINE T operator / (const T& p,const Scalar& q) {
-	T r = p;
-	r /= q;
-	return r;
-}
-/*others*/
+/* Arthimetic operators are defined via compound assignment*/
+#define Operator(T,$)												\
+	friend FORCEINLINE T operator $ (const T& p,const T& q) {		\
+		T r = p;													\
+		r $##= q;													\
+		return r;													\
+	}
+/* Default operator overloads for scalars vs others*/
+#define OpS($)														\
+	template<class T>												\
+	FORCEINLINE T operator $ (const T& p,const Scalar& q) {			\
+		T r = p;													\
+		r $##= q;													\
+		return r;													\
+	}
+#define COp($)														\
+	template<class T>												\
+	FORCEINLINE T operator $ (const Scalar& p,const T& q) {			\
+		T r = q;													\
+		r $##= p;													\
+		return r;													\
+	}
+#define NCOp($)														\
+	template<class T>												\
+	FORCEINLINE T operator $ (const Scalar& p,const T& q) {			\
+		T r = p;													\
+		r $##= q;													\
+		return r;													\
+	}
+OpS(+);
+OpS(-);
+OpS(*);
+OpS(/);
+COp(+);
+COp(*);
+NCOp(/);
+NCOp(-);
+#undef OpS
+#undef COp
+#undef NCOp
+/*other scalar operations*/
 FORCEINLINE Scalar mag(const Scalar& p) { 
 	return fabs(p); 
 }
@@ -72,7 +85,7 @@ FORCEINLINE Scalar min(const Scalar& p,const Scalar& q) {
 	return (p <= q) ? p : q; 
 }
 /*********************************
- * loop unroller
+ * loop unroller for tensors
  *********************************/
 template <int N>
 struct Unroll {
@@ -314,7 +327,10 @@ public:
 #undef Fp
 #undef Fp1
 #undef Fp2
-
+	Operator(TTensor,+);
+	Operator(TTensor,-);
+	Operator(TTensor,*);
+	Operator(TTensor,/);
 	/*others*/
 	friend Scalar magSq(const TTensor& p) {
 		return (p & p);
@@ -345,27 +361,6 @@ public:
 		r[0] = t;
 		r[1] = t;
 		r[2] = t;
-		return r;
-	}
-	/*binary ops*/
-	friend TTensor operator + (const TTensor& p,const TTensor& q) { 
-		TTensor r = p;
-		r += q;
-		return r;
-	}
-	friend TTensor operator - (const TTensor& p,const TTensor& q) { 
-		TTensor r = p;
-		r -= q;
-		return r;
-	}
-	friend TTensor operator * (const TTensor& p,const TTensor& q) { 
-		TTensor r = p;
-		r *= q;
-		return r;
-	}
-	friend TTensor operator / (const TTensor& p,const TTensor& q) { 
-		TTensor r = p;
-		r /= q;
 		return r;
 	}
 	/*IO*/

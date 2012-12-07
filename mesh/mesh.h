@@ -64,7 +64,7 @@ namespace Mesh {
 	bool faceInBoundary(Int);
 	void addBoundaryCells();
 	void readMesh();
-	void enroll();
+	void enroll(Util::ParamList& params);
 	int  findNearest(const Vector& v);
 	IntVector owner(const IntVector&);
 	IntVector neighbor(const IntVector&);
@@ -90,20 +90,29 @@ struct BasicBCondition {
 	std::string cname;
 	std::string bname;
 	std::string fname;
+	bool isWall;
 };
 template <class type>
 struct BCondition : public BasicBCondition {
 	type   value;
 	Scalar shape;
-	type   tI;
-	Scalar tIshape;
+	type   tvalue;
+	Scalar tshape;
 	Scalar zG;
+	Vector dir;
 	std::vector<type> fixed;
-	BCondition(std::string tfname) {
+
+	BCondition(std::string tfname){
 		fname = tfname;
-		zG = 0;
+		reset();
+	}
+	void reset() {
+		value = tvalue = type(0);
+		shape = tshape = zG = Scalar(0);
+		dir = Vector(0,0,1);
 	}
 	void init_indices() {
+		isWall = (bname.find("WALL") != std::string::npos);
 		bdry = &Mesh::gBoundaries[bname];
 		fIndex = Util::hash_function(fname);
 		cIndex = Util::hash_function(cname);
@@ -112,41 +121,49 @@ struct BCondition : public BasicBCondition {
 /*IO*/
 template <class type> 
 std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
-	os << p.bname << " " << p.cname << " ";
-	if(p.cname != "SYMMETRY" && p.cname != "CYCLIC" && p.cname != "GHOST") {
-		bool has_shape = (p.cname == "PARABOLIC" || p.cname == "LOG" || p.cname == "POWER" || p.cname == "INVERSE");
-		os << p.value << " ";
-		if(has_shape)
-			os << p.shape << " ";
-		if(p.cname == "POWER" || p.cname == "LOG")
-			os << p.zG << " ";
-		if(p.cname != "NEUMANN") {
-			os << p.tI << " ";
-			if(has_shape)
-				os << p.tIshape << " ";
-		}
-	}
+	os << p.bname << "\n{\n";
+	os << "\ttype " << p.cname << std::endl;
+	os << "\tvalue " << p.value << std::endl;
+	os << "\tshape " << p.shape << std::endl;
+	os << "\ttvalue " << p.tvalue << std::endl;
+	os << "\ttshape " << p.tshape << std::endl;	
+	os << "\tdir " << p.dir << std::endl;
+	os << "\tzG " << p.zG << std::endl;
+	os << "\n}\n";
 	return os;
 }
 template <class type> 
 std::istream& operator >> (std::istream& is, BCondition<type>& p) {
+	using namespace Util;
+	std::string str;
 	char c;
-	p.value = p.tI = type(0);
-	p.shape = p.tIshape = Scalar(0);
-	is >> p.bname >> p.cname;
-	if(p.cname != "SYMMETRY" && p.cname != "CYCLIC" && p.cname != "GHOST") {
-		bool has_shape = (p.cname == "PARABOLIC" || p.cname == "LOG" || p.cname == "POWER" || p.cname == "INVERSE");
-		is >> p.value;
-		if(has_shape)
+
+	p.reset();
+	is >> p.bname >> c;
+
+	while(c = Util::nextc(is)) {
+		if(c == '}') {
+			is >> c;
+			break;
+		} 
+		is >> str;
+		if(!compare(str,"type")) {
+			is >> p.cname;
+		} else if(!compare(str,"value")) {
+			is >> p.value;
+		} else if(!compare(str,"shape")) {
 			is >> p.shape;
-		if(p.cname == "POWER" || p.cname == "LOG")
+		} else if(!compare(str,"tvalue")) {
+			is >> p.tvalue;
+		} else if(!compare(str,"tshape")) {
+			is >> p.tshape;
+		} else if(!compare(str,"dir")) {
+			is >> p.dir;
+		} else if(!compare(str,"zG")) {
 			is >> p.zG;
-		if((c = Util::nextc(is)) && isdigit(c)) {
-			is >> p.tI;
-			if((c = Util::nextc(is)) && isdigit(c))
-				is >> p.tIshape;
-		}
+		}  
 	}
+
 	p.init_indices();
 	return is;
 }

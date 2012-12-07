@@ -8,7 +8,7 @@ void SolveT(const MeshMatrix<type>& M) {
 
 	using namespace Mesh;
 	MeshField<type,CELL> r,p,AP;
-	MeshField<type,CELL> r1(0),p1(0),AP1(0);   /* Allocate only if BiCG is used*/
+	MeshField<type,CELL> r1(false),p1(false),AP1(false);   /* Allocate only if BiCG is used*/
 	MeshField<type,CELL>& cF = *M.cF;
 	MeshField<type,CELL>& buffer = AP;
 	ScalarCellField pC = (1 / M.ap);           /* Jacobi preconditioner */

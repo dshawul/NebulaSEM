@@ -10,10 +10,10 @@ struct KE_Model : public KX_Model {
 	/*others*/
 	virtual void enroll();
 	virtual void solve();
-	void calcEddyMu() {
+	virtual void calcEddyMu() {
 		eddy_mu = (rho * Cmu * k * k) / x;
 	};
-	Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) {
+	virtual Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) {
 		return pow(ustar,Scalar(3)) / (kappa * y);
 	}
 };

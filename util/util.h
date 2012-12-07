@@ -64,7 +64,7 @@ namespace Util {
 	int nextc(std::istream&);
 	void cleanup();
 
-	/*option*/
+	/*general string option list*/
 	struct Option {
 		Int* val;
 		std::vector<std::string> list;
@@ -98,39 +98,80 @@ namespace Util {
 		}
 	};
 
+	/*bool option*/
+	struct BoolOption : public Option {
+		BoolOption(void* v) :
+		Option(v,2,"NO","YES")
+		{
+		}
+	};
+
 	/*parameters*/
 	template <typename T> 
 	class Parameters{
-		static std::map<std::string,T*> list;
+		std::map<std::string,T*> list;
 	public:
-		static void enroll(std::string str,T* addr) {
+		void enroll(std::string str,T* addr) {
 			list[str] = addr;
 		}
-		static bool read(std::string str,std::istream& is) {
+		bool read(std::string str,std::istream& is,bool out) {
 			typename std::map<std::string,T*>::iterator it = list.find(str);
 			if(it != list.end()) {
 				is >> *(it->second);
-				std::cout << *(it->second);
+				if(out) std::cout << *(it->second);
 				return true;
 			}
 			return false;
 		}
 	};
+	extern void read_params(std::istream&,std::string = "");
 
-	template <typename T>
-	std::map<std::string,T*> Parameters<T>::list;
+	/*parameters list*/
+	struct ParamList {
+		std::string name;
+		static std::map<std::string,ParamList*> list;
 
-	typedef Parameters<Int>         IntParams;
-	typedef Parameters<Scalar>      ScalarParams;
-	typedef Parameters<Vector>      VectorParams;
-	typedef Parameters<STensor>     STensorParams;
-	typedef Parameters<Tensor>      TensorParams;
-	typedef Parameters<std::string> StringParams;
-	typedef Parameters<Option>      OptionParams;
-	typedef Parameters< std::vector<Vector> >    VerticesParams;
+		ParamList(std::string n) : name(n) {
+			list[name] = this;
+		}
+		~ParamList() {
+			list.erase(name);
+		}
 
-	extern void read_params(std::istream&);
-	extern void read_param(std::istream&,std::string);
+#define addParam(T,N) 								\
+	Parameters<T> params_##N;						\
+	void enroll(std::string str,T* addr) {			\
+		params_##N.enroll(str,addr);				\
+	}
+		addParam(Int,Int);
+		addParam(Scalar,Scalar);
+		addParam(Vector,Vector);
+		addParam(STensor,STensor);
+		addParam(Tensor,Tensor);
+		addParam(std::string,string);
+		addParam(Option,Option);
+		addParam(std::vector<Vector>,vertex);
+#undef addParam
+
+		void read(std::istream& is,std::string str,bool check,bool out) {
+#define readp(N)  params_##N.read(str,is,out)
+			if(readp(Int));
+			else if(readp(Scalar));
+			else if(readp(string));
+			else if(readp(Option));
+			else if(readp(Vector));
+			else if(readp(Tensor));
+			else if(readp(STensor));
+			else if(readp(vertex));
+			else if(check) {
+				std::cout << "UNKNOWN";
+			}
+#undef readp
+		}
+		void read(std::istream& is) {
+			read_params(is,name);
+		}
+	};
 	/*end*/
 }
 
