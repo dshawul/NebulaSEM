@@ -369,7 +369,6 @@ static void write_turb_fields(Turbulence_Model* turb,int step) {
 	K = turb->getK();
 	R = turb->getReynoldsStress();
 	V = turb->getViscousStress();
-	Mesh::write_fields(step);
 	Util::write_vtk(step);
 }
 /********************************************
@@ -631,7 +630,6 @@ void Mesh::calc_walldist(Int step) {
 	}
 	/*write it*/
 	yWall.access = WRITE;
-	Mesh::write_fields(step);
 	Util::write_vtk(step);
 	yWall.access = NONE;
 }

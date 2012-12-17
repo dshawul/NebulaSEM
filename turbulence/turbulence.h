@@ -91,18 +91,23 @@ struct Turbulence_Model {
  */
 struct EddyViscosity_Model : public Turbulence_Model {
 	ScalarCellField eddy_mu; 
-	Int modelType;
-
+	enum Model{
+		SMAGORNSKY,BALDWIN,KATO
+	};
+	Model modelType;
+	
 	/*constructor*/
 	EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
 		Turbulence_Model(tU,tF,trho,tnu,tSteady),
-		modelType(0)
+		modelType(SMAGORNSKY)
 	{
 	}
 	/*Register options*/
 	virtual void enroll() {
 		using namespace Util;
-		params.enroll("modelType",&modelType);
+		Option* op = new Option(&modelType,3,
+			"SMAGORNSKY","BALDWIN","KATO");
+		params.enroll("modelType",op);
 		Turbulence_Model::enroll();
 	}
 	/*eddy_mu*/
@@ -126,10 +131,10 @@ struct EddyViscosity_Model : public Turbulence_Model {
 	/* S2 */
 	ScalarCellField getS2(const TensorCellField& gradU) {
 		ScalarCellField magS;
-		if(modelType == 0) {
+		if(modelType == SMAGORNSKY) {
 			STensorCellField S = sym(gradU);
 			magS = S & S;
-		} else if(modelType == 1) {
+		} else if(modelType == BALDWIN) {
 			TensorCellField O = skw(gradU);
 			magS = O & O;
 		} else {
@@ -138,55 +143,6 @@ struct EddyViscosity_Model : public Turbulence_Model {
 			magS = sqrt((S & S) * (O & O));
 		}
 		return (2 * magS);
-	}
-};
-/*
- * Model for flow close to the wall (Law of the wall).
- *   1 -> Viscous layer
- *   2 -> Buffer layer
- *   3 -> Log-law layer
- * The wall function model is modified for rough surfaces 
- * using Cebecci and Bradshaw formulae.
- */
-struct LawOfWall {
-	Scalar E;
-	Scalar kappa;
-	Scalar ks;
-	Scalar cks;
-
-	Scalar yLog;
-
-	LawOfWall() : 
-		E(9.793),
-		kappa(0.4187),
-		ks(0.48),
-		cks(0.5)
-	{
-		init();
-	}
-	void enroll(Util::ParamList params) {
-		params.enroll("E",&E);
-		params.enroll("Kappa",&kappa);
-		params.enroll("Ks",&ks);
-		params.enroll("Cks",&cks);
-	}
-	void init() {
-		yLog = 11.3f;
-		for(Int i = 0;i < 20;i++)
-			yLog = log(E * yLog) / kappa;
-	}
-	Scalar getDB(Scalar ustar,Scalar nu) {
-		Scalar dB;
-		Scalar ksPlus = (ustar * ks) / nu;
-		if(ksPlus < 2.25) {
-			dB = 0;
-		} else if(ksPlus < 90) {
-			dB = (1 / kappa) * log((ksPlus - 2.25) / 87.75 + cks * ksPlus)
-				             * sin(0.4258 * (log(ksPlus) - 0.811));
-		} else {
-			dB = (1 / kappa) * log(1 + cks * ksPlus);
-		}
-		return dB;
 	}
 };
 /*
@@ -244,12 +200,12 @@ struct KX_Model : public EddyViscosity_Model {
 		BasicBCondition* bbc;
 		for(Int d = 0;d < AllBConditions.size();d++) {
 			bbc = AllBConditions[d];
-			if(bbc->isWall && (bbc->fIndex == U.fIndex)) {
+			if(bbc->isWall && (bbc->fIndex == x.fIndex)) {
 				IntVector& wall_faces = *bbc->bdry;
-				LawOfWall law;
-				Scalar E = law.E;
-				Scalar kappa = law.kappa;
-				Scalar yLog = law.yLog;
+				LawOfWall& low = bbc->low;
+				Scalar E = low.E;
+				Scalar kappa = low.kappa;
+				Scalar yLog = low.yLog;
 
 				if(wall_faces.size()) {
 					Vector dv;
@@ -267,25 +223,23 @@ struct KX_Model : public EddyViscosity_Model {
 						ustar = pow(getCmu(c1),Scalar(0.25)) * sqrt(k[c1]);
 
 						yp = (ustar * y) / nu;
-						if(yp > yLog)  up = log(E * yp) / kappa - law.getDB(ustar,nu);  
+						if(yp > yLog)  up = log(E * yp) / kappa - low.getDB(ustar,nu);  
 						else           up = yp;                                         
+						
+						/*eddy viscosity and generation*/
 						eddy_mu[c1] = rho * nu * (yp / up);
-
-						/*wall dissipation and generation*/
-						x[c1] = calcX(ustar,kappa,y);
 						if(yp > yLog) {
 							gU = mag((U[c2] - U[c1]) / y);
 							G[c1] = eddy_mu[c1] * gU * ustar / (kappa * y);
 						}
-						/*set boundary values*/
-						x[c2] = x[c1];
-						G[c2] = 0;
+
+						/*fix dissipation at boundary cell!*/
+						x[c2] = calcX(ustar,kappa,y);
 					}
 				}
 			}
 		}
 	}
-	/*end*/
 };
 
 #endif

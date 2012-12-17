@@ -52,6 +52,7 @@ void RNG_KE_Model::solve() {
 	else
 		M += ddt(x,rho);
 	Solve(M);
+	x = max(x,Constants::MachineEpsilon);
 
 	/*turbulent kinetic energy*/
 	mu = cds(eddy_mu) / SigmaK + rho * nu;;
@@ -66,4 +67,5 @@ void RNG_KE_Model::solve() {
 	else
 		M += ddt(k,rho);
 	Solve(M);
+	k = max(k,Constants::MachineEpsilon);
 }

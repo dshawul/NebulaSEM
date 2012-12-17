@@ -13,7 +13,6 @@ namespace Mesh {
 }
 namespace Controls {
 	Scheme convection_scheme = HYBRID;
-	HigherOrderScheme higher_scheme = IMPLICIT;
 	Int TVDbruner = 0;
 	Scheme interpolation_scheme = CDS;
 	NonOrthoScheme nonortho_scheme = OVER_RELAXED;
@@ -255,13 +254,11 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("probe",&Mesh::probePoints);
 
 	Option* op;
-	op = new Option(&convection_scheme,16,
-		"CDS","UDS","HYBRID","BLENDED","LUD","MUSCL","QUICK",
+	op = new Option(&convection_scheme,17,
+		"CDS","UDS","HYBRID","BLENDED","LUD","CDSS","MUSCL","QUICK",
 		"VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST",
 		"DDS","FROMM");
 	params.enroll("convection_scheme",op);
-	op = new Option(&higher_scheme,2,"IMPLICIT","DEFERRED");
-	params.enroll("higher_scheme",op);
 	op = new BoolOption(&TVDbruner);
 	params.enroll("tvd_bruner",op);
 	op = new Option(&interpolation_scheme,2,"CDS","UDS");

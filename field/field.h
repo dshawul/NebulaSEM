@@ -12,15 +12,12 @@
 namespace Controls {
 
 	enum Scheme{
-		CDS,UDS,HYBRID,BLENDED,LUD,MUSCL,QUICK,
+		CDS,UDS,HYBRID,BLENDED,LUD,CDSS,MUSCL,QUICK,
 		VANLEER,VANALBADA,MINMOD,SUPERBEE,SWEBY,QUICKL,UMIST,
 		DDS,FROMM
 	};
 	enum NonOrthoScheme {
 		NO_CORRECTION,MINIMUM, ORTHOGONAL, OVER_RELAXED
-	};
-	enum HigherOrderScheme {
-		IMPLICIT, DEFERRED
 	};
 	enum Solvers {
 		SOR, PCG
@@ -33,7 +30,6 @@ namespace Controls {
 	};
 
 	extern Scheme convection_scheme;
-	extern HigherOrderScheme higher_scheme;
 	extern Int TVDbruner;
 	extern Scheme interpolation_scheme;
 	extern NonOrthoScheme nonortho_scheme;
@@ -630,21 +626,10 @@ struct MeshMatrix {
 		r -= q;
 		return r;
 	}
-	/*others*/
+	/*relax*/
 	void Relax(Scalar UR) {
 		ap /= UR;
 		Su += (*cF) * ap * (1 - UR);
-	}
-	void Fix(Int c,type value) {
-		ap[c] = Scalar(10e30);
-		Su[c] = Scalar(10e30) * value;
-	}
-	void Fix(const IntVector& c,MeshField<type,CELL>& p) {
-		Int c1;
-		for(Int i = 0;i < c.size();i++) {
-			c1 = c[i];
-			Fix(c1,p[c1]);
-		}
 	}
 };
 /* ***************************************
@@ -736,13 +721,15 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 						zmax = -Scalar(10e30);
 						C = Vector(0);
 						for(j = 0;j < sz;j++) {
-							ci = gFN[(*bc->bdry)[j]];
-							z = (cC[ci] & bc->dir);
-							if(z < zmin) 
-								zmin = z;
-							if(z > zmax) 
-								zmax = z;
-							C += cC[ci];
+							Facet& f = gFacets[j];
+							for(Int k = 0;k < f.size();k++) {
+								z = (vC[f[k]] & bc->dir);
+								if(z < zmin) 
+									zmin = z;
+								if(z > zmax) 
+									zmax = z;
+							}
+							C += fC[j];
 						}
 						C /= Scalar(sz);
 
@@ -1008,7 +995,7 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 	std::vector<Scalar> cnt;
 	MeshField<type,VERTEX> vF;
 	cnt.assign(vF.size(),0);
-
+	
 	vF = type(0);
 	for(Int i = 0;i < fF.size();i++) {
 		Facet& f = gFacets[i];
@@ -1192,7 +1179,13 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 	m.ap = Scalar(0);
 
 	/*Implicit convection schemes*/
-	if(higher_scheme == IMPLICIT) {
+	bool isImplicit = (
+		convection_scheme == CDS ||
+		convection_scheme == UDS ||
+		convection_scheme == BLENDED ||
+		convection_scheme == HYBRID );
+
+	if(isImplicit) {
 		ScalarFacetField gamma;
 		if(convection_scheme == CDS) 
 			gamma = Scalar(1);
@@ -1235,96 +1228,94 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 			m.ap[gFO[i]] += m.an[0][i];
 			m.ap[gFN[i]] += m.an[1][i];
 		}
-		if(convection_scheme != UDS) {
-			MeshField<type,FACET> corr;
 
-			if(convection_scheme == CDS) {
-				corr = cds(cF) - uds(cF,flux);
-			} else if(convection_scheme == LUD) {
-				VectorFacetField R = fC - uds(cC,flux);
-				corr = dot(uds(grad(cF),flux),R);
-			} else if(convection_scheme == MUSCL) {
-				VectorFacetField R = fC - uds(cC,flux);
-				corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
-				corr += (1 - blend_factor) * (dot(uds(grad(cF),flux),R));
-			} else {
-				/*
-				TVD schemes
-				~~~~~~~~~~~
-				Reference:
-					M.S Darwish and F Moukalled "TVD schemes for unstructured grids"
-					Versteeg and Malaskara
-                Description:
-				    phi = phiU + psi(r) * [(phiD - phiC) * (1 - fi)]
-				Schemes
-				    psi(r) = 0 =>UDS
-					psi(r) = 1 =>CDS
-                R is calculated as ratio of upwind and downwind gradient
-				    r = phiDC / phiCU
-				Further modification to unstructured grid to better fit LUD scheme
-				    r = (phiDC / phiCU) * (fi / (1 - fi))
-				*/
-				/*calculate r*/
-				MeshField<type,FACET> q,r,phiDC,phiCU;
-				ScalarFacetField uFI;
-				{
-					ScalarFacetField nflux = Scalar(0)-flux;
-					phiDC = uds(cF,nflux) - uds(cF,flux);
-					for(Int i = 0;i < phiDC.size();i++) {
-						if(flux[i] >= 0) G = fI[i];
-						else G = 1 - fI[i];
-						uFI[i] = G;
-					}
-					/*Bruner's or Darwish way of calculating r*/
-					if(TVDbruner) {
-						VectorFacetField R = fC - uds(cC,flux);
-						phiCU = 2 * (dot(uds(grad(cF),flux),R));
-					} else {
-						VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
-						phiCU = 2 * (dot(uds(grad(cF),flux),R)) - phiDC;
-					}
-					/*end*/
-				}
-				r = (phiCU / phiDC) * (uFI / (1 - uFI));
+		MeshField<type,FACET> corr;
+		if(convection_scheme == CDSS) {
+			corr = cds(cF) - uds(cF,flux);
+		} else if(convection_scheme == LUD) {
+			VectorFacetField R = fC - uds(cC,flux);
+			corr = dot(uds(grad(cF),flux),R);
+		} else if(convection_scheme == MUSCL) {
+			VectorFacetField R = fC - uds(cC,flux);
+			corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
+			corr += (1 - blend_factor) * (dot(uds(grad(cF),flux),R));
+		} else {
+			/*
+			TVD schemes
+			~~~~~~~~~~~
+			Reference:
+				M.S Darwish and F Moukalled "TVD schemes for unstructured grids"
+				Versteeg and Malaskara
+			Description:
+				phi = phiU + psi(r) * [(phiD - phiC) * (1 - fi)]
+			Schemes
+				psi(r) = 0 =>UDS
+				psi(r) = 1 =>CDS
+			R is calculated as ratio of upwind and downwind gradient
+				r = phiDC / phiCU
+			Further modification to unstructured grid to better fit LUD scheme
+				r = (phiDC / phiCU) * (fi / (1 - fi))
+			*/
+			/*calculate r*/
+			MeshField<type,FACET> q,r,phiDC,phiCU;
+			ScalarFacetField uFI;
+			{
+				ScalarFacetField nflux = Scalar(0)-flux;
+				phiDC = uds(cF,nflux) - uds(cF,flux);
 				for(Int i = 0;i < phiDC.size();i++) {
-					if(equal(phiDC[i] * (1 - uFI[i]),type(0)))
-						r[i] = type(0);
+					if(flux[i] >= 0) G = fI[i];
+					else G = 1 - fI[i];
+					uFI[i] = G;
 				}
-				/*TVD schemes*/
-				if(convection_scheme == VANLEER) {
-					q = (r+fabs(r)) / (1+r);
-				} else if(convection_scheme == VANALBADA) {
-					q = (r+r*r) / (1+r*r);
-				} else if(convection_scheme == MINMOD) {
-					q = max(type(0),min(r,type(1)));
-				} else if(convection_scheme == SUPERBEE) {
-					q = max(min(r,type(2)),min(2*r,type(1)));
-					q = max(q,type(0));
-				} else if(convection_scheme == SWEBY) {
-					Scalar beta = 2;
-					q = max(min(r,type(beta)),min(beta*r,type(1)));
-					q = max(q,type(0));
-				} else if(convection_scheme == QUICKL) {
-					q = min(2*r,(3+r)/4);
-					q = min(q,type(2));
-					q = max(q,type(0));
-				} else if(convection_scheme == UMIST) {
-					q = min(2*r,(3+r)/4);
-					q = min(q,(1+3*r)/4);
-					q = min(q,type(2));
-					q = max(q,type(0));
-				} else if(convection_scheme == QUICK) {
-					q = (3+r)/4;
-				} else if(convection_scheme == DDS) {
-					q = 2;
-				} else if(convection_scheme == FROMM) {
-					q = (1+r)/2;
+				/*Bruner's or Darwish way of calculating r*/
+				if(TVDbruner) {
+					VectorFacetField R = fC - uds(cC,flux);
+					phiCU = 2 * (dot(uds(grad(cF),flux),R));
+				} else {
+					VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
+					phiCU = 2 * (dot(uds(grad(cF),flux),R)) - phiDC;
 				}
-				corr = q * phiDC * (1 - uFI);
 				/*end*/
 			}
-			m.Su = sum(flux * corr);
+			r = (phiCU / phiDC) * (uFI / (1 - uFI));
+			for(Int i = 0;i < phiDC.size();i++) {
+				if(equal(phiDC[i] * (1 - uFI[i]),type(0)))
+					r[i] = type(0);
+			}
+			/*TVD schemes*/
+			if(convection_scheme == VANLEER) {
+				q = (r+fabs(r)) / (1+r);
+			} else if(convection_scheme == VANALBADA) {
+				q = (r+r*r) / (1+r*r);
+			} else if(convection_scheme == MINMOD) {
+				q = max(type(0),min(r,type(1)));
+			} else if(convection_scheme == SUPERBEE) {
+				q = max(min(r,type(2)),min(2*r,type(1)));
+				q = max(q,type(0));
+			} else if(convection_scheme == SWEBY) {
+				Scalar beta = 2;
+				q = max(min(r,type(beta)),min(beta*r,type(1)));
+				q = max(q,type(0));
+			} else if(convection_scheme == QUICKL) {
+				q = min(2*r,(3+r)/4);
+				q = min(q,type(2));
+				q = max(q,type(0));
+			} else if(convection_scheme == UMIST) {
+				q = min(2*r,(3+r)/4);
+				q = min(q,(1+3*r)/4);
+				q = min(q,type(2));
+				q = max(q,type(0));
+			} else if(convection_scheme == QUICK) {
+				q = (3+r)/4;
+			} else if(convection_scheme == DDS) {
+				q = 2;
+			} else if(convection_scheme == FROMM) {
+				q = (1+r)/2;
+			}
+			corr = q * phiDC * (1 - uFI);
+			/*end*/
 		}
+		m.Su = sum(flux * corr);
 	}
 	return m;
 }

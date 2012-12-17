@@ -69,7 +69,69 @@ namespace Mesh {
 	IntVector owner(const IntVector&);
 	IntVector neighbor(const IntVector&);
 }
+/*
+ * Model for flow close to the wall (Law of the wall).
+ *   1 -> Viscous layer
+ *   2 -> Buffer layer
+ *   3 -> Log-law layer
+ * The wall function model is modified for rough surfaces 
+ * using Cebecci and Bradshaw formulae.
+ */
+struct LawOfWall {
+	Scalar E;
+	Scalar kappa;
+	Scalar ks;
+	Scalar cks;
 
+	Scalar yLog;
+
+	LawOfWall() : 
+		E(9.793),
+		kappa(0.4187),
+		ks(0.48),
+		cks(0.5)
+	{
+		init();
+	}
+	void init() {
+		yLog = 11.3f;
+		for(Int i = 0;i < 20;i++)
+			yLog = log(E * yLog) / kappa;
+	}
+	Scalar getDB(Scalar ustar,Scalar nu) {
+		Scalar dB;
+		Scalar ksPlus = (ustar * ks) / nu;
+		if(ksPlus < 2.25) {
+			dB = 0;
+		} else if(ksPlus < 90) {
+			dB = (1 / kappa) * log((ksPlus - 2.25) / 87.75 + cks * ksPlus)
+				             * sin(0.4258 * (log(ksPlus) - 0.811));
+		} else {
+			dB = (1 / kappa) * log(1 + cks * ksPlus);
+		}
+		return dB;
+	}
+	void write(std::ostream& os) const {
+		os << "\tE " << E << std::endl;
+		os << "\tkappa " << kappa << std::endl;
+		os << "\tks " << ks << std::endl;
+		os << "\tcks " << cks << std::endl;
+	}
+	bool read(std::istream& is,std::string str) {
+		using namespace Util;
+		if(!compare(str,"E")) {
+			is >> E;
+		} else if(!compare(str,"kappa")) {
+			is >> kappa;
+		} else if(!compare(str,"ks")) {
+			is >> ks;
+		} else if(!compare(str,"cks")) {
+			is >> cks;
+		} else
+			return false;
+		return true;
+	}
+};
 /*Boundary condition types*/
 namespace Mesh {
 	const Int DIRICHLET    = Util::hash_function("DIRICHLET");
@@ -92,6 +154,7 @@ struct BasicBCondition {
 	std::string bname;
 	std::string fname;
 	bool isWall;
+	LawOfWall low;
 };
 template <class type>
 struct BCondition : public BasicBCondition {
@@ -130,7 +193,9 @@ std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
 	os << "\ttshape " << p.tshape << std::endl;	
 	os << "\tdir " << p.dir << std::endl;
 	os << "\tzG " << p.zG << std::endl;
-	os << "\n}\n";
+	if(p.isWall)
+		p.low.write(os);
+	os << "}\n";
 	return os;
 }
 template <class type> 
@@ -162,7 +227,8 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 			is >> p.dir;
 		} else if(!compare(str,"zG")) {
 			is >> p.zG;
-		}  
+		} else if(p.low.read(is,str)) {
+		}
 	}
 
 	p.init_indices();
