@@ -714,7 +714,9 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 	for(Int i = 0;i < AllBConditions.size();i++) {
 		bbc = AllBConditions[i];
 		if(bbc->fIndex == cF.fIndex) {
-			if(bbc->cIndex == GHOST) continue;
+			if(bbc->cIndex == GHOST || 
+				bbc->cIndex == NOBC) 
+				continue;
 
 			bc = static_cast<BCondition<T>*> (bbc);
 			Int sz = bc->bdry->size();

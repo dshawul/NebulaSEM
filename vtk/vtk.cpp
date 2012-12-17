@@ -90,12 +90,16 @@ void Util::write_vtk(Int step) {
 #endif
 	/*Fields*/
 	total = ScalarCellField::count_writable() +
-		    VectorCellField::count_writable();
+		    VectorCellField::count_writable() +
+			STensorCellField::count_writable() +
+			TensorCellField::count_writable();
 
 	of << "CELL_DATA " << gBCellsStart << endl;
 	of << "FIELD attributes "<< total + 1 << endl;
 	ScalarCellField::write_vtk(of,false);
 	VectorCellField::write_vtk(of,false);
+	STensorCellField::write_vtk(of,false);
+	TensorCellField::write_vtk(of,false);
 	of << "cellID  1 " << Mesh::gBCellsStart << " int" << endl;
 	for(Int i = 0;i < Mesh::gBCellsStart;i++) of << i << endl;
 
@@ -103,6 +107,8 @@ void Util::write_vtk(Int step) {
 	of << "FIELD attributes "<< total << endl;
 	ScalarCellField::write_vtk(of,true);
 	VectorCellField::write_vtk(of,true);
+	STensorCellField::write_vtk(of,true);
+	TensorCellField::write_vtk(of,true);
 
 	/*end*/
 	of.close();

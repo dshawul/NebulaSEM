@@ -82,6 +82,7 @@ namespace Mesh {
 	const Int LOG          = Util::hash_function("LOG");
     const Int PARABOLIC    = Util::hash_function("PARABOLIC");
 	const Int INVERSE      = Util::hash_function("INVERSE");
+	const Int NOBC         = Util::hash_function("NONE");
 }
 struct BasicBCondition {
 	IntVector* bdry;

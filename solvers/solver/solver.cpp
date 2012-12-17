@@ -119,6 +119,8 @@ int main(int argc,char* argv[]) {
 	Again for steady state problems once is enough. 
 	
  *************************************************************************/
+void write_turb_fields(Turbulence_Model* turb,int step);
+
 void piso(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
@@ -356,6 +358,19 @@ void piso(istream& input) {
 		}
 		/*end*/
 	}
+	/*write calculated turbulence fields*/
+	write_turb_fields(turb,step);
+}
+/*write*/
+static void write_turb_fields(Turbulence_Model* turb,int step) {
+	ScalarCellField K("Ksgs",WRITE);
+	STensorCellField R("Rsgs",WRITE);
+	STensorCellField V("Vsgs",WRITE);
+	K = turb->getK();
+	R = turb->getReynoldsStress();
+	V = turb->getViscousStress();
+	Mesh::write_fields(step);
+	Util::write_vtk(step);
 }
 /********************************************
  Diffusion solver

@@ -76,6 +76,69 @@ struct Turbulence_Model {
 		STensorCellField V = 2 * rho * nu * sym(grad(U));
 		return V;
 	}
+	/* R */
+	virtual STensorCellField getReynoldsStress() {
+		return STensor(0);
+	}
+	/* TKE */
+	virtual ScalarCellField getK() {
+		return Scalar(0);
+	}
+};
+/*
+ * Eddy viscosity models based on Boussinesq's assumption
+ * that the action of Reynolds and Viscous stress are similar.
+ */
+struct EddyViscosity_Model : public Turbulence_Model {
+	ScalarCellField eddy_mu; 
+	Int modelType;
+
+	/*constructor*/
+	EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
+		Turbulence_Model(tU,tF,trho,tnu,tSteady),
+		modelType(0)
+	{
+	}
+	/*Register options*/
+	virtual void enroll() {
+		using namespace Util;
+		params.enroll("modelType",&modelType);
+		Turbulence_Model::enroll();
+	}
+	/*eddy_mu*/
+	virtual void calcEddyViscosity(const TensorCellField& gradU) = 0;
+
+	/* V + R */
+	virtual void addTurbulentStress(VectorMeshMatrix& M) {
+		TensorCellField gradU = grad(U);
+		calcEddyViscosity(gradU);
+
+		ScalarCellField eff_mu = eddy_mu + rho * nu;
+		M -= lap(U,eff_mu);
+		M -= div(eddy_mu * dev(trn(gradU),2));
+	};
+	/* R */
+	virtual STensorCellField getReynoldsStress() {
+		STensorCellField R = 2 * eddy_mu * dev(sym(grad(U))) - 
+			     STensorCellField(Constants::I_ST) * (2 * rho * getK() / 3);
+		return R;
+	}
+	/* S2 */
+	ScalarCellField getS2(const TensorCellField& gradU) {
+		ScalarCellField magS;
+		if(modelType == 0) {
+			STensorCellField S = sym(gradU);
+			magS = S & S;
+		} else if(modelType == 1) {
+			TensorCellField O = skw(gradU);
+			magS = O & O;
+		} else {
+			STensorCellField S = sym(gradU);
+			TensorCellField O = skw(gradU);
+			magS = sqrt((S & S) * (O & O));
+		}
+		return (2 * magS);
+	}
 };
 /*
  * Model for flow close to the wall (Law of the wall).
@@ -97,7 +160,7 @@ struct LawOfWall {
 		E(9.793),
 		kappa(0.4187),
 		ks(0.48),
-		cks(1)
+		cks(0.5)
 	{
 		init();
 	}
@@ -126,77 +189,6 @@ struct LawOfWall {
 		return dB;
 	}
 };
-/* Wall specification */
-struct WallFunction {
-	IntVector* faces;
-	LawOfWall law;
-};
-/*
- * Eddy viscosity models based on Boussinesq's assumption
- * that the action of Reynolds and Viscous stress are similar.
- */
-struct EddyViscosity_Model : public Turbulence_Model {
-	ScalarCellField eddy_mu; 
-
-	/*write variable*/
-	Int writeK;
-	Int writeR;
-	Int writeEddyMu;
-
-	/*wall functions*/
-	std::vector<WallFunction> wall_functions;
-
-	/*constructor*/
-	EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
-		Turbulence_Model(tU,tF,trho,tnu,tSteady),
-		writeK(0),
-		writeR(0),
-		writeEddyMu(0)
-	{
-		/*Law of the wall*/
-		using namespace Mesh;
-		BasicBCondition* bbc;
-		for(Int i = 0;i < AllBConditions.size();i++) {
-			bbc = AllBConditions[i];
-			if(bbc->isWall && (bbc->fIndex == U.fIndex)) {
-				WallFunction wall_func;
-				wall_func.faces = bbc->bdry;
-				wall_functions.push_back(wall_func);
-			}
-		}
-	}
-	/*write k,R and eddy_mu*/
-	void enroll() {
-		using namespace Util;
-		Option* op;
-		op = new BoolOption(&writeK);
-		params.enroll("write_K",op);
-		op = new BoolOption(&writeR);
-		params.enroll("write_R",op);
-		op = new BoolOption(&writeEddyMu);
-		params.enroll("write_EddyMu",op);
-	}
-	/*eddy_mu*/
-	virtual void calcEddyMu(const TensorCellField& gradU) = 0;
-
-	/* V + R */
-	virtual void addTurbulentStress(VectorMeshMatrix& M) {
-		TensorCellField gradU = grad(U);
-		calcEddyMu(gradU);
-
-		ScalarCellField eff_mu = eddy_mu + rho * nu;
-		M -= lap(U,eff_mu);
-		M -= div(eddy_mu * dev(trn(gradU),2));
-	};
-	/* TKE */
-	virtual ScalarCellField getK() = 0;
-	/* R */
-	STensorCellField getReynoldsStress() {
-		STensorCellField R = 2 * eddy_mu * dev(sym(grad(U))) - 
-			     STensorCellField(Constants::I_ST) * (2 * rho * getK() / 3);
-		return R;
-	}
-};
 /*
  * Base two equation K-X turbulence model
  */ 
@@ -210,7 +202,6 @@ struct KX_Model : public EddyViscosity_Model {
 
 	Scalar k_UR;
 	Scalar x_UR;
-	Int    katoLaunder;
 
 	/*turbulence fields*/
 	ScalarCellField k;         
@@ -222,7 +213,6 @@ struct KX_Model : public EddyViscosity_Model {
 		EddyViscosity_Model(tU,tF,trho,tnu,tSteady),
 		k_UR(0.7),
 		x_UR(0.7),
-		katoLaunder(0),
 		k("k",READWRITE),
 		x(xname,READWRITE)
 	{
@@ -234,31 +224,15 @@ struct KX_Model : public EddyViscosity_Model {
 		using namespace Util;
 		params.enroll("k_UR",&k_UR);
 		params.enroll("x_UR",&x_UR);
-		Option* op = new BoolOption(&katoLaunder);
-		params.enroll("kato_Launder",op);
 		EddyViscosity_Model::enroll();
 	}
-	/*
-	 * Kato-Launder modifaction to reduce over-production of turbulence:
-	 *   Replace one of the strain rates S with the vorticity O
-	 */
-	void calcG(const TensorCellField& gradU) {
-		if(katoLaunder) {
-            STensorCellField S = sym(gradU);
-			TensorCellField O = skw(gradU);
-			G = sqrt((S & S) * (O & O)) * 2 * eddy_mu;
-		} else {
-			STensorCellField S = sym(gradU);
-			G = (S & S) * 2 * eddy_mu;
-		}
-	}
 	/* eddy viscosity*/
-	virtual void calcEddyMu(const TensorCellField& gradU) {
+	virtual void calcEddyViscosity(const TensorCellField& gradU) {
 		calcEddyMu();
-		calcG(gradU);
+		G = getS2(gradU) * eddy_mu;
 		addWallContribution();
 	}
-	/*overridables*/
+	/* k-x model specific over-ridables*/
 	virtual void calcEddyMu() = 0;
 	virtual Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) = 0;
 	virtual Scalar getCmu(Int i) { 
@@ -267,43 +241,47 @@ struct KX_Model : public EddyViscosity_Model {
 	/* Calculate wall turbulence generation */
 	void addWallContribution() {
 		using namespace Mesh;
-		for(Int d = 0;d < wall_functions.size();d++) {
-			WallFunction& wall_func = wall_functions[d];
-			IntVector& wall_faces = *wall_func.faces;
-			LawOfWall& law = wall_func.law;
-			Scalar E = law.E;
-			Scalar kappa = law.kappa;
-			Scalar yLog = law.yLog;
+		BasicBCondition* bbc;
+		for(Int d = 0;d < AllBConditions.size();d++) {
+			bbc = AllBConditions[d];
+			if(bbc->isWall && (bbc->fIndex == U.fIndex)) {
+				IntVector& wall_faces = *bbc->bdry;
+				LawOfWall law;
+				Scalar E = law.E;
+				Scalar kappa = law.kappa;
+				Scalar yLog = law.yLog;
 
-			if(wall_faces.size()) {
-				Vector dv;
-				Scalar y,ustar,yp,up,gU;
-				Int f,c1,c2;
+				if(wall_faces.size()) {
+					Vector dv;
+					Scalar y,ustar,yp,up,gU;
+					Int f,c1,c2;
 
-				/*calc eddy viscosity*/
-				for(Int i = 0;i < wall_faces.size();i++) {
-					f = wall_faces[i];
-					c1 = gFO[f];
-					c2 = gFN[f];
+					/*calc eddy viscosity*/
+					for(Int i = 0;i < wall_faces.size();i++) {
+						f = wall_faces[i];
+						c1 = gFO[f];
+						c2 = gFN[f];
 
-					/*viscous and log-law layer*/
-					y = mag(unit(fN[f]) & (cC[c1] - cC[c2]));
-					ustar = pow(getCmu(c1),Scalar(0.25)) * sqrt(k[c1]);
+						/*viscous and log-law layer*/
+						y = mag(unit(fN[f]) & (cC[c1] - cC[c2]));
+						ustar = pow(getCmu(c1),Scalar(0.25)) * sqrt(k[c1]);
 
-					yp = (ustar * y) / nu;
-					if(yp > yLog)  up = log(E * yp) / kappa - law.getDB(ustar,nu);  
-					else           up = yp;                                         
-					eddy_mu[c1] = rho * nu * (yp / up);
-					
-					/*wall dissipation and generation*/
-					x[c1] = calcX(ustar,kappa,y);
-					if(yp > yLog) {
-						gU = mag((U[c2] - U[c1]) / y);
-						G[c1] = eddy_mu[c1] * gU * ustar / (kappa * y);
+						yp = (ustar * y) / nu;
+						if(yp > yLog)  up = log(E * yp) / kappa - law.getDB(ustar,nu);  
+						else           up = yp;                                         
+						eddy_mu[c1] = rho * nu * (yp / up);
+
+						/*wall dissipation and generation*/
+						x[c1] = calcX(ustar,kappa,y);
+						if(yp > yLog) {
+							gU = mag((U[c2] - U[c1]) / y);
+							G[c1] = eddy_mu[c1] * gU * ustar / (kappa * y);
+						}
+						/*set boundary values*/
+						x[c2] = x[c1];
+						G[c2] = 0;
 					}
 				}
-				updateExplicitBCs(x);
-				G.FillBoundaryValues();
 			}
 		}
 	}

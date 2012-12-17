@@ -2,14 +2,14 @@
 # Target executable and files
 ############################
 EXE = solver
-OBJ = solve.o mesh.o tensor.o util.o vtk.o solver.o mp.o ke.o kw.o les.o realizableke.o rngke.o field.o 
+OBJ = solve.o mesh.o tensor.o util.o vtk.o solver.o mp.o ke.o kw.o les.o realizableke.o rngke.o mixing_length.o field.o 
 ICPC_WARN = -wd280 -wd593 -wd869 -wd981 -wd383  -wd1419 -wd2259 -wd1572 -wd1599 -wd444 -wd1418
 
 #############################
 # paths
 ############################
 BDIR     = ../..
-ALLDIR   = field mesh tensor util vtk turbulence turbulence/ke turbulence/kw turbulence/rngke turbulence/realizableke  turbulence/les mp decompose solvers solvers/solver
+ALLDIR   = field mesh tensor util vtk turbulence turbulence/ke turbulence/kw turbulence/rngke turbulence/realizableke turbulence/mixing_length turbulence/les mp decompose solvers solvers/solver
 EXEDIR   = $(BDIR)/Projects/Release
 OBJDIR   = ./Release
 OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))
