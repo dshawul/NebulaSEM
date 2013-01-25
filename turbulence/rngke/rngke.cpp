@@ -20,22 +20,18 @@ void RNG_KE_Model::enroll() {
 	params.enroll("eta0",&eta0);
 	params.enroll("beta",&beta);
 }
-void RNG_KE_Model::solve() {
+void RNG_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
 	/*calculate C2eStar*/
-	ScalarCellField C2eStar;
 	{
-		ScalarCellField eta;
-		{
-			STensorCellField S = sym(grad(U));
-			ScalarCellField magS = sqrt((S & S) * 2);
-			eta = magS * (k / x);
-		}
+		ScalarCellField eta = sqrt(getS2(gradU)) * (k / x);
 		C2eStar = C2x + Cmu * pow(eta,3.0) * (1 - eta / eta0) / 
-			            (1 + beta * pow(eta,3.0));
+			(1 + beta * pow(eta,3.0));
 		C2eStar = max(C2eStar,0.0);
 	}
-
-	/*solve*/
+	/*calculate viscosity*/
+	KE_Model::calcEddyViscosity(gradU);
+}
+void RNG_KE_Model::solve() {
 	ScalarMeshMatrix M;
 	ScalarFacetField mu;
 
@@ -44,28 +40,31 @@ void RNG_KE_Model::solve() {
 	M = div(x,F,mu) 
 		- lap(x,mu);
 	M -= src(x,
-		(C1x * G * x / k),                           //Su
-		-(C2eStar * rho * x / k)                     //Sp  
+		(C1x * Pk * x / k),                        //Su
+		-(C2eStar * rho * x / k)                   //Sp  
 		);
 	if(Steady)
 		M.Relax(x_UR);
 	else
 		M += ddt(x,rho);
+	M.FixNearWallValues();
 	Solve(M);
 	x = max(x,Constants::MachineEpsilon);
 
 	/*turbulent kinetic energy*/
-	mu = cds(eddy_mu) / SigmaK + rho * nu;;
+	mu = cds(eddy_mu) / SigmaK + rho * nu;
 	M = div(k,F,mu) 
 		- lap(k,mu);
 	M -= src(k,
-		G,                                          //Su
-		-(rho * x / k)                              //Sp
+		Pk,                                        //Su
+		-(rho * x / k)                             //Sp
 		);
 	if(Steady)
 		M.Relax(k_UR);
 	else
 		M += ddt(k,rho);
+	if(wallModel == STANDARD)
+		M.FixNearWallValues();
 	Solve(M);
 	k = max(k,Constants::MachineEpsilon);
 }

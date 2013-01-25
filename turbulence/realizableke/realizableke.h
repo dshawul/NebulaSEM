@@ -6,6 +6,8 @@
 struct REALIZABLE_KE_Model : public KX_Model {
 	/*model coefficients*/
 	ScalarCellField CmuF;
+	ScalarCellField C1;
+	ScalarCellField magS;
 	Scalar A0;
 
 	/*constructor*/
@@ -23,6 +25,7 @@ struct REALIZABLE_KE_Model : public KX_Model {
 	virtual Scalar getCmu(Int i) { 
 		return CmuF[i]; 
 	}
+	virtual void calcEddyViscosity(const TensorCellField& gradU);
 };
 
 #endif

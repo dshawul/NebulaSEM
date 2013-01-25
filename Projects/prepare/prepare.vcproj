@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="decompose"
-	ProjectGUID="{8648288E-BA74-4E16-8C5B-312F787C9660}"
-	RootNamespace="decompose"
+	Name="prepare"
+	ProjectGUID="{4D4835AC-87AF-4BFA-AAE3-143510726EE4}"
+	RootNamespace="prepare"
 	TargetFrameworkVersion="196613"
 	>
 	<Platforms>
@@ -109,7 +109,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../../field;../../mesh;../../tensor;../../util;../../mp"
+				AdditionalIncludeDirectories="../../field;../../mesh;../../tensor;../../util;../../mp;../../vtk"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="3"
@@ -164,14 +164,6 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\..\decompose\decompose.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\decompose\decomposeApp.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\field\field.cpp"
 				>
 			</File>
@@ -184,11 +176,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\prepare\prepare.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\prepare\prepareApp.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\tensor\tensor.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\util\util.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\vtk\vtk.cpp"
 				>
 			</File>
 		</Filter>
@@ -197,10 +201,6 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
-			<File
-				RelativePath="..\..\decompose\decompose.h"
-				>
-			</File>
 			<File
 				RelativePath="..\..\field\field.h"
 				>
@@ -214,6 +214,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\prepare\prepare.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\mp\system.h"
 				>
 			</File>
@@ -223,6 +227,10 @@
 			</File>
 			<File
 				RelativePath="..\..\util\util.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\vtk\vtk.h"
 				>
 			</File>
 		</Filter>

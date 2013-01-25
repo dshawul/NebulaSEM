@@ -8,7 +8,6 @@
 #include "mp.h"
 #include "system.h"
 #include "solve.h"
-#include "vtk.h"
 
 using namespace std;
 
@@ -55,8 +54,7 @@ int main(int argc,char* argv[]) {
 	if(mp.n_hosts > 1) {
 		stringstream s;
 		s << Mesh::gMeshName << mp.host_id;
-		Mesh::gMeshName = s.str();
-		if(!System::cd(Mesh::gMeshName))
+		if(!System::cd(s.str()))
 			return 1;
 	}
 	Mesh::readMesh();
@@ -119,8 +117,6 @@ int main(int argc,char* argv[]) {
 	Again for steady state problems once is enough. 
 	
  *************************************************************************/
-void write_turb_fields(Turbulence_Model* turb,int step);
-
 void piso(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
@@ -131,7 +127,6 @@ void piso(istream& input) {
 	Int n_DEFERRED = 0;
 	Int n_ORTHO = 0;
 	Int LESaverage = 0;
-
 	/*piso options*/
 	Util::ParamList params("piso");
 	params.enroll("velocity_UR",&velocity_UR);
@@ -197,6 +192,10 @@ void piso(istream& input) {
 		Ustd.construct("Ustd",READWRITE);
 		pavg.construct("pavg",READWRITE);
 		pstd.construct("pstd",READWRITE);
+		Uavg = Vector(0);
+		Ustd = Vector(0);
+		pavg = Scalar(0);
+		pstd = Scalar(0);
 	}
 
 	/*instantaneous values*/
@@ -218,13 +217,21 @@ void piso(istream& input) {
 	step = Controls::start_step / Controls::write_interval;
 	start = Controls::write_interval * step + 1;
 	Mesh::read_fields(step);
-	Util::write_vtk(step);
+
+	/*app. squares*/
+	if(LESaverage && (start > 1)) {
+		Scalar n = start - 1;
+		Ustd = (Ustd * Ustd + Uavg * Uavg) * n;
+		pstd = (pstd * pstd + pavg * pavg) * n;
+		Uavg = (Uavg) * n;
+		pavg = (pavg) * n;
+	}
 
 	/*wall distance*/
 	if(needWallDist) {
-		MP::print("Calculating wall distance.\n");
+		MP::printH("Calculating wall distance.\n");
 		Mesh::calc_walldist(step);
-		MP::print("Finished.\n");
+		MP::printH("Finished.\n");
 	}
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
@@ -278,6 +285,7 @@ void piso(istream& input) {
 
 				/*1/ap*/
 				ScalarCellField api = (1 / M.ap);
+				fillBCs(api,true);
 
 				/*PISO loop*/
 				for(Int j = 0;j < n_PISO;j++) {
@@ -332,7 +340,6 @@ void piso(istream& input) {
 		/*write result to file*/
 		if((i % Controls::write_interval) == 0) {
 			step = i / Controls::write_interval;
-
 			if(LESaverage) {
 				VectorCellField Ua = Uavg,Us = Ustd;
 				ScalarCellField pa = pavg,ps = pstd;
@@ -345,31 +352,27 @@ void piso(istream& input) {
 				pstd = sqrt(pstd / n);
 
 				Mesh::write_fields(step);
-				Util::write_vtk(step);
 
-				Uavg = Ua;
-				Ustd = Us;
-				pavg = pa;
-				pstd = ps;
+				if(i != Controls::end_step) {
+					Uavg = Ua;
+					Ustd = Us;
+					pavg = pa;
+					pstd = ps;
+				}
 			} else {
 				Mesh::write_fields(step);
-				Util::write_vtk(step);
 			}
 		}
 		/*end*/
 	}
 	/*write calculated turbulence fields*/
-	write_turb_fields(turb,step);
-}
-/*write*/
-static void write_turb_fields(Turbulence_Model* turb,int step) {
 	ScalarCellField K("Ksgs",WRITE);
 	STensorCellField R("Rsgs",WRITE);
 	STensorCellField V("Vsgs",WRITE);
 	K = turb->getK();
 	R = turb->getReynoldsStress();
 	V = turb->getViscousStress();
-	Util::write_vtk(step);
+	Mesh::write_fields(step);
 }
 /********************************************
  Diffusion solver
@@ -400,7 +403,6 @@ void diffusion(istream& input) {
 	step = Controls::start_step / Controls::write_interval;
 	start = Controls::write_interval * step + 1;
 	Mesh::read_fields(step);
-	Util::write_vtk(step);
 
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
@@ -442,7 +444,6 @@ void diffusion(istream& input) {
 		if((i % Controls::write_interval) == 0) {
 			step = i / Controls::write_interval;
 			Mesh::write_fields(step);
-			Util::write_vtk(step);
 		}
 	}
 }
@@ -477,7 +478,6 @@ void transport(istream& input) {
 	step = Controls::start_step / Controls::write_interval;
 	start = Controls::write_interval * step + 1; 
 	Mesh::read_fields(step);
-	Util::write_vtk(step);
 
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
@@ -486,7 +486,6 @@ void transport(istream& input) {
 
 	/*Calculate for each time step*/
 	ScalarFacetField F,mu = rho * DT,gamma;
-
 	for(Int i = start; i <= Controls::end_step; i++) {
 		/*Print step*/
 		if(MP::host_id == 0) {
@@ -514,14 +513,12 @@ void transport(istream& input) {
 				}
 				M += ddt(T,rho);
 			}
-
 			Solve(M);
 		}
 		/*write result to file*/
 		if((i % Controls::write_interval) == 0) {
 			step = i / Controls::write_interval;
 			Mesh::write_fields(step);
-			Util::write_vtk(step);
 		}
 	}
 }
@@ -584,7 +581,6 @@ void potential(istream& input) {
 
 	/*write result to file*/
 	Mesh::write_fields(step);
-	Util::write_vtk(step);
 }
 /**********************************************************************************
  Wall distance
@@ -597,26 +593,7 @@ void potential(istream& input) {
 	   The boundary conditions are phi=0 at walls, and grad(phi) = 0 elsewhere.
 **********************************************************************************/
 void Mesh::calc_walldist(Int step) {
-	ScalarCellField phi;
-	/*internal*/
-	phi = Scalar(0);
-	/*boundary*/
-	BCondition<Scalar>* bc;
-	for(Boundaries::iterator it = gBoundaries.begin();it != gBoundaries.end();++it) {
-		string bname = it->first;
-		bc = new BCondition<Scalar>(phi.fName);
-		bc->bname = bname;
-		if(bname.find("WALL") != std::string::npos) {
-			bc->cname = "DIRICHLET";
-			bc->value = Scalar(0);
-		} else {
-			bc->cname = "NEUMANN";
-			bc->value = Scalar(0);
-		}
-		bc->init_indices();
-		AllBConditions.push_back(bc);
-	}
-	updateExplicitBCs(phi,true,true);
+	ScalarCellField& phi = yWall;
     /*poisson equation*/
 	{
 		ScalarFacetField one = Scalar(1);
@@ -625,13 +602,10 @@ void Mesh::calc_walldist(Int step) {
 	/*wall distance*/
 	{
 		VectorCellField g = grad(phi);
-		g.FillBoundaryValues();
 		yWall = sqrt((g & g) + 2 * phi) - mag(g);
 	}
 	/*write it*/
-	yWall.access = WRITE;
-	Util::write_vtk(step);
-	yWall.access = NONE;
+	yWall.write(step);
 }
 
 

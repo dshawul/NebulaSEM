@@ -20,9 +20,9 @@ namespace Controls {
 		NO_CORRECTION,MINIMUM, ORTHOGONAL, OVER_RELAXED
 	};
 	enum Solvers {
-		SOR, PCG
+		JACOBI, SOR, PCG
 	};
-	enum GhostExchange {
+	enum CommMethod {
 		BLOCKED, ASYNCHRONOUS
 	};
 	enum State {
@@ -34,7 +34,8 @@ namespace Controls {
 	extern Scheme interpolation_scheme;
 	extern NonOrthoScheme nonortho_scheme;
 	extern Solvers Solver; 
-	extern GhostExchange ghost_exchange;
+	extern CommMethod ghost_exchange;
+	extern CommMethod parallel_method;
 	extern State state;
 
 	extern Scalar SOR_omega;
@@ -131,10 +132,11 @@ public:
 	}
 
 	/*static functions*/
-	void read(std::istream&);
-	void write(std::ostream&);
-	static void read(Int step);
-	static void write(Int step);
+	void readInternal(std::istream&);
+	void read(Int step);
+	void write(Int step);
+	static void readAll(Int step);
+	static void writeAll(Int step);
 	static void write_vtk(std::ostream&,bool);
 	static int count_writable();
 
@@ -260,11 +262,6 @@ public:
 		for(Int i = 0;i < SIZE;i++) 
 			P[i] = po[i] + (P[i] - po[i]) * UR;
 	}
-	void FillBoundaryValues() {
-		using namespace Mesh;
-		for(Int i = gBCellsStart;i < SIZE;i++)
-			P[i] = P[gFO[gCells[i][0]]];
-	}
 	/*end*/
 };
 /***********************************
@@ -376,8 +373,7 @@ namespace Mesh {
 	extern ScalarFacetField  fI;
 	extern ScalarCellField   yWall;
 
-	void   removeBoundary(IntVector&);
-	void   initGeomMeshFields();
+	void   initGeomMeshFields(bool = true);
 	void   write_fields(Int);
 	void   read_fields(Int);
 	void   calc_walldist(Int);
@@ -386,7 +382,7 @@ namespace Mesh {
  *  Input - output operations
  * **********************************************/
 template <class T,ENTITY E> 
-void MeshField<T,E>::read(std::istream& is) {
+void MeshField<T,E>::readInternal(std::istream& is) {
 	using namespace Mesh;
 	/*size*/
 	char c;
@@ -409,41 +405,60 @@ void MeshField<T,E>::read(std::istream& is) {
 		}
 		is >> symbol;
 	}
-	/*boundary condition*/
-	BCondition<T>* bc;
-	while((c = Util::nextc(is)) && isalpha(c)) {
-		bc = new BCondition<T>(this->fName);
-		is >> *bc;
-		AllBConditions.push_back(bc);
+}
+template <class T,ENTITY E> 
+void MeshField<T,E>::read(Int step) {
+	using namespace Mesh;
+
+	/*open*/
+	std::stringstream path;
+	path << fName << step;
+	std::ifstream is(path.str().c_str());
+
+	if(is.fail()) {
+		*this = T(0);
+	} else {
+		std::cout << "Reading " << fName << step  << std::endl;
+		std::cout.flush();
+
+		/*internal*/
+		readInternal(is);
+
+		/*boundary*/
+		char c;
+		BCondition<T>* bc;
+		while((c = Util::nextc(is)) && isalpha(c)) {
+			bc = new BCondition<T>(this->fName);
+			is >> *bc;
+			AllBConditions.push_back(bc);
+		}
+		
+		/*update BCs*/
+		updateExplicitBCs(*this,true,true);
 	}
+	/*close*/
+	is.close();
 }
 
 template <class T,ENTITY E> 
-void MeshField<T,E>::read(Int step) {
+void MeshField<T,E>::readAll(Int step) {
 	using namespace Mesh;
 	MeshField<T,E>* pf;
 	for(typename std::list<MeshField<T,E>*>::iterator it = fields_.begin();it != fields_.end();++it) {
 		pf = *it;
-		if(pf->access & READ) {
-			std::stringstream path;
-			path << pf->fName << step;
-			std::ifstream is(path.str().c_str());
-			if(!is.fail()) {
-				std::cout << "Reading " << pf->fName << step  << std::endl;
-				std::cout.flush();
-				pf->read(is);
-				updateExplicitBCs(*pf,true,true);
-			} else {
-				*pf = T(0);
-			}
-			is.close();
-		}
+		if(pf->access & READ)
+			pf->read(step);
 	}
 }
 /*write fields*/
 template <class T,ENTITY E> 
-void MeshField<T,E>::write(std::ostream& of) {
+void MeshField<T,E>::write(Int step) {
 	using namespace Mesh;
+
+	/*open*/
+	std::stringstream path;
+	path << fName << step;
+	std::ofstream of(path.str().c_str());
 
 	/*size*/
 	of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
@@ -465,20 +480,18 @@ void MeshField<T,E>::write(std::ostream& of) {
 			of << *bc << std::endl;
 		}
 	}
+
+	/*close*/
+	of.close();
 }
 template <class T,ENTITY E> 
-void MeshField<T,E>::write(Int step) {
+void MeshField<T,E>::writeAll(Int step) {
 	using namespace Mesh;
 	MeshField<T,E>* pf;
 	for(typename std::list<MeshField<T,E>*>::iterator it = fields_.begin();it != fields_.end();++it) {
 		pf = *it;
-		if(pf->access & WRITE) {
-			std::stringstream path;
-			path << pf->fName << step;
-			std::ofstream of(path.str().c_str());
-			pf->write(of);
-			of.close();
-		}
+		if(pf->access & WRITE)
+			pf->write(step);
 	}
 }
 /*write in vtk format*/
@@ -631,6 +644,56 @@ struct MeshMatrix {
 		ap /= UR;
 		Su += (*cF) * ap * (1 - UR);
 	}
+	/*Fix*/
+	void Fix(Int c,type value) {
+		/*diagonal fix*/
+		ap[c] = 10e30;
+		Su[c] = value * 10e30;
+		/*asymmetric fix*
+		using namespace Mesh;
+		Cell& mc = gCells[c];
+		Int f;
+		for(Int i = 0;i < mc.size();i++) {
+			f = mc[i];
+			if(gFO[f] == c) an[1][f] = 0;
+			else an[0][f] = 0;
+		}
+		Su[c] = ap[c] * value;
+		/*symmetric fix*
+		using namespace Mesh;
+		Cell& mc = gCells[c];
+		Int f;
+		for(Int i = 0;i < mc.size();i++) {
+			f = mc[i];
+			if(gFO[f] == c)
+				Su[gFN[f]] += an[0][f] * value;
+			else
+				Su[gFO[f]] += an[1][f] * value;
+			an[1][f] = 0;
+			an[0][f] = 0;
+		}
+		Su[c] = ap[c] * value;
+		/*end*/
+	}
+	/*Fix near wall cell values*/
+	void FixNearWallValues() {
+		using namespace Mesh;
+		BasicBCondition* bbc;
+		for(Int d = 0;d < AllBConditions.size();d++) {
+			bbc = AllBConditions[d];
+			if(bbc->isWall && (bbc->fIndex == cF->fIndex)) {
+				IntVector& wall_faces = *bbc->bdry;
+				if(wall_faces.size()) {
+					Int f,c1;
+					for(Int i = 0;i < wall_faces.size();i++) {
+						f = wall_faces[i];
+						c1 = gFO[f];
+						Fix(c1,(*cF)[c1]);
+					}
+				}
+			}
+		}
+	}
 };
 /* ***************************************
  * Implicit boundary conditions
@@ -690,8 +753,10 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 	using namespace Mesh;
 	BasicBCondition* bbc;
 	BCondition<T>* bc;
-	Scalar z = Scalar(0),zmin = Scalar(0),zR = Scalar(0),
-		   zmax = Scalar(0),R = Scalar(0);
+	Scalar z = Scalar(0),
+		   zmin = Scalar(0),
+		   zmax = Scalar(0),
+		   zR = Scalar(0);
 	Vector C(0);
 	bool first = false;
 
@@ -699,8 +764,7 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 	for(Int i = 0;i < AllBConditions.size();i++) {
 		bbc = AllBConditions[i];
 		if(bbc->fIndex == cF.fIndex) {
-			if(bbc->cIndex == GHOST || 
-				bbc->cIndex == NOBC) 
+			if(bbc->cIndex == GHOST) 
 				continue;
 
 			bc = static_cast<BCondition<T>*> (bbc);
@@ -716,29 +780,37 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 					) {
 						Int ci,j;
 						Scalar r;
-						
-						zmin = Scalar(10e30);
-						zmax = -Scalar(10e30);
-						C = Vector(0);
-						for(j = 0;j < sz;j++) {
-							Facet& f = gFacets[j];
-							for(Int k = 0;k < f.size();k++) {
-								z = (vC[f[k]] & bc->dir);
-								if(z < zmin) 
-									zmin = z;
-								if(z > zmax) 
-									zmax = z;
+						if(bc->zMax > 0) {
+							zmin = bc->zMin;
+							zmax = bc->zMax;
+							zR = zmax - zmin;
+						} else {
+							zmin = Scalar(10e30);
+							zmax = -Scalar(10e30);
+							C = Vector(0);
+							for(j = 0;j < sz;j++) {
+								Facet& f = gFacets[j];
+								for(Int k = 0;k < f.size();k++) {
+									z = (vC[f[k]] & bc->dir);
+									if(z < zmin) 
+										zmin = z;
+									if(z > zmax) 
+										zmax = z;
+								}
+								C += fC[j];
 							}
-							C += fC[j];
-						}
-						C /= Scalar(sz);
+							C /= Scalar(sz);
+							zR = zmax - zmin;
 
-						ci = gFN[(*bc->bdry)[0]];
-						R = magSq(cC[ci] - C);
-						for(j = 1;j < sz;j++) {
-							ci = gFN[(*bc->bdry)[0]];
-							r = magSq(cC[ci] - C);
-							if(r < R) R = r;
+							if(bc->cIndex == PARABOLIC) {
+								ci = gFN[(*bc->bdry)[0]];
+								zR = magSq(cC[ci] - C);
+								for(j = 1;j < sz;j++) {
+									ci = gFN[(*bc->bdry)[0]];
+									r = magSq(cC[ci] - C);
+									if(r < zR) zR = r;
+								}
+							}
 						}
 				}
 				first = (bc->fixed.size() == 0);
@@ -773,24 +845,20 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 							v = bc->value;
 						} else if(bc->cIndex == POWER) {
 							if(z < 0) z = 0;
-							if(bc->zG > 0) zR = bc->zG;
-							else zR = zmax - zmin;
 							if(z > zR) v = bc->value;
 							else v = bc->value * pow(z / zR,bc->shape);
 						} else if(bc->cIndex == LOG) {
 							if(z < 0) z = 0;
-							if(bc->zG > 0) zR = bc->zG;
-							else zR = zmax - zmin;
 							if(z > zR) v = bc->value;
 							else v = bc->value * (log(1 + z / bc->shape) / log(1 + zR / bc->shape));
 						} else if(bc->cIndex == PARABOLIC) {
 							z = magSq(cC[c2] - C);
-							v = bc->value * (z / R);
+							v = bc->value * (z / zR);
 						} else if(bc->cIndex == INVERSE) {
 							v = bc->value / (z + bc->shape);
 						}
 						if(!first && !equal(mag(bc->tvalue),0)) { 
-							T meanTI = v * (bc->tvalue * pow (z / (zmax - zmin),-bc->tshape));
+							T meanTI = v * (bc->tvalue * pow (z / zR,-bc->tshape));
 							Scalar rFactor = 4 * ((rand() / Scalar(RAND_MAX)) - 0.5);
 							v += ((cF[c2] - v) * 0.9 + (meanTI * rFactor) * 0.1);
 						} 
@@ -802,6 +870,21 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 			}
 		}
 	}
+	/*ghost cells*/
+	if(update_ghost && gInterMesh.size()) {
+		exchange_ghost(&cF[0]);
+	}
+}
+/* ***************************************
+ * Fill boundary from internal values
+ * **************************************/
+template<class T,ENTITY E>
+void fillBCs(const MeshField<T,E>& cF,
+			 bool update_ghost = false) {
+	/*neumann update*/
+	using namespace Mesh;
+	for(Int i = gBCellsStart;i < cF.size();i++)
+		cF[i] = cF[gFO[gCells[i][0]]];
 	/*ghost cells*/
 	if(update_ghost && gInterMesh.size()) {
 		exchange_ghost(&cF[0]);
@@ -840,12 +923,12 @@ void exchange_ghost(T* P) {
 				MP::send(&buffer[0],f.size(),b.to,MP::FIELD);
 			}
 		}
-    /*Asynchronous*/
+    /*Asynchronous exchange*/
 	} else {
 		MeshField<T,CELL> sendbuf,recvbuf;
 		std::vector<MP::REQUEST> request(2 * gInterMesh.size(),0);
 		Int rcount = 0;
-		//send buffer
+		//fill send buffer
 		for(i = 0;i < gInterMesh.size();i++) {
 			interBoundary& b = gInterMesh[i];
 			IntVector& f = *(b.f);
@@ -856,11 +939,14 @@ void exchange_ghost(T* P) {
 		for(i = 0;i < gInterMesh.size();i++) {
 			interBoundary& b = gInterMesh[i];
 			//non-blocking send/recive
-			MP::isend(&sendbuf[b.buffer_index],b.f->size(),b.to,MP::FIELD,&request[rcount]);
+			MP::isend(&sendbuf[b.buffer_index],b.f->size(),
+				b.to,MP::FIELD,&request[rcount]);
 			rcount++;
-			MP::irecieve(&recvbuf[b.buffer_index],b.f->size(),b.to,MP::FIELD,&request[rcount]);
+			MP::irecieve(&recvbuf[b.buffer_index],b.f->size(),
+				b.to,MP::FIELD,&request[rcount]);
 			rcount++;
 		}
+		//wait
 		MP::waitall(rcount,&request[0]);
 		//recieve buffer
 		for(i = 0;i < gInterMesh.size();i++) {
@@ -903,19 +989,13 @@ template <class T>
 MeshField<T,CELL> operator * (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 	using namespace Mesh;
 	MeshField<T,CELL> r;
-	Cell* c;
-	Int i,j,f;
-	for(i = 0;i < gBCellsStart;i++) {
-		c = &gCells[i];
-		r[i] = q[i] * p.ap[i];
-		for(j = 0;j < c->size();j++) {
-			f = (*c)[j];
-			if(i == gFO[f]) {
-				r[i] -= q[gFN[f]] * p.an[1][f];
-			} else {
-				r[i] -= q[gFO[f]] * p.an[0][f];
-			}
-		}
+	Int c1,c2;
+	r = q * p.ap;
+	for(Int f = 0;f < gFacets.size();f++) {
+		c1 = gFO[f];
+		c2 = gFN[f];
+		r[c1] -= q[c2] * p.an[1][f];
+		r[c2] -= q[c1] * p.an[0][f];
 	}
 	return r;
 }
@@ -924,21 +1004,13 @@ template <class T>
 MeshField<T,CELL> operator ^ (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 	using namespace Mesh;
 	MeshField<T,CELL> r;
-	Cell* c;
-	Int i,j,f;
-	for(i = 0;i < gBCellsStart;i++)
-		r[i] = T(0);
-	for(i = 0;i < gBCellsStart;i++) {
-		c = &gCells[i];
-		r[i] += q[i] * p.ap[i];
-		for(j = 0;j < c->size();j++) {
-			f = (*c)[j];
-			if(i == gFO[f]) {
-				r[gFN[f]] -= q[i] * p.an[1][f];
-			} else {
-				r[gFO[f]] -= q[i] * p.an[0][f];
-			}
-		}
+	Int c1,c2;
+	r = q * p.ap;
+	for(Int f = 0;f < gFacets.size();f++) {
+		c1 = gFO[f];
+		c2 = gFN[f];
+		r[c2] -= q[c1] * p.an[1][f];
+		r[c1] -= q[c2] * p.an[0][f];
 	}
 	return r;
 }
@@ -947,19 +1019,13 @@ template <class T>
 MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 	using namespace Mesh;
 	MeshField<T,CELL> r;
-	Cell* c;
-	Int i,j,f;
-	for(i = 0;i < r.size();i++) {
-		c = &gCells[i];
-		r[i] = p.Su[i];
-		for(j = 0;j < c->size();j++) {
-			f = (*c)[j];
-			if(i == gFO[f]) {
-				r[i] += (*p.cF)[gFN[f]] * p.an[1][f];
-			} else {
-				r[i] += (*p.cF)[gFO[f]] * p.an[0][f];
-			}
-		}
+	Int c1,c2;
+	r = p.Su;
+	for(Int f = 0;f < gFacets.size();f++) {
+		c1 = gFO[f];
+		c2 = gFN[f];
+		r[c1] += (*p.cF)[c2] * p.an[1][f];
+		r[c2] += (*p.cF)[c1] * p.an[0][f];
 	}
 	return r;
 }
@@ -1057,17 +1123,17 @@ inline TensorCellField gradV(const VectorCellField& p) {
 
 /*Explicit*/
 inline VectorCellField grad(const ScalarFacetField& p) {
-	VectorCellField gF = gradV(p) / Mesh::cV;
-	gF.FillBoundaryValues();
-	return gF;
+	VectorCellField f = gradV(p) / Mesh::cV;
+	fillBCs(f,true);
+	return f;
 }
 inline VectorCellField grad(const ScalarCellField& p) {
 	return grad(cds(p));
 }
 inline TensorCellField grad(const VectorFacetField& p) {
-	TensorCellField gF = gradV(p) / Mesh::cV;
-	gF.FillBoundaryValues();
-	return gF;
+	TensorCellField f = gradV(p) / Mesh::cV;
+	fillBCs(f,true);
+	return f;
 }
 inline TensorCellField grad(const VectorCellField& p) {
 	return grad(cds(p));

@@ -3,9 +3,9 @@
 using namespace std;
 using namespace Mesh;
 
-//#define POLYHEDRAL
+bool Vtk::write_polyhedral = false;
+bool Vtk::write_cell_value = true;
 
-#ifdef POLYHEDRAL
 static Int cell_count(Cell& c) {
 	Facet* f;
 	Int i,nFacets = c.size(),nVertices = 0,nTotal;
@@ -37,79 +37,77 @@ static void cell_vtk(std::ofstream& of, Cell& c) {
 	}
 	of << endl;
 }
-#endif
 
-void Util::write_vtk(Int step) {
+void Vtk::write_vtk(Int step) {
 	Int total;
 	stringstream path;
 	path << gMeshName << step << ".vtk";
 	ofstream of(path.str().c_str());
-#ifdef POLYHEDRAL
-	of << "# vtk DataFile Version 2.0" << endl;
-#else
-	of << "# vtk DataFile Version 1.0" << endl;
-#endif
+	if(write_polyhedral)
+		of << "# vtk DataFile Version 2.0" << endl;
+	else
+		of << "# vtk DataFile Version 1.0" << endl;
 	of << Mesh::gMeshName << endl;
 	of << "ASCII" << endl;
 	of << "DATASET UNSTRUCTURED_GRID" << endl;
     /*Geometry*/
-	Int i,j;
+	Int i;
 	of << "POINTS " << gVertices.size() << " float" << endl;
 	for(i = 0;i < gVertices.size();i++) {
 		of << gVertices[i] << endl;
     }
-#ifdef POLYHEDRAL
-	/*polyhedral cells*/
-	total = 0;
-	for(i = 0;i < gBCellsStart;i++)
-		total += cell_count(gCells[i]);
+	if(write_polyhedral) {
+		/*polyhedral cells*/
+		total = 0;
+		for(i = 0;i < gBCellsStart;i++)
+			total += cell_count(gCells[i]);
 
-	of << "CELLS " << gBCellsStart << " " << total << endl;
-	for(i = 0;i < gBCellsStart;i++)
-		cell_vtk(of,gCells[i]);
-    
-	of << "CELL_TYPES " << gBCellsStart << endl;
-	for(i = 0;i < gBCellsStart;i++)
-		of << 42 << endl;
-#else
-    /*hexahedral cells*/
-    of << "CELLS " << gBCellsStart << " " << gBCellsStart * 9 << endl;
-	for(i = 0;i < gBCellsStart;i++) {
-		Cell& c = gCells[i];
-		Facet f1 = gFacets[c[0]];
-		Facet f2 = gFacets[c[1]];
-		of << f1.size() + f2.size() << " ";
-		for(j = 0;j < f1.size();j++) of << f1[j] << " ";
-		for(j = 0;j < f2.size();j++) of << f2[j] << " ";
-		of << endl;
-    }
-	of << "CELL_TYPES " << gBCellsStart << endl;
-	for(i = 0;i < gBCellsStart;i++) {
-		of << "12" << endl;
-    }
-#endif
+		of << "CELLS " << gBCellsStart << " " << total << endl;
+		for(i = 0;i < gBCellsStart;i++)
+			cell_vtk(of,gCells[i]);
+
+		of << "CELL_TYPES " << gBCellsStart << endl;
+		for(i = 0;i < gBCellsStart;i++)
+			of << 42 << endl;
+	} else {
+		Int j;
+		/*hexahedral cells*/
+		of << "CELLS " << gBCellsStart << " " << gBCellsStart * 9 << endl;
+		for(i = 0;i < gBCellsStart;i++) {
+			Cell& c = gCells[i];
+			Facet f1 = gFacets[c[0]];
+			Facet f2 = gFacets[c[1]];
+			of << f1.size() + f2.size() << " ";
+			for(j = 0;j < f1.size();j++) of << f1[j] << " ";
+			for(j = 0;j < f2.size();j++) of << f2[j] << " ";
+			of << endl;
+		}
+		of << "CELL_TYPES " << gBCellsStart << endl;
+		for(i = 0;i < gBCellsStart;i++) {
+			of << "12" << endl;
+		}
+	}
 	/*Fields*/
 	total = ScalarCellField::count_writable() +
 		    VectorCellField::count_writable() +
 			STensorCellField::count_writable() +
 			TensorCellField::count_writable();
-
-	of << "CELL_DATA " << gBCellsStart << endl;
-	of << "FIELD attributes "<< total + 1 << endl;
-	ScalarCellField::write_vtk(of,false);
-	VectorCellField::write_vtk(of,false);
-	STensorCellField::write_vtk(of,false);
-	TensorCellField::write_vtk(of,false);
-	of << "cellID  1 " << Mesh::gBCellsStart << " int" << endl;
-	for(Int i = 0;i < Mesh::gBCellsStart;i++) of << i << endl;
-
+	if(write_cell_value) {
+		of << "CELL_DATA " << gBCellsStart << endl;
+		of << "FIELD attributes "<< total + 1 << endl;
+		ScalarCellField::write_vtk(of,false);
+		VectorCellField::write_vtk(of,false);
+		STensorCellField::write_vtk(of,false);
+		TensorCellField::write_vtk(of,false);
+		of << "cellID  1 " << Mesh::gBCellsStart << " int" << endl;
+		for(Int i = 0;i < Mesh::gBCellsStart;i++) of << i << endl;
+	}
 	of << "POINT_DATA " << gVertices.size() << endl;
 	of << "FIELD attributes "<< total << endl;
 	ScalarCellField::write_vtk(of,true);
 	VectorCellField::write_vtk(of,true);
 	STensorCellField::write_vtk(of,true);
 	TensorCellField::write_vtk(of,true);
-
 	/*end*/
 	of.close();
 }

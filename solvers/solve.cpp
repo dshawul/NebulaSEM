@@ -4,24 +4,52 @@
  *  Solve system of linear equations iteratively
  * *********************************************************************/
 template<class type>
+Scalar getResidual(const MeshField<type,CELL>& r,
+				   const MeshField<type,CELL>& cF,
+				   bool sync) {
+	type res[2];
+	res[0] = type(0);
+	res[1] = type(0); 
+	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+		res[0] += (r[i] * r[i]);
+		res[1] += (cF[i] * cF[i]);
+	}
+	if(sync) {
+		type global_res[2];
+		MP::allsum(res,global_res,2);
+		res[0] = global_res[0];
+		res[1] = global_res[1];
+	}
+	return sqrt(mag(res[0]) / mag(res[1]));
+}
+
+template<class type>
 void SolveT(const MeshMatrix<type>& M) {
 
 	using namespace Mesh;
 	MeshField<type,CELL> r,p,AP;
-	MeshField<type,CELL> r1(false),p1(false),AP1(false);   /* Allocate only if BiCG is used*/
+	MeshField<type,CELL> r1(false),p1(false),AP1(false);   
 	MeshField<type,CELL>& cF = *M.cF;
 	MeshField<type,CELL>& buffer = AP;
-	ScalarCellField pC = (1 / M.ap);           /* Jacobi preconditioner */
+	ScalarCellField pC = (1 / M.ap); /* Jacobi preconditioner */
 	Scalar res,ires;
 	Int i,j,iterations = 0;
 	type alpha,beta,o_rr = type(0),oo_rr;
-	type local_res[2];
+
+	/* Allocate BiCG vars*/
+	if((Controls::Solver == Controls::PCG) &&
+		!(M.flags & M.SYMMETRIC)) {
+		r1.allocate();
+		p1.allocate();
+		AP1.allocate();
+	}
 
 	/*for cluster use*/
 	bool converged = false;
-	bool init_exchange = true;
 	bool print = (MP::host_id == 0);
-	int  end_count = gInterMesh.size();
+	int  end_count = 0;
+	bool sync = (Controls::parallel_method == Controls::BLOCKED)
+		&& gInterMesh.size();
 	std::vector<bool> sent_end(gInterMesh.size(),false);
 
 	/*identify matrix solver type*/
@@ -30,51 +58,82 @@ void SolveT(const MeshMatrix<type>& M) {
 			MP::printH("Symmetric  : ");
 		else
 			MP::printH("Asymmetric : ");
-		if(Controls::Solver == Controls::SOR)
+		if(Controls::Solver == Controls::JACOBI)
+			MP::print("JAC :");
+		else if(Controls::Solver == Controls::SOR)
 			MP::print("SOR :");
 		else
 			MP::print("PCG :");
 	}
-	/*initial residual*/
-	r = M.Su - M * cF;
-	for(i = gBCellsStart;i < r.size();i++)
-		r[i] = type(0);
-	local_res[0] = type(0);
-	local_res[1] = type(0); 
-	for(i = 0;i < gBCellsStart;i++) {
-		local_res[0] += (r[i] * r[i]);
-		local_res[1] += (cF[i] * cF[i]);
-	}
-	res = ires = sqrt(mag(local_res[0]) / mag(local_res[1]));
+	/*****************************************
+	 *  Initialize residual and other vectors
+	 *****************************************/
+#define SUM_ALL(typ,var)	if(sync)	{		\
+	typ t;										\
+	MP::allsum(&var,&t,1);						\
+	var = t;									\
+};
 
-	/*CG*/
-	if(Controls::Solver == Controls::PCG) {
-		for(i = gBCellsStart;i < r.size();i++)
-			p[i] = type(0);
-		o_rr = type(0);
-		for(i = 0;i < gBCellsStart;i++) {
-			p[i] = r[i] * pC[i];
-			o_rr += r[i] * p[i];
-		}
-		/*BiCG*/
-		if(!(M.flags & M.SYMMETRIC)) {
-			r1.allocate();
-			p1.allocate();
-			AP1.allocate();
-			r1 = r;
-			p1 = p;
+#define EXCHANGE(var)		if(sync)	{		\
+	exchange_ghost(&var[0]);					\
+};
+
+#define CALC_RESID() {							\
+	r = M.Su - M * cF;							\
+	for(i = gBCellsStart;i < r.size();i++)		\
+		r[i] = type(0);							\
+	res = getResidual(r * pC,cF,sync);			\
+	if(Controls::Solver == Controls::PCG) {		\
+		for(i = gBCellsStart;i < r.size();i++)	\
+			p[i] = type(0);						\
+		o_rr = type(0);							\
+		for(i = 0;i < gBCellsStart;i++) {		\
+			p[i] = r[i] * pC[i];				\
+			o_rr += r[i] * p[i];				\
+		}										\
+		SUM_ALL(type,o_rr);						\
+		if(!(M.flags & M.SYMMETRIC)) {			\
+			r1 = r;								\
+			p1 = p;								\
+		}										\
+	}											\
+};
+
+	CALC_RESID();
+	ires = res;
+	/************************************************
+	* Initialize exchange of ghost cells just once.
+	* Lower numbered processors send message to higher ones.
+	************************************************/
+	if(!sync) {
+		end_count = gInterMesh.size();
+		for(i = 0;i < gInterMesh.size();i++) {
+			interBoundary& b = gInterMesh[i];
+			if(b.from < b.to) {
+				IntVector& f = *(b.f);
+				for(j = 0;j < f.size();j++)
+					buffer[j] = cF[gFO[f[j]]];
+				MP::send(&buffer[0],f.size(),b.to,MP::FIELD);
+			}
 		}
 	}
     /* **************************
-	 * Iterative solvers
+	 * Iterative solution
 	 * *************************/
 	while(iterations < Controls::max_iterations) {
 		/*counter*/
 		iterations++;
 
 		/*select solver*/
-		if(Controls::Solver == Controls::SOR) {
-			/*default solver SOR*/
+		if(Controls::Solver == Controls::JACOBI) {
+			/*Jacobi solver: good for debugging*/
+			p = pC * getRHS(M);
+			for(i = 0;i < gBCellsStart;i++) {
+				r[i] = (p[i] - cF[i]) / pC[i];
+				cF[i] = p[i];
+			}
+		} else if(Controls::Solver == Controls::SOR) {
+			/*Asynchronous SOR solver*/
 			Cell* c;
 			Int sz,f;
 			type ncF;
@@ -92,19 +151,20 @@ void SolveT(const MeshMatrix<type>& M) {
 						ncF += cF[gFO[f]] * (M.an[0][f] * pc);
 					}
 				}
-
-				r[i] = -cF[i];
-				cF[i] = cF[i] * (1 - Controls::SOR_omega) + 
-						ncF * (Controls::SOR_omega);
-				r[i] += cF[i];
+				ncF = cF[i] * (1 - Controls::SOR_omega) + 
+					  ncF * (Controls::SOR_omega);
+				r[i] = (ncF - cF[i]) / pC[i];
+				cF[i] = ncF;
 			}
 			/*end*/
 		} else if(M.flags & M.SYMMETRIC) {
-			/*conjugate gradient   : from wiki*/
+			/*conjugate gradient*/
+			EXCHANGE(p);
 			AP = M * p;
 			oo_rr = type(0);
 			for(i = 0;i < gBCellsStart;i++)
 				oo_rr += p[i] * AP[i];
+			SUM_ALL(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
 			for(i = 0;i < gBCellsStart;i++) {
 				cF[i] = cF[i] + p[i] * alpha;
@@ -116,18 +176,22 @@ void SolveT(const MeshMatrix<type>& M) {
 				AP[i] = r[i] * pC[i];
 				o_rr += r[i] * AP[i];
 			}
+			SUM_ALL(type,o_rr);
 			beta = sdiv(o_rr , oo_rr);
 			for(i = 0;i < gBCellsStart;i++) {
 				p[i] = AP[i] + p[i] * beta;
 			}
 			/*end*/
 		} else {
-			/* biconjugate gradient : from wiki */
+			/* biconjugate gradient*/
+			EXCHANGE(p);
+			EXCHANGE(p1);
 			AP = M * p;
 			AP1 = M ^ p1;
 			oo_rr = type(0);
 			for(i = 0;i < gBCellsStart;i++)
 				oo_rr += p1[i] * AP[i];
+			SUM_ALL(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
 			for(i = 0;i < gBCellsStart;i++) {
 				cF[i] = cF[i] + p[i] * alpha;
@@ -141,6 +205,7 @@ void SolveT(const MeshMatrix<type>& M) {
 				AP1[i] = r1[i] * pC[i];
 				o_rr += r1[i] * AP[i];
 			}
+			SUM_ALL(type,o_rr);
 			beta = sdiv(o_rr , oo_rr);
 			for(i = 0;i < gBCellsStart;i++) {
 				p[i] = AP[i] + p[i] * beta;
@@ -148,109 +213,86 @@ void SolveT(const MeshMatrix<type>& M) {
 			}
 			/*end*/
 		}
-
 		/* *********************************************
 		* calculate norm of residual & check convergence
 		* **********************************************/
-		local_res[0] = type(0);
-		local_res[1] = type(0); 
-		for(i = 0;i < gBCellsStart;i++) {
-			local_res[0] += (r[i] * r[i]);
-			local_res[1] += (cF[i] * cF[i]);
-		}
-		res = sqrt(mag(local_res[0]) / mag(local_res[1]));
-		
-		if(res <= Controls::tolerance)
+		EXCHANGE(cF);
+		res = getResidual(r * pC,cF,sync);
+		if(res <= Controls::tolerance
+			|| iterations == Controls::max_iterations)
 			converged = true;
 PROBE:
 		/* **********************************************************
-		 * update inter mesh boundary conditons
-		 *  -> Communication is NOT forced on every iteration,
-		 *  rather a non-blocking probe is used to check for message.
+		 * Update ghost cell values. Communication is NOT forced on 
+		 * every iteration,rather a non-blocking probe is used to 
+		 * process messages as they arrive.
 		 ************************************************************/
+		if(!sync)
 		{
-			int source,message_id,cn;
-
-			/*initialize exchange*/
-			if(init_exchange) {
-				init_exchange = false;
-				for(i = 0;i < gInterMesh.size();i++) {
-					interBoundary& b = gInterMesh[i];
-					if(b.from < b.to) {
-						IntVector& f = *(b.f);
-						for(j = 0;j < f.size();j++)
-							buffer[j] = cF[gFN[f[j]]];
-						MP::send(&buffer[0],f.size(),b.to,MP::FIELD);
-					}
-				}
-			}
+			int source,message_id;
 			/*probe*/
 			while(MP::iprobe(source,message_id)) {
 				/*find the boundary*/
-				for(i = 0;i < gInterMesh.size();i++) {
-					if(gInterMesh[i].to == source) break;
+				Int patchi;
+				for(patchi = 0;patchi < gInterMesh.size();patchi++) {
+					if(gInterMesh[patchi].to == source) 
+						break;
 				}
-				interBoundary& b = gInterMesh[i];
+				interBoundary& b = gInterMesh[patchi];
 				/*parse message*/
 				if(message_id == MP::FIELD) {
 					IntVector& f = *(b.f);
+					/*recieve*/
 					MP::recieve(&buffer[0],f.size(),source,message_id);
-					type temp;
-
-					/*residual*/
-					Scalar res;
-					local_res[0] = type(0);
-					local_res[1] = type(0); 
-					for(j = 0;j < f.size();j++) {
-						cn = gFN[f[j]];
-						temp = buffer[j] - cF[cn];
-						local_res[0] += (temp * temp);
-						local_res[1] += (cF[cn] * cF[cn]);
-					}
-					res = sqrt(mag(local_res[0]) / mag(local_res[1]));
-
-					/*if change is small stop communication*/
-					if(res > Controls::tolerance && iterations < Controls::max_iterations) {
-						/*exchange and send back*/
-						for(j = 0;j < f.size();j++) {
-							cn = gFN[f[j]];
-							temp = cF[cn];
-							cF[cn] = buffer[j];
-							buffer[j] = temp;
-						}
-						MP::send(&buffer[0],f.size(),source,message_id);
-						/*set flag off*/
+					for(j = 0;j < f.size();j++)
+						cF[gFN[f[j]]] = buffer[j];
+					/*Re-calculate residual.*/
+					CALC_RESID();
+					if(res > Controls::tolerance
+						&& iterations < Controls::max_iterations)
 						converged = false;
-					} else {
-						if(!sent_end[i]) {
+					/* For communication to continue, processor have to send back 
+					 * something for every message recieved.*/
+					if(converged) {
+						/*send END marker*/
+						if(!sent_end[patchi]) {
 							MP::send(source,MP::END);
-							sent_end[i] = true;
+							sent_end[patchi] = true;
 						}
+					} else {
+						/*send back our part*/
+						for(j = 0;j < f.size();j++)
+							buffer[j] = cF[gFO[f[j]]];
+						MP::send(&buffer[0],f.size(),source,message_id);
 					}
 				} else if(message_id == MP::END) {
+					/*END marker recieved*/
 					MP::recieve(source,message_id);
 					end_count--;
-					if(!sent_end[i]) {
+					if(!sent_end[patchi]) {
 						MP::send(source,MP::END);
-						sent_end[i] = true;
+						sent_end[patchi] = true;
 					}
 				}
 			}
 		}
-		/* **************************************
-		* Continue iteration if we have updates
-		* **************************************/
-		if(iterations == Controls::max_iterations)
-			converged = true;
+		/* *****************************************
+		* Wait untill all partner processors send us
+		* an END message i.e. until end_count = 0.
+		* *****************************************/
 		if(converged) {
 			if(end_count > 0) goto PROBE;
 			else break;
 		}
+		/********
+		 * end
+		 ********/
 	}
 
 	/*solver info*/
 	if(print)
-		MP::print("Iterations %d Initial Residual %.5e Final Residual %.5e\n",iterations,ires,res);
+		MP::print("Iterations %d Initial Residual "
+		"%.5e Final Residual %.5e\n",iterations,ires,res);
 
 	/*barrier*/
 	MP::barrier();

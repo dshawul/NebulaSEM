@@ -153,7 +153,7 @@ namespace Util {
 		addParam(std::vector<Vector>,vertex);
 #undef addParam
 
-		void read(std::istream& is,std::string str,bool check,bool out) {
+		void read(std::istream& is,std::string str,bool out) {
 #define readp(N)  params_##N.read(str,is,out)
 			if(readp(Int));
 			else if(readp(Scalar));
@@ -163,7 +163,7 @@ namespace Util {
 			else if(readp(Tensor));
 			else if(readp(STensor));
 			else if(readp(vertex));
-			else if(check) {
+			else if(out) {
 				std::cout << "UNKNOWN";
 			}
 #undef readp

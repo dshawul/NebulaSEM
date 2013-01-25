@@ -30,13 +30,14 @@ void KW_Model::solve() {
 	M = div(x,F,mu) 
 		- lap(x,mu);
 	M -= src(x,
-		(C1x * G * x / k),                         //Su
+		(C1x * Pk * x / k),                        //Su
 		-(C2x * x * rho)                           //Sp  
 		);
 	if(Steady)
 		M.Relax(x_UR);
 	else
 		M += ddt(x,rho);
+	M.FixNearWallValues();
 	Solve(M);
 	x = max(x,Constants::MachineEpsilon);
 
@@ -45,13 +46,15 @@ void KW_Model::solve() {
 	M = div(k,F,mu) 
 		- lap(k,mu);
 	M -= src(k,
-		G,                                         //Su
+		Pk,                                        //Su
 		-(Cmu * x * rho)                           //Sp
 		);
 	if(Steady)
 		M.Relax(k_UR);
 	else
 		M += ddt(k,rho);
+	if(wallModel == STANDARD)
+		M.FixNearWallValues();
 	Solve(M);
 	k = max(k,Constants::MachineEpsilon);
 }

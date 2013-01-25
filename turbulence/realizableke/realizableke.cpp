@@ -21,18 +21,29 @@ void REALIZABLE_KE_Model::enroll() {
 	params.enroll("SigmaE",&SigmaX);
 	params.enroll("C2e",&C2x);
 }
-void REALIZABLE_KE_Model::solve() {
-	ScalarCellField C1;
-	ScalarCellField magS;
-	/*calculate model constants*/
+void REALIZABLE_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
+	/*calculate CmuF*/
+	STensorCellField S = sym(gradU);
 	{
-		STensorCellField S = sym(grad(U));
-		magS = sqrt((S & S) * 2.0);
+		TensorCellField O = skw(gradU);
+		ScalarCellField Ustar = sqrt((S & S) + (O & O));
+		ScalarCellField Sbar = sqrt(S & S);
+		ScalarCellField W = ((mul(S,S) & S) / pow(Sbar,3.0)) * sqrt(6.0);
+		W = min(max(W,-1.0),1.0);
+		ScalarCellField As = sqrt(6.0) * cos(acos(W) / 3.0);
+		CmuF = 1.0 / (A0 + As * Ustar * k / x);
+		CmuF = min(CmuF,0.09);
+	}
+	/*calculate C1*/
+	magS = sqrt((S & S) * 2.0);
+	{
 		ScalarCellField eta = magS * (k / x);
 		C1 = max(eta/(eta + 5.0),0.43);
 	}
-
-	/*solve*/
+	/*calculate viscosity*/
+	KX_Model::calcEddyViscosity(gradU);
+}
+void REALIZABLE_KE_Model::solve() {
 	ScalarMeshMatrix M;
 	ScalarFacetField mu;
 
@@ -48,6 +59,7 @@ void REALIZABLE_KE_Model::solve() {
 		M.Relax(x_UR);
 	else
 		M += ddt(x,rho);
+	M.FixNearWallValues();
 	Solve(M);
 	x = max(x,Constants::MachineEpsilon);
 
@@ -56,28 +68,15 @@ void REALIZABLE_KE_Model::solve() {
 	M = div(k,F,mu) 
 		- lap(k,mu);
 	M -= src(k,
-		G,                                         //Su
+		Pk,                                        //Su
 		-(rho * x / k)                             //Sp
 		);
 	if(Steady)
 		M.Relax(k_UR);
 	else
 		M += ddt(k,rho);
+	if(wallModel == STANDARD)
+		M.FixNearWallValues();
 	Solve(M);
 	k = max(k,Constants::MachineEpsilon);
-
-	/*calculate CmuF*/
-	{
-		TensorCellField gradU = grad(U);
-		STensorCellField S = sym(gradU);
-		TensorCellField O = skw(gradU);
-		ScalarCellField Ustar = sqrt((S & S) + (O & O));
-		ScalarCellField Sbar = sqrt(S & S);
-		ScalarCellField W = ((mul(S,S) & S) / pow(Sbar,3.0)) * sqrt(6.0);
-		W = min(max(W,-1.0),1.0);
-		ScalarCellField As = sqrt(6.0) * cos(acos(W) / 3.0);
-		CmuF = 1.0 / (A0 + As * Ustar * k / x);
-		CmuF = min(CmuF,0.09);
-	}
-	/*end*/
 }

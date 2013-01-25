@@ -3,6 +3,7 @@
 
 #include "mesh.h"
 
-void mshMesh(std::istream& is,Mesh::MeshObject& mo);
+void readMshMesh(std::istream& is,Mesh::MeshObject& mo);
+void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo);
 
 #endif

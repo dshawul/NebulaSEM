@@ -53,7 +53,7 @@ void Util::read_params(istream& is,std::string block) {
 		if((it == ParamList::list.end()) || 
 			(!block.empty() && compare(str,block))) {
 			int braces = 1;
-			while(c = Util::nextc(is)) {
+			while((c = Util::nextc(is))) {
 				is >> c;
 				if(c == '{') braces++;
 				else if(c == '}') {
@@ -69,7 +69,7 @@ void Util::read_params(istream& is,std::string block) {
 		while(true) {
 			READ();
 			if(output) cout << "\t" << str << " = ";
-			params->read(is,str,true,output);
+			params->read(is,str,output);
 			if(output) cout << endl;
 		}
 		if(output) cout << "}\n" << endl;
@@ -84,12 +84,12 @@ END:
 /*IntVector output*/
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p) {
 	Int sz = p.size();
-	if(sz >= 16) os << sz << std::endl << "{ " << std::endl;
+	if(sz >= 16) os << sz << std::endl << "{ ";
 	else os << sz << "{ ";
 	for(Int i = 0;i < sz;i++) {
-		os << p[i] << " ";
-		if(sz >= 16 && ((i + 1) % 16) == 0)
+		if(sz >= 16 && (i % 16) == 0)
 			os << std::endl;
+		os << p[i] << " ";
 	}
 	if(sz >= 16) os << std::endl << "}";
 	else os << "}";

@@ -48,7 +48,16 @@ namespace Mesh {
 		Int      nv;
 		Int      nf;
 		Int      nc;
+		/*funcs*/
+		void write(std::ostream& os);
 	};
+
+	extern std::vector<Vector> _fC;
+	extern std::vector<Vector> _cC;
+	extern std::vector<Vector> _fN;
+	extern std::vector<Scalar> _cV;
+	extern std::vector<bool>   _reversed;
+
 	extern  MeshObject       gMesh;
 	extern  std::string&     gMeshName;
 	extern  Vertices&		 gVertices;
@@ -63,6 +72,8 @@ namespace Mesh {
 	
 	bool faceInBoundary(Int);
 	void addBoundaryCells();
+	void calcGeometry();
+	void removeBoundary(IntVector&);
 	void readMesh();
 	void enroll(Util::ParamList& params);
 	int  findNearest(const Vector& v);
@@ -88,7 +99,7 @@ struct LawOfWall {
 	LawOfWall() : 
 		E(9.793),
 		kappa(0.4187),
-		ks(0.48),
+		ks(0),
 		cks(0.5)
 	{
 		init();
@@ -98,8 +109,16 @@ struct LawOfWall {
 		for(Int i = 0;i < 20;i++)
 			yLog = log(E * yLog) / kappa;
 	}
-	Scalar getDB(Scalar ustar,Scalar nu) {
-		Scalar dB;
+	Scalar getUstar(Scalar nu,Scalar U,Scalar y) {
+		Scalar a = kappa * U * y / nu;
+		Scalar yp = a;
+		for(Int i = 0;i < 10;i++)
+			yp = (a + yp) / (1 + log(E * yp));
+		Scalar ustar = yp * nu / y;
+		return ustar;
+	}
+	Scalar getUp(Scalar ustar,Scalar nu,Scalar yp) {
+		Scalar up,dB;
 		Scalar ksPlus = (ustar * ks) / nu;
 		if(ksPlus < 2.25) {
 			dB = 0;
@@ -109,7 +128,9 @@ struct LawOfWall {
 		} else {
 			dB = (1 / kappa) * log(1 + cks * ksPlus);
 		}
-		return dB;
+		if(yp > yLog)  up = log(E * yp) / kappa - dB;  
+		else           up = yp;  
+		return up;
 	}
 	void write(std::ostream& os) const {
 		os << "\tE " << E << std::endl;
@@ -144,7 +165,6 @@ namespace Mesh {
 	const Int LOG          = Util::hash_function("LOG");
     const Int PARABOLIC    = Util::hash_function("PARABOLIC");
 	const Int INVERSE      = Util::hash_function("INVERSE");
-	const Int NOBC         = Util::hash_function("NONE");
 }
 struct BasicBCondition {
 	IntVector* bdry;
@@ -162,7 +182,8 @@ struct BCondition : public BasicBCondition {
 	Scalar shape;
 	type   tvalue;
 	Scalar tshape;
-	Scalar zG;
+	Scalar zMin;
+	Scalar zMax;
 	Vector dir;
 	std::vector<type> fixed;
 
@@ -172,7 +193,7 @@ struct BCondition : public BasicBCondition {
 	}
 	void reset() {
 		value = tvalue = type(0);
-		shape = tshape = zG = Scalar(0);
+		shape = tshape = zMin = zMax = Scalar(0);
 		dir = Vector(0,0,1);
 	}
 	void init_indices() {
@@ -187,12 +208,20 @@ template <class type>
 std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
 	os << p.bname << "\n{\n";
 	os << "\ttype " << p.cname << std::endl;
-	os << "\tvalue " << p.value << std::endl;
-	os << "\tshape " << p.shape << std::endl;
-	os << "\ttvalue " << p.tvalue << std::endl;
-	os << "\ttshape " << p.tshape << std::endl;	
-	os << "\tdir " << p.dir << std::endl;
-	os << "\tzG " << p.zG << std::endl;
+	if(!equal(mag(p.value),Scalar(0)))
+		os << "\tvalue " << p.value << std::endl;
+	if(!equal(p.shape,Scalar(0)))
+		os << "\tshape " << p.shape << std::endl;
+	if(!equal(mag(p.tvalue),Scalar(0)))
+		os << "\ttvalue " << p.tvalue << std::endl;
+	if(!equal(p.tshape,Scalar(0)))
+		os << "\ttshape " << p.tshape << std::endl;	
+	if(!equal(p.dir,Vector(0,0,1)))
+		os << "\tdir " << p.dir << std::endl;
+	if(p.zMax > 0) {
+		os << "\tzMin " << p.zMin << std::endl;
+		os << "\tzMax " << p.zMax << std::endl;
+	}
 	if(p.isWall)
 		p.low.write(os);
 	os << "}\n";
@@ -225,13 +254,16 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 			is >> p.tshape;
 		} else if(!compare(str,"dir")) {
 			is >> p.dir;
-		} else if(!compare(str,"zG")) {
-			is >> p.zG;
+		} else if(!compare(str,"zMin")) {
+			is >> p.zMin;
+		} else if(!compare(str,"zMax")) {
+			is >> p.zMax;
 		} else if(p.low.read(is,str)) {
 		}
 	}
 
 	p.init_indices();
+	p.low.init();
 	return is;
 }
 

@@ -19,34 +19,51 @@ int main(int argc,char* argv[]) {
 	MergeObject bMerge;
 	string str;
 	string default_name;
-	char* file_name = argv[1];
-	bool import = false;
+	char* i_file_name = argv[1];
+	char* e_file_name = 0;
+	bool Import = false;
+	bool Export = false;
 	char c;
 
 	/*command line arguments*/
 	for(int i = 1;i < argc;i++) {
 		if(!strcmp(argv[i],"-i")) {
 			i++;
-			import = true;
-			file_name = argv[i];
+			Import = true;
+			i_file_name = argv[i];
+		} else if(!strcmp(argv[i],"-o")) {
+			i++;
+			Export = true;
+			e_file_name = argv[i];
 		}
 	}
 
+	/*export to msh file format*/
+	if(Export) {
+		ofstream output(e_file_name);
+		if(Import) str = i_file_name;
+		else str = "grid";
+		Mesh::gMeshName = str;
+		Mesh::readMesh();
+		Mesh::addBoundaryCells();
+		Mesh::calcGeometry();
+
+		output << hex;
+		writeMshMesh(output,gMesh);
+		output << dec;
+		return 0;
+	}
+
 	/*input stream*/
-	ifstream input(file_name);
+	ifstream input(i_file_name);
 
 	/*import*/
-	if(import) {
+	if(Import) {
 		input >> hex;
-		mshMesh(input,gMesh);
+		readMshMesh(input,gMesh);
 		input >> dec;
-		cout << hex;
-		cout << gVertices << endl;
-		cout << gFacets << endl;
-		cout << gCells << endl;
-		for(Boundaries::iterator it = gBoundaries.begin();it != gBoundaries.end();++it)
-			cout << it->first << " " << it->second << endl;
-		cout << dec;
+
+		gMesh.write(cout);
 		return 0;
 	}
 
@@ -79,7 +96,7 @@ int main(int argc,char* argv[]) {
 				if(!compare(str,"geometric")) type = GEOMETRIC;
 				else if(!compare(str,"wall")) type = WALL;
 				else if(!compare(str,"mixed")) type = MIXED;
-				else return 0;
+				else return 1;
 			
 				//read divisions
 				vector<Scalar> ts(s);
@@ -191,12 +208,6 @@ int main(int argc,char* argv[]) {
 	}
 	/*merge boundary & internals*/
 	merge(gMesh,bMerge);
-
-	/*entities*/
-	cout << hex;
-	cout << gVertices << endl;
-	cout << gFacets << endl;
-	cout << gCells << endl;
     
 	/*boundaries*/
 	Int i,j;
@@ -234,10 +245,7 @@ int main(int argc,char* argv[]) {
 			}
 		}
 	}
-	/*write boundaries*/
-	for(Boundaries::iterator it = gBoundaries.begin();it != gBoundaries.end();++it)
-		cout << it->first << " " << it->second << endl;
-	cout << dec;
-
+	/*write it*/
+	gMesh.write(cout);
 	return 0;
 }

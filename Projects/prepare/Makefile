@@ -1,15 +1,15 @@
 ############################
 # Target executable and files
 ############################
-EXE = decompose
-OBJ = mesh.o tensor.o util.o decompose.o decomposeApp.o
+EXE = prepare
+OBJ = mesh.o tensor.o util.o vtk.o field.o mp.o prepare.o prepareApp.o
 ICPC_WARN = -wd280 -wd593 -wd869 -wd981 -wd383  -wd1419 -wd2259 -wd1572 -wd1599 -wd444 -wd1418
 
 #############################
 # paths
 ############################
 BDIR     = ../..
-ALLDIR   = field mesh tensor util vtk mp decompose solvers/piso
+ALLDIR   = field mesh tensor util vtk mp prepare solvers/piso
 EXEDIR   = $(BDIR)/Projects/Release
 OBJDIR   = ./Release
 OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))

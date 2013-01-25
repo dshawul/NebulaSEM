@@ -1,44 +1,25 @@
 #include <sstream>
-#include "decompose.h"
+#include "prepare.h"
 #include "system.h"
 
 using namespace std;
 using namespace Mesh;
 
-/*duplicate file*/
+/*duplicate fields*/
 template <class T>
-void duplicate(istream& is,ostream& of) {
+void duplicateFields(istream& is,ostream& of) {
 	MeshField<T,CELL> f;
-	string str;
-	int size;
+
+	/*internal*/
+	f.readInternal(is);
 
 	/*index file*/
 	IntVector cLoc;
 	ifstream index("index");
 	index >> cLoc;
 
-	/*read size*/
-	is >> str >> size;
-	of << str << " "<< size << endl;
-
-	/*internal field*/
-	char c;
-	T value;
-	if((c = Util::nextc(is)) && isalpha(c)) {
-		value = T(0);
-		is >> str;
-		if(str == "uniform")
-			is >> value;
-		f = value;
-	} else {
-		char symbol;
-		is >> size >> symbol;
-		for(int i = 0;i < size;i++)
-			is >> f[i];
-		is >> symbol;
-	}
-
 	/*write it out*/
+	of << "size "<< sizeof(T) / sizeof(Scalar) << endl;
 	of << cLoc.size() << endl;
 	of << "{" << endl;
 	for(Int j = 0;j < cLoc.size();j++)
@@ -46,12 +27,14 @@ void duplicate(istream& is,ostream& of) {
 	of << "}" << endl;
 
 	/*boundaries*/
+	char c;
 	string bname,cname;
 	while((c = Util::nextc(is)) && isalpha(c)) {
 		BCondition<T> bc(" ");
 		is >> bc;
 		of << bc << endl;
 	}
+
 	/*interMesh boundaries*/
 	while((c = Util::nextc(index)) && isalpha(c)) {
 		BCondition<T> bc(" ");
@@ -60,13 +43,11 @@ void duplicate(istream& is,ostream& of) {
 	}
 }
 /*decompose fields*/
-void Decompose::decomposeFields(vector<string>& fields,std::string mName) {
-
-	/*write meshes to file */
+void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start_index) {
 	int size;
 	std::string str;
 
-	for(Int ID = 0;;ID++) {
+	for(Int ID = start_index;;ID++) {
 		/*cd*/
 		stringstream path;
 		path << mName << ID;
@@ -76,7 +57,6 @@ void Decompose::decomposeFields(vector<string>& fields,std::string mName) {
 		/*for each field*/
 		for(Int i = 0;i < fields.size();i++) {
 			/*read at time 0*/
-
 			string str = "../" + fields[i] + "0";
 			ifstream is(str.c_str());
 			if(!is.fail()) {
@@ -89,10 +69,10 @@ void Decompose::decomposeFields(vector<string>& fields,std::string mName) {
 
 				/*fields*/
 				switch(size) {
-				case 1 :  duplicate<Scalar>(is,of); break;
-				case 3 :  duplicate<Vector>(is,of); break;
-				case 6 :  duplicate<STensor>(is,of); break;
-				case 9 :  duplicate<Tensor>(is,of); break;
+				case 1 :  duplicateFields<Scalar>(is,of); break;
+				case 3 :  duplicateFields<Vector>(is,of); break;
+				case 6 :  duplicateFields<STensor>(is,of); break;
+				case 9 :  duplicateFields<Tensor>(is,of); break;
 				}
 				/*end*/
 			}
@@ -102,24 +82,11 @@ void Decompose::decomposeFields(vector<string>& fields,std::string mName) {
 	}
 }
 /*decompose in x,y,z direction*/
-int Decompose::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
+int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 	
 	using Constants::MAX_INT;
 	Int i,j,k,ID,count,total = n[0] * n[1] * n[2];
 	Vector maxV(Scalar(-10e30)),minV(Scalar(10e30)),delta;
-
-	/*facet owner and neighbors*/
-	gFO.assign(mo.f.size(),MAX_INT);
-	gFN.assign(mo.f.size(),MAX_INT);
-	for(i = 0;i < mo.c.size();i++) {
-		for(j = 0;j < mo.c[i].size();j++) {
-			ID = mo.c[i][j];
-			if(gFO[ID] == MAX_INT) 
-				gFO[ID] = i;
-			else 
-				gFN[ID] = i;
-		}
-	}
 
 	/*decomposed mesh*/
 	MeshObject* meshes = new MeshObject[total];
@@ -139,32 +106,21 @@ int Decompose::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		}
 	}
     delta = maxV - minV;
-	for(j = 0;j < 3;j++) delta[j] /= Scalar(n[j]);
+	for(j = 0;j < 3;j++) 
+		delta[j] /= Scalar(n[j]);
 
 	/*decompose cells*/
 	MeshObject *pmesh;
 	IntVector *pvLoc,*pfLoc,blockIndex;
 	Vector C;
 	
-	blockIndex.assign(mo.c.size(),0);
+	blockIndex.assign(gBCellsStart,0);
 
-	for(i = 0;i < mo.c.size();i++) {
+	for(i = 0;i < gBCellsStart;i++) {
 		Cell& c = mo.c[i];
 
-		/* approximate cell centre */
-		C = Vector(0);
-		count = 0;
-		for(j = 0;j < c.size();j++) {
-			Facet& f = mo.f[c[j]];
-			for(k = 0;k < f.size();k++) {
-				C += mo.v[f[k]];
-				count++;
-			}
-		}
-		C /= Scalar(count);
-
 		/* add cell */
-		C /= delta;
+		C = (_cC[i] - minV) / delta;
 		ID = Int(C[0]) * n[1] * n[2] + Int(C[1]) * n[2] + Int(C[2]);
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
@@ -228,7 +184,7 @@ int Decompose::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 	IntVector* imesh = new IntVector[total * total];
 	Int co,cn;
 	for(i = 0;i < mo.f.size();i++) {
-		if(gFN[i] != MAX_INT) {
+		if(gFN[i] < gBCellsStart) {
 			co = blockIndex[gFO[i]];
 			cn = blockIndex[gFN[i]];
 			if(co != cn) {
@@ -253,7 +209,7 @@ int Decompose::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 			return 1;
 
 		/*v,f & c*/
-		ofstream of(path.str().c_str());
+		ofstream of(mo.name.c_str());
 		of << hex;
 		of << pmesh->v << endl;
 		of << pmesh->f << endl;
@@ -286,7 +242,7 @@ int Decompose::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 				of << "interMesh_" << ID << "_" << j << " ";
 				of << f << endl;
 				of2 << "interMesh_" << ID << "_" << j << " "
-					<< "GHOST" << endl;
+					<< "{\n\ttype GHOST\n}" << endl;
 			}
 		}
 
@@ -302,5 +258,120 @@ int Decompose::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 	delete[] vLoc;
 	delete[] fLoc;
 	delete[] cLoc;
+	return 0;
+}
+/*read fields*/
+template <class T>
+void readFields(istream& is,void* pFields,const IntVector& cLoc) {
+	MeshField<T,CELL>& f = *((MeshField<T,CELL>*)pFields);
+	Int size;
+	char symbol;
+	is >> size >> symbol;
+	for(Int j = 0;j < size;j++) {
+		is >> f[cLoc[j]];
+	}
+	is >> symbol;
+}
+/*create fields*/
+void createFields(vector<string>& fields,void**& pFields) {
+	std::string str;
+	Int size;
+
+	/*for each field*/
+	pFields = new void*[fields.size()];
+	for(Int i = 0;i < fields.size();i++) {
+		/*read at time 0*/
+		str = fields[i] + "0";
+		ifstream is(str.c_str());
+		if(!is.fail()) {
+			/*fields*/
+			is >> str >> size;
+			switch(size) {
+				case 1 :  pFields[i] = new ScalarCellField(fields[i].c_str(),READWRITE); break;
+				case 3 :  pFields[i] = new VectorCellField(fields[i].c_str(),READWRITE); break;
+				case 6 :  pFields[i] = new STensorCellField(fields[i].c_str(),READWRITE); break;
+				case 9 :  pFields[i] = new TensorCellField(fields[i].c_str(),READWRITE); break;
+			}
+			/*end*/
+		}
+	}
+}
+/*Reverse decomposition*/
+int Prepare::merge(Mesh::MeshObject& mo,Int* n,
+					 vector<string>& fields,std::string mName,Int start_index) {
+    /*create fields*/
+	void** pFields;
+	createFields(fields,pFields);
+
+	/*indexes*/
+	Int total = n[0] * n[1] * n[2];
+	IntVector* cLoc = new IntVector[total];
+	std::string str;
+	Int size;
+
+	for(Int ID = 0;ID < total;ID++) {
+		stringstream path;
+		path << mName << ID;
+		str = path.str() + "/index"; 
+		ifstream index(str.c_str());
+		index >> cLoc[ID];
+	}
+
+	/*for each time step*/
+	Int step = start_index;
+	Mesh::read_fields(step);
+	for(step = start_index + 1;;step++) {
+		Int count = 0;
+		for(Int ID = 0;ID < total;ID++) {
+			stringstream path;
+			path << mName << ID;
+			for(Int i = 0;i < fields.size();i++) {
+				stringstream fpath;
+				fpath << fields[i] << step;
+				str = path.str() + "/" + fpath.str();
+
+				ifstream is(str.c_str());
+				if(is.fail())
+					continue;
+				count++;
+				is >> str >> size;
+				switch(size) {
+				case 1 :  readFields<Scalar>(is,pFields[i],cLoc[ID]); break;
+				case 3 :  readFields<Vector>(is,pFields[i],cLoc[ID]); break;
+				case 6 :  readFields<STensor>(is,pFields[i],cLoc[ID]); break;
+				case 9 :  readFields<Tensor>(is,pFields[i],cLoc[ID]); break;
+				}
+			}
+		}
+		if(count == 0) break;
+		Mesh::write_fields(step);
+	}
+
+	return 0;
+}
+/*Convert to VTK format*/
+int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
+    /*create fields*/
+	void** pFields;
+	createFields(fields,pFields);
+
+	/*for each time step*/
+	for(Int step = start_index;;step++) {
+		Int count = 0;
+		for(Int i = 0;i < fields.size();i++) {
+			stringstream fpath;
+			fpath << fields[i] << step;
+			ifstream is(fpath.str().c_str());
+			if(is.fail())
+				continue;
+			count++;
+			break;
+		}
+
+		if(count == 0) break;
+		Mesh::read_fields(step);
+		Vtk::write_vtk(step);
+	}
+
 	return 0;
 }

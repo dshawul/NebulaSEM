@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mesh", "mesh\mesh.vcproj", "{1C5B3709-AAA8-4A68-8162-3CE086C5B1CD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "decompose", "decompose\decompose.vcproj", "{8648288E-BA74-4E16-8C5B-312F787C9660}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "solver", "solver\solver.vcproj", "{B89CDCC7-84E5-4191-8B40-7470A3A13E7F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "prepare", "prepare\prepare.vcproj", "{4D4835AC-87AF-4BFA-AAE3-143510726EE4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,14 +17,14 @@ Global
 		{1C5B3709-AAA8-4A68-8162-3CE086C5B1CD}.Debug|Win32.Build.0 = Debug|Win32
 		{1C5B3709-AAA8-4A68-8162-3CE086C5B1CD}.Release|Win32.ActiveCfg = Release|Win32
 		{1C5B3709-AAA8-4A68-8162-3CE086C5B1CD}.Release|Win32.Build.0 = Release|Win32
-		{8648288E-BA74-4E16-8C5B-312F787C9660}.Debug|Win32.ActiveCfg = Debug|Win32
-		{8648288E-BA74-4E16-8C5B-312F787C9660}.Debug|Win32.Build.0 = Debug|Win32
-		{8648288E-BA74-4E16-8C5B-312F787C9660}.Release|Win32.ActiveCfg = Release|Win32
-		{8648288E-BA74-4E16-8C5B-312F787C9660}.Release|Win32.Build.0 = Release|Win32
 		{B89CDCC7-84E5-4191-8B40-7470A3A13E7F}.Debug|Win32.ActiveCfg = Debug|Win32
 		{B89CDCC7-84E5-4191-8B40-7470A3A13E7F}.Debug|Win32.Build.0 = Debug|Win32
 		{B89CDCC7-84E5-4191-8B40-7470A3A13E7F}.Release|Win32.ActiveCfg = Release|Win32
 		{B89CDCC7-84E5-4191-8B40-7470A3A13E7F}.Release|Win32.Build.0 = Release|Win32
+		{4D4835AC-87AF-4BFA-AAE3-143510726EE4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4D4835AC-87AF-4BFA-AAE3-143510726EE4}.Debug|Win32.Build.0 = Debug|Win32
+		{4D4835AC-87AF-4BFA-AAE3-143510726EE4}.Release|Win32.ActiveCfg = Release|Win32
+		{4D4835AC-87AF-4BFA-AAE3-143510726EE4}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

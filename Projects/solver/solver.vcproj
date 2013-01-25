@@ -200,10 +200,6 @@
 				RelativePath="..\..\util\util.cpp"
 				>
 			</File>
-			<File
-				RelativePath="..\..\vtk\vtk.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -236,10 +232,6 @@
 			</File>
 			<File
 				RelativePath="..\..\util\util.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\vtk\vtk.h"
 				>
 			</File>
 		</Filter>
