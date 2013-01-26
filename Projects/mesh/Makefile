@@ -8,12 +8,13 @@ OBJ = mesh.o tensor.o util.o hexMesh.o mshMesh.o meshApp.o
 # paths
 ############################
 BDIR     = ../..
+SRCDIR   = $(BDIR)/src
 ALLDIR   = field mesh tensor util vtk mp decompose solvers/piso
-EXEDIR   = $(BDIR)/Projects/Release
+EXEDIR   = $(BDIR)/bin
 OBJDIR   = ./Release
 OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))
-VPATH    = $(addprefix   $(BDIR)/, $(ALLDIR))
-INC      = $(addprefix -I$(BDIR)/, $(ALLDIR))
+VPATH    = $(addprefix   $(SRCDIR)/, $(ALLDIR))
+INC      = $(addprefix -I$(SRCDIR)/, $(ALLDIR))
 
 ######################
 # Rules

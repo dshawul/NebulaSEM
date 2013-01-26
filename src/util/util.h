@@ -17,8 +17,6 @@ std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
 	os << "}" << std::endl;
 	return os;
 }
-std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
-
 template <class T>
 std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 	Int size;
@@ -30,7 +28,10 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 	is >> symbol;
 	return is;
 }
-/*equal Vector*/
+
+std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
+
+/*equal vectors*/
 template <class T>
 bool equal(std::vector<T>& v1,std::vector<T>& v2) {
 	Int i,j;
@@ -45,58 +46,59 @@ bool equal(std::vector<T>& v1,std::vector<T>& v2) {
 	return true;
 }
 
-/*Util*/
+/*Utililty functions*/
 namespace Util {
-
-	/*others*/
 	extern bool Terminated;
+	Int hash_function(std::string s);
+	void cleanup();
 
-	inline Scalar max(Scalar a,Scalar b) {
-		return a > b ? a : b;
-	}
+	/*string compare*/
 	inline int compare(std::string& s1,std::string s2) {
 		std::string t1 = s1,t2 = s2;
 		transform(t1.begin(),t1.end(),t1.begin(),toupper);
 		transform(t2.begin(),t2.end(),t2.begin(),toupper);
 		return (t1 != t2);
 	}
-	Int hash_function(std::string s);
+
+	/*next character*/
 	int nextc(std::istream&);
-	void cleanup();
 
 	/*general string option list*/
-	struct Option {
-		Int* val;
-		std::vector<std::string> list;
-		Option(void* v,Int N, ...) {
-			val = (Int*)v;
-			std::string str;
-			list.assign(N,"");
-			va_list ap;
-			va_start(ap, N);
-			for(Int i = 0;i < N;i++) {
-				str = va_arg(ap,char*);
-				list[i] = str;
+	namespace A {
+		struct Option {
+			Int* val;
+			std::vector<std::string> list;
+			Option(void* v,Int N, ...) {
+				val = (Int*)v;
+				std::string str;
+				list.assign(N,"");
+				va_list ap;
+				va_start(ap, N);
+				for(Int i = 0;i < N;i++) {
+					str = va_arg(ap,char*);
+					list[i] = str;
+				}
+				va_end(ap);
 			}
-			va_end(ap);
-		}
-		Int getID(std::string str) {
-			for(Int i = 0;i < list.size();i++)
-				if(!compare(list[i],str)) return i;
-			std::cout << "Unknown parameter : " << str << std::endl;
-			return 0;
-		}
-		friend std::istream& operator >> (std::istream& is, Option& p) {
-			std::string str;
-			is >> str;
-			*(p.val) = p.getID(str);
-			return is;
-		}
-		friend std::ostream& operator << (std::ostream& os, const Option& p) {
-			os << p.list[*(p.val)];
-			return os;
-		}
-	};
+			Int getID(std::string str) {
+				for(Int i = 0;i < list.size();i++)
+					if(!Util::compare(list[i],str)) return i;
+				std::cout << "Unknown parameter : " << str << std::endl;
+				return 0;
+			}
+			friend std::istream& operator >> (std::istream& is, Option& p) {
+				std::string str;
+				is >> str;
+				*(p.val) = p.getID(str);
+				return is;
+			}
+			friend std::ostream& operator << (std::ostream& os, const Option& p) {
+				os << p.list[*(p.val)];
+				return os;
+			}
+		};
+	}
+	using A::Option;
 
 	/*bool option*/
 	struct BoolOption : public Option {
@@ -150,19 +152,25 @@ namespace Util {
 		addParam(Tensor,Tensor);
 		addParam(std::string,string);
 		addParam(Option,Option);
-		addParam(std::vector<Vector>,vertex);
+		addParam(std::vector<Int>,vec_int);
+		addParam(std::vector<std::string>,vec_string);
+		addParam(std::vector<Scalar>,vec_scalar);
+		addParam(std::vector<Vector>,vec_vector);
 #undef addParam
 
 		void read(std::istream& is,std::string str,bool out) {
 #define readp(N)  params_##N.read(str,is,out)
 			if(readp(Int));
-			else if(readp(Scalar));
 			else if(readp(string));
 			else if(readp(Option));
+			else if(readp(Scalar));
 			else if(readp(Vector));
 			else if(readp(Tensor));
 			else if(readp(STensor));
-			else if(readp(vertex));
+			else if(readp(vec_int));
+			else if(readp(vec_scalar));
+			else if(readp(vec_vector));
+			else if(readp(vec_string));
 			else if(out) {
 				std::cout << "UNKNOWN";
 			}

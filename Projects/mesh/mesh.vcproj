@@ -110,7 +110,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../../field;../../mesh;../../tensor;../../vtk;../../util;../../mp;"
+				AdditionalIncludeDirectories="../../src/field;../../src/mesh;../../src/tensor;../../src/vtk;../../src/util;../../src/mp;"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="3"
@@ -128,6 +128,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="mpi.lib"
+				OutputFile="..\..\bin\$(ProjectName).exe"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -165,27 +166,27 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\..\mesh\hexMesh.cpp"
+				RelativePath="..\..\src\mesh\hexMesh.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\mesh.cpp"
+				RelativePath="..\..\src\mesh\mesh.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\meshApp.cpp"
+				RelativePath="..\..\src\mesh\meshApp.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\mshMesh.cpp"
+				RelativePath="..\..\src\mesh\mshMesh.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\tensor\tensor.cpp"
+				RelativePath="..\..\src\tensor\tensor.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\util\util.cpp"
+				RelativePath="..\..\src\util\util.cpp"
 				>
 			</File>
 		</Filter>
@@ -195,23 +196,23 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\..\mesh\hexMesh.h"
+				RelativePath="..\..\src\mesh\hexMesh.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\mesh.h"
+				RelativePath="..\..\src\mesh\mesh.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\mshMesh.h"
+				RelativePath="..\..\src\mesh\mshMesh.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\tensor\tensor.h"
+				RelativePath="..\..\src\tensor\tensor.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\util\util.h"
+				RelativePath="..\..\src\util\util.h"
 				>
 			</File>
 		</Filter>

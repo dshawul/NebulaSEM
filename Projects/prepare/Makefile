@@ -9,12 +9,13 @@ ICPC_WARN = -wd280 -wd593 -wd869 -wd981 -wd383  -wd1419 -wd2259 -wd1572 -wd1599 
 # paths
 ############################
 BDIR     = ../..
+SRCDIR   = $(BDIR)/src
 ALLDIR   = field mesh tensor util vtk mp prepare solvers/piso
-EXEDIR   = $(BDIR)/Projects/Release
+EXEDIR   = $(BDIR)/bin
 OBJDIR   = ./Release
 OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))
-VPATH    = $(addprefix   $(BDIR)/, $(ALLDIR))
-INC      = $(addprefix -I$(BDIR)/, $(ALLDIR))
+VPATH    = $(addprefix   $(SRCDIR)/, $(ALLDIR))
+INC      = $(addprefix -I$(SRCDIR)/, $(ALLDIR))
 
 ######################
 # Rules

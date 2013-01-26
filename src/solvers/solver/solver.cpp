@@ -202,7 +202,7 @@ void piso(istream& input) {
 	IntVector probe_points;
 	for(Int j = 0;j < Mesh::probePoints.size();j++) {
 		Vector v = Mesh::probePoints[j];
-		Int index = Mesh::findNearest(v);
+		Int index = Mesh::findNearestCell(v);
 		probe_points.push_back(index);
 	}
 	Int probe = probe_points.size();

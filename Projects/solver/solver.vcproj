@@ -118,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="../../field;../../mesh;../../tensor;../../vtk;../../util;../../mp;../../turbulence;../../turbulence/ke;../../turbulence/kw;../../turbulence/rngke;../../turbulence/les;../../turbulence/realizableke;../../turbulence/mixing_length;../../solvers;../../solvers/solver;"
+				AdditionalIncludeDirectories="../../src/field;../../src/mesh;../../src/tensor;../../src/vtk;../../src/util;../../src/mp;../../src/turbulence;../../src/turbulence/ke;../../src/turbulence/kw;../../src/turbulence/rngke;../../src/turbulence/les;../../src/turbulence/realizableke;../../src/turbulence/mixing_length;../../src/solvers;../../src/solvers/solver;"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="3"
@@ -136,6 +136,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="mpi.lib cudart.lib"
+				OutputFile="..\..\bin\$(ProjectName).exe"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -173,31 +174,31 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\..\field\field.cpp"
+				RelativePath="..\..\src\field\field.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\mesh.cpp"
+				RelativePath="..\..\src\mesh\mesh.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mp\mp.cpp"
+				RelativePath="..\..\src\mp\mp.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\solvers\solve.cpp"
+				RelativePath="..\..\src\solvers\solve.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\solvers\solver\solver.cpp"
+				RelativePath="..\..\src\solvers\solver\solver.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\tensor\tensor.cpp"
+				RelativePath="..\..\src\tensor\tensor.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\util\util.cpp"
+				RelativePath="..\..\src\util\util.cpp"
 				>
 			</File>
 		</Filter>
@@ -207,31 +208,31 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\..\field\field.h"
+				RelativePath="..\..\src\field\field.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mesh\mesh.h"
+				RelativePath="..\..\src\mesh\mesh.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mp\mp.h"
+				RelativePath="..\..\src\mp\mp.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\solvers\solve.h"
+				RelativePath="..\..\src\solvers\solve.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\mp\system.h"
+				RelativePath="..\..\src\mp\system.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\tensor\tensor.h"
+				RelativePath="..\..\src\tensor\tensor.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\util\util.h"
+				RelativePath="..\..\src\util\util.h"
 				>
 			</File>
 		</Filter>
@@ -245,55 +246,55 @@
 			Name="turbulence"
 			>
 			<File
-				RelativePath="..\..\turbulence\ke\ke.cpp"
+				RelativePath="..\..\src\turbulence\ke\ke.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\ke\ke.h"
+				RelativePath="..\..\src\turbulence\ke\ke.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\kw\kw.cpp"
+				RelativePath="..\..\src\turbulence\kw\kw.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\kw\kw.h"
+				RelativePath="..\..\src\turbulence\kw\kw.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\les\les.cpp"
+				RelativePath="..\..\src\turbulence\les\les.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\les\les.h"
+				RelativePath="..\..\src\turbulence\les\les.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\mixing_length\mixing_length.cpp"
+				RelativePath="..\..\src\turbulence\mixing_length\mixing_length.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\mixing_length\mixing_length.h"
+				RelativePath="..\..\src\turbulence\mixing_length\mixing_length.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\realizableke\realizableke.cpp"
+				RelativePath="..\..\src\turbulence\realizableke\realizableke.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\realizableke\realizableke.h"
+				RelativePath="..\..\src\turbulence\realizableke\realizableke.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\rngke\rngke.cpp"
+				RelativePath="..\..\src\turbulence\rngke\rngke.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\rngke\rngke.h"
+				RelativePath="..\..\src\turbulence\rngke\rngke.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\turbulence\turbulence.h"
+				RelativePath="..\..\src\turbulence\turbulence.h"
 				>
 			</File>
 		</Filter>

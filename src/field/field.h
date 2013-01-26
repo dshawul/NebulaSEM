@@ -646,34 +646,8 @@ struct MeshMatrix {
 	}
 	/*Fix*/
 	void Fix(Int c,type value) {
-		/*diagonal fix*/
 		ap[c] = 10e30;
 		Su[c] = value * 10e30;
-		/*asymmetric fix*
-		using namespace Mesh;
-		Cell& mc = gCells[c];
-		Int f;
-		for(Int i = 0;i < mc.size();i++) {
-			f = mc[i];
-			if(gFO[f] == c) an[1][f] = 0;
-			else an[0][f] = 0;
-		}
-		Su[c] = ap[c] * value;
-		/*symmetric fix*
-		using namespace Mesh;
-		Cell& mc = gCells[c];
-		Int f;
-		for(Int i = 0;i < mc.size();i++) {
-			f = mc[i];
-			if(gFO[f] == c)
-				Su[gFN[f]] += an[0][f] * value;
-			else
-				Su[gFO[f]] += an[1][f] * value;
-			an[1][f] = 0;
-			an[0][f] = 0;
-		}
-		Su[c] = ap[c] * value;
-		/*end*/
 	}
 	/*Fix near wall cell values*/
 	void FixNearWallValues() {
@@ -1280,8 +1254,8 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 		for(Int i = 0;i < flux.size();i++) {
 			F = flux[i];
 			G = gamma[i];
-			m.an[0][i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-Util::max( F,0)));
-			m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-Util::max(-F,0)));
+			m.an[0][i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,0)));
+			m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,0)));
 			m.ap[gFO[i]] += m.an[0][i];
 			m.ap[gFN[i]] += m.an[1][i];
 		}
@@ -1289,8 +1263,8 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const ScalarFacetField& flux,const
 	} else {
 		for(Int i = 0;i < flux.size();i++) {
 			F = flux[i];
-			m.an[0][i] = -Util::max( F,0);
-			m.an[1][i] = -Util::max(-F,0);
+			m.an[0][i] = -max( F,0);
+			m.an[1][i] = -max(-F,0);
 			m.ap[gFO[i]] += m.an[0][i];
 			m.ap[gFN[i]] += m.an[1][i];
 		}

@@ -300,14 +300,14 @@ IntVector Mesh::neighbor(const IntVector& f) {
 		r[i] = gFN[f[i]];
 	return r;
 }
-/*find nearest vertex*/
-int Mesh::findNearest(const Vector& v) {
+/*find nearest cell*/
+int Mesh::findNearestCell(const Vector& v) {
 	Scalar mindist,dist;
 	int bi;
 	bi = 0;
-	mindist = mag(v - gVertices[0]);
-	for(Int i = 1;i < gVertices.size();i++) {
-		dist = mag(v - gVertices[i]);
+	mindist = mag(v - _cC[0]);
+	for(Int i = 1;i < gCells.size();i++) {
+		dist = mag(v - _cC[i]);
 		if(dist < mindist) {
 			mindist = dist;
 			bi = i;

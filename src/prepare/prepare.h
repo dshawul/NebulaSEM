@@ -9,6 +9,7 @@ namespace Prepare {
 	void decomposeFields(std::vector<std::string>& fields,std::string,Int);
 	int merge(Mesh::MeshObject&,Int*,std::vector<std::string>& fields,std::string,Int);
 	int convertVTK(Mesh::MeshObject&,std::vector<std::string>& fields,Int);
+	int probe(Mesh::MeshObject&,std::vector<std::string>& fields,Int);
 }
 
 #endif

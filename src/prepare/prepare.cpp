@@ -367,11 +367,66 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 			count++;
 			break;
 		}
-
 		if(count == 0) break;
 		Mesh::read_fields(step);
+
+		/*write vtk*/
 		Vtk::write_vtk(step);
 	}
 
+	return 0;
+}
+/*Probe values at certain locations*/
+int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
+	/*probe points*/
+	IntVector probes;
+	for(Int j = 0;j < Mesh::probePoints.size();j++) {
+		Vector v = Mesh::probePoints[j];
+		Int index = Mesh::findNearestCell(v);
+		probes.push_back(index);
+	}
+	ofstream of("probes");
+
+    /*create fields*/
+	void** pFields;
+	createFields(fields,pFields);
+
+	/*for each time step*/
+	for(Int step = start_index;;step++) {
+		Int count = 0;
+		for(Int i = 0;i < fields.size();i++) {
+			stringstream fpath;
+			fpath << fields[i] << step;
+			ifstream is(fpath.str().c_str());
+			if(is.fail())
+				continue;
+			count++;
+			break;
+		}
+		if(count == 0) break;
+		Mesh::read_fields(step);
+
+		/*write probes*/
+#define WRITE(T) {												\
+		T* pf;													\
+		for(std::list<T*>::iterator	it = T::fields_.begin();	\
+			it != T::fields_.end();++it) {						\
+			pf = *it;											\
+			of << (*pf)[probes[i]] << " ";						\
+		}														\
+}
+		for(Int i = 0;i < probes.size();i++) {
+			of << step << " " << i << " " << 
+				Mesh::probePoints[i] << " ";
+			WRITE(ScalarCellField);
+			WRITE(VectorCellField);
+			WRITE(STensorCellField);
+			WRITE(TensorCellField);
+			of << endl;
+		}
+#undef WRITE
+	}
+	/*close*/
+	of.close();
 	return 0;
 }

@@ -81,17 +81,18 @@ END:
 	is.seekg(0,ios::beg);
 }
 
-/*IntVector output*/
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p) {
 	Int sz = p.size();
-	if(sz >= 16) os << sz << std::endl << "{ ";
+	if(sz >= 16) os << sz << endl << "{ ";
 	else os << sz << "{ ";
 	for(Int i = 0;i < sz;i++) {
 		if(sz >= 16 && (i % 16) == 0)
-			os << std::endl;
+			os << endl;
 		os << p[i] << " ";
 	}
-	if(sz >= 16) os << std::endl << "}";
+	if(sz >= 16) os << endl << "}";
 	else os << "}";
 	return os;
 }
+
+

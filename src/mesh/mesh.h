@@ -76,7 +76,7 @@ namespace Mesh {
 	void removeBoundary(IntVector&);
 	void readMesh();
 	void enroll(Util::ParamList& params);
-	int  findNearest(const Vector& v);
+	int  findNearestCell(const Vector& v);
 	IntVector owner(const IntVector&);
 	IntVector neighbor(const IntVector&);
 }
