@@ -131,7 +131,7 @@ void readMshMesh(std::istream& is,Mesh::MeshObject& mo) {
 	}
 	/*add cells*/
 	Int co,cn;
-	for(Int i = 0;i < mo.f.size();i++) {
+	forEach(mo.f,i) {
 		co = mo.fo[i];
 		cn = mo.fn[i];
 		if(co != Constants::MAX_INT)
@@ -151,7 +151,7 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 	os << "(10 (1 1 " << mo.v.size() << " 1 3)" << endl;
 	os << "(" << endl;
 	os.precision(10);
-	for(Int i = 0;i < mo.v.size();i++)
+	forEach(mo.v,i)
 		os << scientific << mo.v[i] << endl;
 	os << "))" << endl << endl;
 
@@ -172,12 +172,12 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 	zone++;
 	start += nInternal;
 	os << "(" << endl;
-	for(Int f = 0;f < mo.f.size();f++) {
+	forEach(mo.f,f) {
 		if(mo.fn[f] >= mo.nc)
 			continue;
 		Facet& mf = mo.f[f];
 		os << mf.size() << " ";
-		for(Int j = 0;j < mf.size();j++)
+		forEach(mf,j)
 			os << mf[j] + 1 << " ";
 		if(Mesh::_reversed[f])
 			os << mo.fo[f] + 1 << " " << mo.fn[f] + 1 << endl;
@@ -205,11 +205,11 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 		start += fvec.size();
 
 		os << "(" << endl;
-		for(Int i = 0;i < fvec.size();i++) {
+		forEach(fvec,i) {
 			Int f = fvec[i];
 			Facet& mf = mo.f[f];
 			os << mf.size() << " ";
-			for(Int j = 0;j < mf.size();j++)
+			forEach(mf,j)
 				os << mf[j] + 1 << " ";
 			if(Mesh::_reversed[f])
 				os << mo.fo[f] + 1 << " 0" << endl;

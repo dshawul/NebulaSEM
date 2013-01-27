@@ -1,0 +1,23 @@
+size 1
+uniform 0.0264
+inlet {
+	type INVERSE 
+	value 1.3229
+	shape 0.024
+	zMax 100
+}
+outlet {
+	type NEUMANN 
+	value 0
+}
+sides {
+	type SYMMETRY
+}
+top {
+	type SYMMETRY
+}
+WALLS {
+	type NEUMANN
+	value 0
+}
+

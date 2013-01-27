@@ -1,0 +1,18 @@
+size 3
+uniform 8.8 0 0
+inlet {
+	type DIRICHLET 
+	value 8.8 0 0
+}
+outlet {
+	type NEUMANN 
+	value 0 0 0
+}
+top {
+	type SYMMETRY
+}
+WALLS {
+	type DIRICHLET 
+	value 0 0 0
+}
+

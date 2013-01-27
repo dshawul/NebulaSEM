@@ -154,13 +154,13 @@ struct EddyViscosity_Model : public Turbulence_Model {
 	void setWallEddyMu() {
 		using namespace Mesh;
 		BasicBCondition* bbc;
-		for(Int d = 0;d < AllBConditions.size();d++) {
+		forEach(AllBConditions,d) {
 			bbc = AllBConditions[d];
 			if(bbc->isWall && (bbc->fIndex == U.fIndex)) {
 				IntVector& wall_faces = *bbc->bdry;
 				LawOfWall& low = bbc->low;
 				if(wall_faces.size()) {
-					for(Int i = 0;i < wall_faces.size();i++) {
+					forEach(wall_faces,i) {
 						applyWallFunction(wall_faces[i],low);
 					}
 				}

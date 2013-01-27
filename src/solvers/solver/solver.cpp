@@ -200,7 +200,7 @@ void piso(istream& input) {
 
 	/*instantaneous values*/
 	IntVector probe_points;
-	for(Int j = 0;j < Mesh::probePoints.size();j++) {
+	forEach(Mesh::probePoints,j) {
 		Vector v = Mesh::probePoints[j];
 		Int index = Mesh::findNearestCell(v);
 		probe_points.push_back(index);
@@ -329,7 +329,7 @@ void piso(istream& input) {
 		if(probe) {
 			oUi << i << " ";
 			opi << i << " ";
-			for(Int j = 0;j < probe_points.size();j++) {
+			forEach(probe_points,j) {
 				oUi << U[probe_points[j]] << " ";
 				opi << p[probe_points[j]] << " ";
 			}

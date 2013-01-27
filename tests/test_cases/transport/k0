@@ -1,0 +1,10 @@
+size 1
+uniform 0.01
+inlet {
+	type DIRICHLET 
+	value 0.03
+}
+outlet {
+	type NEUMANN 
+	value 0
+}

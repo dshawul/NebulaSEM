@@ -1,0 +1,6 @@
+size 1
+uniform 0
+inlet NEUMANN 1
+outlet DIRICHLET 0
+top NEUMANN 0
+WALLS NEUMANN 0

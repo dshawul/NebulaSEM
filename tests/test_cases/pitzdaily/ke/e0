@@ -1,0 +1,14 @@
+size 1
+uniform 14.855
+inlet {
+	type DIRICHLET 
+	value 14.855
+}
+outlet {
+	type NEUMANN 
+	value 0
+}
+WALLS {
+	type NEUMANN
+	value 0
+}

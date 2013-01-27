@@ -1,0 +1,10 @@
+size 1
+uniform 3.75e-3
+top_WALL {
+	type NEUMANN 
+	value 0
+}
+all_WALL {
+	type NEUMANN 
+	value 0
+}

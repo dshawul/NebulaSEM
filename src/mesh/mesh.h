@@ -77,8 +77,6 @@ namespace Mesh {
 	void readMesh();
 	void enroll(Util::ParamList& params);
 	int  findNearestCell(const Vector& v);
-	IntVector owner(const IntVector&);
-	IntVector neighbor(const IntVector&);
 }
 /*
  * Model for flow close to the wall (Law of the wall).
@@ -266,11 +264,6 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 	p.low.init();
 	return is;
 }
-
-/*typedefs*/
-typedef BCondition<Scalar>   ScalarBCondition;
-typedef BCondition<Vector>   VectorBCondition;
-
 /*list of all BCS*/
 namespace Mesh {
 	extern  std::vector<BasicBCondition*> AllBConditions;

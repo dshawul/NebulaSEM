@@ -1,0 +1,6 @@
+size 1
+uniform 0
+inlet NEUMANN 0
+outlet DIRICHLET 0
+top SYMMETRY
+WALLS SYMMETRY

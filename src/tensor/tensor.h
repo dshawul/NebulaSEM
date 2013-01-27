@@ -503,6 +503,11 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 
   return result;
 }
+
+/*iterator loops*/
+#define forEach(field,i)								\
+	for(Int i = 0;i < (field).size();i++)
+
 /*
  * end
  */

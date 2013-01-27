@@ -1,0 +1,82 @@
+general
+{
+######################################
+#  mesh file name and solver type  
+######################################
+    solver                       transport
+    mesh                         grid
+
+######################################
+#  Fluid properties specific to solver
+######################################
+    rho                          1
+    viscosity                    1e-5
+#############################
+#  Time increment
+#############################
+
+    state                        STEADY
+    start_step                   0
+    end_step                     1000
+    write_interval               1000
+    dt                           0.01
+
+############################
+#  Discretization schemes
+############################
+
+    convection_scheme            HYBRID
+    interpolation_scheme         CDS
+    nonortho_scheme              OVER_RELAXED
+    time_scheme_factor           1
+    blend_factor                 0.2
+
+############################
+#  Solver options
+############################
+
+    method                       PCG
+    tolerance                    1e-5
+    max_iterations               6400
+    SOR_omega                    1.7
+    ghost_exchange               BLOCKED
+
+############################
+#  Probe locations
+############################
+    probe 2 {
+      0.1 0 0
+      0.2 0 0
+    }
+}
+
+
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             KE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       1
+    n_ORTHO                      0
+    n_DEFERRED                   0
+}
+diffusion
+{
+    DT                           1
+    t_UR                         0.7
+    n_DEFERRED                   0
+}
+transport
+{
+    DT                           0.1
+    t_UR                         0.7
+    n_DEFERRED                   0
+}
+turbulence
+{
+    k_UR                         0.5
+    x_UR                         0.5
+}

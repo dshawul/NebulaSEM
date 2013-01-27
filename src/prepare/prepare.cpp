@@ -22,7 +22,7 @@ void duplicateFields(istream& is,ostream& of) {
 	of << "size "<< sizeof(T) / sizeof(Scalar) << endl;
 	of << cLoc.size() << endl;
 	of << "{" << endl;
-	for(Int j = 0;j < cLoc.size();j++)
+	forEach(cLoc,j)
 		of << f[cLoc[j]] << endl;
 	of << "}" << endl;
 
@@ -55,7 +55,7 @@ void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start
 			break;
 		
 		/*for each field*/
-		for(Int i = 0;i < fields.size();i++) {
+		forEach(fields,i) {
 			/*read at time 0*/
 			string str = "../" + fields[i] + "0";
 			ifstream is(str.c_str());
@@ -85,7 +85,7 @@ void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start
 int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 	
 	using Constants::MAX_INT;
-	Int i,j,k,ID,count,total = n[0] * n[1] * n[2];
+	Int i,j,ID,count,total = n[0] * n[1] * n[2];
 	Vector maxV(Scalar(-10e30)),minV(Scalar(10e30)),delta;
 
 	/*decomposed mesh*/
@@ -99,7 +99,7 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 	}
 
 	/*max and min points*/
-	for(i = 0;i < mo.v.size();i++) {
+	forEach(mo.v,i) {
 		for(j = 0;j < 3;j++) {
 			if(mo.v[i][j] > maxV[j]) maxV[j] = mo.v[i][j];
 			if(mo.v[i][j] < minV[j]) minV[j] = mo.v[i][j];
@@ -130,10 +130,10 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		blockIndex[i] = ID;
 		
 		/* mark vertices and facets */
-		for(j = 0;j < c.size();j++) {
+		forEach(c,j) {
 			Facet& f = mo.f[c[j]];
 			(*pfLoc)[c[j]] = 1;
-			for(k = 0;k < f.size();k++) {
+			forEach(f,k) {
 				(*pvLoc)[f[k]] = 1;	
 			}
 		}
@@ -145,7 +145,7 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		pfLoc = &fLoc[ID];
 
 		count = 0;
-		for(i = 0;i < mo.v.size();i++) {
+		forEach(mo.v,i) {
 			if((*pvLoc)[i]) {
 				pmesh->v.push_back(mo.v[i]);
 				(*pvLoc)[i] = count++;
@@ -154,7 +154,7 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		}
 
 		count = 0;
-		for(i = 0;i < mo.f.size();i++) {
+		forEach(mo.f,i) {
 			if((*pfLoc)[i]) {
 				pmesh->f.push_back(mo.f[i]);
 				(*pfLoc)[i] = count++;
@@ -168,22 +168,22 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		pvLoc = &vLoc[ID];
 		pfLoc = &fLoc[ID];
 
-		for(i = 0;i < pmesh->f.size();i++) {
+		forEach(pmesh->f,i) {
 			Facet& f = pmesh->f[i];
-			for(j = 0;j < f.size();j++)
+			forEach(f,j)
 				f[j] = (*pvLoc)[f[j]];
 		}
 
-		for(i = 0;i < pmesh->c.size();i++) {
+		forEach(pmesh->c,i) {
 			Cell& c = pmesh->c[i];
-			for(j = 0;j < c.size();j++)
+			forEach(c,j)
 				c[j] = (*pfLoc)[c[j]];
 		}
 	}
 	/*inter mesh faces*/
 	IntVector* imesh = new IntVector[total * total];
 	Int co,cn;
-	for(i = 0;i < mo.f.size();i++) {
+	forEach(mo.f,i) {
 		if(gFN[i] < gBCellsStart) {
 			co = blockIndex[gFO[i]];
 			cn = blockIndex[gFN[i]];
@@ -219,7 +219,7 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		for(Boundaries::iterator it = mo.bdry.begin();it != mo.bdry.end();++it) {
 			IntVector b;	
 			Int f;
-			for(j = 0;j < it->second.size();j++) {
+			forEach(it->second,j) {
 				f = (*pfLoc)[it->second[j]];
 				if(f != Constants::MAX_INT)
 					b.push_back(f);
@@ -279,7 +279,7 @@ void createFields(vector<string>& fields,void**& pFields) {
 
 	/*for each field*/
 	pFields = new void*[fields.size()];
-	for(Int i = 0;i < fields.size();i++) {
+	forEach(fields,i) {
 		/*read at time 0*/
 		str = fields[i] + "0";
 		ifstream is(str.c_str());
@@ -325,7 +325,7 @@ int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 		for(Int ID = 0;ID < total;ID++) {
 			stringstream path;
 			path << mName << ID;
-			for(Int i = 0;i < fields.size();i++) {
+			forEach(fields,i) {
 				stringstream fpath;
 				fpath << fields[i] << step;
 				str = path.str() + "/" + fpath.str();
@@ -358,7 +358,7 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 	/*for each time step*/
 	for(Int step = start_index;;step++) {
 		Int count = 0;
-		for(Int i = 0;i < fields.size();i++) {
+		forEach(fields,i) {
 			stringstream fpath;
 			fpath << fields[i] << step;
 			ifstream is(fpath.str().c_str());
@@ -380,7 +380,7 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
 	/*probe points*/
 	IntVector probes;
-	for(Int j = 0;j < Mesh::probePoints.size();j++) {
+	forEach(Mesh::probePoints,j) {
 		Vector v = Mesh::probePoints[j];
 		Int index = Mesh::findNearestCell(v);
 		probes.push_back(index);
@@ -394,7 +394,7 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 	/*for each time step*/
 	for(Int step = start_index;;step++) {
 		Int count = 0;
-		for(Int i = 0;i < fields.size();i++) {
+		forEach(fields,i) {
 			stringstream fpath;
 			fpath << fields[i] << step;
 			ifstream is(fpath.str().c_str());
@@ -415,7 +415,7 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 			of << (*pf)[probes[i]] << " ";						\
 		}														\
 }
-		for(Int i = 0;i < probes.size();i++) {
+		forEach(probes,i) {
 			of << step << " " << i << " " << 
 				Mesh::probePoints[i] << " ";
 			WRITE(ScalarCellField);

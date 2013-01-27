@@ -107,11 +107,11 @@ void SolveT(const MeshMatrix<type>& M) {
 	************************************************/
 	if(!sync) {
 		end_count = gInterMesh.size();
-		for(i = 0;i < gInterMesh.size();i++) {
+		forEach(gInterMesh,i) {
 			interBoundary& b = gInterMesh[i];
 			if(b.from < b.to) {
 				IntVector& f = *(b.f);
-				for(j = 0;j < f.size();j++)
+				forEach(f,j)
 					buffer[j] = cF[gFO[f[j]]];
 				MP::send(&buffer[0],f.size(),b.to,MP::FIELD);
 			}
@@ -244,7 +244,7 @@ PROBE:
 					IntVector& f = *(b.f);
 					/*recieve*/
 					MP::recieve(&buffer[0],f.size(),source,message_id);
-					for(j = 0;j < f.size();j++)
+					forEach(f,j)
 						cF[gFN[f[j]]] = buffer[j];
 					/*Re-calculate residual.*/
 					CALC_RESID();
@@ -261,7 +261,7 @@ PROBE:
 						}
 					} else {
 						/*send back our part*/
-						for(j = 0;j < f.size();j++)
+						forEach(f,j)
 							buffer[j] = cF[gFO[f[j]]];
 						MP::send(&buffer[0],f.size(),source,message_id);
 					}

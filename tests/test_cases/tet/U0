@@ -1,0 +1,7 @@
+size 3
+uniform 10.0 0 0
+inlet DIRICHLET 10.0 0 0
+outlet NEUMANN 0 0 0
+sides SYMMETRY
+top SYMMETRY
+WALLS DIRICHLET 0 0 0

@@ -350,7 +350,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 	sz = p.f.size();
 	for(i = 0;i < sz;i++) {
 		Facet& f = p.f[i];
-		for(j = 0;j < f.size();j++)
+		forEach(f,j)
 			f[j] = dup[f[j]];
 	}
 	dup.clear();
@@ -359,7 +359,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 	corr = 0;
 	for(i = 0;i < sz;i++) {
 		Facet& f = p.f[i];
-		for(j = 0;j < f.size();j++) {
+		forEach(f,j) {
 			for(k = j + 1;k < f.size();k++) {
 				if(f[j] == f[k]) {
 					f.erase(f.begin() + k);
@@ -388,7 +388,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 	sz = p.c.size();
 	for(i = 0;i < sz;i++) {
 		Cell& c = p.c[i];
-		for(j = 0;j < c.size();j++) {
+		forEach(c,j) {
 			if(dup[c[j]] < 0) {
 				c.erase(c.begin() + j);
 				j--;
@@ -426,9 +426,9 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 				locv[i - s1] += b.vb.size() - 1;
 			}
 		}
-		for(i = 0;i < m2.f.size();i++) {
+		forEach(m2.f,i) {
 			Facet& ft = m2.f[i];
-			for(j = 0;j < ft.size();j++) {
+			forEach(ft,j) {
 				if(ft[j] >= s1) {
 					ft[j] = locv[ft[j] - s1];
 				} else {
@@ -478,17 +478,17 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		}
 		b.fb.resize(count);
 
-		for(i = 0;i < m1.c.size();i++) {
+		forEach(m1.c,i) {
 			Cell& ct = m1.c[i];
-			for(j = 0;j < ct.size();j++) {
+			forEach(ct,j) {
 				if(ct[j] >= MAXNUM) {
 					ct[j] = index0[ct[j] - MAXNUM];
 				}
 			}
 		}
-		for(i = 0;i < m2.c.size();i++) {
+		forEach(m2.c,i) {
 			Cell& ct = m2.c[i];
-			for(j = 0;j < ct.size();j++) {
+			forEach(ct,j) {
 				if(ct[j] >= s1) {
 					ct[j] = index1[ct[j] - s1];
 				} else {
@@ -503,26 +503,24 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 	}
 }
 void merge(Mesh::MeshObject& m,MergeObject& b) {
-	Int i,j;
-
 	m.nv = m.v.size();
 	m.nf = m.f.size();
 	m.nc = m.c.size();
 
 	m.v.insert(m.v.end(),b.vb.begin(),b.vb.end());
 	m.f.insert(m.f.end(),b.fb.begin(),b.fb.end());
-	for(i = 0;i < m.f.size();i++) {
+	forEach(m.f,i) {
 		Facet& ft = m.f[i];
-		for(j = 0;j < ft.size();j++) {
+		forEach(ft,j) {
 			if(ft[j] >= MAXNUM) {
 				ft[j] -= MAXNUM;
 				ft[j] += m.nv;
 			}
 		}
 	}
-	for(i = 0;i < m.c.size();i++) {
+	forEach(m.c,i) {
 		Cell& ct = m.c[i];
-		for(j = 0;j < ct.size();j++) {
+		forEach(ct,j) {
 			if(ct[j] >= MAXNUM) {
 				ct[j] -= MAXNUM;
 				ct[j] += m.nf;

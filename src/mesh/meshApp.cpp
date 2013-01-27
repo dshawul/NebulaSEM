@@ -79,7 +79,7 @@ int main(int argc,char* argv[]) {
 			input >> index;
 
 			Vertices v(index.size(),Vector(0));
-			for(Int i = 0;i < v.size();i++) 
+			forEach(v,i)
 				v[i] = keys[index[i]];
 
 			IntVector n;
@@ -211,7 +211,7 @@ int main(int argc,char* argv[]) {
     
 	/*boundaries*/
 	Int i,j;
-	for(i = 0;i < Bdrys.size();i++) {
+	forEach(Bdrys,i) {
 		IntVector list;
 		IntVector& b = Bdrys[i].index;
 		Vector N = (keys[b[1]] - keys[b[0]]) ^ (keys[b[2]] - keys[b[0]]);
@@ -231,7 +231,7 @@ int main(int argc,char* argv[]) {
 			IntVector& gB = gBoundaries[Bdrys[i].name.c_str()];
 			IntVector::iterator it = find(gB.begin(),gB.end(),list[0]);
 			if(it == gB.end()) {
-				for(j = 0;j < list.size();j++)
+				forEach(list,j)
 					gB.push_back(list[j]);
 			}
 		}

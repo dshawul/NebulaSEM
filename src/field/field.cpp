@@ -66,7 +66,7 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
 	 * Neighbor takes (1 - f) */
 	exchange_ghost(&cV[0]);
 	exchange_ghost(&cC[0]);
-	for(Int i = 0;i < gFacets.size();i++) {
+	forEach(gFacets,i) {
 		Int c1 = gFO[i];
 		Int c2 = gFN[i];
 		Scalar s1 = mag(cC[c1] - fC[i]);

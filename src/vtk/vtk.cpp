@@ -53,7 +53,7 @@ void Vtk::write_vtk(Int step) {
     /*Geometry*/
 	Int i;
 	of << "POINTS " << gVertices.size() << " float" << endl;
-	for(i = 0;i < gVertices.size();i++) {
+	forEach(gVertices,i) {
 		of << gVertices[i] << endl;
     }
 	if(write_polyhedral) {
@@ -70,7 +70,6 @@ void Vtk::write_vtk(Int step) {
 		for(i = 0;i < gBCellsStart;i++)
 			of << 42 << endl;
 	} else {
-		Int j;
 		/*hexahedral cells*/
 		of << "CELLS " << gBCellsStart << " " << gBCellsStart * 9 << endl;
 		for(i = 0;i < gBCellsStart;i++) {
@@ -78,8 +77,10 @@ void Vtk::write_vtk(Int step) {
 			Facet f1 = gFacets[c[0]];
 			Facet f2 = gFacets[c[1]];
 			of << f1.size() + f2.size() << " ";
-			for(j = 0;j < f1.size();j++) of << f1[j] << " ";
-			for(j = 0;j < f2.size();j++) of << f2[j] << " ";
+			forEach(f1,j) 
+				of << f1[j] << " ";
+			forEach(f2,j)
+				of << f2[j] << " ";
 			of << endl;
 		}
 		of << "CELL_TYPES " << gBCellsStart << endl;

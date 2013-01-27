@@ -1,0 +1,8 @@
+size 1
+uniform 7.65e-4
+top_WALL {
+	type NONE
+}
+all_WALL {
+	type NONE
+}

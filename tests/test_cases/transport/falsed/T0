@@ -1,0 +1,6 @@
+size 1
+uniform 0
+left DIRICHLET 100
+bottom DIRICHLET 0
+right NEUMANN 0
+top NEUMANN 0

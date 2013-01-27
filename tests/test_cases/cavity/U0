@@ -1,0 +1,10 @@
+size 3
+uniform 0.1 0 0
+top_WALL {
+	type DIRICHLET 
+	value 1.0 0 0
+}
+all_WALL {
+	type DIRICHLET 
+	value 0 0 0
+}

@@ -12,7 +12,7 @@ template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
 	os << p.size() << std::endl;
 	os << "{ " << std::endl;
-	for(Int i = 0;i < p.size();i++) 
+	forEach(p,i)
 		os << p[i] << std::endl;
 	os << "}" << std::endl;
 	return os;
@@ -23,7 +23,7 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 	char symbol;
 	is >> size >> symbol;
 	p.resize(size);
-	for(Int i = 0;i < size;i++) 
+	forEach(p,i)
 		is >> p[i];
 	is >> symbol;
 	return is;
@@ -34,8 +34,8 @@ std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
 /*equal vectors*/
 template <class T>
 bool equal(std::vector<T>& v1,std::vector<T>& v2) {
-	Int i,j;
-	for(i = 0;i < v1.size();i++) {
+	Int j;
+	forEach(v1,i) {
 		for(j = 0;j < v2.size();j++) {
 			if(v1[i] == v2[j]) 
 				break;
@@ -81,8 +81,10 @@ namespace Util {
 				va_end(ap);
 			}
 			Int getID(std::string str) {
-				for(Int i = 0;i < list.size();i++)
-					if(!Util::compare(list[i],str)) return i;
+				forEach(list,i) {
+					if(!Util::compare(list[i],str)) 
+						return i;
+				}
 				std::cout << "Unknown parameter : " << str << std::endl;
 				return 0;
 			}
