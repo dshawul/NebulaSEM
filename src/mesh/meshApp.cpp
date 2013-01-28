@@ -210,13 +210,12 @@ int main(int argc,char* argv[]) {
 	merge(gMesh,bMerge);
     
 	/*boundaries*/
-	Int i,j;
 	forEach(Bdrys,i) {
 		IntVector list;
 		IntVector& b = Bdrys[i].index;
 		Vector N = (keys[b[1]] - keys[b[0]]) ^ (keys[b[2]] - keys[b[0]]);
 		N /= mag(N);
-		for(j = gMesh.nf;j < gFacets.size();j++) {
+		forEachS(gFacets,j,gMesh.nf) {
 			Facet& f = gFacets[j];
 			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) ^ (gVertices[f[2]] - gVertices[f[0]]));
 			N1 /= mag(N1);
@@ -239,7 +238,7 @@ int main(int argc,char* argv[]) {
 	/*default specified*/
 	if(!default_name.empty()) {
 		IntVector& gB = gBoundaries[default_name.c_str()];
-		for(i = gMesh.nf;i < gFacets.size();i++) {
+		forEachS(gFacets,i,gMesh.nf) {
 			if(!faceInBoundary(i)) {
 				gB.push_back(i);
 			}

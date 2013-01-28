@@ -31,6 +31,7 @@ void piso(istream&);
 void diffusion(istream&);
 void potential(istream&);
 void transport(istream&);
+void walldist(istream&);
 
 /********************
  * Main application
@@ -70,6 +71,8 @@ int main(int argc,char* argv[]) {
 		transport(input);
 	} else if(!Util::compare(sname,"potential")) {
 		potential(input);
+	} else if(!Util::compare(sname,"walldist")) {
+		walldist(input);
 	}
 
 	return 0;
@@ -199,13 +202,9 @@ void piso(istream& input) {
 	}
 
 	/*instantaneous values*/
-	IntVector probe_points;
-	forEach(Mesh::probePoints,j) {
-		Vector v = Mesh::probePoints[j];
-		Int index = Mesh::findNearestCell(v);
-		probe_points.push_back(index);
-	}
-	Int probe = probe_points.size();
+	IntVector probes;
+	Mesh::getProbeCells(probes);
+	Int probe = probes.size();
 	ofstream oUi,opi;
 	if(probe) {
 		oUi.open("Ui");
@@ -228,11 +227,8 @@ void piso(istream& input) {
 	}
 
 	/*wall distance*/
-	if(needWallDist) {
-		MP::printH("Calculating wall distance.\n");
+	if(needWallDist)
 		Mesh::calc_walldist(step);
-		MP::printH("Finished.\n");
-	}
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	Steady = (Controls::state == Controls::STEADY);
@@ -329,9 +325,9 @@ void piso(istream& input) {
 		if(probe) {
 			oUi << i << " ";
 			opi << i << " ";
-			forEach(probe_points,j) {
-				oUi << U[probe_points[j]] << " ";
-				opi << p[probe_points[j]] << " ";
+			forEach(probes,j) {
+				oUi << U[probes[j]] << " ";
+				opi << p[probes[j]] << " ";
 			}
 			oUi << endl;
 			opi << endl;
@@ -592,12 +588,13 @@ void potential(istream& input) {
 	         lap(phi,1) = -cV
 	   The boundary conditions are phi=0 at walls, and grad(phi) = 0 elsewhere.
 **********************************************************************************/
-void Mesh::calc_walldist(Int step) {
+void Mesh::calc_walldist(Int step,Int n_ORTHO) {
 	ScalarCellField& phi = yWall;
     /*poisson equation*/
 	{
 		ScalarFacetField one = Scalar(1);
-		Solve(lap(phi,one) == -cV);
+		for(Int k = 0;k <= n_ORTHO;k++)
+			Solve(lap(phi,one) == -cV);
 	}
 	/*wall distance*/
 	{
@@ -607,5 +604,17 @@ void Mesh::calc_walldist(Int step) {
 	/*write it*/
 	yWall.write(step);
 }
+void walldist(istream& input) {
+	/*Solver specific parameters*/
+	Int n_ORTHO = 0;
 
+	/*walldist options*/
+	Util::ParamList params("walldist");
+	params.enroll("n_ORTHO",&n_ORTHO);
+	Util::read_params(input);
+	
+	/*solve*/
+	Int step = Controls::start_step / Controls::write_interval;
+	Mesh::calc_walldist(step,n_ORTHO);
+}
 

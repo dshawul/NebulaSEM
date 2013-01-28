@@ -3,15 +3,17 @@
 
 using namespace Mesh;
 
-Vector rotate(const Vector v,const Vector N,const Scalar theta) {
-	Vector r;
-	Scalar sum = v & N;
-	Scalar cost = cos(theta), sint = sin(theta);
-	r[0] = N[0] * sum * (1 - cost) + v[0] * cost + (-N[2] * v[1] + N[1] * v[2]) * sint;
-	r[1] = N[1] * sum * (1 - cost) + v[1] * cost + (+N[2] * v[0] - N[0] * v[2]) * sint;
-	r[2] = N[2] * sum * (1 - cost) + v[2] * cost + (-N[1] * v[0] + N[0] * v[1]) * sint;
-	return r;
+Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
+	Vector v12 = v1 - v2;
+	Vector v13 = v1 - v3;
+	Vector v23 = v2 - v3;
+	Scalar d = 2 * magSq(v12 ^ v23);
+	Scalar a = magSq(v23) * (v12 & v13) / d;
+	Scalar b = magSq(v13) * (-v12 & v23) / d;
+	Scalar c = magSq(v12) * (v13 & v23) / d;
+	return a * v1 + b * v2 + c * v3;
 }
+
 void ADDV(int w,Scalar m,Vector* vp,Edge* edges,Vector* vd) {
 	Edge& e = edges[w];
 	if(e.type == NONE) {
@@ -315,7 +317,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 }
 /*remove duplicate*/
 void remove_duplicate(Mesh::MeshObject& p) {
-	Int i,j,k,sz,count,corr;
+	Int i,j,sz,count,corr;
 	/*vertices*/
 	sz = p.v.size();
 	corr = 0;
@@ -360,7 +362,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 	for(i = 0;i < sz;i++) {
 		Facet& f = p.f[i];
 		forEach(f,j) {
-			for(k = j + 1;k < f.size();k++) {
+			forEachS(f,k,j+1) {
 				if(f[j] == f[k]) {
 					f.erase(f.begin() + k);
 					k--;

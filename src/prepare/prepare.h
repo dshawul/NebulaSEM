@@ -5,7 +5,7 @@
 #include "vtk.h"
 
 namespace Prepare {
-	int decomposeXYZ(Mesh::MeshObject&,Int*);
+	int decomposeXYZ(Mesh::MeshObject&,Int*,Scalar*);
 	void decomposeFields(std::vector<std::string>& fields,std::string,Int);
 	int merge(Mesh::MeshObject&,Int*,std::vector<std::string>& fields,std::string,Int);
 	int convertVTK(Mesh::MeshObject&,std::vector<std::string>& fields,Int);

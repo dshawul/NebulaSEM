@@ -48,7 +48,7 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
 	}
 	/*erase interior and empty boundaries*/
 	for(Boundaries::iterator it = gBoundaries.begin();
-		it != gBoundaries.end();) {
+                it != gBoundaries.end();) {
 		if(it->second.size() <= 0 || 
 			it->first.find("interior") != std::string::npos
 			) {
@@ -73,29 +73,29 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
 		Scalar s2 = mag(cC[c2] - fC[i]);
 		fI[i] = 1.f - s1 / (s1 + s2);
 	}
-	/*Wall distance field*/
-	yWall.construct("yWall");
-	yWall = Scalar(0);
-	/*boundary*/
-	BCondition<Scalar>* bc;
-	for(Boundaries::iterator it = gBoundaries.begin();
-		it != gBoundaries.end();++it) {
-
-		string bname = it->first;
-		bc = new BCondition<Scalar>(yWall.fName);
-		bc->bname = bname;
-		if(bname.find("WALL") != std::string::npos) {
-			bc->cname = "DIRICHLET";
-			bc->value = Scalar(0);
-		} else if(bname.find("interMesh") != std::string::npos) {
-		} else {
-			bc->cname = "NEUMANN";
-			bc->value = Scalar(0);
+	/*Construct wall distance field*/
+	{
+		yWall.construct("yWall");
+		yWall = Scalar(0);
+		/*boundary*/
+		BCondition<Scalar>* bc;
+		forEachIt(Boundaries,gBoundaries,it) {
+			string bname = it->first;
+			bc = new BCondition<Scalar>(yWall.fName);
+			bc->bname = bname;
+			if(bname.find("WALL") != std::string::npos) {
+				bc->cname = "DIRICHLET";
+				bc->value = Scalar(0);
+			} else if(bname.find("interMesh") != std::string::npos) {
+			} else {
+				bc->cname = "NEUMANN";
+				bc->value = Scalar(0);
+			}
+			bc->init_indices();
+			AllBConditions.push_back(bc);
 		}
-		bc->init_indices();
-		AllBConditions.push_back(bc);
+		updateExplicitBCs(yWall,true,true);
 	}
-	updateExplicitBCs(yWall,true,true);
 }
 /*
  * Read/Write

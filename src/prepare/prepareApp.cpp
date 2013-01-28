@@ -1,12 +1,36 @@
 #include "mesh.h"
 #include "prepare.h"
+#include "system.h"
 
 using namespace std;
 
 /*decompose application*/
 int main(int argc,char* argv[]) {
-	/*input stream*/
+	/*message passing object*/
+	MP mp(argc,argv);
 	ifstream input(argv[1]);
+
+    /*read mesh & fields*/
+	vector<string> fields;
+	vector<Int> n;
+	vector<Scalar> axis(4);
+	axis[0] = 1;
+	Util::ParamList params("general");
+	params.enroll("mesh",&Mesh::gMeshName);
+	params.enroll("fields",&fields);
+	params.enroll("decompose",&n);
+	params.enroll("axis",&axis);
+	params.enroll("probe",&Mesh::probePoints);
+	params.read(input); 
+
+	/*Mesh*/
+	if(mp.n_hosts > 1) {
+		stringstream s;
+		s << Mesh::gMeshName << mp.host_id;
+		if(!System::cd(s.str()))
+			return 1;
+	}
+	Mesh::readMesh();
 
 	/*cmd line*/
 	int work = 0;
@@ -26,18 +50,9 @@ int main(int argc,char* argv[]) {
 		}
 	}
 
-    /*read mesh & fields*/
-	vector<string> fields;
-	IntVector n;
-	Util::ParamList params("general");
-	params.enroll("mesh",&Mesh::gMeshName);
-	params.enroll("fields",&fields);
-	params.enroll("decompose",&n);
-	params.enroll("probe",&Mesh::probePoints);
-	params.read(input);
-	Mesh::readMesh();
 	Mesh::initGeomMeshFields(work != 0);
 	cout << "fields " << fields << endl;
+	atexit(Util::cleanup);
 
 	/*do work*/
 	if(work == 1) {
@@ -47,7 +62,7 @@ int main(int argc,char* argv[]) {
 	} else if(work == 3) {
 		Prepare::probe(Mesh::gMesh,fields,start_index);
 	} else{
-		Prepare::decomposeXYZ(Mesh::gMesh,&n[0]);
+		Prepare::decomposeXYZ(Mesh::gMesh,&n[0],&axis[0]);
 		Prepare::decomposeFields(fields,Mesh::gMeshName,start_index);
 	} 
 	return 0;

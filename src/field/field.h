@@ -65,7 +65,7 @@ class MeshField {
 private:
 	type*        P;
 	int          allocated;
-	static Int SIZE;
+	static Int   SIZE;
 public:
 	ACCESS       access;
 	Int          fIndex;
@@ -139,10 +139,6 @@ public:
 	void readInternal(std::istream&);
 	void read(Int step);
 	void write(Int step);
-	static void readAll(Int step);
-	static void writeAll(Int step);
-	static void write_vtk(std::ostream&,bool);
-	static int count_writable();
 
 	/*accessors*/
 	Int size() const {
@@ -266,12 +262,70 @@ public:
 		forEach(*this,i) 
 			P[i] = po[i] + (P[i] - po[i]) * UR;
 	}
-	/*end*/
+	/*read/write all fields*/
+	static void readAll(Int step) {
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			if((*it)->access & READ)
+				(*it)->read(step);
+		}
+	}
+	static void writeAll(Int step) {
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			if((*it)->access & WRITE)
+				(*it)->write(step);
+		}
+	} 
+	static int count_writable() {
+		int count = 0;
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			if((*it)->access & WRITE)
+				count++;
+		}
+		return count;
+	}
+	static void writeVtkCellAll(std::ostream& os) {
+		MeshField<type,CELL>* pf;
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			pf = *it;
+			if(pf->access & WRITE) {
+				os << pf->fName <<" "<< TYPE_SIZE <<" "
+					<< Mesh::gBCellsStart << " float" << std::endl;
+				for(Int i = 0;i < Mesh::gBCellsStart;i++)
+					os << (*pf)[i] << std::endl;
+				os << std::endl;
+			}
+		}
+	}
+	static void writeVtkVertexAll(std::ostream& os) {
+		MeshField<type,VERTEX> vf;
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			if((*it)->access & WRITE) {
+				vf = cds(cds(*(*it)));
+				os << (*it)->fName <<" "<< TYPE_SIZE <<" "
+					<< vf.size() << " float" << std::endl;
+				forEach(vf,i)
+					os << vf[i] << std::endl;
+				os << std::endl;
+			}
+		}
+	}
+	/*IO*/
+	friend std::ostream& operator << (std::ostream& os, const MeshField& p) {
+		forEach(p,i)
+			os << p[i] << std::endl;
+		os << std::endl;
+		return os;
+	}
+	friend std::istream& operator >> (std::istream& is, MeshField& p) {
+		forEach(p,i)
+			is >> p[i];
+		return is;
+	}
 };
+
 /***********************************
  *  Specific tensor operations
  ***********************************/
-
 /* Default operator overload for scalar fields*/
 #define Op(name,F,S)																			\
 	template<class T,ENTITY E>																	\
@@ -286,7 +340,6 @@ Op(operator /,Scalar,T);
 Op(operator *,T,Scalar);
 Op(operator /,T,Scalar);
 #undef Op
-
 /*multiply*/
 template <ENTITY E>
 MeshField<Tensor,E> mul(const MeshField<Vector,E>& p,const MeshField<Vector,E>& q) {
@@ -341,6 +394,96 @@ MeshField<Tensor,E> trn(const MeshField<Tensor,E>& p) {
 		r[i] = trn(p[i]);
 	return r;
 }
+/* **********************************************
+ *  Input - output operations
+ * **********************************************/
+template <class T,ENTITY E> 
+void MeshField<T,E>::readInternal(std::istream& is) {
+	using namespace Mesh;
+	/*size*/
+	char c;
+	int size;
+	std::string str;
+	is >> str >> size;
+
+	/*internal field*/
+	if((c = Util::nextc(is)) && isalpha(c)) {
+		T value = T(0);
+		is >> str;
+		if(str == "uniform")
+			is >> value;
+		*this = value;
+	} else {
+		char symbol;
+		is >> size >> symbol;
+		for(int i = 0;i < size;i++) {
+			is >> (*this)[i];
+		}
+		is >> symbol;
+	}
+}
+template <class T,ENTITY E> 
+void MeshField<T,E>::read(Int step) {
+	using namespace Mesh;
+
+	/*open*/
+	std::stringstream path;
+	path << fName << step;
+	std::ifstream is(path.str().c_str());
+	if(is.fail())
+		return;
+
+	/*start reading*/
+	std::cout << "Reading " << fName 
+		 << step  << std::endl;
+	std::cout.flush();
+
+	/*internal*/
+	readInternal(is);
+
+	/*boundary*/
+	char c;
+	BCondition<T>* bc;
+	while((c = Util::nextc(is)) && isalpha(c)) {
+		bc = new BCondition<T>(this->fName);
+		is >> *bc;
+		AllBConditions.push_back(bc);
+	}
+
+	/*update BCs*/
+	updateExplicitBCs(*this,true,true);
+}
+template <class T,ENTITY E> 
+void MeshField<T,E>::write(Int step) {
+	using namespace Mesh;
+
+	/*open*/
+	std::stringstream path;
+	path << fName << step;
+	std::ofstream of(path.str().c_str());
+
+	/*size*/
+	of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
+
+	/*internal field*/
+	of << gBCellsStart << std::endl;
+	of << "{" << std::endl;
+	for(Int i = 0;i < gBCellsStart;i++)
+		of << (*this)[i] << std::endl;
+	of << "}" << std::endl;
+
+	/*boundary field*/
+	BasicBCondition* bbc;
+	BCondition<T>* bc;
+	forEach(AllBConditions,i) {
+		bbc = AllBConditions[i];
+		if(bbc->fIndex == this->fIndex) {
+			bc = static_cast<BCondition<T>*> (bbc);
+			of << *bc << std::endl;
+		}
+	}
+}
+
 /*static variables*/
 template <class T,ENTITY E> 
 std::list<MeshField<T,E>*> MeshField<T,E>::fields_;
@@ -380,180 +523,7 @@ namespace Mesh {
 	void   initGeomMeshFields(bool = true);
 	void   write_fields(Int);
 	void   read_fields(Int);
-	void   calc_walldist(Int);
-}
-/* **********************************************
- *  Input - output operations
- * **********************************************/
-template <class T,ENTITY E> 
-void MeshField<T,E>::readInternal(std::istream& is) {
-	using namespace Mesh;
-	/*size*/
-	char c;
-	int size;
-	std::string str;
-	is >> str >> size;
-
-	/*internal field*/
-	if((c = Util::nextc(is)) && isalpha(c)) {
-		T value = T(0);
-		is >> str;
-		if(str == "uniform")
-			is >> value;
-		*this = value;
-	} else {
-		char symbol;
-		is >> size >> symbol;
-		for(int i = 0;i < size;i++) {
-			is >> (*this)[i];
-		}
-		is >> symbol;
-	}
-}
-template <class T,ENTITY E> 
-void MeshField<T,E>::read(Int step) {
-	using namespace Mesh;
-
-	/*open*/
-	std::stringstream path;
-	path << fName << step;
-	std::ifstream is(path.str().c_str());
-
-	if(is.fail()) {
-		*this = T(0);
-	} else {
-		std::cout << "Reading " << fName << step  << std::endl;
-		std::cout.flush();
-
-		/*internal*/
-		readInternal(is);
-
-		/*boundary*/
-		char c;
-		BCondition<T>* bc;
-		while((c = Util::nextc(is)) && isalpha(c)) {
-			bc = new BCondition<T>(this->fName);
-			is >> *bc;
-			AllBConditions.push_back(bc);
-		}
-		
-		/*update BCs*/
-		updateExplicitBCs(*this,true,true);
-	}
-	/*close*/
-	is.close();
-}
-template <class T,ENTITY E> 
-void MeshField<T,E>::write(Int step) {
-	using namespace Mesh;
-
-	/*open*/
-	std::stringstream path;
-	path << fName << step;
-	std::ofstream of(path.str().c_str());
-
-	/*size*/
-	of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
-
-	/*internal field*/
-	of << gBCellsStart << std::endl;
-	of << "{" << std::endl;
-	for(Int i = 0;i < gBCellsStart;i++)
-		of << (*this)[i] << std::endl;
-	of << "}" << std::endl;
-
-	/*boundary field*/
-	BasicBCondition* bbc;
-	BCondition<T>* bc;
-	forEach(AllBConditions,i) {
-		bbc = AllBConditions[i];
-		if(bbc->fIndex == this->fIndex) {
-			bc = static_cast<BCondition<T>*> (bbc);
-			of << *bc << std::endl;
-		}
-	}
-
-	/*close*/
-	of.close();
-}
-template <class T,ENTITY E> 
-void MeshField<T,E>::readAll(Int step) {
-	using namespace Mesh;
-	MeshField<T,E>* pf;
-	for(typename std::list<MeshField<T,E>*>::iterator 
-		it = fields_.begin();it != fields_.end();++it) {
-		pf = *it;
-		if(pf->access & READ)
-			pf->read(step);
-	}
-}
-template <class T,ENTITY E> 
-void MeshField<T,E>::writeAll(Int step) {
-	using namespace Mesh;
-	MeshField<T,E>* pf;
-	for(typename std::list<MeshField<T,E>*>::iterator 
-		it = fields_.begin();it != fields_.end();++it) {
-		pf = *it;
-		if(pf->access & WRITE)
-			pf->write(step);
-	}
-}
-/*write in vtk format*/
-template <class T,ENTITY E> 
-int MeshField<T,E>::count_writable() {
-	int count = 0;
-	for(typename std::list<MeshField<T,CELL>*>::iterator 
-		it = fields_.begin();it != fields_.end();++it) {
-		if((*it)->access & WRITE)
-			count++;
-	}
-	return count;
-}
-
-template <class T,ENTITY E> 
-void MeshField<T,E>::write_vtk(std::ostream& os,bool vertex) {
-	MeshField<T,CELL>* pf;
-	if(!vertex) {
-		for(typename std::list<MeshField<T,CELL>*>::iterator 
-			it = fields_.begin();it != fields_.end();++it) {
-			pf = *it;
-			if(pf->access & WRITE) {
-				os << pf->fName <<" "<< TYPE_SIZE <<" "
-				   << Mesh::gBCellsStart << " float" << std::endl;
-				for(Int i = 0;i < Mesh::gBCellsStart;i++)
-					os << (*pf)[i] << std::endl;
-				os << std::endl;
-			}
-		}
-	} else {
-		MeshField<T,VERTEX> vf;
-		for(typename std::list<MeshField<T,CELL>*>::iterator 
-			it = fields_.begin();it != fields_.end();++it) {
-			pf = *it;
-			if(pf->access & WRITE) {
-				vf = cds(cds(*pf));
-				os << pf->fName <<" "<< TYPE_SIZE <<" "
-				   << vf.size() << " float" << std::endl;
-				forEach(vf,i)
-					os << vf[i] << std::endl;
-				os << std::endl;
-			}
-		}
-	}
-}
-/*IO*/
-template <class type,ENTITY entity> 
-std::ostream& operator << (std::ostream& os, const MeshField<type,entity>& p) {
-	forEach(p,i)
-		os << p[i] << std::endl;
-	os << std::endl;
-	return os;
-}
-template <class type,ENTITY entity> 
-std::istream& operator >> (std::istream& is, MeshField<type,entity>& p) {
-	forEach(p,i)
-		is >> p[i];
-	return is;
+	void   calc_walldist(Int,Int = 1);
 }
 /*********************************************************************************
  *                      matrix class defined on mesh                             
@@ -677,7 +647,29 @@ struct MeshMatrix {
 			}
 		}
 	}
+	/*IO*/
+	friend std::ostream& operator << (std::ostream& os, const MeshMatrix& p) {
+		os << p.ap << std::endl << std::endl;
+		os << p.an[0] << std::endl << std::endl;
+		os << p.an[1] << std::endl << std::endl;
+		os << p.Su << std::endl << std::endl;
+		return os;
+	}
+	friend std::istream& operator >> (std::istream& is, MeshMatrix& p) {
+		is >> p.ap;
+		is >> p.an[0];
+		is >> p.an[1];
+		is >> p.Su;
+		return is;
+	}
 };
+
+/*typedefs*/
+typedef MeshMatrix<Scalar>  ScalarMeshMatrix;
+typedef MeshMatrix<Vector>  VectorMeshMatrix;
+typedef MeshMatrix<Tensor>  TensorMeshMatrix;
+typedef MeshMatrix<STensor> STensorMeshMatrix;
+
 /* ***************************************
  * Implicit boundary conditions
  * ***************************************/
@@ -866,7 +858,7 @@ void fillBCs(const MeshField<T,E>& cF,
 			 bool update_ghost = false) {
 	/*neumann update*/
 	using namespace Mesh;
-	for(Int i = gBCellsStart;i < cF.size();i++)
+	forEachS(cF,i,gBCellsStart)
 		cF[i] = cF[gFO[gCells[i][0]]];
 	/*ghost cells*/
 	if(update_ghost && gInterMesh.size()) {
@@ -940,29 +932,6 @@ void exchange_ghost(T* P) {
 	}
 	/*end*/
 }
-
-/*IO*/
-template <class type> 
-std::ostream& operator << (std::ostream& os, const MeshMatrix<type>& p) {
-	os << p.ap << std::endl << std::endl;
-	os << p.an[0] << std::endl << std::endl;
-	os << p.an[1] << std::endl << std::endl;
-	os << p.Su << std::endl << std::endl;
-	return os;
-}
-template <class type> 
-std::istream& operator >> (std::istream& is, MeshMatrix<type>& p) {
-	is >> p.ap;
-	is >> p.an[0];
-	is >> p.an[1];
-	is >> p.Su;
-	return is;
-}
-/*typedefs*/
-typedef MeshMatrix<Scalar>  ScalarMeshMatrix;
-typedef MeshMatrix<Vector>  VectorMeshMatrix;
-typedef MeshMatrix<Tensor>  TensorMeshMatrix;
-typedef MeshMatrix<STensor> STensorMeshMatrix;
 
 /* *******************************
  * matrix - vector product p * q

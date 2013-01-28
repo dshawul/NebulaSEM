@@ -69,13 +69,13 @@ void Mesh::MeshObject::write(ostream& os) {
 	os << v;
 	os << f;
 	os << c;
-	for(Boundaries::iterator it = bdry.begin();it != bdry.end();++it)
+	forEachIt(Boundaries,bdry,it)
 		os << it->first << " " << it->second << endl;
 	os << dec;
 }
 /*Is face in boundary*/
 bool Mesh::faceInBoundary(Int f) {
-	for(Boundaries::iterator it = gBoundaries.begin();it != gBoundaries.end();++it) {
+	forEachIt(Boundaries,gBoundaries,it) {
 		IntVector& gB = it->second;
 		forEach(gB,j) {
 			if(gB[j] == f)
@@ -111,8 +111,7 @@ void Mesh::addBoundaryCells() {
 		}
 	}
 	/*add boundary cells*/
-	for(Boundaries::iterator it = gBoundaries.begin();
-		it != gBoundaries.end();++it) {
+	forEachIt(Boundaries,gBoundaries,it) {
 		IntVector& facets = it->second;
 		forEach(facets,j) {
 			i = facets[j];
@@ -196,7 +195,7 @@ void Mesh::calcGeometry() {
 		_cV[i] = V / Scalar(3);
 	}
 	/*boundary cell centre and volume*/
-	for(i = gBCellsStart;i < gCells.size();i++) {
+	forEachS(gCells,i,gBCellsStart) {
 		_cV[i] = _cV[gFO[gCells[i][0]]];
 		_cC[i] = _fC[gCells[i][0]];
 	}
@@ -277,7 +276,7 @@ void Mesh::removeBoundary(IntVector& fs) {
 		gFN[i] = Idc[gFN[i]];
 	}
 	/*patches*/
-	for(Boundaries::iterator it = gBoundaries.begin();it != gBoundaries.end();++it) {
+	forEachIt(Boundaries,gBoundaries,it) {
 		IntVector& gB = it->second;
 		forEach(gB,i)
 			gB[i] = Idf[gB[i]];
@@ -291,7 +290,7 @@ int Mesh::findNearestCell(const Vector& v) {
 	int bi;
 	bi = 0;
 	mindist = mag(v - _cC[0]);
-	forEach(gCells,i) {
+	for(Int i = 0;i < gBCellsStart;i++) {
 		dist = mag(v - _cC[i]);
 		if(dist < mindist) {
 			mindist = dist;
@@ -299,4 +298,11 @@ int Mesh::findNearestCell(const Vector& v) {
 		}
 	}
 	return bi;
+}
+void Mesh::getProbeCells(IntVector& probes) {
+	forEach(probePoints,j) {
+		Vector v = probePoints[j];
+		Int index = findNearestCell(v);
+		probes.push_back(index);
+	}
 }

@@ -82,11 +82,14 @@ void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start
 	}
 }
 /*decompose in x,y,z direction*/
-int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
+int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq) {
 	
 	using Constants::MAX_INT;
 	Int i,j,ID,count,total = n[0] * n[1] * n[2];
 	Vector maxV(Scalar(-10e30)),minV(Scalar(10e30)),delta;
+	Vector axis(nq[0],nq[1],nq[2]);
+	Scalar theta = nq[3];
+	Vector C;
 
 	/*decomposed mesh*/
 	MeshObject* meshes = new MeshObject[total];
@@ -100,9 +103,10 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 
 	/*max and min points*/
 	forEach(mo.v,i) {
+		C = rotate(mo.v[i],axis,theta);
 		for(j = 0;j < 3;j++) {
-			if(mo.v[i][j] > maxV[j]) maxV[j] = mo.v[i][j];
-			if(mo.v[i][j] < minV[j]) minV[j] = mo.v[i][j];
+			if(C[j] > maxV[j]) maxV[j] = C[j];
+			if(C[j] < minV[j]) minV[j] = C[j];
 		}
 	}
     delta = maxV - minV;
@@ -112,7 +116,6 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 	/*decompose cells*/
 	MeshObject *pmesh;
 	IntVector *pvLoc,*pfLoc,blockIndex;
-	Vector C;
 	
 	blockIndex.assign(gBCellsStart,0);
 
@@ -120,8 +123,11 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		Cell& c = mo.c[i];
 
 		/* add cell */
-		C = (_cC[i] - minV) / delta;
-		ID = Int(C[0]) * n[1] * n[2] + Int(C[1]) * n[2] + Int(C[2]);
+		C = rotate(_cC[i],axis,theta);
+		C = (C - minV) / delta;
+		ID = Int(C[0]) * n[1] * n[2] + 
+			 Int(C[1]) * n[2] + 
+			 Int(C[2]);
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
 		pfLoc = &fLoc[ID];
@@ -216,7 +222,7 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n) {
 		of << pmesh->c << endl;
 
 		/*bcs*/
-		for(Boundaries::iterator it = mo.bdry.begin();it != mo.bdry.end();++it) {
+		forEachIt(Boundaries,mo.bdry,it) {
 			IntVector b;	
 			Int f;
 			forEach(it->second,j) {
@@ -296,6 +302,22 @@ void createFields(vector<string>& fields,void**& pFields) {
 		}
 	}
 }
+/*open fields*/
+Int checkFields(vector<string>& fields,void**& pFields,Int step) {
+	Int count = 0;
+	forEach(fields,i) {
+		stringstream fpath;
+		fpath << fields[i] << step;
+		ifstream is(fpath.str().c_str());
+		if(is.fail())
+			continue;
+		count++;
+		break;
+	}
+	if(count)
+		Mesh::read_fields(step);
+	return count;
+}
 /*Reverse decomposition*/
 int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 					 vector<string>& fields,std::string mName,Int start_index) {
@@ -329,11 +351,11 @@ int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 				stringstream fpath;
 				fpath << fields[i] << step;
 				str = path.str() + "/" + fpath.str();
-
 				ifstream is(str.c_str());
 				if(is.fail())
 					continue;
 				count++;
+				/*read*/
 				is >> str >> size;
 				switch(size) {
 				case 1 :  readFields<Scalar>(is,pFields[i],cLoc[ID]); break;
@@ -357,18 +379,8 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 
 	/*for each time step*/
 	for(Int step = start_index;;step++) {
-		Int count = 0;
-		forEach(fields,i) {
-			stringstream fpath;
-			fpath << fields[i] << step;
-			ifstream is(fpath.str().c_str());
-			if(is.fail())
-				continue;
-			count++;
+		if(!checkFields(fields,pFields,step))
 			break;
-		}
-		if(count == 0) break;
-		Mesh::read_fields(step);
 
 		/*write vtk*/
 		Vtk::write_vtk(step);
@@ -380,11 +392,7 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
 	/*probe points*/
 	IntVector probes;
-	forEach(Mesh::probePoints,j) {
-		Vector v = Mesh::probePoints[j];
-		Int index = Mesh::findNearestCell(v);
-		probes.push_back(index);
-	}
+	getProbeCells(probes);
 	ofstream of("probes");
 
     /*create fields*/
@@ -393,27 +401,13 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 
 	/*for each time step*/
 	for(Int step = start_index;;step++) {
-		Int count = 0;
-		forEach(fields,i) {
-			stringstream fpath;
-			fpath << fields[i] << step;
-			ifstream is(fpath.str().c_str());
-			if(is.fail())
-				continue;
-			count++;
+		if(!checkFields(fields,pFields,step))
 			break;
-		}
-		if(count == 0) break;
-		Mesh::read_fields(step);
 
 		/*write probes*/
 #define WRITE(T) {												\
-		T* pf;													\
-		for(std::list<T*>::iterator	it = T::fields_.begin();	\
-			it != T::fields_.end();++it) {						\
-			pf = *it;											\
-			of << (*pf)[probes[i]] << " ";						\
-		}														\
+		forEachIt(std::list<T*>,T::fields_,it)  				\
+			of << (*(*it))[probes[i]] << " ";					\
 }
 		forEach(probes,i) {
 			of << step << " " << i << " " << 
@@ -425,8 +419,8 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 			of << endl;
 		}
 #undef WRITE
+
 	}
-	/*close*/
-	of.close();
+
 	return 0;
 }

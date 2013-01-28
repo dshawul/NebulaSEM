@@ -50,18 +50,16 @@ bool equal(std::vector<T>& v1,std::vector<T>& v2) {
 namespace Util {
 	extern bool Terminated;
 	Int hash_function(std::string s);
+	int nextc(std::istream&);
 	void cleanup();
 
 	/*string compare*/
 	inline int compare(std::string& s1,std::string s2) {
 		std::string t1 = s1,t2 = s2;
-		transform(t1.begin(),t1.end(),t1.begin(),toupper);
-		transform(t2.begin(),t2.end(),t2.begin(),toupper);
+		std::transform(t1.begin(),t1.end(),t1.begin(),toupper);
+		std::transform(t2.begin(),t2.end(),t2.begin(),toupper);
 		return (t1 != t2);
 	}
-
-	/*next character*/
-	int nextc(std::istream&);
 
 	/*general string option list*/
 	namespace A {

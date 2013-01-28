@@ -11,7 +11,7 @@ BDIR     = ../..
 SRCDIR   = $(BDIR)/src
 ALLDIR   = field mesh tensor util vtk mp decompose solvers/piso
 EXEDIR   = $(BDIR)/bin
-OBJDIR   = ./Release
+OBJDIR   = ../objs
 OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))
 VPATH    = $(addprefix   $(SRCDIR)/, $(ALLDIR))
 INC      = $(addprefix -I$(SRCDIR)/, $(ALLDIR))
@@ -23,12 +23,12 @@ RM = rm -rf
 DEFINES = 
 
 default:
-	$(MAKE) gcc
+	$(MAKE) gcc strip
 clean:
 	$(RM) $(OBJ) $(EXE)
 
 strip:
-	strip $(EXE)
+	strip $(EXEDIR)/$(EXE)
 
 gcc:   
 	$(MAKE) \

@@ -391,6 +391,7 @@ Vector dot(const Vector&,const STensor&);
 STensor sym(const Tensor& p);
 Tensor skw(const Tensor& p);
 Tensor trn(const Tensor& p);
+Vector rotate(const Vector& v,const Vector& N,const Scalar& theta); 
 
 /*constants*/
 namespace Constants {
@@ -507,6 +508,13 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 /*iterator loops*/
 #define forEach(field,i)								\
 	for(Int i = 0;i < (field).size();i++)
+
+#define forEachS(field,i,strt)							\
+	for(Int i = strt;i < (field).size();i++)
+
+#define forEachIt(cont,field,it)						\
+	for(cont::iterator it = (field).begin();			\
+		it != (field).end();++it)
 
 /*
  * end

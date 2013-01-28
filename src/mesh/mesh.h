@@ -77,6 +77,7 @@ namespace Mesh {
 	void readMesh();
 	void enroll(Util::ParamList& params);
 	int  findNearestCell(const Vector& v);
+	void getProbeCells(IntVector&);
 }
 /*
  * Model for flow close to the wall (Law of the wall).

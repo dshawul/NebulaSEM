@@ -187,7 +187,7 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 	os << "))" << endl << endl;
 
 	//boundary
-	for(Boundaries::iterator it = mo.bdry.begin();it != mo.bdry.end();++it) {
+	forEachIt(Boundaries,mo.bdry,it) {
 		const IntVector& fvec = it->second; 
 		os << "(0 \"" << it->first << "\")" << endl;
 

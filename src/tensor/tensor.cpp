@@ -118,3 +118,12 @@ Tensor trn(const Tensor& p) {
 	r[ZX] = p[XZ];
 	return r;
 }
+Vector rotate(const Vector& v,const Vector& N,const Scalar& theta) {
+	Vector r;
+	Scalar sum = v & N;
+	Scalar cost = cos(theta), sint = sin(theta);
+	r[XX] = N[XX] * sum * (1 - cost) + v[XX] * cost + (-N[ZZ] * v[YY] + N[YY] * v[ZZ]) * sint;
+	r[YY] = N[YY] * sum * (1 - cost) + v[YY] * cost + (+N[ZZ] * v[XX] - N[XX] * v[ZZ]) * sint;
+	r[ZZ] = N[ZZ] * sum * (1 - cost) + v[ZZ] * cost + (-N[YY] * v[XX] + N[XX] * v[YY]) * sint;
+	return r;
+}

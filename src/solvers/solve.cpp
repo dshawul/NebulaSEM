@@ -80,14 +80,14 @@ void SolveT(const MeshMatrix<type>& M) {
 
 #define CALC_RESID() {							\
 	r = M.Su - M * cF;							\
-	for(i = gBCellsStart;i < r.size();i++)		\
+	forEachS(r,i,gBCellsStart)					\
 		r[i] = type(0);							\
 	res = getResidual(r * pC,cF,sync);			\
 	if(Controls::Solver == Controls::PCG) {		\
-		for(i = gBCellsStart;i < r.size();i++)	\
+		forEachS(r,i,gBCellsStart)				\
 			p[i] = type(0);						\
 		o_rr = type(0);							\
-		for(i = 0;i < gBCellsStart;i++) {		\
+		for(Int i = 0;i < gBCellsStart;i++) {	\
 			p[i] = r[i] * pC[i];				\
 			o_rr += r[i] * p[i];				\
 		}										\
