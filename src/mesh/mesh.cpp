@@ -285,13 +285,25 @@ void Mesh::removeBoundary(IntVector& fs) {
 	cout << "Total faces: " << gFacets.size() << endl;
 }
 /*find nearest cell*/
-int Mesh::findNearestCell(const Vector& v) {
+Int Mesh::findNearestCell(const Vector& v) {
 	Scalar mindist,dist;
-	int bi;
-	bi = 0;
+	Int bi = 0;
 	mindist = mag(v - _cC[0]);
 	for(Int i = 0;i < gBCellsStart;i++) {
 		dist = mag(v - _cC[i]);
+		if(dist < mindist) {
+			mindist = dist;
+			bi = i;
+		}
+	}
+	return bi;
+}
+Int Mesh::findNearestFace(const Vector& v) {
+	Scalar mindist,dist;
+	Int bi = 0;
+	mindist = mag(v - _fC[0]);
+	forEach(gFacets,i) {
+		dist = mag(v - _fC[i]);
 		if(dist < mindist) {
 			mindist = dist;
 			bi = i;
@@ -303,6 +315,13 @@ void Mesh::getProbeCells(IntVector& probes) {
 	forEach(probePoints,j) {
 		Vector v = probePoints[j];
 		Int index = findNearestCell(v);
+		probes.push_back(index);
+	}
+}
+void Mesh::getProbeFaces(IntVector& probes) {
+	forEach(probePoints,j) {
+		Vector v = probePoints[j];
+		Int index = findNearestFace(v);
 		probes.push_back(index);
 	}
 }

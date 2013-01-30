@@ -282,6 +282,7 @@ void piso(istream& input) {
 				/*1/ap*/
 				ScalarCellField api = (1 / M.ap);
 				fillBCs(api,true);
+				ScalarCellField rmu = rho * api * Mesh::cV;
 
 				/*PISO loop*/
 				for(Int j = 0;j < n_PISO;j++) {
@@ -293,8 +294,12 @@ void piso(istream& input) {
 						ScalarCellField po;
 						if(Steady)
 							po = p;
-						for(Int k = 0;k <= n_ORTHO;k++)
-							Solve((lap(p,rho * api * Mesh::cV) += div(rho * U)));
+						/*solve*/
+						{
+							ScalarCellField rhs = div(rho * U);
+							for(Int k = 0;k <= n_ORTHO;k++)
+								Solve((lap(p,rmu) += rhs));
+						}
 						if(Steady)
 							p.Relax(po,pressure_UR);
 					}
@@ -362,13 +367,15 @@ void piso(istream& input) {
 		/*end*/
 	}
 	/*write calculated turbulence fields*/
-	ScalarCellField K("Ksgs",WRITE);
-	STensorCellField R("Rsgs",WRITE);
-	STensorCellField V("Vsgs",WRITE);
-	K = turb->getK();
-	R = turb->getReynoldsStress();
-	V = turb->getViscousStress();
-	Mesh::write_fields(step);
+	if(turb->writeStress) {
+		ScalarCellField K("Ksgs",WRITE);
+		STensorCellField R("Rsgs",WRITE);
+		STensorCellField V("Vsgs",WRITE);
+		K = turb->getK();
+		R = turb->getReynoldsStress();
+		V = turb->getViscousStress();
+		Mesh::write_fields(step);
+	}
 }
 /********************************************
  Diffusion solver

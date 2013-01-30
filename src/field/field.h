@@ -1011,15 +1011,17 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 	using namespace Mesh;
 	std::vector<Scalar> cnt;
 	MeshField<type,VERTEX> vF;
-	cnt.assign(vF.size(),0);
+	cnt.assign(vF.size(),Scalar(0));
+	Scalar dist;
 	
 	vF = type(0);
 	forEach(fF,i) {
 		Facet& f = gFacets[i];
 		if(gFN[i] < gBCellsStart) {
 			forEach(f,j) {
-				vF[f[j]] += fF[i];
-				cnt[f[j]]++;
+				dist = 1.f / mag(gVertices[f[j]] - fC[i]);
+				vF[f[j]] += (fF[i] * dist);
+				cnt[f[j]] += dist;
 			}
 		} else {
 			forEach(f,j) {
@@ -1029,7 +1031,7 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 		}
 	}
 	forEach(vF,i) {
-		vF[i] /= Scalar(cnt[i]);
+		vF[i] /= cnt[i];
 		if(mag(vF[i]) < Constants::MachineEpsilon) 
 			vF[i] = type(0);
 	}

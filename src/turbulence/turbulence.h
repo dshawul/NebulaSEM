@@ -54,6 +54,7 @@ struct Turbulence_Model {
 	bool& Steady;
 
 	Util::ParamList params;
+	bool writeStress;
 	/*constructor*/
 	Turbulence_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
 		U(tU),
@@ -61,11 +62,16 @@ struct Turbulence_Model {
 		rho(trho),
 		nu(tnu),
 		Steady(tSteady),
+		writeStress(false),
 		params("turbulence")
 	{
 	}
 	/*overridable functions*/
-	virtual void enroll() {};
+	virtual void enroll() {
+		using namespace Util;
+		Option* op = new BoolOption(&writeStress);
+		params.enroll("writeStress",op);
+	};
 	virtual void solve() {};
 	virtual void addTurbulentStress(VectorMeshMatrix& M) {
 		ScalarFacetField mu = rho * nu;

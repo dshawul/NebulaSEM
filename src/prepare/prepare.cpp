@@ -392,7 +392,7 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
 	/*probe points*/
 	IntVector probes;
-	getProbeCells(probes);
+	getProbeFaces(probes);
 	ofstream of("probes");
 
     /*create fields*/
@@ -405,13 +405,23 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 			break;
 
 		/*write probes*/
-#define WRITE(T) {												\
-		forEachIt(std::list<T*>,T::fields_,it)  				\
-			of << (*(*it))[probes[i]] << " ";					\
+#define WRITE(T) {										\
+		forEachIt(std::list<T*>,T::fields_,it) { 		\
+		    of <<  ((*(*it))[c1] * (mfI)) +				\
+		           ((*(*it))[c2] * (1 - mfI))			\
+			   << " ";									\
+		}												\
 }
 		forEach(probes,i) {
-			of << step << " " << i << " " << 
-				Mesh::probePoints[i] << " ";
+			Int f = probes[i];
+			Int c1 = gFO[f];
+			Int c2 = gFN[f];
+			Scalar s1 = mag((cC[c1] - probePoints[i]) & fN[f]);
+			Scalar s2 = mag((cC[c2] - probePoints[i]) & fN[f]);
+			Scalar mfI = 1.f - s1 / (s1 + s2);
+
+			of << step << " " << i << " " << probePoints[i] << " ";
+
 			WRITE(ScalarCellField);
 			WRITE(VectorCellField);
 			WRITE(STensorCellField);
