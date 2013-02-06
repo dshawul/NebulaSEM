@@ -22,6 +22,7 @@ namespace Controls {
 	Scalar dt = Scalar(.1);
 	Scalar SOR_omega = Scalar(1.7);
 	Solvers Solver = PCG; 
+	Preconditioners Preconditioner = SORP;
 	State state = STEADY;
 	Int max_iterations = 500;
 	Int write_interval = 20;
@@ -143,6 +144,8 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("nonortho_scheme",op);
 	op = new Option(&Solver,3,"JACOBI","SOR","PCG");
 	params.enroll("method",op);
+	op = new Option(&Preconditioner,4,"NONE","DIAG","SOR","DILU");
+	params.enroll("preconditioner",op);
 	op = new Option(&state,2,"STEADY","TRANSIENT");
 	params.enroll("state",op);
 	op = new Option(&ghost_exchange,2,"BLOCKED","ASYNCHRONOUS");

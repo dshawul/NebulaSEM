@@ -31,18 +31,45 @@ void SolveT(const MeshMatrix<type>& M) {
 	MeshField<type,CELL> r1(false),p1(false),AP1(false);   
 	MeshField<type,CELL>& cF = *M.cF;
 	MeshField<type,CELL>& buffer = AP;
-	ScalarCellField pC = (1 / M.ap); /* Jacobi preconditioner */
-	Scalar res,ires;
-	Int i,j,iterations = 0;
-	type alpha,beta,o_rr = type(0),oo_rr;
-
+	ScalarCellField D = M.ap,iD = (1 / M.ap);
+	
 	/* Allocate BiCG vars*/
-	if((Controls::Solver == Controls::PCG) &&
-		!(M.flags & M.SYMMETRIC)) {
-		r1.allocate();
-		p1.allocate();
-		AP1.allocate();
+	register Int i;
+	if(Controls::Solver == Controls::PCG) {
+		if(!(M.flags & M.SYMMETRIC)) {
+			r1.allocate();
+			p1.allocate();
+			AP1.allocate();
+		} else {
+			if(Controls::Preconditioner == Controls::SORP) {
+				/*SOR and GS*/
+				iD *= Controls::SOR_omega;
+				D *=  (2.0 / Controls::SOR_omega - 1.0);	
+			} else if(Controls::Preconditioner == Controls::DILU) {
+				/*D-ILU(0)*/
+				for(i = 0;i < gBCellsStart;i++) {
+					Cell& c = gCells[i];
+					forEach(c,j) {								
+						Int f = c[j];							
+						Int c1 = gFO[f];						
+						Int c2 = gFN[f];						
+						if(i == c1) {
+							if(c2 > i) D[c2] -= (M.an[0][f] * M.an[1][f] * iD[c1]);	
+						} else {
+							if(c1 > i) D[c1] -= (M.an[0][f] * M.an[1][f] * iD[c2]);		
+						}										
+					}			
+				}
+				iD = (1 / D);
+			}
+			/*end*/
+		}
 	}
+
+	/*vars*/
+	Int j,iterations = 0;
+	Scalar res,ires;
+	type alpha,beta,o_rr = type(0),oo_rr;
 
 	/*for cluster use*/
 	bool converged = false;
@@ -65,46 +92,140 @@ void SolveT(const MeshMatrix<type>& M) {
 		else
 			MP::print("PCG :");
 	}
-	/*****************************************
-	 *  Initialize residual and other vectors
-	 *****************************************/
-#define SUM_ALL(typ,var)	if(sync)	{		\
-	typ t;										\
-	MP::allsum(&var,&t,1);						\
-	var = t;									\
-};
-
-#define EXCHANGE(var)		if(sync)	{		\
-	exchange_ghost(&var[0]);					\
-};
-
-#define CALC_RESID() {							\
-	r = M.Su - M * cF;							\
-	forEachS(r,i,gBCellsStart)					\
-		r[i] = type(0);							\
-	res = getResidual(r * pC,cF,sync);			\
-	if(Controls::Solver == Controls::PCG) {		\
-		forEachS(r,i,gBCellsStart)				\
-			p[i] = type(0);						\
-		o_rr = type(0);							\
-		for(Int i = 0;i < gBCellsStart;i++) {	\
-			p[i] = r[i] * pC[i];				\
-			o_rr += r[i] * p[i];				\
-		}										\
-		SUM_ALL(type,o_rr);						\
-		if(!(M.flags & M.SYMMETRIC)) {			\
-			r1 = r;								\
-			p1 = p;								\
-		}										\
-	}											\
-};
-
+	/****************************
+	 *  Forward/backward sweeps
+	 ****************************/
+#define Sweep_(X,B,i) {								\
+		Cell& c = gCells[i];						\
+		type ncF = B[i];							\
+		forEach(c,j) {								\
+			Int f = c[j];							\
+			if(i == gFO[f])							\
+				ncF += X[gFN[f]] * M.an[1][f];		\
+			else									\
+				ncF += X[gFO[f]] * M.an[0][f];		\
+		}											\
+		ncF *= iD[i];								\
+		X[i] = X[i] * (1 - Controls::SOR_omega) +	\
+			ncF * (Controls::SOR_omega);			\
+}
+#define ForwardSweep(X,B) {							\
+	for(i = 0;i < gBCellsStart;i++)					\
+		Sweep_(X,B,i);								\
+}
+#define BackwardSweep(X,B) {						\
+	for(int i = gBCellsStart - 1;i >= 0;i--)		\
+		Sweep_(X,B,i);								\
+}
+	/***********************************
+	 *  Forward/backward substitution
+	 ***********************************/
+#define Substitute_(X,B,i,forw,tr) {				\
+		Cell& c = gCells[i];						\
+		type ncF = B[i];							\
+		forEach(c,j) {								\
+			Int f = c[j];							\
+			Int c1 = gFO[f];						\
+	        Int c2 = gFN[f];						\
+			if(i == c1) {							\
+				if((forw && (c2 < c1)) ||			\
+				  (!forw && (c1 < c2)))	{			\
+					ncF += X[c2] * M.an[1 - tr][f];	\
+				}									\
+			} else {								\
+				if((forw && (c2 > c1)) ||			\
+				  (!forw && (c1 > c2)))				\
+					ncF += X[c1] * M.an[0 + tr][f];	\
+			}										\
+		}											\
+		ncF *= iD[i];								\
+		X[i] = ncF;									\
+}
+#define ForwardSub(X,B,TR) {						\
+	for(i = 0;i < gBCellsStart;i++)					\
+		Substitute_(X,B,i,true,TR);					\
+}
+#define BackwardSub(X,B,TR) {						\
+	for(int i = gBCellsStart - 1;i >= 0;i--)		\
+		Substitute_(X,B,i,false,TR);				\
+}
+#define DiagSub(X,B) {								\
+	for(i = 0;i < gBCellsStart;i++)					\
+		X[i] = B[i] * iD[i];						\
+}
+	/***********************************
+	 *  SAXPY and DOT operations
+	 ***********************************/
+#define Taxpy(Y,I,X,alpha_) {						\
+	for(i = 0;i < gBCellsStart;i++)					\
+		Y[i] = I[i] + X[i] * alpha_;				\
+}
+#define Tdot(X,Y,sum) {								\
+	sum = type(0);									\
+	for(i = 0;i < gBCellsStart;i++)					\
+		sum += X[i] * Y[i];							\
+}
+	/***********************************
+	 *  Preconditioners
+	 ***********************************/
+#define precondition_(R,Z,TR) {						\
+	using namespace Controls;						\
+	if(Preconditioner == Controls::NOP) {			\
+		Z = R;										\
+	} else if(Preconditioner == Controls::DIAG) {	\
+		DiagSub(Z,R);								\
+	} else {										\
+		if(Controls::Solver == Controls::PCG) {		\
+			Z = type(0);							\
+			ForwardSub(Z,R,TR);						\
+			Z = Z * D;								\
+			BackwardSub(Z,Z,TR);					\
+		}											\
+	}												\
+}
+#define precondition(R,Z) precondition_(R,Z,0)
+#define preconditionT(R,Z) precondition_(R,Z,1)
+	/***********************************
+	 *  Synchronized sum and exchange
+	 ***********************************/
+#define SUM_ALL(typ,var)	if(sync)	{			\
+	typ t;											\
+	MP::allsum(&var,&t,1);							\
+	var = t;										\
+}
+#define EXCHANGE(var)		if(sync)	{			\
+	exchange_ghost(&var[0]);						\
+}
+	/***********************************
+	 *  Residual
+	 ***********************************/
+#define CALC_RESID() {								\
+	r = M.Su - M * cF;								\
+	forEachS(r,k,gBCellsStart)						\
+		r[k] = type(0);								\
+	precondition(r,AP);								\
+	forEachS(AP,k,gBCellsStart)						\
+		AP[k] = type(0);							\
+	res = getResidual(AP,cF,sync);					\
+	if(Controls::Solver == Controls::PCG) {			\
+		Tdot(r,AP,o_rr);							\
+		SUM_ALL(type,o_rr);							\
+		p = AP;										\
+		if(!(M.flags & M.SYMMETRIC)) {				\
+			r1 = r;									\
+			p1 = p;									\
+		}											\
+	}												\
+}
+	/***********************
+	 *  Initialize residual
+	 ***********************/
 	CALC_RESID();
 	ires = res;
-	/************************************************
+	/********************************************************
 	* Initialize exchange of ghost cells just once.
 	* Lower numbered processors send message to higher ones.
-	************************************************/
+	*********************************************************/
 	if(!sync) {
 		end_count = gInterMesh.size();
 		forEach(gInterMesh,i) {
@@ -127,60 +248,37 @@ void SolveT(const MeshMatrix<type>& M) {
 		/*select solver*/
 		if(Controls::Solver == Controls::JACOBI) {
 			/*Jacobi solver: good for debugging*/
-			p = pC * getRHS(M);
-			for(i = 0;i < gBCellsStart;i++) {
-				r[i] = (p[i] - cF[i]) / pC[i];
-				cF[i] = p[i];
+			p = cF;
+			{
+				AP = iD * getRHS(M);
+				for(i = 0;i < gBCellsStart;i++)
+					cF[i] = AP[i];
 			}
+			for(i = 0;i < gBCellsStart;i++)
+				AP[i] = cF[i] - p[i];
+			/*end*/
 		} else if(Controls::Solver == Controls::SOR) {
 			/*Asynchronous SOR solver*/
-			Cell* c;
-			Int sz,f;
-			type ncF;
-			Scalar pc;
-			for(i = 0;i < gBCellsStart;i++) {
-				c = &gCells[i];
-				sz = c->size();
-				pc = pC[i];
-				ncF = (M.Su[i] * pc);
-				for(j = 0;j < sz;j++) {
-					f = (*c)[j];
-					if(i == gFO[f]) {
-						ncF += cF[gFN[f]] * (M.an[1][f] * pc);
-					} else {
-						ncF += cF[gFO[f]] * (M.an[0][f] * pc);
-					}
-				}
-				ncF = cF[i] * (1 - Controls::SOR_omega) + 
-					  ncF * (Controls::SOR_omega);
-				r[i] = (ncF - cF[i]) / pC[i];
-				cF[i] = ncF;
-			}
+			p = cF;
+			ForwardSweep(cF,M.Su);
+			for(i = 0;i < gBCellsStart;i++)
+				AP[i] = cF[i] - p[i];
 			/*end*/
 		} else if(M.flags & M.SYMMETRIC) {
 			/*conjugate gradient*/
 			EXCHANGE(p);
 			AP = M * p;
-			oo_rr = type(0);
-			for(i = 0;i < gBCellsStart;i++)
-				oo_rr += p[i] * AP[i];
+			Tdot(p,AP,oo_rr);
 			SUM_ALL(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
-			for(i = 0;i < gBCellsStart;i++) {
-				cF[i] = cF[i] + p[i] * alpha;
-				r[i] = r[i] - AP[i] * alpha;
-			}
+			Taxpy(cF,cF,p,alpha);
+			Taxpy(r,r,AP,-alpha);
+			precondition(r,AP);
 			oo_rr = o_rr;
-			o_rr = type(0);
-			for(i = 0;i < gBCellsStart;i++) {
-				AP[i] = r[i] * pC[i];
-				o_rr += r[i] * AP[i];
-			}
+			Tdot(r,AP,o_rr);
 			SUM_ALL(type,o_rr);
 			beta = sdiv(o_rr , oo_rr);
-			for(i = 0;i < gBCellsStart;i++) {
-				p[i] = AP[i] + p[i] * beta;
-			}
+			Taxpy(p,AP,p,beta);
 			/*end*/
 		} else {
 			/* biconjugate gradient*/
@@ -188,36 +286,27 @@ void SolveT(const MeshMatrix<type>& M) {
 			EXCHANGE(p1);
 			AP = M * p;
 			AP1 = M ^ p1;
-			oo_rr = type(0);
-			for(i = 0;i < gBCellsStart;i++)
-				oo_rr += p1[i] * AP[i];
+			Tdot(p1,AP,oo_rr);
 			SUM_ALL(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
-			for(i = 0;i < gBCellsStart;i++) {
-				cF[i] = cF[i] + p[i] * alpha;
-				r[i] = r[i] - AP[i] * alpha;
-				r1[i] = r1[i] - AP1[i] * alpha;
-			}
+			Taxpy(cF,cF,p,alpha);
+			Taxpy(r,r,AP,-alpha);
+			Taxpy(r1,r1,AP1,-alpha);
+			precondition(r,AP);
+			preconditionT(r1,AP1);
 			oo_rr = o_rr;
-			o_rr = type(0);
-			for(i = 0;i < gBCellsStart;i++) {
-				AP[i] = r[i] * pC[i];
-				AP1[i] = r1[i] * pC[i];
-				o_rr += r1[i] * AP[i];
-			}
+			Tdot(r1,AP,o_rr);
 			SUM_ALL(type,o_rr);
 			beta = sdiv(o_rr , oo_rr);
-			for(i = 0;i < gBCellsStart;i++) {
-				p[i] = AP[i] + p[i] * beta;
-				p1[i] = AP1[i] + p1[i] * beta;
-			}
+			Taxpy(p,AP,p,beta);
+			Taxpy(p1,AP1,p1,beta);
 			/*end*/
 		}
 		/* *********************************************
 		* calculate norm of residual & check convergence
 		* **********************************************/
 		EXCHANGE(cF);
-		res = getResidual(r * pC,cF,sync);
+		res = getResidual(AP,cF,sync);
 		if(res <= Controls::tolerance
 			|| iterations == Controls::max_iterations)
 			converged = true;

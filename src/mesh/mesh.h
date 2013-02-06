@@ -29,9 +29,9 @@ typedef std::map<std::string,IntVector> Boundaries;
 namespace Mesh {
 	struct interBoundary {
 		IntVector* f;
-		int from;
-		int to;
-		int buffer_index;
+		Int from;
+		Int to;
+		Int buffer_index;
 	};
 	struct MeshObject {
 		/*vertices , facets and cells */

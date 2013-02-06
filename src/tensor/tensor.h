@@ -20,7 +20,7 @@
 /*******************
  * Int is unsigned
  ******************/
-typedef unsigned   Int;
+typedef unsigned int  Int;
 
 /**************************
  * scalars
@@ -60,8 +60,6 @@ typedef unsigned   Int;
 		r $##= q;													\
 		return r;													\
 	}
-OpS(+);
-OpS(-);
 OpS(*);
 OpS(/);
 COp(+);
@@ -507,10 +505,16 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 
 /*iterator loops*/
 #define forEach(field,i)								\
-	for(Int i = 0;i < (field).size();i++)
+	for(register Int i = 0;i < (field).size();i++)
+
+#define forEachRev(field,i)								\
+	for(register int i = (field).size() - 1;i >= 0;i--)
 
 #define forEachS(field,i,strt)							\
-	for(Int i = strt;i < (field).size();i++)
+	for(register Int i = strt;i < (field).size();i++)
+
+#define forEachSRev(field,i,strt)						\
+	for(register int i = (field).size() - 1;i >= strt;i--)
 
 #define forEachIt(cont,field,it)						\
 	for(cont::iterator it = (field).begin();			\

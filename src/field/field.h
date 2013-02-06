@@ -22,6 +22,9 @@ namespace Controls {
 	enum Solvers {
 		JACOBI, SOR, PCG
 	};
+	enum Preconditioners {
+		NOP,DIAG,SORP,DILU
+	};
 	enum CommMethod {
 		BLOCKED, ASYNCHRONOUS
 	};
@@ -34,6 +37,7 @@ namespace Controls {
 	extern Scheme interpolation_scheme;
 	extern NonOrthoScheme nonortho_scheme;
 	extern Solvers Solver; 
+	extern Preconditioners Preconditioner;
 	extern CommMethod ghost_exchange;
 	extern CommMethod parallel_method;
 	extern State state;

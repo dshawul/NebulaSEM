@@ -26,21 +26,21 @@ namespace System {
 	/*system dependent directory operations*/
 	inline int cd(std::string path) {
 #ifdef _MSC_VER
-		return ::SetCurrentDirectory(path.c_str());
+		return ::SetCurrentDirectory((LPCTSTR)path.c_str());
 #else
 		return !::chdir(path.c_str());
 #endif
 	}
 	inline int mkdir(std::string path) {
 #ifdef _MSC_VER
-		return ::CreateDirectory(path.c_str(),NULL);
+		return ::CreateDirectory((LPCTSTR)path.c_str(),NULL);
 #else
 		return !::mkdir(path.c_str(),S_IRWXU);
 #endif
 	}
 	inline int rmdir(std::string path) {
 #ifdef _MSC_VER
-		return ::RemoveDirectory(path.c_str());
+		return ::RemoveDirectory((LPCTSTR)path.c_str());
 #else
 		return !::rmdir(path.c_str());
 #endif
