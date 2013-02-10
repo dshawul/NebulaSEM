@@ -16,6 +16,7 @@ namespace Mesh {
 	vector<BasicBCondition*> AllBConditions;
 	std::vector<interBoundary>& gInterMesh = gMesh.interMesh;
 	Vertices         probePoints;
+	IntVector        probeCells;
 
 	std::vector<Vector> _fC;
 	std::vector<Vector> _cC;

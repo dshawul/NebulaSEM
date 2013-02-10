@@ -96,17 +96,11 @@ void Vtk::write_vtk(Int step) {
 	if(write_cell_value) {
 		of << "CELL_DATA " << gBCellsStart << endl;
 		of << "FIELD attributes "<< total + 1 << endl;
-		ScalarCellField::writeVtkCellAll(of);
-		VectorCellField::writeVtkCellAll(of);
-		STensorCellField::writeVtkCellAll(of);
-		TensorCellField::writeVtkCellAll(of);
+		forEachField(writeVtkCellAll(of));
 		of << "cellID  1 " << Mesh::gBCellsStart << " int" << endl;
 		for(Int i = 0;i < Mesh::gBCellsStart;i++) of << i << endl;
 	}
 	of << "POINT_DATA " << gVertices.size() << endl;
 	of << "FIELD attributes "<< total << endl;
-	ScalarCellField::writeVtkVertexAll(of);
-	VectorCellField::writeVtkVertexAll(of);
-	STensorCellField::writeVtkVertexAll(of);
-	TensorCellField::writeVtkVertexAll(of);
+	forEachField(writeVtkVertexAll(of));
 }

@@ -17,6 +17,7 @@ namespace GENERAL {
 	Scalar viscosity = 1e-5;
 	Scalar conductivity = 1e-4;
 	Vector gravity = Vector(0,0,-9.81);
+	Int average = 0;
 
 	void enroll(Util::ParamList& params) {
 		params.enroll("rho",&density);
@@ -148,8 +149,6 @@ void piso(istream& input) {
 	op = new Util::Option(&turb_model,7,
 		"NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES");
 	params.enroll("turbulence_model",op);
-	op = new Util::BoolOption(&LESaverage);
-	params.enroll("les_average",op);
 	params.read(input);
 
 	/*Select turbulence model*/
@@ -187,44 +186,15 @@ void piso(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*average statistics for LES */
-	VectorCellField Uavg(false),Ustd(false);
-	ScalarCellField pavg(false),pstd(false);
-	if(LESaverage) {
-		Uavg.construct("Uavg",READWRITE);
-		Ustd.construct("Ustd",READWRITE);
-		pavg.construct("pavg",READWRITE);
-		pstd.construct("pstd",READWRITE);
-		Uavg = Vector(0);
-		Ustd = Vector(0);
-		pavg = Scalar(0);
-		pstd = Scalar(0);
-	}
-
-	/*instantaneous values*/
-	IntVector probes;
-	Mesh::getProbeCells(probes);
-	Int probe = probes.size();
-	ofstream oUi,opi;
-	if(probe) {
-		oUi.open("Ui");
-		opi.open("pi");
-	}
+	/*init time series and average*/
+	Mesh::getProbeCells(Mesh::probeCells);
+	forEachField(initTimeSeries());
 
 	/*Read at selected start time step*/
 	Int step,start;
 	step = Controls::start_step / Controls::write_interval;
 	start = Controls::write_interval * step + 1;
 	Mesh::read_fields(step);
-
-	/*app. squares*/
-	if(LESaverage && (start > 1)) {
-		Scalar n = start - 1;
-		Ustd = (Ustd * Ustd + Uavg * Uavg) * n;
-		pstd = (pstd * pstd + pavg * pavg) * n;
-		Uavg = (Uavg) * n;
-		pavg = (pavg) * n;
-	}
 
 	/*wall distance*/
 	if(needWallDist)
@@ -310,51 +280,13 @@ void piso(istream& input) {
 			turb->solve();
 		}
 
-		/*average*/
-		if(LESaverage) {
-			Uavg += U;
-			pavg += p;
-			Ustd += (U * U);
-			pstd += (p * p);
-		}
-
-		/*store instantaneous values for some locations*/
-		if(probe) {
-			oUi << i << " ";
-			opi << i << " ";
-			forEach(probes,j) {
-				oUi << U[probes[j]] << " ";
-				opi << p[probes[j]] << " ";
-			}
-			oUi << endl;
-			opi << endl;
-		}
+		/*update time series*/
+		forEachField(updateTimeSeries(i));
 
 		/*write result to file*/
 		if((i % Controls::write_interval) == 0) {
 			step = i / Controls::write_interval;
-			if(LESaverage) {
-				VectorCellField Ua = Uavg,Us = Ustd;
-				ScalarCellField pa = pavg,ps = pstd;
-				Scalar n = Scalar(i);
-				Uavg /= n;
-				pavg /= n;
-				Ustd += Uavg * (n * Uavg - 2 * Ua);
-				pstd += pavg * (n * pavg - 2 * pa);
-				Ustd = sqrt(Ustd / n);
-				pstd = sqrt(pstd / n);
-
-				Mesh::write_fields(step);
-
-				if(i != Controls::end_step) {
-					Uavg = Ua;
-					Ustd = Us;
-					pavg = pa;
-					pstd = ps;
-				}
-			} else {
-				Mesh::write_fields(step);
-			}
+			Mesh::write_fields(step);
 		}
 
 		/*explicitly under relax pressure*/

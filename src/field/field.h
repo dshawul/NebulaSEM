@@ -52,6 +52,7 @@ namespace Controls {
 	extern Int write_interval;
 	extern Int start_step;
 	extern Int end_step;
+	extern Int save_average;
 }
 
 namespace {
@@ -313,6 +314,63 @@ public:
 			}
 		}
 	}
+	/*Time history*/
+	static std::vector<std::ofstream*> tseries;
+	static std::vector<MeshField*> tavgs;
+	static std::vector<MeshField*> tstds;
+
+	static void initTimeSeries() {
+		MeshField<type,CELL>* pf;
+		int sz = fields_.size(),count = 0;
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			pf = *it;
+			if(pf->access & WRITE) {
+				if(Mesh::probeCells.size()) {
+					std::ofstream* of = new std::ofstream(pf->fName + "i");
+					tseries.push_back(of);
+				}
+				if(Controls::save_average) {
+					std::string name;
+					name = pf->fName + "avg";
+					MeshField* avg = new MeshField(name.c_str(),READWRITE);
+					tavgs.push_back(avg);
+					name = pf->fName + "std";
+					MeshField* std = new MeshField(name.c_str(),READWRITE);
+					tstds.push_back(std);
+				}
+			}
+			count++;
+			if(count >= sz)
+				break;
+		}
+	}
+	static void updateTimeSeries(int i) {
+		if(!Mesh::probeCells.size())
+			return;
+		int count = 0;
+		MeshField<type,CELL>* pf;
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			pf = *it;
+			if(pf->access & WRITE) {
+				if(Mesh::probeCells.size()) {
+					std::ofstream& of = *tseries[count];
+					of << i << " ";
+					forEach(Mesh::probeCells,j) 
+						of << (*pf)[Mesh::probeCells[j]] << " ";
+					of << endl;
+				}
+				if(Controls::save_average) {
+					MeshField& avg = *tavgs[count];
+					avg += (*pf);
+					MeshField& std = *tstds[count];
+					std += (*pf) * (*pf);
+				}
+				count++;
+				if(count >= tseries.size())
+					break;
+			}
+		}
+	}
 	/*IO*/
 	friend std::ostream& operator << (std::ostream& os, const MeshField& p) {
 		forEach(p,i)
@@ -326,7 +384,12 @@ public:
 		return is;
 	}
 };
-
+#define forEachField(X)	 { \
+	ScalarCellField::X;    \
+    VectorCellField::X;    \
+	STensorCellField::X;   \
+	TensorCellField::X;    \
+}
 /***********************************
  *  Specific tensor operations
  ***********************************/
@@ -497,6 +560,15 @@ std::list<T*> MeshField<T,E>::mem_;
 
 template <class T,ENTITY E> 
 Int MeshField<T,E>::SIZE;
+
+template <class T,ENTITY E>
+std::vector<std::ofstream*> MeshField<T,E>::tseries;
+
+template <class T,ENTITY E>
+std::vector<MeshField<T,E>*> MeshField<T,E>::tavgs;
+
+template <class T,ENTITY E>
+std::vector<MeshField<T,E>*> MeshField<T,E>::tstds;
 
 /* typedefs */
 typedef MeshField<Scalar,CELL>    ScalarCellField;

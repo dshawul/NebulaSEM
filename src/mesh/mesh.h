@@ -69,6 +69,7 @@ namespace Mesh {
 	extern  Int&             gBCellsStart;
 	extern  std::vector<interBoundary>& gInterMesh;
 	extern  Vertices         probePoints;
+	extern  IntVector        probeCells;
 	
 	bool faceInBoundary(Int);
 	void addBoundaryCells();

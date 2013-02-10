@@ -28,6 +28,7 @@ namespace Controls {
 	Int write_interval = 20;
 	Int start_step = 0;
 	Int end_step = 2;
+	Int save_average = 0;
 	CommMethod ghost_exchange = BLOCKED;
 	CommMethod parallel_method = BLOCKED;
 }
@@ -102,16 +103,10 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
  * Read/Write
  */
 void Mesh::write_fields(Int step) {
-	ScalarCellField::writeAll(step);
-	VectorCellField::writeAll(step);
-	STensorCellField::writeAll(step);
-	TensorCellField::writeAll(step);
+	forEachField(writeAll(step));
 }
 void Mesh::read_fields(Int step) {
-	ScalarCellField::readAll(step);
-	VectorCellField::readAll(step);
-	STensorCellField::readAll(step);
-	TensorCellField::readAll(step);
+	forEachField(readAll(step));
 }
 void Mesh::enroll(Util::ParamList& params) {
 	using namespace Controls;
@@ -152,4 +147,6 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("ghost_exchange",op);
 	op = new Option(&parallel_method,2,"BLOCKED","ASYNCHRONOUS");
 	params.enroll("parallel_method",op);
+	op = new Util::BoolOption(&save_average);
+	params.enroll("average",op);
 }
