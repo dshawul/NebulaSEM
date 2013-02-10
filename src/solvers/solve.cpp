@@ -32,11 +32,48 @@ void SolveT(const MeshMatrix<type>& M) {
 	MeshField<type,CELL>& cF = *M.cF;
 	MeshField<type,CELL>& buffer = AP;
 	ScalarCellField D = M.ap,iD = (1 / M.ap);
-	
-	/* Allocate BiCG vars*/
+	Scalar res,ires;
+	type alpha,beta,o_rr = type(0),oo_rr;
+	Int j,iterations = 0;
+	bool converged = false;
 	register Int i;
+
+	/****************************
+	 * Parallel controls
+	 ***************************/
+	bool print = (MP::host_id == 0);
+	int  end_count = 0;
+	bool sync = (Controls::parallel_method == Controls::BLOCKED)
+		&& gInterMesh.size();
+	std::vector<bool> sent_end(gInterMesh.size(),false);
+
+	/****************************
+	 * Identify solver type
+	 ***************************/
+	if(print) {
+		if(M.flags & M.SYMMETRIC)
+			MP::printH("SYMM-");
+		else
+			MP::printH("ASYM-");
+		if(Controls::Solver == Controls::JACOBI)
+			MP::print("JAC :");
+		else if(Controls::Solver == Controls::SOR)
+			MP::print("SOR :");
+		else {
+			switch(Controls::Preconditioner) {
+			case Controls::NOP: MP::print("PCG :"); break;
+			case Controls::DIAG: MP::print("DIAG-PCG :"); break;
+			case Controls::SORP: MP::print("SOR-PCG :"); break;
+			case Controls::DILU: MP::print("DILU-PCG :"); break;
+			}
+		}
+	}
+	/****************************
+	 * Initialization
+	 ***************************/
 	if(Controls::Solver == Controls::PCG) {
 		if(!(M.flags & M.SYMMETRIC)) {
+			/* Allocate BiCG vars*/
 			r1.allocate();
 			p1.allocate();
 			AP1.allocate();
@@ -54,9 +91,11 @@ void SolveT(const MeshMatrix<type>& M) {
 						Int c1 = gFO[f];						
 						Int c2 = gFN[f];						
 						if(i == c1) {
-							if(c2 > i) D[c2] -= (M.an[0][f] * M.an[1][f] * iD[c1]);	
+							if(c2 > i) D[c2] -= 
+								(M.an[0][f] * M.an[1][f] * iD[c1]);	
 						} else {
-							if(c1 > i) D[c1] -= (M.an[0][f] * M.an[1][f] * iD[c2]);		
+							if(c1 > i) D[c1] -= 
+								(M.an[0][f] * M.an[1][f] * iD[c2]);		
 						}										
 					}			
 				}
@@ -65,49 +104,30 @@ void SolveT(const MeshMatrix<type>& M) {
 			/*end*/
 		}
 	}
-
-	/*vars*/
-	Int j,iterations = 0;
-	Scalar res,ires;
-	type alpha,beta,o_rr = type(0),oo_rr;
-
-	/*for cluster use*/
-	bool converged = false;
-	bool print = (MP::host_id == 0);
-	int  end_count = 0;
-	bool sync = (Controls::parallel_method == Controls::BLOCKED)
-		&& gInterMesh.size();
-	std::vector<bool> sent_end(gInterMesh.size(),false);
-
-	/*identify matrix solver type*/
-	if(print) {
-		if(M.flags & M.SYMMETRIC)
-			MP::printH("Symmetric  : ");
-		else
-			MP::printH("Asymmetric : ");
-		if(Controls::Solver == Controls::JACOBI)
-			MP::print("JAC :");
-		else if(Controls::Solver == Controls::SOR)
-			MP::print("SOR :");
-		else
-			MP::print("PCG :");
-	}
 	/****************************
-	 *  Forward/backward sweeps
+	 * Jacobi sweep
+	 ***************************/
+#define JacobiSweep() {								\
+	AP = iD * getRHS(M);							\
+	for(i = 0;i < gBCellsStart;i++)					\
+		cF[i] = AP[i];								\
+}
+	/****************************
+	 *  Forward/backward GS sweeps
 	 ****************************/
 #define Sweep_(X,B,i) {								\
-		Cell& c = gCells[i];						\
-		type ncF = B[i];							\
-		forEach(c,j) {								\
-			Int f = c[j];							\
-			if(i == gFO[f])							\
-				ncF += X[gFN[f]] * M.an[1][f];		\
-			else									\
-				ncF += X[gFO[f]] * M.an[0][f];		\
-		}											\
-		ncF *= iD[i];								\
-		X[i] = X[i] * (1 - Controls::SOR_omega) +	\
-			ncF * (Controls::SOR_omega);			\
+	Cell& c = gCells[i];							\
+	type ncF = B[i];								\
+	forEach(c,j) {									\
+		Int f = c[j];								\
+		if(i == gFO[f])								\
+			ncF += X[gFN[f]] * M.an[1][f];			\
+		else										\
+			ncF += X[gFO[f]] * M.an[0][f];			\
+	}												\
+	ncF *= iD[i];									\
+	X[i] = X[i] * (1 - Controls::SOR_omega) +		\
+		ncF * (Controls::SOR_omega);				\
 }
 #define ForwardSweep(X,B) {							\
 	for(i = 0;i < gBCellsStart;i++)					\
@@ -121,25 +141,25 @@ void SolveT(const MeshMatrix<type>& M) {
 	 *  Forward/backward substitution
 	 ***********************************/
 #define Substitute_(X,B,i,forw,tr) {				\
-		Cell& c = gCells[i];						\
-		type ncF = B[i];							\
-		forEach(c,j) {								\
-			Int f = c[j];							\
-			Int c1 = gFO[f];						\
-	        Int c2 = gFN[f];						\
-			if(i == c1) {							\
-				if((forw && (c2 < c1)) ||			\
-				  (!forw && (c1 < c2)))	{			\
-					ncF += X[c2] * M.an[1 - tr][f];	\
-				}									\
-			} else {								\
-				if((forw && (c2 > c1)) ||			\
-				  (!forw && (c1 > c2)))				\
-					ncF += X[c1] * M.an[0 + tr][f];	\
+	Cell& c = gCells[i];							\
+	type ncF = B[i];								\
+	forEach(c,j) {									\
+		Int f = c[j];								\
+		Int c1 = gFO[f];							\
+	    Int c2 = gFN[f];							\
+		if(i == c1) {								\
+			if((forw && (c2 < c1)) ||				\
+			  (!forw && (c1 < c2)))	{				\
+				ncF += X[c2] * M.an[1 - tr][f];		\
 			}										\
+		} else {									\
+			if((forw && (c2 > c1)) ||				\
+			  (!forw && (c1 > c2)))					\
+				ncF += X[c1] * M.an[0 + tr][f];		\
 		}											\
-		ncF *= iD[i];								\
-		X[i] = ncF;									\
+	}												\
+	ncF *= iD[i];									\
+	X[i] = ncF;										\
 }
 #define ForwardSub(X,B,TR) {						\
 	for(i = 0;i < gBCellsStart;i++)					\
@@ -152,18 +172,6 @@ void SolveT(const MeshMatrix<type>& M) {
 #define DiagSub(X,B) {								\
 	for(i = 0;i < gBCellsStart;i++)					\
 		X[i] = B[i] * iD[i];						\
-}
-	/***********************************
-	 *  SAXPY and DOT operations
-	 ***********************************/
-#define Taxpy(Y,I,X,alpha_) {						\
-	for(i = 0;i < gBCellsStart;i++)					\
-		Y[i] = I[i] + X[i] * alpha_;				\
-}
-#define Tdot(X,Y,sum) {								\
-	sum = type(0);									\
-	for(i = 0;i < gBCellsStart;i++)					\
-		sum += X[i] * Y[i];							\
 }
 	/***********************************
 	 *  Preconditioners
@@ -185,6 +193,18 @@ void SolveT(const MeshMatrix<type>& M) {
 }
 #define precondition(R,Z) precondition_(R,Z,0)
 #define preconditionT(R,Z) precondition_(R,Z,1)
+	/***********************************
+	 *  SAXPY and DOT operations
+	 ***********************************/
+#define Taxpy(Y,I,X,alpha_) {						\
+	for(i = 0;i < gBCellsStart;i++)					\
+		Y[i] = I[i] + X[i] * alpha_;				\
+}
+#define Tdot(X,Y,sum) {								\
+	sum = type(0);									\
+	for(i = 0;i < gBCellsStart;i++)					\
+		sum += X[i] * Y[i];							\
+}
 	/***********************************
 	 *  Synchronized sum and exchange
 	 ***********************************/
@@ -247,13 +267,9 @@ void SolveT(const MeshMatrix<type>& M) {
 
 		/*select solver*/
 		if(Controls::Solver == Controls::JACOBI) {
-			/*Jacobi solver: good for debugging*/
+			/*Jacobi solver*/
 			p = cF;
-			{
-				AP = iD * getRHS(M);
-				for(i = 0;i < gBCellsStart;i++)
-					cF[i] = AP[i];
-			}
+			JacobiSweep();
 			for(i = 0;i < gBCellsStart;i++)
 				AP[i] = cF[i] - p[i];
 			/*end*/

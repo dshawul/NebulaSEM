@@ -235,6 +235,7 @@ void piso(istream& input) {
 	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
+	ScalarCellField po = p;
 	VectorCellField gP = -gradV(p);
 	F = flx(rho * U); 
 
@@ -253,16 +254,13 @@ void piso(istream& input) {
 			/*Momentum and pressure solution*/
 			{
 				VectorMeshMatrix M;
+				/*convection*/
 				{
-					/*convection*/
-					{
-						ScalarFacetField mu = rho * viscosity;
-						M = div(U,F,mu);
-					}
-					/*turbulent stress*/
-					turb->addTurbulentStress(M);
-					/*end*/
+					ScalarFacetField mu = rho * viscosity;
+					M = div(U,F,mu);
 				}
+				/*viscous/turbulent stress*/
+				turb->addTurbulentStress(M);
 				/*relax if steady state otherwise add time contribution*/
 				if(Steady)
 					M.Relax(velocity_UR);
@@ -276,6 +274,7 @@ void piso(istream& input) {
 					/*time derivative*/
 					M += ddt(U,rho);
 				}
+
 				/*solve momentum equation*/
 				Solve(M == gP);
 
@@ -289,32 +288,25 @@ void piso(istream& input) {
 					/* Ua = H(U) / ap*/
 					U = getRHS(M) * api;
 					updateExplicitBCs(U,true);
+
 					/*solve pressure poisson equation to satisfy continuity*/
 					{
-						ScalarCellField po;
-						if(Steady)
-							po = p;
-						/*solve*/
-						{
-							ScalarCellField rhs = div(rho * U);
-							for(Int k = 0;k <= n_ORTHO;k++)
-								Solve((lap(p,rmu) += rhs));
-						}
-						if(Steady)
-							p.Relax(po,pressure_UR);
+						ScalarCellField rhs = div(rho * U);
+						for(Int k = 0;k <= n_ORTHO;k++)
+							Solve(lap(p,rmu) += rhs);
 					}
-					gP = -gradV(p);
+
 					/*explicit velocity correction : add pressure contribution*/
+					gP = -gradV(p);
 					U -= gP * api;
 					updateExplicitBCs(U,true);
-					/*end*/
 				}
 			}
 			/*update fluctuations*/
 			updateExplicitBCs(U,true,true);
 			F = flx(rho * U);
 
-			/*solve transport equations*/
+			/*solve turbulence transport equations*/
 			turb->solve();
 		}
 
@@ -364,7 +356,13 @@ void piso(istream& input) {
 				Mesh::write_fields(step);
 			}
 		}
-		/*end*/
+
+		/*explicitly under relax pressure*/
+		if(Steady) {
+			p.Relax(po,pressure_UR);
+			gP = -gradV(p);
+			po = p;
+		}
 	}
 	/*write calculated turbulence fields*/
 	if(turb->writeStress) {

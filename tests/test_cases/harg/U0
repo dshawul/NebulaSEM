@@ -10,9 +10,6 @@ outlet {
 	type NEUMANN 
 	value 0 0 0
 }
-sides {
-	type SYMMETRY
-}
 top {
 	type DIRICHLET
 	value 16.75 0 0

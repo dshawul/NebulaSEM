@@ -8,9 +8,6 @@ outlet {
 	type DIRICHLET 
 	value 0
 }
-sides {
-	type SYMMETRY
-}
 top {
 	type SYMMETRY
 }

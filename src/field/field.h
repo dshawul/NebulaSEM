@@ -17,7 +17,7 @@ namespace Controls {
 		DDS,FROMM
 	};
 	enum NonOrthoScheme {
-		NO_CORRECTION,MINIMUM, ORTHOGONAL, OVER_RELAXED
+		NONE,MINIMUM, ORTHOGONAL, OVER_RELAXED
 	};
 	enum Solvers {
 		JACOBI, SOR, PCG
@@ -57,7 +57,7 @@ namespace Controls {
 namespace {
 
 	enum ACCESS {
-		NONE = 0, READ = 1, WRITE = 2,READWRITE = 3
+		NO = 0, READ = 1, WRITE = 2,READWRITE = 3
 	};
 
 }
@@ -81,7 +81,7 @@ public:
 	static std::list<type*> mem_;
 
     /*constructors*/
-	MeshField(const char* str = "", ACCESS a = NONE) : 
+	MeshField(const char* str = "", ACCESS a = NO) : 
 				P(0),allocated(0),access(a),fName(str) {
 		construct(str,a);
 	}
@@ -121,7 +121,7 @@ public:
 		P = &q[0];
 		allocated = 0;
 	}
-	void construct(const char* str = "", ACCESS a = NONE) {
+	void construct(const char* str = "", ACCESS a = NO) {
 		access = a;
 		fName = str;
 		if(Mesh::gCells.size())
@@ -653,10 +653,26 @@ struct MeshMatrix {
 	}
 	/*IO*/
 	friend std::ostream& operator << (std::ostream& os, const MeshMatrix& p) {
-		os << p.ap << std::endl << std::endl;
-		os << p.an[0] << std::endl << std::endl;
-		os << p.an[1] << std::endl << std::endl;
-		os << p.Su << std::endl << std::endl;
+		//os << p.ap << std::endl << std::endl;
+		//os << p.an[0] << std::endl << std::endl;
+		//os << p.an[1] << std::endl << std::endl;
+		//os << p.Su << std::endl << std::endl;
+		
+		using namespace Mesh;
+		os << std::endl;
+		for(Int i = 0;i < gBCellsStart;i++) {
+			os << p.ap[i] << " * " << (*p.cF)[i] << " = ";
+			Cell& c = gCells[i];														
+			forEach(c,j) {									
+				Int f = c[j];								
+				if(i == gFO[f])								
+					os << p.an[1][f] << " * " << (*p.cF)[gFN[f]];			
+				else										
+					os << p.an[0][f] << " * " << (*p.cF)[gFO[f]];
+				os  << " + ";
+			}	
+			os << p.Su[i] << std::endl;
+		}
 		return os;
 	}
 	friend std::istream& operator >> (std::istream& is, MeshMatrix& p) {
@@ -705,17 +721,17 @@ typedef MeshMatrix<STensor> STensorMeshMatrix;
 					 Vector dv = cC[c2] - cC[c1];
 					 M.ap[c1] -= M.an[1][k];
 					 M.Su[c1] += M.an[1][k] * (bc->value * mag(dv));
-					 cF[c2] = 0;
+					 M.an[1][k] = 0;
 				 } else if(bc->cIndex == ROBIN) {
 					 Vector dv = cC[c2] - cC[c1];
 					 M.ap[c1] -= (1 - bc->shape) * M.an[1][k];
 					 M.Su[c1] += M.an[1][k] * (bc->shape * bc->value + 
 						 (1 - bc->shape) * bc->tvalue * mag(dv));
-					 cF[c2] = 0;
+					 M.an[1][k] = 0;
 				 } else if(bc->cIndex == SYMMETRY) {
 					 M.ap[c1] -= M.an[1][k];
 					 M.Su[c1] += M.an[1][k] * (sym(cF[c1],fN[k]) - cF[c1]);
-					 cF[c2] = 0;
+					 M.an[1][k] = 0;
 				 }
 			 }
 		 }
@@ -1120,7 +1136,7 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarFacetField& mu) {
 		c2 = gFN[i];
 		dv = cC[c2] - cC[c1];
 		/*diffusivity coefficient*/
-		if(nonortho_scheme == NO_CORRECTION) {
+		if(nonortho_scheme == NONE) {
 			D = mag(fN[i]) / mag(dv);
 		} else {
 			if(nonortho_scheme == OVER_RELAXED) {
@@ -1139,7 +1155,7 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarFacetField& mu) {
 		m.ap[c2]  += m.an[1][i];
 	}
 	/*non-orthogonality handled through deferred correction*/
-	if(nonortho_scheme != NO_CORRECTION) {
+	if(nonortho_scheme != NONE) {
 		MeshField<type,FACET> r = dot(cds(grad(cF)),K);
 		type res;
 		forEach(mu,i) {
