@@ -3,7 +3,8 @@
 
 #include "field.h"
 #include "solve.h"
-/*
+/**
+	 \verbatim
 	 Description of RANS turbulence models
 	 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	 Navier Stokes without source term:
@@ -36,14 +37,13 @@
 	     d(rho*U)/dt + div(rho*UU) = -grad(P_m) + div(eff_mu*gU) + div(emu * dev(gUt,2))
 	 Since the k term is absorbed into the pressure gradient, we only need models for
 	 turbulent diffusivity emu.
-*/
 
-/*
      Base turbulence model:
          This default class has no turbulence model so it is a laminar solver. 
          Only the viscous stress V is added to the NS equations. Turbulence models 
          derived from this class add a model for Reynold's stress R usually by solving 
-         'turbulence transport' equations.
+         some turbulence transport equations.
+     \endverbatim
 */
 struct Turbulence_Model {
 
@@ -91,7 +91,7 @@ struct Turbulence_Model {
 		return Scalar(0);
 	}
 };
-/*
+/**
  * Eddy viscosity models based on Boussinesq's assumption
  * that the action of Reynolds and Viscous stress are similar.
  */
@@ -176,7 +176,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
 	/*over-ridable*/
 	virtual void applyWallFunction(Int f,LawOfWall& low) = 0;
 };
-/*
+/**
  * Base two equation K-X turbulence model
  */ 
 struct KX_Model : public EddyViscosity_Model {

@@ -17,7 +17,6 @@ namespace GENERAL {
 	Scalar viscosity = 1e-5;
 	Scalar conductivity = 1e-4;
 	Vector gravity = Vector(0,0,-9.81);
-	Int average = 0;
 
 	void enroll(Util::ParamList& params) {
 		params.enroll("rho",&density);
@@ -34,9 +33,11 @@ void potential(istream&);
 void transport(istream&);
 void walldist(istream&);
 
-/********************
- * Main application
- *******************/
+/**
+\verbatim
+ Main application entry point for different solvers.
+ \endverbatim
+ */
 int main(int argc,char* argv[]) {
 
 	/*message passing object*/
@@ -78,8 +79,65 @@ int main(int argc,char* argv[]) {
 
 	return 0;
 }
+/**
+ Iteration object that does common book keeping stuff
+ for all solvers.
+ */
+class Iteration {
+private:
+	Int starti;
+	Int endi;
+	Int i;
+public:
+	Iteration() {
+		Int step = Controls::start_step / Controls::write_interval;
+		starti = Controls::write_interval * step + 1;
+		endi = Controls::end_step;
+		i = starti;
 
-/***************************************************************************
+		Mesh::read_fields(step);
+		Mesh::getProbeCells(Mesh::probeCells);
+		forEachField(initTimeSeries());
+	}
+	bool start() {
+		return (i == starti);
+	}
+	bool end() {
+		if(i > endi)
+			return true;
+		/*iteration number*/
+		if(MP::host_id == 0) {
+			if(Controls::state == Controls::STEADY)
+				MP::printH("Step %d\n",i);
+			else
+				MP::printH("Time %f\n",i * Controls::dt);
+		}
+		return false;
+	}
+	void next() {
+		/*update time series*/
+		forEachField(updateTimeSeries(i));
+
+		/*write result to file*/
+		if((i % Controls::write_interval) == 0) {
+			Int step = i / Controls::write_interval;
+			Mesh::write_fields(step);
+		}
+
+		/*increment*/
+		i++;
+	}
+	~Iteration() {
+	}
+	static Int get_start() {
+		return Controls::start_step / Controls::write_interval;
+	}
+	static Int get_end() {
+		return Controls::end_step / Controls::write_interval;
+	}
+};
+/**
+ \verbatim
  Navier stokes solver using PISO algorithm
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  References:
@@ -119,8 +177,8 @@ int main(int argc,char* argv[]) {
 	discretization schemes such as CDS and TVD schemes, boundary conditions etc... 
 	Thus we repeat the prediction/correction steps one or more times. 
 	Again for steady state problems once is enough. 
-	
- *************************************************************************/
+	\endverbatim
+*/
 void piso(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
@@ -130,7 +188,6 @@ void piso(istream& input) {
 	Int n_PISO = 1;
 	Int n_DEFERRED = 0;
 	Int n_ORTHO = 0;
-	Int LESaverage = 0;
 	/*piso options*/
 	Util::ParamList params("piso");
 	params.enroll("velocity_UR",&velocity_UR);
@@ -186,19 +243,10 @@ void piso(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*init time series and average*/
-	Mesh::getProbeCells(Mesh::probeCells);
-	forEachField(initTimeSeries());
-
-	/*Read at selected start time step*/
-	Int step,start;
-	step = Controls::start_step / Controls::write_interval;
-	start = Controls::write_interval * step + 1;
-	Mesh::read_fields(step);
-
 	/*wall distance*/
 	if(needWallDist)
-		Mesh::calc_walldist(step);
+		Mesh::calc_walldist(Iteration::get_start());
+
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	Steady = (Controls::state == Controls::STEADY);
@@ -209,16 +257,9 @@ void piso(istream& input) {
 	VectorCellField gP = -gradV(p);
 	F = flx(rho * U); 
 
-	for(Int i = start; i <= Controls::end_step; i++) {
-		/*Print step*/
-		if(MP::host_id == 0) {
-			if(Steady)
-				MP::printH("Step %d\n",i);
-			else
-				MP::printH("Time %f\n",i * Controls::dt);
-		}
+	for(Iteration it;!it.end();it.next()) {
 
-		/*Deferred corrections loop in case of large time steps*/
+		/*Deferred corrections loop for large time steps*/
 		for(Int n = 0;n <= n_DEFERRED;n++) {
 
 			/*Momentum and pressure solution*/
@@ -280,15 +321,6 @@ void piso(istream& input) {
 			turb->solve();
 		}
 
-		/*update time series*/
-		forEachField(updateTimeSeries(i));
-
-		/*write result to file*/
-		if((i % Controls::write_interval) == 0) {
-			step = i / Controls::write_interval;
-			Mesh::write_fields(step);
-		}
-
 		/*explicitly under relax pressure*/
 		if(Steady) {
 			p.Relax(po,pressure_UR);
@@ -304,15 +336,17 @@ void piso(istream& input) {
 		K = turb->getK();
 		R = turb->getReynoldsStress();
 		V = turb->getViscousStress();
-		Mesh::write_fields(step);
+		Mesh::write_fields(Iteration::get_end());
 	}
 }
-/********************************************
+/**
+ \verbatim
  Diffusion solver
  ~~~~~~~~~~~~~~~~
  Solver for pdes of the the parabolic heat equation type:
        d(rho*u)/dt = lap(T,rho*DT)
- ********************************************/
+ \endverbatim
+*/
 void diffusion(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
@@ -331,12 +365,6 @@ void diffusion(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*Read at selected start time step*/
-	Int step,start;
-	step = Controls::start_step / Controls::write_interval;
-	start = Controls::write_interval * step + 1;
-	Mesh::read_fields(step);
-
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	bool Steady = (Controls::state == Controls::STEADY);
@@ -345,14 +373,7 @@ void diffusion(istream& input) {
 	/*Calculate for each time step*/
 	ScalarFacetField mu = rho * DT;
 
-	for(Int i = start; i <= Controls::end_step; i++) {
-		/*Print step*/
-		if(MP::host_id == 0) {
-			if(Steady)
-				MP::printH("Step %d\n",i);
-			else
-				MP::printH("Time %f\n",i * Controls::dt);
-		}
+	for(Iteration it;!it.end();it.next()) {
 		/*Loop for large time steps*/
 		for(Int n = 0;n <= n_DEFERRED;n++) {
 			ScalarMeshMatrix M;
@@ -372,21 +393,17 @@ void diffusion(istream& input) {
 
 			Solve(M);
 		}
-		
-		/*write result to file*/
-		if((i % Controls::write_interval) == 0) {
-			step = i / Controls::write_interval;
-			Mesh::write_fields(step);
-		}
 	}
 }
-/***********************************************
+/**
+  \verbatim
   Transport equation solver
   ~~~~~~~~~~~~~~~~~~~~~~~~~
   Given a flow field (U) and values of a scalar at the boundaries, 
   the solver determines the distribution of the scalar.
      dT/dt + div(T,F,mu) = lap(T,mu)
- **********************************************/
+  \endverbatim
+ */
 void transport(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
@@ -406,12 +423,6 @@ void transport(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*Read at selected start time step*/
-	Int step,start;
-	step = Controls::start_step / Controls::write_interval;
-	start = Controls::write_interval * step + 1; 
-	Mesh::read_fields(step);
-
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	bool Steady = (Controls::state == Controls::STEADY);
@@ -419,15 +430,8 @@ void transport(istream& input) {
 
 	/*Calculate for each time step*/
 	ScalarFacetField F,mu = rho * DT,gamma;
-	for(Int i = start; i <= Controls::end_step; i++) {
-		/*Print step*/
-		if(MP::host_id == 0) {
-			if(Steady)
-				MP::printH("Step %d\n",i);
-			else
-				MP::printH("Time %f\n",i * Controls::dt);
-		}
 
+	for(Iteration it;!it.end();it.next()) {
 		/*Loop for large time steps*/
 		for(Int n = 0;n <= n_DEFERRED;n++) {
 			ScalarMeshMatrix M;
@@ -448,14 +452,10 @@ void transport(istream& input) {
 			}
 			Solve(M);
 		}
-		/*write result to file*/
-		if((i % Controls::write_interval) == 0) {
-			step = i / Controls::write_interval;
-			Mesh::write_fields(step);
-		}
 	}
 }
-/**************************
+/**
+  \verbatim
     Potential flow solver
 	~~~~~~~~~~~~~~~~~~~~~
 	In potential flow the velocity field is irrotational (vorticity = curl(U) = 0).
@@ -473,12 +473,13 @@ void transport(istream& input) {
 	equation and then correct the velocity with the gradient of p.
 	       lap(p) = div(U)
 		   U -= grad(p)
- **************************/
+  \endverbatim
+*/
 void potential(istream& input) {
 	/*Solver specific parameters*/
 	Int n_ORTHO = 0;
 
-	/*potential options*/
+	/*potential*/
 	Util::ParamList params("potential");
 	params.enroll("n_ORTHO",&n_ORTHO);
 
@@ -488,12 +489,6 @@ void potential(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*Read at selected start time step*/
-	Int step,start;
-	step = Controls::start_step / Controls::write_interval;
-	start = Controls::write_interval * step + 1;
-	Mesh::read_fields(step);
-
 	/*set internal field to zero*/
 	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
 		U[i] = Vector(0,0,0);
@@ -502,29 +497,42 @@ void potential(istream& input) {
 	updateExplicitBCs(U,true);
 	updateExplicitBCs(p,true);
 
-	/*solve potential equation*/
-	ScalarCellField divU = div(U);
-	ScalarFacetField one = Scalar(1);
-	for(Int k = 0;k <= n_ORTHO;k++)
-		Solve(lap(p,one) == divU);
+	for(Iteration it;it.start();it.next()) {
+		/*solve potential equation*/
+		ScalarCellField divU = div(U);
+		ScalarFacetField one = Scalar(1);
+		for(Int k = 0;k <= n_ORTHO;k++)
+			Solve(lap(p,one) == divU);
 
-	/*correct velocity*/
-	U -= grad(p);
-	updateExplicitBCs(U,true);
-
-	/*write result to file*/
-	Mesh::write_fields(step);
+		/*correct velocity*/
+		U -= grad(p);
+		updateExplicitBCs(U,true);
+	}
 }
-/**********************************************************************************
+/**
+ \verbatim
  Wall distance
  ~~~~~~~~~~~~~
 	Reference:
-	   D.B.Spalding, ‘Calculation of turbulent heat transfer in cluttered spaces
+	   D.B.Spalding, Calculation of turbulent heat transfer in cluttered spaces
     Description:
 	   Poisson equation is solved to get approximate nearest wall distance.
 	         lap(phi,1) = -cV
 	   The boundary conditions are phi=0 at walls, and grad(phi) = 0 elsewhere.
-**********************************************************************************/
+ \endverbatim
+*/
+void walldist(istream& input) {
+	/*Solver specific parameters*/
+	Int n_ORTHO = 0;
+
+	/*walldist options*/
+	Util::ParamList params("walldist");
+	params.enroll("n_ORTHO",&n_ORTHO);
+	Util::read_params(input);
+	
+	/*solve*/
+	Mesh::calc_walldist(Iteration::get_start(),n_ORTHO);
+}
 void Mesh::calc_walldist(Int step,Int n_ORTHO) {
 	ScalarCellField& phi = yWall;
     /*poisson equation*/
@@ -541,17 +549,3 @@ void Mesh::calc_walldist(Int step,Int n_ORTHO) {
 	/*write it*/
 	yWall.write(step);
 }
-void walldist(istream& input) {
-	/*Solver specific parameters*/
-	Int n_ORTHO = 0;
-
-	/*walldist options*/
-	Util::ParamList params("walldist");
-	params.enroll("n_ORTHO",&n_ORTHO);
-	Util::read_params(input);
-	
-	/*solve*/
-	Int step = Controls::start_step / Controls::write_interval;
-	Mesh::calc_walldist(step,n_ORTHO);
-}
-

@@ -1,5 +1,6 @@
 #include "mixing_length.h"
-/*
+/**
+\verbatim
 References:
     Book by Pope pg. 369
 Description:
@@ -24,6 +25,7 @@ Description:
 	    lm = kappa * y_wall
 	Thus for Smagornsky LES model 
 	    lm = min(Cs * Delta, kappa * y_wall)
+\endverbatim
 */
 MixingLength_Model::MixingLength_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
 	EddyViscosity_Model(tU,tF,trho,tnu,tSteady),
