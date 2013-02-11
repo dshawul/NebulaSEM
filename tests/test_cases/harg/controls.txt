@@ -63,7 +63,6 @@ piso
     pressure_UR                  0.3
     n_PISO                       1
     n_ORTHO                      0
-    n_DEFERRED                   0
 }
 
 turbulence

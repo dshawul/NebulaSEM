@@ -28,6 +28,7 @@ namespace Controls {
 	Int write_interval = 20;
 	Int start_step = 0;
 	Int end_step = 2;
+	Int n_deferred = 0;
 	Int save_average = 0;
 	CommMethod ghost_exchange = BLOCKED;
 	CommMethod parallel_method = BLOCKED;
@@ -116,6 +117,7 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("write_interval",&write_interval);
 	params.enroll("start_step",&start_step);
 	params.enroll("end_step",&end_step);
+	params.enroll("n_deferred",&n_deferred);
 
     params.enroll("blend_factor",&blend_factor);
 	params.enroll("tolerance",&tolerance);

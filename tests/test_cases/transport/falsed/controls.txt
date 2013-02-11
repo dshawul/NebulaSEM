@@ -61,19 +61,16 @@ piso
     pressure_UR                  0.3
     n_PISO                       1
     n_ORTHO                      0
-    n_DEFERRED                   0
 }
 diffusion
 {
     DT                           1
     t_UR                         0.7
-    n_DEFERRED                   0
 }
 transport
 {
     DT                           0.1
     t_UR                         0.7
-    n_DEFERRED                   0
 }
 turbulence
 {

@@ -88,12 +88,16 @@ private:
 	Int starti;
 	Int endi;
 	Int i;
+	Int n_deferred;
+	Int idf;
 public:
 	Iteration() {
 		Int step = Controls::start_step / Controls::write_interval;
 		starti = Controls::write_interval * step + 1;
 		endi = Controls::end_step;
+		n_deferred = Controls::n_deferred;
 		i = starti;
+		idf = 0;
 
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
@@ -115,6 +119,10 @@ public:
 		return false;
 	}
 	void next() {
+		idf++;
+		if(idf <= n_deferred)
+			return;
+
 		/*update time series*/
 		forEachField(updateTimeSeries(i));
 
@@ -186,7 +194,6 @@ void piso(istream& input) {
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar pressure_UR = Scalar(0.5);
 	Int n_PISO = 1;
-	Int n_DEFERRED = 0;
 	Int n_ORTHO = 0;
 	/*piso options*/
 	Util::ParamList params("piso");
@@ -194,7 +201,6 @@ void piso(istream& input) {
 	params.enroll("pressure_UR",&pressure_UR);
 	params.enroll("n_PISO",&n_PISO);
 	params.enroll("n_ORTHO",&n_ORTHO);
-	params.enroll("n_DEFERRED",&n_DEFERRED);
 
 	VectorCellField U("U",READWRITE);
 	ScalarCellField p("p",READWRITE);
@@ -250,76 +256,73 @@ void piso(istream& input) {
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	Steady = (Controls::state == Controls::STEADY);
-	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
+	Iteration it;
 	ScalarCellField po = p;
 	VectorCellField gP = -gradV(p);
 	F = flx(rho * U); 
 
-	for(Iteration it;!it.end();it.next()) {
+	for(;!it.end();it.next()) {
+		/*Form Navier-stokes equation*/
+		VectorMeshMatrix M;
 
-		/*Deferred corrections loop for large time steps*/
-		for(Int n = 0;n <= n_DEFERRED;n++) {
-
-			/*Momentum and pressure solution*/
-			{
-				VectorMeshMatrix M;
-				/*convection*/
-				{
-					ScalarFacetField mu = rho * viscosity;
-					M = div(U,F,mu);
-				}
-				/*viscous/turbulent stress*/
-				turb->addTurbulentStress(M);
-				/*relax if steady state otherwise add time contribution*/
-				if(Steady)
-					M.Relax(velocity_UR);
-				else {
-					/*crank nicolson*/
-					if(!equal(time_factor,1)) {
-						VectorCellField po = M * U;
-						M *= time_factor;
-						M.Su -= (1 - time_factor) * po;
-					}
-					/*time derivative*/
-					M += ddt(U,rho);
-				}
-
-				/*solve momentum equation*/
-				Solve(M == gP);
-
-				/*1/ap*/
-				ScalarCellField api = (1 / M.ap);
-				fillBCs(api,true);
-				ScalarCellField rmu = rho * api * Mesh::cV;
-
-				/*PISO loop*/
-				for(Int j = 0;j < n_PISO;j++) {
-					/* Ua = H(U) / ap*/
-					U = getRHS(M) * api;
-					updateExplicitBCs(U,true);
-
-					/*solve pressure poisson equation to satisfy continuity*/
-					{
-						ScalarCellField rhs = div(rho * U);
-						for(Int k = 0;k <= n_ORTHO;k++)
-							Solve(lap(p,rmu) += rhs);
-					}
-
-					/*explicit velocity correction : add pressure contribution*/
-					gP = -gradV(p);
-					U -= gP * api;
-					updateExplicitBCs(U,true);
-				}
-			}
-			/*update fluctuations*/
-			updateExplicitBCs(U,true,true);
-			F = flx(rho * U);
-
-			/*solve turbulence transport equations*/
-			turb->solve();
+		/*convection*/
+		{
+			ScalarFacetField mu = rho * viscosity;
+			M = div(U,F,mu);
 		}
+
+		/*viscous/turbulent stress*/
+		turb->addTurbulentStress(M);
+
+		/*relax if steady state otherwise add time contribution*/
+		if(Steady)
+			M.Relax(velocity_UR);
+		else {
+			/*crank nicolson*/
+			if(!equal(time_factor,1)) {
+				VectorCellField po = M * U;
+				M *= time_factor;
+				M.Su -= (1 - time_factor) * po;
+			}
+			/*time derivative*/
+			M += ddt(U,rho);
+		}
+
+		/*solve momentum equation*/
+		Solve(M == gP);
+
+		/*1/ap*/
+		ScalarCellField api = (1 / M.ap);
+		fillBCs(api,true);
+		ScalarCellField rmu = rho * api * Mesh::cV;
+
+		/*PISO loop*/
+		for(Int j = 0;j < n_PISO;j++) {
+			/* Ua = H(U) / ap*/
+			U = getRHS(M) * api;
+			updateExplicitBCs(U,true);
+
+			/*solve pressure poisson equation to satisfy continuity*/
+			{
+				ScalarCellField rhs = div(rho * U);
+				for(Int k = 0;k <= n_ORTHO;k++)
+					Solve(lap(p,rmu) += rhs);
+			}
+
+			/*explicit velocity correction : add pressure contribution*/
+			gP = -gradV(p);
+			U -= gP * api;
+			updateExplicitBCs(U,true);
+		}
+
+		/*update fluctuations*/
+		updateExplicitBCs(U,true,true);
+		F = flx(rho * U);
+
+		/*solve turbulence transport equations*/
+		turb->solve();
 
 		/*explicitly under relax pressure*/
 		if(Steady) {
@@ -328,6 +331,7 @@ void piso(istream& input) {
 			po = p;
 		}
 	}
+
 	/*write calculated turbulence fields*/
 	if(turb->writeStress) {
 		ScalarCellField K("Ksgs",WRITE);
@@ -352,13 +356,11 @@ void diffusion(istream& input) {
 	Scalar& rho = GENERAL::density;
 	Scalar DT = Scalar(1);
 	Scalar t_UR = Scalar(1);
-	Int n_DEFERRED = 0;
 
 	/*diffusion*/
 	Util::ParamList params("diffusion");
 	params.enroll("DT",&DT);
 	params.enroll("t_UR",&t_UR);
-	params.enroll("n_DEFERRED",&n_DEFERRED);
 
 	ScalarCellField T("T",READWRITE);
 
@@ -368,31 +370,27 @@ void diffusion(istream& input) {
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	bool Steady = (Controls::state == Controls::STEADY);
-	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
 	ScalarFacetField mu = rho * DT;
 
 	for(Iteration it;!it.end();it.next()) {
-		/*Loop for large time steps*/
-		for(Int n = 0;n <= n_DEFERRED;n++) {
-			ScalarMeshMatrix M;
+		ScalarMeshMatrix M;
 
-			M = -lap(T,mu);
+		M = -lap(T,mu);
 
-			if(Steady)
-				M.Relax(t_UR);
-			else {
-				if(!equal(time_factor,1)) {
-					ScalarCellField po = M * T;
-					M *= time_factor;
-					M.Su -= (1 - time_factor) * po;
-				}
-				M += ddt(T,rho);
+		if(Steady)
+			M.Relax(t_UR);
+		else {
+			if(!equal(time_factor,1)) {
+				ScalarCellField po = M * T;
+				M *= time_factor;
+				M.Su -= (1 - time_factor) * po;
 			}
-
-			Solve(M);
+			M += ddt(T,rho);
 		}
+
+		Solve(M);
 	}
 }
 /**
@@ -409,13 +407,11 @@ void transport(istream& input) {
 	Scalar& rho = GENERAL::density;
 	Scalar DT = Scalar(4e-2);
 	Scalar t_UR = Scalar(1);
-	Int n_DEFERRED = 0;
 
 	/*transport*/
 	Util::ParamList params("transport");
 	params.enroll("DT",&DT);
 	params.enroll("t_UR",&t_UR);
-	params.enroll("n_DEFERRED",&n_DEFERRED);
 
 	VectorCellField U("U",READWRITE);
 	ScalarCellField T("T",READWRITE);
@@ -426,32 +422,28 @@ void transport(istream& input) {
 	/*time*/
 	Scalar time_factor = Controls::time_scheme_factor;
 	bool Steady = (Controls::state == Controls::STEADY);
-	if(Steady) n_DEFERRED = 0;
 
 	/*Calculate for each time step*/
 	ScalarFacetField F,mu = rho * DT,gamma;
 
 	for(Iteration it;!it.end();it.next()) {
-		/*Loop for large time steps*/
-		for(Int n = 0;n <= n_DEFERRED;n++) {
-			ScalarMeshMatrix M;
+		ScalarMeshMatrix M;
 
-			F = flx(rho * U); 
-			M = div(T,F,mu) 
-				- lap(T,mu);
+		F = flx(rho * U); 
+		M = div(T,F,mu) 
+			- lap(T,mu);
 
-			if(Steady)
-				M.Relax(t_UR);
-			else {
-				if(!equal(time_factor,1)) {
-					ScalarCellField po = M * T;
-					M *= time_factor;
-					M.Su -= (1 - time_factor) * po;
-				}
-				M += ddt(T,rho);
+		if(Steady)
+			M.Relax(t_UR);
+		else {
+			if(!equal(time_factor,1)) {
+				ScalarCellField po = M * T;
+				M *= time_factor;
+				M.Su -= (1 - time_factor) * po;
 			}
-			Solve(M);
+			M += ddt(T,rho);
 		}
+		Solve(M);
 	}
 }
 /**

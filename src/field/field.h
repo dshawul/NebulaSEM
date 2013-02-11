@@ -52,6 +52,7 @@ namespace Controls {
 	extern Int write_interval;
 	extern Int start_step;
 	extern Int end_step;
+	extern Int n_deferred;
 	extern Int save_average;
 }
 
@@ -326,7 +327,8 @@ public:
 			pf = *it;
 			if(pf->access & WRITE) {
 				if(Mesh::probeCells.size()) {
-					std::ofstream* of = new std::ofstream(pf->fName + "i");
+					std::string name = pf->fName + "i";
+					std::ofstream* of = new std::ofstream(name.c_str());
 					tseries.push_back(of);
 				}
 				if(Controls::save_average) {
@@ -725,26 +727,10 @@ struct MeshMatrix {
 	}
 	/*IO*/
 	friend std::ostream& operator << (std::ostream& os, const MeshMatrix& p) {
-		//os << p.ap << std::endl << std::endl;
-		//os << p.an[0] << std::endl << std::endl;
-		//os << p.an[1] << std::endl << std::endl;
-		//os << p.Su << std::endl << std::endl;
-		
-		using namespace Mesh;
-		os << std::endl;
-		for(Int i = 0;i < gBCellsStart;i++) {
-			os << p.ap[i] << " * " << (*p.cF)[i] << " = ";
-			Cell& c = gCells[i];														
-			forEach(c,j) {									
-				Int f = c[j];								
-				if(i == gFO[f])								
-					os << p.an[1][f] << " * " << (*p.cF)[gFN[f]];			
-				else										
-					os << p.an[0][f] << " * " << (*p.cF)[gFO[f]];
-				os  << " + ";
-			}	
-			os << p.Su[i] << std::endl;
-		}
+		os << p.ap << std::endl << std::endl;
+		os << p.an[0] << std::endl << std::endl;
+		os << p.an[1] << std::endl << std::endl;
+		os << p.Su << std::endl << std::endl;
 		return os;
 	}
 	friend std::istream& operator >> (std::istream& is, MeshMatrix& p) {
