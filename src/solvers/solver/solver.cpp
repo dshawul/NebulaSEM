@@ -1,10 +1,5 @@
 #include "field.h"
 #include "turbulence.h"
-#include "ke.h"
-#include "rngke.h"
-#include "realizableke.h"
-#include "kw.h"
-#include "les.h"
 #include "mp.h"
 #include "system.h"
 #include "solve.h"
@@ -206,51 +201,19 @@ void piso(istream& input) {
 	ScalarCellField p("p",READWRITE);
 
 	/*turbulence model*/
-	enum TurbModel {NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES};
-	TurbModel turb_model = KE;
-	Util::Option* op;
-	op = new Util::Option(&turb_model,7,
-		"NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES");
-	params.enroll("turbulence_model",op);
-	params.read(input);
-
-	/*Select turbulence model*/
 	ScalarFacetField F;
-	bool Steady,needWallDist = false;
-
-	Turbulence_Model* turb;
-	switch(turb_model) {
-		case KE:   
-			turb = new KE_Model(U,F,rho,viscosity,Steady); 
-			break;
-		case MIXING_LENGTH:   
-			needWallDist = true;
-			turb = new MixingLength_Model(U,F,rho,viscosity,Steady); 
-			break;
-		case RNG_KE:   
-			turb = new RNG_KE_Model(U,F,rho,viscosity,Steady); 
-			break;
-		case REALIZABLE_KE:   
-			turb = new REALIZABLE_KE_Model(U,F,rho,viscosity,Steady); 
-			break;
-		case KW:   
-			turb = new KW_Model(U,F,rho,viscosity,Steady); 
-			break;
-		case LES:  
-			needWallDist = true;
-			turb = new LES_Model(U,F,rho,viscosity,Steady); 
-			break;
-		default:
-			turb = new Turbulence_Model(U,F,rho,viscosity,Steady); 
-			break;
-	}
+	bool Steady;
+	Turbulence_Model::RegisterTable(params);
+	params.read(input);
+	Turbulence_Model* turb = 
+		Turbulence_Model::Select(U,F,rho,viscosity,Steady);
 	turb->enroll();
 
 	/*read parameters*/
 	Util::read_params(input);
 
 	/*wall distance*/
-	if(needWallDist)
+	if(turb->needWallDist())
 		Mesh::calc_walldist(Iteration::get_start());
 
 	/*time*/

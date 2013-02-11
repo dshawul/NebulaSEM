@@ -2,7 +2,7 @@
 # Target executable and files
 ############################
 EXE = solver
-OBJ = solve.o mesh.o tensor.o util.o solver.o mp.o ke.o kw.o les.o realizableke.o rngke.o mixing_length.o field.o 
+OBJ = solve.o mesh.o tensor.o util.o solver.o mp.o ke.o kw.o les.o realizableke.o rngke.o mixing_length.o field.o turbulence.o
 ICPC_WARN = -wd280 -wd593 -wd869 -wd981 -wd383  -wd1419 -wd2259 -wd1572 -wd1599 -wd444 -wd1418
 
 #############################

@@ -90,6 +90,13 @@ struct Turbulence_Model {
 	virtual ScalarCellField getK() {
 		return Scalar(0);
 	}
+	/* Turbulence model selection */
+	static Int turb_model;
+	static bool bneedWallDist;
+	static bool needWallDist() { return bneedWallDist;}
+	static void RegisterTable(Util::ParamList& params);
+	static Turbulence_Model* Select(VectorCellField& U,ScalarFacetField& F,
+		Scalar& rho,Scalar& nu,bool& Steady);
 };
 /**
  * Eddy viscosity models based on Boussinesq's assumption
