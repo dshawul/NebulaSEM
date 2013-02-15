@@ -67,7 +67,9 @@ void Mesh::readMesh() {
 /*write mesh*/
 void Mesh::MeshObject::write(ostream& os) {
 	os << hex;
+	os.precision(12);
 	os << v;
+	os.precision(6);
 	os << f;
 	os << c;
 	forEachIt(Boundaries,bdry,it)

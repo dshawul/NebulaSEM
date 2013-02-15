@@ -703,6 +703,7 @@ struct MeshMatrix {
 	}
 	/*Fix*/
 	void Fix(Int c,type value) {
+		/*diagonal fix*/
 		ap[c] = 10e30;
 		Su[c] = value * 10e30;
 	}

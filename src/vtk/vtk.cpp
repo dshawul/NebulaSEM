@@ -53,9 +53,10 @@ void Vtk::write_vtk(Int step) {
     /*Geometry*/
 	Int i;
 	of << "POINTS " << gVertices.size() << " float" << endl;
-	forEach(gVertices,i) {
+	of.precision(12);
+	forEach(gVertices,i)
 		of << gVertices[i] << endl;
-    }
+    of.precision(6);
 	if(write_polyhedral) {
 		/*polyhedral cells*/
 		total = 0;

@@ -154,16 +154,17 @@ public:
 	~~~~~~~~~~
 	Discretize and solve the momenum equation with current values of pressure. 
 	The velocities obtained will not satisfy continuity unless exact pressure 
-	was specified. 
+	happened to be specified. 
 
 	Correction
 	~~~~~~~~~~
 	Step 1) 
-	  Determine velocity with all terms included except pressure gradient contrib.
+	  Determine velocity with all terms included except pressure gradient source contribution.
 	      ap * Up = H(U) - grad(p)
 		  Up = H(U) / ap - grad(p) / ap
       Droping grad(p) term:
           Ua = H(U) / ap
+	  One jacobi sweep is done to find Ua.
     Step 2)
       Solve poisson pressure equation to satisfy continuity with fluxes calculated 
 	  from interpolated Ua.
@@ -174,12 +175,7 @@ public:
 	  Correct the velocity with gradient of newly found pressure
 	      U -= grad(p)
     These steps are repeated two or more times for transient solutions.
-	For steady state problems one is enough.
-
-	Deferred correction approach is used to handle explicit terms from higher order 
-	discretization schemes such as CDS and TVD schemes, boundary conditions etc... 
-	Thus we repeat the prediction/correction steps one or more times. 
-	Again for steady state problems once is enough. 
+	For steady state problems once is enough.
 	\endverbatim
 */
 void piso(istream& input) {
@@ -190,6 +186,7 @@ void piso(istream& input) {
 	Scalar pressure_UR = Scalar(0.5);
 	Int n_PISO = 1;
 	Int n_ORTHO = 0;
+
 	/*piso options*/
 	Util::ParamList params("piso");
 	params.enroll("velocity_UR",&velocity_UR);
@@ -310,7 +307,7 @@ void piso(istream& input) {
  \verbatim
  Diffusion solver
  ~~~~~~~~~~~~~~~~
- Solver for pdes of the the parabolic heat equation type:
+ Solver for pdes of parabolic heat equation type:
        d(rho*u)/dt = lap(T,rho*DT)
  \endverbatim
 */
