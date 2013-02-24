@@ -404,32 +404,61 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 		if(!checkFields(fields,pFields,step))
 			break;
 
+		/*Interpolate*/
+		forEachField(interpolateVertexAll());
+		
 		/*write probes*/
-#define WRITE(T) {										\
-		forEachIt(std::list<T*>,T::fields_,it) { 		\
-		    of <<  ((*(*it))[c1] * (mfI)) +				\
-		           ((*(*it))[c2] * (1 - mfI))			\
-			   << " ";									\
-		}												\
+#define ADD(v,value,weight) {										\
+		dist = magSq((v) - probeP);									\
+		dist = weight / (dist + 1.0f);								\
+		sum += (value) * dist;										\
+		sumd += dist;												\
+}
+#define SUM(X) {													\
+		Cell& c = gCells[X];										\
+		forEach(c,m) {												\
+			Facet& f = gFacets[c[m]];								\
+			forEach(f,j) {											\
+				ADD(gVertices[f[j]],(*it)[f[j]],1.0);				\
+			}														\
+		}															\
+}
+#define WRITE(T) {									                \
+	    std::list<MeshField<T,CELL>*>::iterator it1 =				\
+			MeshField<T,CELL>::fields_.begin();						\
+	    for(MeshField<T,CELL>::vertexFieldsType::iterator it =      \
+		    (MeshField<T,CELL>::vf_fields_)->begin(); it !=         \
+			(MeshField<T,CELL>::vf_fields_)->end(); ++it,++it1) {   \
+			T sum(0.0);												\
+			Scalar sumd(0.0);										\
+			ADD(cC[c1],(*(*it1))[c1],2.0);							\
+			ADD(cC[c2],(*(*it1))[c2],2.0);							\
+			SUM(sc); 									            \
+		    of <<  (sum/sumd) << " ";								\
+		}												            \
 }
 		forEach(probes,i) {
-			Int f = probes[i];
-			Int c1 = gFO[f];
-			Int c2 = gFN[f];
-			Scalar s1 = mag((cC[c1] - probePoints[i]) & fN[f]);
-			Scalar s2 = mag((cC[c2] - probePoints[i]) & fN[f]);
-			Scalar mfI = 1.f - s1 / (s1 + s2);
+			Int fi = probes[i];
+			Int c1 = gFO[fi];
+			Int c2 = gFN[fi];
+			Vector probeP = probePoints[i];
+			Scalar dir = ((fC[fi] - probeP) & fN[fi]),dist;
+			Int sc;
+			if(dir >= 0) sc = c1;
+			else sc = c2;
 
 			of << step << " " << i << " " << probePoints[i] << " ";
 
-			WRITE(ScalarCellField);
-			WRITE(VectorCellField);
-			WRITE(STensorCellField);
-			WRITE(TensorCellField);
+			WRITE(Scalar);
+			WRITE(Vector);
+			WRITE(STensor);
+			WRITE(Tensor);
+
 			of << endl;
 		}
 #undef WRITE
-
+#undef SUM
+#undef ADD
 	}
 
 	return 0;

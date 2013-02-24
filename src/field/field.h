@@ -315,6 +315,20 @@ public:
 			}
 		}
 	}
+	/*interpolation*/
+	typedef std::list< MeshField<type,VERTEX> > vertexFieldsType;
+	static vertexFieldsType* vf_fields_;
+	static void interpolateVertexAll() {
+		vf_fields_ = new vertexFieldsType;
+		vf_fields_->clear();
+		MeshField<type,VERTEX> vf;
+		forEachIt(typename std::list<MeshField*>, fields_, it) {
+			if((*it)->access & WRITE) {
+				vf = cds(cds(*(*it)));
+				vf_fields_->push_back(vf);
+			}
+		}
+	}
 	/*Time history*/
 	static std::vector<std::ofstream*> tseries;
 	static std::vector<MeshField*> tavgs;
@@ -572,6 +586,8 @@ std::vector<MeshField<T,E>*> MeshField<T,E>::tavgs;
 template <class T,ENTITY E>
 std::vector<MeshField<T,E>*> MeshField<T,E>::tstds;
 
+template <class T,ENTITY E> 
+typename MeshField<T,E>::vertexFieldsType* MeshField<T,E>::vf_fields_;
 /* typedefs */
 typedef MeshField<Scalar,CELL>    ScalarCellField;
 typedef MeshField<Scalar,FACET>   ScalarFacetField;
@@ -1092,13 +1108,13 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 	MeshField<type,VERTEX> vF;
 	cnt.assign(vF.size(),Scalar(0));
 	Scalar dist;
-	
+
 	vF = type(0);
 	forEach(fF,i) {
 		Facet& f = gFacets[i];
 		if(gFN[i] < gBCellsStart) {
 			forEach(f,j) {
-				dist = 1.f / mag(gVertices[f[j]] - fC[i]);
+				dist = 1.f / magSq(gVertices[f[j]] - fC[i]);
 				vF[f[j]] += (fF[i] * dist);
 				cnt[f[j]] += dist;
 			}

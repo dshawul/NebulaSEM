@@ -5,7 +5,7 @@
 #include "kw.h"
 #include "les.h"
 
-Int Turbulence_Model::turb_model;
+Int Turbulence_Model::turb_model = 2;
 bool Turbulence_Model::bneedWallDist = false;
 
 void Turbulence_Model::RegisterTable(Util::ParamList& params) {
@@ -18,8 +18,9 @@ void Turbulence_Model::RegisterTable(Util::ParamList& params) {
 Turbulence_Model* Turbulence_Model::Select(VectorCellField& U,ScalarFacetField& F,
 					Scalar& rho,Scalar& viscosity,bool& Steady) {
 	/*turbulence model*/
-	enum TurbModel {NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES};
-	turb_model = KE;
+	enum TurbModel {
+		NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES
+	};
 	bneedWallDist = false;
 	
 	/*Select turbulence model*/
