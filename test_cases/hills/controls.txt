@@ -10,16 +10,16 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1
-    viscosity                    1e-4
+    viscosity                    1e-5
 #############################
 #  Time increment
 #############################
 
     state                        STEADY
     start_step                   0
-    end_step                     1000
+    end_step                     2000
     write_interval               1000
-    dt                           1e-5
+    dt                           0.005
 
 ############################
 #  Discretization schemes
@@ -57,14 +57,16 @@ general
 piso
 {
     turbulence_model             KE
+    writeStress                  YES
     velocity_UR                  0.5
-    pressure_UR                  0.3
+    pressure_UR                  0.2
     n_PISO                       1
     n_ORTHO                      0
 }
 
 turbulence
 {
-    k_UR                         0.4
-    x_UR                         0.4
+    mixing_length                96
+    k_UR                         0.5
+    x_UR                         0.5
 }

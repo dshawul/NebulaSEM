@@ -9,7 +9,22 @@ using namespace std;
 struct Bdry {
 	string name;
 	IntVector index;
+	/*point in polygon*
+	int pnpoly(Vertices keys,Vertex C) {
+		Vector ki,kj;
+		int i, j, nvert = index.size(), c = 0;
+		for (i = 0, j = nvert-1; i < nvert; j = i++) {
+			ki = keys[index[i]];
+			kj = keys[index[j]];
+			if ( ((ki[1]>C[1]) != (kj[1]>C[1])) &&
+				(C[0] < (kj[0]-ki[0]) * (C[1]-ki[1]) / 
+				(kj[1]-ki[1]) + ki[0]) )
+				c = !c;
+		}
+		return c;
+	}*/
 };
+
 /*generate mesh*/
 int main(int argc,char* argv[]) {
 	using namespace Mesh;
@@ -217,13 +232,21 @@ int main(int argc,char* argv[]) {
 		N /= mag(N);
 		forEachS(gFacets,j,gMesh.nf) {
 			Facet& f = gFacets[j];
-			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) ^ (gVertices[f[2]] - gVertices[f[0]]));
+			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) 
+				^ (gVertices[f[2]] - gVertices[f[0]]));
 			N1 /= mag(N1);
 			Vector H = (gVertices[f[0]] - keys[b[0]]);
 			Scalar d = mag(N ^ N1);
 			Scalar d2 = sqrt(mag(N & H));
 			if(d <= 10e-4 && d2 <= 10e-4) {
-				list.push_back(j);
+				/*
+				Vector C(0);
+				forEach(f,m)
+					C += gVertices[f[m]];
+				C /= Scalar(f.size());
+				if(Bdrys[i].pnpoly(keys,C))
+					*/
+					list.push_back(j);
 			}
 		}
 		if(!list.empty()) {

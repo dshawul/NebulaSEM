@@ -9,17 +9,18 @@ general
 ######################################
 #  Fluid properties specific to solver
 ######################################
-    rho                          1
-    viscosity                    1e-5
+    rho                          1.1614
+    viscosity                    1.846e-5
+	
 #############################
 #  Time increment
 #############################
 
-    state                        STEADY
+    state                        TRANSIENT
     start_step                   0
-    end_step                     5000
+    end_step                     10000
     write_interval               1000
-    dt                           0.005
+    dt                           1
 
 ############################
 #  Discretization schemes
@@ -44,10 +45,7 @@ general
 ############################
 #  Probe locations
 ############################
-    probe 2 {
-      0.1 0 0
-      0.2 0 0
-    }
+
 }
 
 
@@ -56,16 +54,15 @@ general
 ######################################
 piso
 {
-    turbulence_model             KE
-    velocity_UR                  0.3
-    pressure_UR                  0.2
-    n_PISO                       1
+    turbulence_model             NONE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       2
     n_ORTHO                      0
 }
 
 turbulence
 {
-    mixing_length                96
     k_UR                         0.5
     x_UR                         0.5
 }

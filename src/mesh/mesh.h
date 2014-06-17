@@ -99,8 +99,8 @@ struct LawOfWall {
 	Scalar yLog;
 
 	LawOfWall() : 
-		E(9.793),
-		kappa(0.4187),
+		E(9.8),
+		kappa(0.41),
 		ks(0),
 		cks(0.5)
 	{
@@ -167,6 +167,7 @@ namespace Mesh {
 	const Int LOG          = Util::hash_function("LOG");
     const Int PARABOLIC    = Util::hash_function("PARABOLIC");
 	const Int INVERSE      = Util::hash_function("INVERSE");
+	const Int ROUGHWALL    = Util::hash_function("ROUGHWALL");
 }
 struct BasicBCondition {
 	IntVector* bdry;
@@ -175,7 +176,6 @@ struct BasicBCondition {
 	std::string cname;
 	std::string bname;
 	std::string fname;
-	bool isWall;
 	LawOfWall low;
 };
 template <class type>
@@ -187,9 +187,11 @@ struct BCondition : public BasicBCondition {
 	Scalar zMin;
 	Scalar zMax;
 	Vector dir;
+	bool   first;
+	bool   read;
 	std::vector<type> fixed;
 
-	BCondition(std::string tfname){
+	BCondition(std::string tfname) {
 		fname = tfname;
 		reset();
 	}
@@ -199,8 +201,10 @@ struct BCondition : public BasicBCondition {
 		dir = Vector(0,0,1);
 	}
 	void init_indices() {
-		isWall = (bname.find("WALL") != std::string::npos);
 		bdry = &Mesh::gBoundaries[bname];
+		fixed.resize(bdry->size());
+		first = true;
+		read = false;
 		fIndex = Util::hash_function(fname);
 		cIndex = Util::hash_function(cname);
 	}
@@ -224,7 +228,10 @@ std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
 		os << "\tzMin " << p.zMin << std::endl;
 		os << "\tzMax " << p.zMax << std::endl;
 	}
-	if(p.isWall)
+	if(p.read) {
+		os << "\tfixed " << p.fixed << std::endl;
+	}
+	if(p.cIndex == Mesh::ROUGHWALL)
 		p.low.write(os);
 	os << "}\n";
 	return os;
@@ -238,7 +245,7 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 	p.reset();
 	is >> p.bname >> c;
 
-	while(c = Util::nextc(is)) {
+	while((c = Util::nextc(is))) {
 		if(c == '}') {
 			is >> c;
 			break;
@@ -260,6 +267,9 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 			is >> p.zMin;
 		} else if(!compare(str,"zMax")) {
 			is >> p.zMax;
+		} else if(!compare(str,"fixed")) {
+			is >> p.fixed;
+			p.read = true;
 		} else if(p.low.read(is,str)) {
 		}
 	}

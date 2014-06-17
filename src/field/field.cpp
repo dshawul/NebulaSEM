@@ -16,7 +16,9 @@ namespace Controls {
 	Int TVDbruner = 0;
 	Scheme interpolation_scheme = CDS;
 	NonOrthoScheme nonortho_scheme = OVER_RELAXED;
-	Scalar time_scheme_factor = 1;
+	TimeScheme time_scheme = EULER;
+	Scalar implicit_factor = 1;
+	Int runge_kutta = 1;
 	Scalar blend_factor = Scalar(0.2);
 	Scalar tolerance = Scalar(1e-5f);
 	Scalar dt = Scalar(.1);
@@ -32,8 +34,8 @@ namespace Controls {
 	Int save_average = 0;
 	CommMethod ghost_exchange = BLOCKED;
 	CommMethod parallel_method = BLOCKED;
+	Vector gravity = Vector(0,-9.81,0);
 }
-
 /*
  * Initialize geometric mesh fields
  */
@@ -123,10 +125,12 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("tolerance",&tolerance);
 	params.enroll("dt",&dt);
 	params.enroll("SOR_omega",&SOR_omega);
-	params.enroll("time_scheme_factor",&time_scheme_factor);
+	params.enroll("implicit_factor",&implicit_factor);
 
 	params.enroll("probe",&Mesh::probePoints);
-
+	
+	params.enroll("gravity", &gravity);
+	
 	Option* op;
 	op = new Option(&convection_scheme,17,
 		"CDS","UDS","HYBRID","BLENDED","LUD","CDSS","MUSCL","QUICK",
@@ -139,6 +143,9 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("interpolation_scheme",op);
 	op = new Option(&nonortho_scheme,4,"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED");
 	params.enroll("nonortho_scheme",op);
+	op = new Option(&time_scheme,2,"EULER","SECOND_ORDER");
+	params.enroll("time_scheme",op);
+	params.enroll("runge_kutta",&runge_kutta);
 	op = new Option(&Solver,3,"JACOBI","SOR","PCG");
 	params.enroll("method",op);
 	op = new Option(&Preconditioner,4,"NONE","DIAG","SOR","DILU");

@@ -10,15 +10,15 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1
-    viscosity                    1.4e-5
+    viscosity                    1e-4
 #############################
 #  Time increment
 #############################
 
     state                        STEADY
     start_step                   0
-    end_step                     1000
-    write_interval               50
+    end_step                     2000
+    write_interval               1000
     dt                           1e-5
 
 ############################
@@ -36,7 +36,7 @@ general
 ############################
 
     method                       PCG
-    tolerance                    1e-6
+    tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
     ghost_exchange               BLOCKED
@@ -57,7 +57,7 @@ general
 piso
 {
     turbulence_model             KE
-    velocity_UR                  0.5
+    velocity_UR                  0.7
     pressure_UR                  0.3
     n_PISO                       1
     n_ORTHO                      0
@@ -65,6 +65,6 @@ piso
 
 turbulence
 {
-    k_UR                         0.5
-    x_UR                         0.5
+    k_UR                         0.7
+    x_UR                         0.7
 }

@@ -1,0 +1,18 @@
+size 1
+uniform 0
+inlet1 {
+	type NONE
+}
+inlet2 {
+	type NONE
+}
+outlet {
+	type NONE
+}
+topbot {
+	type NONE
+}
+WALLS {
+	type WALL
+}
+

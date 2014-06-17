@@ -11,7 +11,7 @@ struct REALIZABLE_KE_Model : public KX_Model {
 	Scalar A0;
 
 	/*constructor*/
-	REALIZABLE_KE_Model(VectorCellField&,ScalarFacetField&,Scalar&,Scalar&,bool&);
+	REALIZABLE_KE_Model(VectorCellField&,ScalarFacetField&,Scalar&,Scalar&);
 
 	/*others*/
 	virtual void enroll();

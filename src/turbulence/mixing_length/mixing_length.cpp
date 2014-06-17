@@ -27,12 +27,12 @@ Description:
 	    lm = min(Cs * Delta, kappa * y_wall)
 \endverbatim
 */
-MixingLength_Model::MixingLength_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
-	EddyViscosity_Model(tU,tF,trho,tnu,tSteady),
+MixingLength_Model::MixingLength_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+	EddyViscosity_Model(tU,tF,trho,tnu),
 	mixingLength(0),
 	C(0.55),
-	kappa(0.4187),
-	wallDamping(1)
+	wallDamping(1),
+	kappa(0.41)
 {
 }
 void MixingLength_Model::enroll() {
@@ -45,14 +45,13 @@ void MixingLength_Model::enroll() {
 	EddyViscosity_Model::enroll();
 }
 ScalarCellField MixingLength_Model::getK() {
-	return pow(lm / C,2.0) * getS2(grad(U));
+	return pow(lm / C,2.0) * getS2(gradi(U));
 }
 void MixingLength_Model::calcEddyViscosity(const TensorCellField& gradU) {
 	calcLengthScale();
 	if(wallDamping)
 		lm = min(kappa * Mesh::yWall,lm);
 	eddy_mu = rho * pow(lm,Scalar(2)) * sqrt(getS2(gradU));
-	fillBCs(eddy_mu,true);
 }
 void MixingLength_Model::applyWallFunction(Int f,LawOfWall& low) {
 	using namespace Mesh;

@@ -1,0 +1,15 @@
+size 1
+#press
+uniform 100000
+top {
+	type NEUMANN 
+	value 0
+}
+bottom {
+	type NEUMANN 
+	value 0
+}
+sides {
+	type NEUMANN 
+	value 0
+}

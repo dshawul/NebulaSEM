@@ -1,0 +1,18 @@
+size 1
+uniform 0
+inlet {
+	type NONE
+}
+outlet {
+	type NONE
+}
+sides {
+	type NONE
+}
+top {
+	type NONE
+}
+WALLS {
+	type ROUGHWALL
+}
+

@@ -1,7 +1,0 @@
-size 1
-uniform 1.716
-inlet DIRICHLET 1.716
-outlet NEUMANN 0
-sides SYMMETRY
-top SYMMETRY
-WALLS NEUMANN 0

@@ -279,7 +279,7 @@ void readFields(istream& is,void* pFields,const IntVector& cLoc) {
 	is >> symbol;
 }
 /*create fields*/
-void createFields(vector<string>& fields,void**& pFields) {
+void createFields(vector<string>& fields,void**& pFields,Int start_index) {
 	std::string str;
 	Int size;
 
@@ -287,7 +287,10 @@ void createFields(vector<string>& fields,void**& pFields) {
 	pFields = new void*[fields.size()];
 	forEach(fields,i) {
 		/*read at time 0*/
-		str = fields[i] + "0";
+		stringstream path;
+		path << fields[i] << start_index;
+		str = path.str(); 
+
 		ifstream is(str.c_str());
 		if(!is.fail()) {
 			/*fields*/
@@ -323,7 +326,7 @@ int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 					 vector<string>& fields,std::string mName,Int start_index) {
     /*create fields*/
 	void** pFields;
-	createFields(fields,pFields);
+	createFields(fields,pFields,start_index);
 
 	/*indexes*/
 	Int total = n[0] * n[1] * n[2];
@@ -375,7 +378,7 @@ int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
     /*create fields*/
 	void** pFields;
-	createFields(fields,pFields);
+	createFields(fields,pFields,start_index);
 
 	/*for each time step*/
 	for(Int step = start_index;;step++) {
@@ -397,7 +400,7 @@ int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) 
 
     /*create fields*/
 	void** pFields;
-	createFields(fields,pFields);
+	createFields(fields,pFields,start_index);
 
 	/*for each time step*/
 	for(Int step = start_index;;step++) {

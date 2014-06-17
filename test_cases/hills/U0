@@ -14,8 +14,7 @@ sides {
 	type SYMMETRY
 }
 top {
-	type DIRICHLET
-	value 16.75 0 0
+	type SYMMETRY
 }
 WALLS {
 	type DIRICHLET 

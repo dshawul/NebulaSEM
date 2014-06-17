@@ -8,18 +8,24 @@ using namespace std;
 
 /*general properties*/
 namespace GENERAL {
-	Scalar density = 1;
-	Scalar viscosity = 1e-5;
-	Scalar conductivity = 1e-4;
-	Vector gravity = Vector(0,0,-9.81);
-
+	Scalar density = 1.2041;
+	Scalar viscosity = 1.461e-5;
+	Scalar Pr = 0.9;
+	Scalar Prt = 0.7;
+	Scalar beta = 3.33e-3;
+	Scalar T0 = 300;
+	Scalar P0 = 10000;
+	
 	void enroll(Util::ParamList& params) {
-		params.enroll("rho",&density);
-		params.enroll("viscosity",&viscosity);
-		params.enroll("conductivity",&conductivity);
-		params.enroll("gravity",&gravity);
+		params.enroll("rho", &density);
+		params.enroll("viscosity", &viscosity);
+		params.enroll("Pr", &Pr);
+		params.enroll("Prt", &Prt);
+		params.enroll("beta", &beta);
+		params.enroll("T0", &T0);
+		params.enroll("P0", &P0);
 	}
-};
+}
 
 /*solvers*/
 void piso(istream&);
@@ -27,32 +33,31 @@ void diffusion(istream&);
 void potential(istream&);
 void transport(istream&);
 void walldist(istream&);
-
 /**
-\verbatim
+ \verbatim
  Main application entry point for different solvers.
  \endverbatim
- */
-int main(int argc,char* argv[]) {
+*/
+int main(int argc, char* argv[]) {
 
 	/*message passing object*/
-	MP mp(argc,argv);
+	MP mp(argc, argv);
 	ifstream input(argv[1]);
 
 	/*main options*/
 	Util::ParamList params("general");
 	string sname;
-	params.enroll("solver",&sname);
-	params.enroll("mesh",&Mesh::gMeshName);
+	params.enroll("solver", &sname);
+	params.enroll("mesh", &Mesh::gMeshName);
 	Mesh::enroll(params);
 	GENERAL::enroll(params);
 	params.read(input);
 
 	/*Mesh*/
-	if(mp.n_hosts > 1) {
+	if (mp.n_hosts > 1) {
 		stringstream s;
 		s << Mesh::gMeshName << mp.host_id;
-		if(!System::cd(s.str()))
+		if (!System::cd(s.str()))
 			return 1;
 	}
 	Mesh::readMesh();
@@ -60,15 +65,15 @@ int main(int argc,char* argv[]) {
 	atexit(Util::cleanup);
 
 	/*call solver*/
-	if(!Util::compare(sname,"piso")) {
+	if (!Util::compare(sname, "piso")) {
 		piso(input);
-	} else if(!Util::compare(sname,"diffusion")) {
+	} else if (!Util::compare(sname, "diffusion")) {
 		diffusion(input);
-	} else if(!Util::compare(sname,"transport")) {
+	} else if (!Util::compare(sname, "transport")) {
 		transport(input);
-	} else if(!Util::compare(sname,"potential")) {
+	} else if (!Util::compare(sname, "potential")) {
 		potential(input);
-	} else if(!Util::compare(sname,"walldist")) {
+	} else if (!Util::compare(sname, "walldist")) {
 		walldist(input);
 	}
 
@@ -77,7 +82,7 @@ int main(int argc,char* argv[]) {
 /**
  Iteration object that does common book keeping stuff
  for all solvers.
- */
+*/
 class Iteration {
 private:
 	Int starti;
@@ -96,7 +101,7 @@ public:
 
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
-		forEachField(initTimeSeries());
+		forEachField (initTimeSeries());
 	}
 	bool start() {
 		return (i == starti);
@@ -164,6 +169,7 @@ public:
 		  Up = H(U) / ap - grad(p) / ap
       Droping grad(p) term:
           Ua = H(U) / ap
+          Up = Ua - grad(p) / ap
 	  One jacobi sweep is done to find Ua.
     Step 2)
       Solve poisson pressure equation to satisfy continuity with fluxes calculated 
@@ -173,7 +179,7 @@ public:
 		  lap(p,1/ap) = div(Ua)
     Step 3)
 	  Correct the velocity with gradient of newly found pressure
-	      U -= grad(p)
+	      U = Ua - grad(p) / ap
     These steps are repeated two or more times for transient solutions.
 	For steady state problems once is enough.
 	\endverbatim
@@ -181,122 +187,140 @@ public:
 void piso(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
-	Scalar& viscosity = GENERAL::viscosity;
+	Scalar& nu = GENERAL::viscosity;
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar pressure_UR = Scalar(0.5);
+	Scalar t_UR = Scalar(0.8);
 	Int n_PISO = 1;
 	Int n_ORTHO = 0;
-
+	/*Include bouyancy?*/
+	enum BOUYANCY {
+		NONE, BOUSSINESQ_T1, BOUSSINESQ_T2, 
+		BOUSSINESQ_THETA1, BOUSSINESQ_THETA2,
+	};
+	BOUYANCY bouyancy = NONE;
 	/*piso options*/
 	Util::ParamList params("piso");
-	params.enroll("velocity_UR",&velocity_UR);
-	params.enroll("pressure_UR",&pressure_UR);
-	params.enroll("n_PISO",&n_PISO);
-	params.enroll("n_ORTHO",&n_ORTHO);
+	Util::Option* op = new Util::Option(&bouyancy, 5, 
+			"NONE", "BOUSSINESQ_T1","BOUSSINESQ_T2",
+			"BOUSSINESQ_THETA1","BOUSSINESQ_THETA2");
+	params.enroll("bouyancy", op);
+	params.enroll("velocity_UR", &velocity_UR);
+	params.enroll("pressure_UR", &pressure_UR);
+	params.enroll("t_UR", &t_UR);
+	params.enroll("n_PISO", &n_PISO);
+	params.enroll("n_ORTHO", &n_ORTHO);
 
-	VectorCellField U("U",READWRITE);
-	ScalarCellField p("p",READWRITE);
+	VectorCellField U("U", READWRITE);
+	ScalarCellField p("p", READWRITE);
+	ScalarCellField T("T", READWRITE);
 
 	/*turbulence model*/
 	ScalarFacetField F;
-	bool Steady;
 	Turbulence_Model::RegisterTable(params);
 	params.read(input);
-	Turbulence_Model* turb = 
-		Turbulence_Model::Select(U,F,rho,viscosity,Steady);
+	Turbulence_Model* turb = Turbulence_Model::Select(U, F, rho, nu);
 	turb->enroll();
 
 	/*read parameters*/
 	Util::read_params(input);
 
 	/*wall distance*/
-	if(turb->needWallDist())
+	if (turb->needWallDist())
 		Mesh::calc_walldist(Iteration::get_start());
-
-	/*time*/
-	Scalar time_factor = Controls::time_scheme_factor;
-	Steady = (Controls::state == Controls::STEADY);
 
 	/*Calculate for each time step*/
 	Iteration it;
 	ScalarCellField po = p;
-	VectorCellField gP = -gradV(p);
-	F = flx(rho * U); 
+	VectorCellField gP = -grad(p);
+	F = flx(rho * U);
 
-	for(;!it.end();it.next()) {
-		/*Form Navier-stokes equation*/
+	for (; !it.end(); it.next()) {
+		/*
+		 * Prediction
+		 */
 		VectorMeshMatrix M;
-
-		/*convection*/
 		{
-			ScalarFacetField mu = rho * viscosity;
-			M = div(U,F,mu);
-		}
-
-		/*viscous/turbulent stress*/
-		turb->addTurbulentStress(M);
-
-		/*relax if steady state otherwise add time contribution*/
-		if(Steady)
-			M.Relax(velocity_UR);
-		else {
-			/*crank nicolson*/
-			if(!equal(time_factor,1)) {
-				VectorCellField po = M * U;
-				M *= time_factor;
-				M.Su -= (1 - time_factor) * po;
+			VectorCellField Sc = turb->getTurbSource();
+			ScalarCellField eddy_mu = turb->getTurbVisc();
+			/* Add bouyancy in two ways
+			 *  1. pm = p - rho*g*h
+			 *  2. pm = p - rho_m*g*h
+			 */
+			if (bouyancy != NONE) {
+				Scalar beta;
+				if(bouyancy <= BOUSSINESQ_T2) 
+					beta = GENERAL::beta;
+				else
+					beta = 1 / GENERAL::T0;
+				if (bouyancy == BOUSSINESQ_T1 || bouyancy == BOUSSINESQ_THETA1) {  
+					ScalarCellField rhok = rho * (0 - beta * (T - GENERAL::T0));
+					Sc += (rhok * VectorCellField(Controls::gravity));
+				} else if(bouyancy == BOUSSINESQ_T2 || bouyancy == BOUSSINESQ_THETA2) {
+					ScalarCellField gz = dot(Mesh::cC,VectorCellField(Controls::gravity));
+					Sc += gz * (rho * beta) * gradi(T);
+				}
 			}
-			/*time derivative*/
-			M += ddt(U,rho);
+			/*momentum prediction*/
+			{
+				ScalarFacetField mu = cds(eddy_mu) + rho * nu;
+				M = transport(U, F, mu, rho, velocity_UR, Sc, Scalar(0));
+				Solve(M == gP);
+			}
+			/*energy predicition*/
+			if (bouyancy != NONE) {
+				ScalarFacetField mu = cds(eddy_mu) / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
+				ScalarMeshMatrix Mt = transport(T, F, mu, rho, t_UR);
+				Solve(Mt);
+				T = max(T, Constants::MachineEpsilon);
+			}
 		}
 
-		/*solve momentum equation*/
-		Solve(M == gP);
-
-		/*1/ap*/
-		ScalarCellField api = (1 / M.ap);
-		fillBCs(api,true);
+		/*
+		 * Correction
+		 */
+		ScalarCellField api = fillBCs(1.0 / M.ap, true);
 		ScalarCellField rmu = rho * api * Mesh::cV;
 
 		/*PISO loop*/
-		for(Int j = 0;j < n_PISO;j++) {
+		for (Int j = 0; j < n_PISO; j++) {
 			/* Ua = H(U) / ap*/
 			U = getRHS(M) * api;
-			updateExplicitBCs(U,true);
+			updateExplicitBCs(U, true);
 
 			/*solve pressure poisson equation to satisfy continuity*/
 			{
 				ScalarCellField rhs = div(rho * U);
-				for(Int k = 0;k <= n_ORTHO;k++)
-					Solve(lap(p,rmu) += rhs);
+				for (Int k = 0; k <= n_ORTHO; k++)
+					Solve(lap(p, rmu) += rhs);
 			}
 
 			/*explicit velocity correction : add pressure contribution*/
-			gP = -gradV(p);
+			gP = -grad(p);
 			U -= gP * api;
-			updateExplicitBCs(U,true);
+			updateExplicitBCs(U, true);
 		}
 
 		/*update fluctuations*/
-		updateExplicitBCs(U,true,true);
+		updateExplicitBCs(U, true, true);
 		F = flx(rho * U);
 
 		/*solve turbulence transport equations*/
 		turb->solve();
 
 		/*explicitly under relax pressure*/
-		if(Steady) {
-			p.Relax(po,pressure_UR);
-			gP = -gradV(p);
+		if (Controls::state == Controls::STEADY) {
+			p.Relax(po, pressure_UR);
+			gP = -grad(p);
 			po = p;
 		}
 	}
 
 	/*write calculated turbulence fields*/
-	if(turb->writeStress) {
-		ScalarCellField K("Ksgs",WRITE);
-		STensorCellField R("Rsgs",WRITE);
-		STensorCellField V("Vsgs",WRITE);
+	if (turb->writeStress) {
+		ScalarCellField K("Ksgs", WRITE);
+		STensorCellField R("Rsgs", WRITE);
+		STensorCellField V("Vsgs", WRITE);
 		K = turb->getK();
 		R = turb->getReynoldsStress();
 		V = turb->getViscousStress();
@@ -319,37 +343,20 @@ void diffusion(istream& input) {
 
 	/*diffusion*/
 	Util::ParamList params("diffusion");
-	params.enroll("DT",&DT);
-	params.enroll("t_UR",&t_UR);
+	params.enroll("DT", &DT);
+	params.enroll("t_UR", &t_UR);
 
-	ScalarCellField T("T",READWRITE);
+	ScalarCellField T("T", READWRITE);
 
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*time*/
-	Scalar time_factor = Controls::time_scheme_factor;
-	bool Steady = (Controls::state == Controls::STEADY);
-
 	/*Calculate for each time step*/
 	ScalarFacetField mu = rho * DT;
 
-	for(Iteration it;!it.end();it.next()) {
+	for (Iteration it; !it.end(); it.next()) {
 		ScalarMeshMatrix M;
-
-		M = -lap(T,mu);
-
-		if(Steady)
-			M.Relax(t_UR);
-		else {
-			if(!equal(time_factor,1)) {
-				ScalarCellField po = M * T;
-				M *= time_factor;
-				M.Su -= (1 - time_factor) * po;
-			}
-			M += ddt(T,rho);
-		}
-
+		M = transport(T, mu, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -365,44 +372,27 @@ void diffusion(istream& input) {
 void transport(istream& input) {
 	/*Solver specific parameters*/
 	Scalar& rho = GENERAL::density;
-	Scalar DT = Scalar(4e-2);
+	Scalar DT = Scalar(1.0e-4);
 	Scalar t_UR = Scalar(1);
 
 	/*transport*/
 	Util::ParamList params("transport");
-	params.enroll("DT",&DT);
-	params.enroll("t_UR",&t_UR);
+	params.enroll("t_UR", &t_UR);
+	params.enroll("DT", &DT);
 
-	VectorCellField U("U",READWRITE);
-	ScalarCellField T("T",READWRITE);
+	VectorCellField U("U", READWRITE);
+	ScalarCellField T("T", READWRITE);
 
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*time*/
-	Scalar time_factor = Controls::time_scheme_factor;
-	bool Steady = (Controls::state == Controls::STEADY);
-
 	/*Calculate for each time step*/
-	ScalarFacetField F,mu = rho * DT,gamma;
+	ScalarFacetField F, mu = rho * DT;
 
-	for(Iteration it;!it.end();it.next()) {
+	for (Iteration it; !it.end(); it.next()) {
+		F = flx(rho * U);
 		ScalarMeshMatrix M;
-
-		F = flx(rho * U); 
-		M = div(T,F,mu) 
-			- lap(T,mu);
-
-		if(Steady)
-			M.Relax(t_UR);
-		else {
-			if(!equal(time_factor,1)) {
-				ScalarCellField po = M * T;
-				M *= time_factor;
-				M.Su -= (1 - time_factor) * po;
-			}
-			M += ddt(T,rho);
-		}
+		M = transport(T, F, mu, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -433,32 +423,32 @@ void potential(istream& input) {
 
 	/*potential*/
 	Util::ParamList params("potential");
-	params.enroll("n_ORTHO",&n_ORTHO);
+	params.enroll("n_ORTHO", &n_ORTHO);
 
-	VectorCellField U("U",READWRITE);
-	ScalarCellField p("p",READ);
-	
+	VectorCellField U("U", READWRITE);
+	ScalarCellField p("p", READ);
+
 	/*read parameters*/
 	Util::read_params(input);
 
 	/*set internal field to zero*/
-	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
-		U[i] = Vector(0,0,0);
+	for (Int i = 0; i < Mesh::gBCellsStart; i++) {
+		U[i] = Vector(0, 0, 0);
 		p[i] = Scalar(0);
 	}
-	updateExplicitBCs(U,true);
-	updateExplicitBCs(p,true);
+	updateExplicitBCs(U, true);
+	updateExplicitBCs(p, true);
 
-	for(Iteration it;it.start();it.next()) {
+	for (Iteration it; it.start(); it.next()) {
 		/*solve potential equation*/
 		ScalarCellField divU = div(U);
 		ScalarFacetField one = Scalar(1);
-		for(Int k = 0;k <= n_ORTHO;k++)
-			Solve(lap(p,one) == divU);
+		for (Int k = 0; k <= n_ORTHO; k++)
+			Solve(lap(p, one) == divU);
 
 		/*correct velocity*/
-		U -= grad(p);
-		updateExplicitBCs(U,true);
+		U -= gradi(p);
+		updateExplicitBCs(U, true);
 	}
 }
 /**
@@ -479,23 +469,23 @@ void walldist(istream& input) {
 
 	/*walldist options*/
 	Util::ParamList params("walldist");
-	params.enroll("n_ORTHO",&n_ORTHO);
+	params.enroll("n_ORTHO", &n_ORTHO);
 	Util::read_params(input);
-	
+
 	/*solve*/
-	Mesh::calc_walldist(Iteration::get_start(),n_ORTHO);
+	Mesh::calc_walldist(Iteration::get_start(), n_ORTHO);
 }
-void Mesh::calc_walldist(Int step,Int n_ORTHO) {
+void Mesh::calc_walldist(Int step, Int n_ORTHO) {
 	ScalarCellField& phi = yWall;
-    /*poisson equation*/
+	/*poisson equation*/
 	{
 		ScalarFacetField one = Scalar(1);
-		for(Int k = 0;k <= n_ORTHO;k++)
-			Solve(lap(phi,one) == -cV);
+		for (Int k = 0; k <= n_ORTHO; k++)
+			Solve(lap(phi, one) == -cV);
 	}
 	/*wall distance*/
 	{
-		VectorCellField g = grad(phi);
+		VectorCellField g = gradi(phi);
 		yWall = sqrt((g & g) + 2 * phi) - mag(g);
 	}
 	/*write it*/

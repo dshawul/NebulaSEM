@@ -24,8 +24,9 @@ DEFINES =
 
 default:
 	$(MAKE) gcc strip
+
 clean:
-	$(RM) $(OBJ) $(EXE)
+	$(RM) $(OBJLIST) $(EXEDIR)/$(EXE)
 
 strip:
 	strip $(EXEDIR)/$(EXE)
@@ -43,9 +44,9 @@ all: $(EXEDIR)/$(EXE)
 # Dependencies
 ############## 
 
-$(EXEDIR)/$(EXE): $(OBJ)
+$(EXEDIR)/$(EXE): $(OBJLIST)
 	$(CXX) $(LXXFLAGS) $(DEFINES) -o $@ $(OBJLIST)
 
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $(OBJDIR)/$@
+$(OBJDIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $@

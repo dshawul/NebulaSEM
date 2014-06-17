@@ -20,7 +20,7 @@ Scalar getResidual(const MeshField<type,CELL>& r,
 		res[0] = global_res[0];
 		res[1] = global_res[1];
 	}
-	return sqrt(mag(res[0]) / mag(res[1]));
+	return sqrt(sdiv(mag(res[0]), mag(res[1])));
 }
 
 template<class type>
@@ -34,7 +34,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	ScalarCellField D = M.ap,iD = (1 / M.ap);
 	Scalar res,ires;
 	type alpha,beta,o_rr = type(0),oo_rr;
-	Int j,iterations = 0;
+	Int iterations = 0;
 	bool converged = false;
 	register Int i;
 
@@ -220,7 +220,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	 *  Residual
 	 ***********************************/
 #define CALC_RESID() {								\
-	r = M.Su - M * cF;								\
+	r = M.Su - mul(M,cF);							\
 	forEachS(r,k,gBCellsStart)						\
 		r[k] = type(0);								\
 	precondition(r,AP);								\
@@ -283,7 +283,7 @@ void SolveT(const MeshMatrix<type>& M) {
 		} else if(M.flags & M.SYMMETRIC) {
 			/*conjugate gradient*/
 			EXCHANGE(p);
-			AP = M * p;
+			AP = mul(M,p);
 			Tdot(p,AP,oo_rr);
 			SUM_ALL(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
@@ -300,8 +300,8 @@ void SolveT(const MeshMatrix<type>& M) {
 			/* biconjugate gradient*/
 			EXCHANGE(p);
 			EXCHANGE(p1);
-			AP = M * p;
-			AP1 = M ^ p1;
+			AP = mul(M,p);
+			AP1 = mult(M,p1);
 			Tdot(p1,AP,oo_rr);
 			SUM_ALL(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);

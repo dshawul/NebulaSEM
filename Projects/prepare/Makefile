@@ -25,16 +25,24 @@ DEFINES =
 
 default:
 	$(MAKE) gcc strip
+
 clean:
-	$(RM) $(OBJ) $(EXE)
+	$(RM) $(OBJLIST) $(EXEDIR)/$(EXE)
 
 strip:
 	strip $(EXEDIR)/$(EXE)
 
 gcc:   
 	$(MAKE) \
+	CXX="mpic++ $(INC)" \
+	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti" \
+	LXXFLAGS="-lm" \
+	all
+
+icpc:   
+	$(MAKE) \
 	CXX="mpiCC $(INC)" \
-	CXXFLAGS="-O3 -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti $(ICPC_WARN) " \
+	CXXFLAGS="-O3 -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti $(ICPC_WARN)" \
 	LXXFLAGS="-lm" \
 	all
 
@@ -44,9 +52,9 @@ all: $(EXEDIR)/$(EXE)
 # Dependencies
 ############## 
 
-$(EXEDIR)/$(EXE): $(OBJ)
+$(EXEDIR)/$(EXE): $(OBJLIST)
 	$(CXX) $(LXXFLAGS) $(DEFINES) -o $@ $(OBJLIST)
 
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $(OBJDIR)/$@
+$(OBJDIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $@

@@ -1,0 +1,15 @@
+size 1
+#circular 300 20    0 2000 0.5   2000
+uniform 250
+top {
+	type DIRICHLET
+	value 200
+}
+bottom {
+	type DIRICHLET 
+	value 300
+}
+sides {
+	type NEUMANN 
+	value 0
+}

@@ -16,7 +16,7 @@ void Turbulence_Model::RegisterTable(Util::ParamList& params) {
 }
 
 Turbulence_Model* Turbulence_Model::Select(VectorCellField& U,ScalarFacetField& F,
-					Scalar& rho,Scalar& viscosity,bool& Steady) {
+					Scalar& rho,Scalar& viscosity) {
 	/*turbulence model*/
 	enum TurbModel {
 		NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES
@@ -27,27 +27,27 @@ Turbulence_Model* Turbulence_Model::Select(VectorCellField& U,ScalarFacetField& 
 	Turbulence_Model* turb;
 	switch(turb_model) {
 		case KE:   
-			turb = new KE_Model(U,F,rho,viscosity,Steady); 
+			turb = new KE_Model(U,F,rho,viscosity); 
 			break;
 		case MIXING_LENGTH:   
 			bneedWallDist = true;
-			turb = new MixingLength_Model(U,F,rho,viscosity,Steady); 
+			turb = new MixingLength_Model(U,F,rho,viscosity); 
 			break;
 		case RNG_KE:   
-			turb = new RNG_KE_Model(U,F,rho,viscosity,Steady); 
+			turb = new RNG_KE_Model(U,F,rho,viscosity); 
 			break;
 		case REALIZABLE_KE:   
-			turb = new REALIZABLE_KE_Model(U,F,rho,viscosity,Steady); 
+			turb = new REALIZABLE_KE_Model(U,F,rho,viscosity); 
 			break;
 		case KW:   
-			turb = new KW_Model(U,F,rho,viscosity,Steady); 
+			turb = new KW_Model(U,F,rho,viscosity); 
 			break;
 		case LES:  
 			bneedWallDist = true;
-			turb = new LES_Model(U,F,rho,viscosity,Steady); 
+			turb = new LES_Model(U,F,rho,viscosity); 
 			break;
 		default:
-			turb = new Turbulence_Model(U,F,rho,viscosity,Steady); 
+			turb = new Turbulence_Model(U,F,rho,viscosity); 
 			break;
 	}
 	turb->enroll();

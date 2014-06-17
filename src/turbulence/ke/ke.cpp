@@ -3,8 +3,8 @@
 References:
     http://www.cfd-online.com/Wiki/Standard_k-epsilon_model
 */
-KE_Model::KE_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,bool& tSteady) :
-	KX_Model(tU,tF,trho,tnu,tSteady,"e")
+KE_Model::KE_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+	KX_Model(tU,tF,trho,tnu,"e")
 {
 	Cmu = 0.09;
 	SigmaK = 1;
@@ -27,34 +27,20 @@ void KE_Model::solve() {
 
 	/*turbulent dissipation*/
 	mu = cds(eddy_mu) / SigmaX + rho * nu;
-	M = div(x,F,mu) 
-		- lap(x,mu);
-	M -= src(x,
-		(C1x * Pk * x / k),                        //Su
-		-(C2x * rho * x / k)                       //Sp  
-		);
-	if(Steady)
-		M.Relax(x_UR);
-	else
-		M += ddt(x,rho);
-	M.FixNearWallValues();
+	M = transport(x, F, mu, rho, x_UR,
+			(C1x * Pk * x / k),
+			-(C2x * rho * x / k));
+	FixNearWallValues(M);
 	Solve(M);
 	x = max(x,Constants::MachineEpsilon);
 
 	/*turbulent kinetic energy*/
 	mu = cds(eddy_mu) / SigmaK + rho * nu;
-	M = div(k,F,mu) 
-		- lap(k,mu);
-	M -= src(k,
-		Pk,                                        //Su
-		-(rho * x / k)                             //Sp
-		);
-	if(Steady)
-		M.Relax(k_UR);
-	else
-		M += ddt(k,rho);
+	M = transport(k, F, mu, rho, k_UR,
+				Pk,
+				-(rho * x / k));
 	if(wallModel == STANDARD)
-		M.FixNearWallValues();
+		FixNearWallValues(M);
 	Solve(M);
 	k = max(k,Constants::MachineEpsilon);
 }

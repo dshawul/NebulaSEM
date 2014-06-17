@@ -1,0 +1,14 @@
+size 1
+uniform 300
+top {
+	type DIRICHLET
+	value 200
+}
+bottom {
+	type DIRICHLET 
+	value 300
+}
+sides {
+	type NEUMANN 
+	value 0
+}

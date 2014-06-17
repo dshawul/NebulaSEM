@@ -1,7 +1,0 @@
-size 1
-uniform 0
-inlet NEUMANN 0
-outlet NEUMANN 0
-sides SYMMETRY
-top SYMMETRY
-WALLS NEUMANN 0

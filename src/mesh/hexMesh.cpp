@@ -315,6 +315,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		remove_duplicate(mo);
 	/*end*/
 }
+
 /*remove duplicate*/
 void remove_duplicate(Mesh::MeshObject& p) {
 	Int i,j,sz,corr;
