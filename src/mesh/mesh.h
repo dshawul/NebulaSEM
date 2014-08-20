@@ -1,7 +1,7 @@
 #ifndef __MESH_H
 #define __MESH_H
 
-#include <string>
+#include <cstring>
 #include <vector>
 #include <map>
 #include "tensor.h"

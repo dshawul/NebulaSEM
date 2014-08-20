@@ -205,49 +205,49 @@ public:
 		return r;													\
 	}
     /*define ops*/
-	Op(=);
-	Op(+=);
-	Op(-=);
-	Op(*=);
-	Op(/=);
-	SOp(=);
-	SOp(+=);
-	SOp(-=);
-	SOp(*=);
-	SOp(/=);
-	Fp(sdiv);
+	Op(=)
+	Op(+=)
+	Op(-=)
+	Op(*=)
+	Op(/=)
+	SOp(=)
+	SOp(+=)
+	SOp(-=)
+	SOp(*=)
+	SOp(/=)
+	Fp(sdiv)
 	/*from math.h*/
-	Fp2(acos);
-	Fp2(asin);
-	Fp2(atan);
-	Fp(atan2);
-	Fp2(ceil);
-	Fp2(cos);
-	Fp2(cosh);
-	Fp2(exp);
-	Fp2(fabs);
-	Fp2(floor);
-	Fp2(log);
-	Fp2(log10);
-	Fp1(pow);
-	Fp2(sin);
-	Fp2(sinh);
-	Fp2(sqrt);
-	Fp2(tan);
-	Fp2(tanh);
-	Fp(min);
-	Fp(max);
+	Fp2(acos)
+	Fp2(asin)
+	Fp2(atan)
+	Fp(atan2)
+	Fp2(ceil)
+	Fp2(cos)
+	Fp2(cosh)
+	Fp2(exp)
+	Fp2(fabs)
+	Fp2(floor)
+	Fp2(log)
+	Fp2(log10)
+	Fp1(pow)
+	Fp2(sin)
+	Fp2(sinh)
+	Fp2(sqrt)
+	Fp2(tan)
+	Fp2(tanh)
+	Fp(min)
+	Fp(max)
 	/*additional*/
-	Fp2(unit);
+	Fp2(unit)
 #undef Op
 #undef SOp
 #undef Fp
 #undef Fp1
 #undef Fp2
-	Operator(MeshField,+);
-	Operator(MeshField,-);
-	Operator(MeshField,*);
-	Operator(MeshField,/);
+	Operator(MeshField,+)
+	Operator(MeshField,-)
+	Operator(MeshField,*)
+	Operator(MeshField,/)
 	/*friend ops*/
 	friend MeshField<Scalar,entity> mag(const MeshField& p) {
 		MeshField<Scalar,entity> r;
@@ -442,10 +442,10 @@ typedef MeshField<STensor,VERTEX> STensorVertexField;
 			r[i] = name(p[i],q[i]);																\
 		return r;																				\
 	}
-Op(operator *,Scalar,T);
-Op(operator /,Scalar,T);
-Op(operator *,T,Scalar);
-Op(operator /,T,Scalar);
+Op(operator *,Scalar,T)
+Op(operator /,Scalar,T)
+Op(operator *,T,Scalar)
+Op(operator /,T,Scalar)
 #undef Op
 /*multiply*/
 template <ENTITY E>

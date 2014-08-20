@@ -53,7 +53,7 @@ all: $(EXEDIR)/$(EXE)
 ############## 
 
 $(EXEDIR)/$(EXE): $(OBJLIST)
-	$(CXX) $(LXXFLAGS) $(DEFINES) -o $@ $(OBJLIST)
+	$(CXX) $(DEFINES) -o $@ $(OBJLIST) $(LXXFLAGS)
 
 
 $(OBJDIR)/%.o: %.cpp
