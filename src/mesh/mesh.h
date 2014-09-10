@@ -12,7 +12,7 @@ typedef std::vector<Int>      IntVector;
 
 /*our basic building blocks */
 enum ENTITY {
-	CELL, FACET, VERTEX
+	CELL, FACET, VERTEX, NODE
 };
 
 /*typdefs*/

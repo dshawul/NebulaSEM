@@ -19,13 +19,7 @@ static Int cell_count(Cell& c) {
 
 static void cell_vtk(std::ofstream& of, Cell& c) {
 	Facet* f;
-	Int i,j,nFacets = c.size(),nVertices = 0,nTotal;
-	for(i = 0;i < nFacets;i++) {
-		f = &gFacets[c[i]];
-		nVertices += f->size();
-	}
-	nTotal = nFacets + nVertices + 2;
-
+	Int i,j,nFacets = c.size(),nTotal = cell_count(c);
 	/*write*/
 	of << nTotal - 1 << " " << nFacets << " ";
 	for(i = 0;i < nFacets;i++) {

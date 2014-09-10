@@ -30,6 +30,7 @@ namespace GENERAL {
 /*solvers*/
 void piso(istream&);
 void diffusion(istream&);
+void convection(istream&);
 void potential(istream&);
 void transport(istream&);
 void walldist(istream&);
@@ -69,6 +70,8 @@ int main(int argc, char* argv[]) {
 		piso(input);
 	} else if (!Util::compare(sname, "diffusion")) {
 		diffusion(input);
+	} else if (!Util::compare(sname, "convection")) {
+		convection(input);
 	} else if (!Util::compare(sname, "transport")) {
 		transport(input);
 	} else if (!Util::compare(sname, "potential")) {
@@ -332,7 +335,7 @@ void piso(istream& input) {
  Diffusion solver
  ~~~~~~~~~~~~~~~~
  Solver for pdes of parabolic heat equation type:
-       d(rho*u)/dt = lap(T,rho*DT)
+       dT/dt = lap(T,DT)
  \endverbatim
 */
 void diffusion(istream& input) {
@@ -356,7 +359,41 @@ void diffusion(istream& input) {
 
 	for (Iteration it; !it.end(); it.next()) {
 		ScalarMeshMatrix M;
-		M = transport(T, mu, rho, t_UR);
+		M = diffusion(T, mu, rho, t_UR);
+		Solve(M);
+	}
+}
+/**
+  \verbatim
+  Convection solver
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Given a flow field (U), the solver determines the distribution of a 
+  scalar by convection.
+     dT/dt + div(T,F,0) = 0
+  \endverbatim
+ */
+void convection(istream& input) {
+	/*Solver specific parameters*/
+	Scalar& rho = GENERAL::density;
+	Scalar t_UR = Scalar(1);
+
+	/*transport*/
+	Util::ParamList params("convection");
+	params.enroll("t_UR", &t_UR);
+
+	VectorCellField U("U", READWRITE);
+	ScalarCellField T("T", READWRITE);
+
+	/*read parameters*/
+	Util::read_params(input);
+
+	/*Calculate for each time step*/
+	ScalarFacetField F, mu = Scalar(0);
+
+	for (Iteration it; !it.end(); it.next()) {
+		F = flx(rho * U);
+		ScalarMeshMatrix M;
+		M = convection(T, F, mu, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -364,9 +401,9 @@ void diffusion(istream& input) {
   \verbatim
   Transport equation solver
   ~~~~~~~~~~~~~~~~~~~~~~~~~
-  Given a flow field (U) and values of a scalar at the boundaries, 
-  the solver determines the distribution of the scalar.
-     dT/dt + div(T,F,mu) = lap(T,mu)
+  Given a flow field (U), the solver determines the distribution of a 
+  scalar by convection and diffusion.
+     dT/dt + div(T,F,DT) = lap(T,DT)
   \endverbatim
  */
 void transport(istream& input) {

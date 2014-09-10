@@ -67,6 +67,9 @@ enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
 };
 
+namespace DG {
+    extern Int Nop[3];
+};
 /* *****************************************************************************
  *                    Field variables defined on mesh                          
  * *****************************************************************************/
@@ -110,6 +113,9 @@ public:
 				case CELL:   SIZE = Mesh::gCells.size();	 break;
 				case FACET:  SIZE = Mesh::gFacets.size();    break;
 				case VERTEX: SIZE = Mesh::gVertices.size();  break;
+				case NODE:   SIZE = Mesh::gCells.size() * 
+				(DG::Nop[0] + 1) * (DG::Nop[1] + 1) * (DG::Nop[2] + 1);	 
+				             break;
 			}
 			P = new type[SIZE];
 		} else {
@@ -123,6 +129,9 @@ public:
 				case CELL:   SIZE = Mesh::gCells.size();	 break;
 				case FACET:  SIZE = Mesh::gFacets.size();    break;
 				case VERTEX: SIZE = Mesh::gVertices.size();  break;
+				case NODE:   SIZE = Mesh::gCells.size() * 
+				(DG::Nop[0] + 1) * (DG::Nop[1] + 1) * (DG::Nop[2] + 1);	 
+				             break;
 		}
 		P = &q[0];
 		allocated = 0;
@@ -420,15 +429,19 @@ public:
 typedef MeshField<Scalar,CELL>    ScalarCellField;
 typedef MeshField<Scalar,FACET>   ScalarFacetField;
 typedef MeshField<Scalar,VERTEX>  ScalarVertexField;
+typedef MeshField<Scalar,NODE>    ScalarNodeField;
 typedef MeshField<Vector,CELL>    VectorCellField;
 typedef MeshField<Vector,FACET>   VectorFacetField;
 typedef MeshField<Vector,VERTEX>  VectorVertexField;
+typedef MeshField<Vector,NODE>    VectorNodeField;
 typedef MeshField<Tensor,CELL>    TensorCellField;
 typedef MeshField<Tensor,FACET>   TensorFacetField;
 typedef MeshField<Tensor,VERTEX>  TensorVertexField;
+typedef MeshField<Tensor,NODE>    TensorNodeField;
 typedef MeshField<STensor,CELL>   STensorCellField;
 typedef MeshField<STensor,FACET>  STensorFacetField;
 typedef MeshField<STensor,VERTEX> STensorVertexField;
+typedef MeshField<STensor,NODE>   STensorNodeField;
 
 /***********************************
  *  Specific tensor operations
@@ -565,11 +578,12 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 			Vector center,radius;
 			T perterb;
 			is >> value >> perterb >> center >> radius;
-			MeshField<Vector,CELL> cB = center;
-			MeshField<Scalar,CELL> R = mag((Mesh::cC - cB) / radius);
+			VectorCellField cB = center;
+			ScalarCellField R = mag((Mesh::cC - cB) / radius);
+			forEach(R,i) R[i] = min(1.0,R[i]);
 			MeshField<T,E> val = value;
 			val += MeshField<T,E>(perterb / 2) * 
-					(MeshField<Scalar,E>(1.0) + cos(min(1.0,R) * Constants::PI));
+					(MeshField<Scalar,E>(1.0) + cos(R * Constants::PI));
 			*this = val;
 		} else if(str == "hydrostatic") {
 			T p0;
@@ -1525,10 +1539,18 @@ void addTemporal(MeshMatrix<type>& M,const ScalarCellField& rho,Scalar cF_UR) {
 		M += ddt(*M.cF,rho);
 	}
 }
+
 template<class type>
-MeshMatrix<type> transport(MeshField<type,CELL>& cF,
+MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
 	MeshMatrix<type> M = -lap(cF,mu);
+	addTemporal(M,rho,cF_UR);
+	return M;
+}
+template<class type>
+MeshMatrix<type> convection(MeshField<type,CELL>& cF,const ScalarFacetField& F,
+		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
+	MeshMatrix<type> M = div(cF,F,mu);
 	addTemporal(M,rho,cF_UR);
 	return M;
 }

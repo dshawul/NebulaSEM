@@ -166,8 +166,8 @@ void SolveT(const MeshMatrix<type>& M) {
 		Substitute_(X,B,i,true,TR);					\
 }
 #define BackwardSub(X,B,TR) {						\
-	for(int i = gBCellsStart - 1;i >= 0;i--)		\
-		Substitute_(X,B,i,false,TR);				\
+	for(i = gBCellsStart;i > 0;i--)					\
+		Substitute_(X,B,i-1,false,TR);				\
 }
 #define DiagSub(X,B) {								\
 	for(i = 0;i < gBCellsStart;i++)					\
@@ -340,7 +340,7 @@ PROBE:
 				/*find the boundary*/
 				Int patchi;
 				for(patchi = 0;patchi < gInterMesh.size();patchi++) {
-					if(gInterMesh[patchi].to == source) 
+					if(gInterMesh[patchi].to == (Int)source) 
 						break;
 				}
 				interBoundary& b = gInterMesh[patchi];

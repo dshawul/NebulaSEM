@@ -36,6 +36,9 @@ namespace Controls {
 	CommMethod parallel_method = BLOCKED;
 	Vector gravity = Vector(0,-9.81,0);
 }
+namespace DG {
+	Int Nop[3] = {4, 4, 4};
+}
 /*
  * Initialize geometric mesh fields
  */
