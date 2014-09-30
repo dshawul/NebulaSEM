@@ -22,7 +22,7 @@ void KW_Model::enroll() {
 	params.enroll("C2w",&C2x);
 }
 void KW_Model::solve() {
-	ScalarMeshMatrix M;
+	ScalarCellMatrix M;
 	ScalarFacetField mu;
 
 	/*turbulent dissipation*/

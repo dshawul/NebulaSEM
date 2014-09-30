@@ -9,7 +9,7 @@ OBJ = mesh.o tensor.o util.o hexMesh.o mshMesh.o meshApp.o
 ############################
 BDIR     = ../..
 SRCDIR   = $(BDIR)/src
-ALLDIR   = field mesh tensor util vtk mp decompose solvers/piso
+ALLDIR   = mesh tensor util
 EXEDIR   = $(BDIR)/bin
 OBJDIR   = ../objs
 OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))
@@ -34,7 +34,7 @@ strip:
 gcc:   
 	$(MAKE) \
 	CXX="g++ $(INC)" \
-	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti" \
+	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-rtti" \
 	LXXFLAGS="-lm" \
 	all
 

@@ -32,43 +32,48 @@ typedef unsigned int  Int;
 #endif
 
 /* Arthimetic operators are defined via compound assignment*/
-#define Operator(T,$)												\
+#define AddOperator(T,$)											\
 	friend FORCEINLINE T operator $ (const T& p,const T& q) {		\
 		T r = p;													\
 		r $##= q;													\
 		return r;													\
 	}
-/* Default operator overloads for scalars vs others*/
-#define OpS($)														\
-	template<class T>												\
-	FORCEINLINE T operator $ (const T& p,const Scalar& q) {			\
+/*Scalar operators*/
+#define AddRightScalarOperator(T,$)									\
+	friend FORCEINLINE T operator $ (const T& p,const Scalar& q) {	\
 		T r = p;													\
 		r $##= q;													\
 		return r;													\
 	}
-#define COp($)														\
-	template<class T>												\
-	FORCEINLINE T operator $ (const Scalar& p,const T& q) {			\
+#define AddLeftScalarOperator1(T,$)									\
+	friend FORCEINLINE T operator $ (const Scalar& p,const T& q) {	\
 		T r = q;													\
 		r $##= p;													\
 		return r;													\
 	}
-#define NCOp($)														\
-	template<class T>												\
-	FORCEINLINE T operator $ (const Scalar& p,const T& q) {			\
+#define AddLeftScalarOperator2(T,$)									\
+	friend FORCEINLINE T operator $ (const Scalar& p,const T& q) {	\
 		T r = p;													\
 		r $##= q;													\
 		return r;													\
 	}
-OpS(*)
-OpS(/)
-COp(+)
-COp(*)
-NCOp(/)
-NCOp(-)
-#undef OpS
-#undef COp
-#undef NCOp
+	
+#define AddOperators(T)\
+	AddOperator(T,+)\
+	AddOperator(T,-)\
+	AddOperator(T,*)\
+	AddOperator(T,/)
+	
+#define AddScalarOperators(T)\
+	AddRightScalarOperator(T,+)\
+	AddRightScalarOperator(T,-)\
+	AddRightScalarOperator(T,*)\
+	AddRightScalarOperator(T,/)\
+	AddLeftScalarOperator1(T,+)\
+	AddLeftScalarOperator1(T,*)\
+	AddLeftScalarOperator2(T,-)\
+	AddLeftScalarOperator2(T,/)
+
 /*other scalar operations*/
 FORCEINLINE Scalar mag(const Scalar& p) { 
 	return fabs(p); 
@@ -325,10 +330,8 @@ public:
 #undef Fp
 #undef Fp1
 #undef Fp2
-	Operator(TTensor,+)
-	Operator(TTensor,-)
-	Operator(TTensor,*)
-	Operator(TTensor,/)
+	AddOperators(TTensor)
+	AddScalarOperators(TTensor)
 	/*others*/
 	friend Scalar magSq(const TTensor& p) {
 		return (p & p);

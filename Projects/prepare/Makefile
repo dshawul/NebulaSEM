@@ -35,14 +35,14 @@ strip:
 gcc:   
 	$(MAKE) \
 	CXX="mpic++ $(INC)" \
-	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti" \
+	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-rtti" \
 	LXXFLAGS="-lm" \
 	all
 
 icpc:   
 	$(MAKE) \
 	CXX="mpiCC $(INC)" \
-	CXXFLAGS="-O3 -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti $(ICPC_WARN)" \
+	CXXFLAGS="-O3 -Wall -fomit-frame-pointer -fstrict-aliasing -fno-rtti $(ICPC_WARN)" \
 	LXXFLAGS="-lm" \
 	all
 

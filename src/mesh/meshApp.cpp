@@ -1,4 +1,3 @@
-#include <cstring>
 #include "mesh.h"
 #include "hexMesh.h"
 #include "mshMesh.h"

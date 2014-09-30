@@ -22,7 +22,7 @@ void KE_Model::enroll() {
 	params.enroll("C2e",&C2x);
 }
 void KE_Model::solve() {
-	ScalarMeshMatrix M;
+	ScalarCellMatrix M;
 	ScalarFacetField mu;
 
 	/*turbulent dissipation*/

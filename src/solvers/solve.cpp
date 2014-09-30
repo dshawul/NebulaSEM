@@ -3,9 +3,9 @@
 /* *********************************************************************
  *  Solve system of linear equations iteratively
  * *********************************************************************/
-template<class type>
-Scalar getResidual(const MeshField<type,CELL>& r,
-				   const MeshField<type,CELL>& cF,
+template<class type, ENTITY entity>
+Scalar getResidual(const MeshField<type,entity>& r,
+				   const MeshField<type,entity>& cF,
 				   bool sync) {
 	type res[2];
 	res[0] = type(0);
@@ -31,7 +31,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	MeshField<type,CELL> r1(false),p1(false),AP1(false);   
 	MeshField<type,CELL>& cF = *M.cF;
 	MeshField<type,CELL>& buffer = AP;
-	ScalarCellField D = M.ap,iD = (1 / M.ap);
+	ScalarCellField D = M.ap,iD = (1.0 / M.ap);
 	Scalar res,ires;
 	type alpha,beta,o_rr = type(0),oo_rr;
 	Int iterations = 0;
@@ -99,7 +99,7 @@ void SolveT(const MeshMatrix<type>& M) {
 						}										
 					}			
 				}
-				iD = (1 / D);
+				iD = (1.0 / D);
 			}
 			/*end*/
 		}

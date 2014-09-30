@@ -216,7 +216,7 @@ void piso(istream& input) {
 
 	VectorCellField U("U", READWRITE);
 	ScalarCellField p("p", READWRITE);
-	ScalarCellField T("T", READWRITE);
+	ScalarCellField T(false);
 
 	/*turbulence model*/
 	ScalarFacetField F;
@@ -227,6 +227,10 @@ void piso(istream& input) {
 
 	/*read parameters*/
 	Util::read_params(input);
+
+	/*temperature*/
+	if(bouyancy != NONE)
+		T.construct("T",READWRITE);
 
 	/*wall distance*/
 	if (turb->needWallDist())
@@ -242,7 +246,7 @@ void piso(istream& input) {
 		/*
 		 * Prediction
 		 */
-		VectorMeshMatrix M;
+		VectorCellMatrix M;
 		{
 			VectorCellField Sc = turb->getTurbSource();
 			ScalarCellField eddy_mu = turb->getTurbVisc();
@@ -273,7 +277,7 @@ void piso(istream& input) {
 			/*energy predicition*/
 			if (bouyancy != NONE) {
 				ScalarFacetField mu = cds(eddy_mu) / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
-				ScalarMeshMatrix Mt = transport(T, F, mu, rho, t_UR);
+				ScalarCellMatrix Mt = transport(T, F, mu, rho, t_UR);
 				Solve(Mt);
 				T = max(T, Constants::MachineEpsilon);
 			}
@@ -358,7 +362,7 @@ void diffusion(istream& input) {
 	ScalarFacetField mu = rho * DT;
 
 	for (Iteration it; !it.end(); it.next()) {
-		ScalarMeshMatrix M;
+		ScalarCellMatrix M;
 		M = diffusion(T, mu, rho, t_UR);
 		Solve(M);
 	}
@@ -392,7 +396,7 @@ void convection(istream& input) {
 
 	for (Iteration it; !it.end(); it.next()) {
 		F = flx(rho * U);
-		ScalarMeshMatrix M;
+		ScalarCellMatrix M;
 		M = convection(T, F, mu, rho, t_UR);
 		Solve(M);
 	}
@@ -428,7 +432,7 @@ void transport(istream& input) {
 
 	for (Iteration it; !it.end(); it.next()) {
 		F = flx(rho * U);
-		ScalarMeshMatrix M;
+		ScalarCellMatrix M;
 		M = transport(T, F, mu, rho, t_UR);
 		Solve(M);
 	}

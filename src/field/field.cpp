@@ -37,7 +37,8 @@ namespace Controls {
 	Vector gravity = Vector(0,-9.81,0);
 }
 namespace DG {
-	Int Nop[3] = {4, 4, 4};
+	Int Nop[3] = {0, 0, 0};
+	Int NP = 1, NPM1 = NP - 1;
 }
 /*
  * Initialize geometric mesh fields

@@ -44,7 +44,7 @@ void REALIZABLE_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
 	KX_Model::calcEddyViscosity(gradU);
 }
 void REALIZABLE_KE_Model::solve() {
-	ScalarMeshMatrix M;
+	ScalarCellMatrix M;
 	ScalarFacetField mu;
 
 	/*turbulent dissipation*/

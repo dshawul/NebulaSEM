@@ -32,7 +32,7 @@ void RNG_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
 	KE_Model::calcEddyViscosity(gradU);
 }
 void RNG_KE_Model::solve() {
-	ScalarMeshMatrix M;
+	ScalarCellMatrix M;
 	ScalarFacetField mu;
 
 	/*turbulent dissipation*/

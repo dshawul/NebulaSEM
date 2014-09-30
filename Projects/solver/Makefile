@@ -2,7 +2,7 @@
 # Target executable and files
 ############################
 EXE = solver
-OBJ = solve.o mesh.o tensor.o util.o solver.o mp.o ke.o kw.o les.o realizableke.o rngke.o mixing_length.o field.o turbulence.o
+OBJ = solve.o mesh.o tensor.o util.o solver.o mp.o ke.o kw.o les.o realizableke.o rngke.o mixing_length.o field.o dg.o turbulence.o
 ICPC_WARN = -wd280 -wd593 -wd869 -wd981 -wd383  -wd1419 -wd2259 -wd1572 -wd1599 -wd444 -wd1418
 
 #############################
@@ -35,14 +35,14 @@ strip:
 gcc:   
 	$(MAKE) \
 	CXX="mpic++ $(INC)" \
-	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti" \
+	CXXFLAGS="-O3 -msse -Wall -fomit-frame-pointer -fstrict-aliasing -fno-rtti" \
 	LXXFLAGS="-lm" \
 	all
 
 icpc:   
 	$(MAKE) \
 	CXX="mpiCC $(INC)" \
-	CXXFLAGS="-O3 -Wall -fomit-frame-pointer -fstrict-aliasing -fno-exceptions -fno-rtti $(ICPC_WARN)" \
+	CXXFLAGS="-O3 -Wall -fomit-frame-pointer -fstrict-aliasing  -fno-rtti $(ICPC_WARN)" \
 	LXXFLAGS="-lm" \
 	all
 

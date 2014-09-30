@@ -166,7 +166,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
 		return (2 * magS);
 	}
 	/*Fix near wall cell values*/
-	void FixNearWallValues(ScalarMeshMatrix& M) {
+	void FixNearWallValues(ScalarCellMatrix& M) {
 		using namespace Mesh;
 		BasicBCondition* bbc;
 		forEach(AllBConditions,d) {
