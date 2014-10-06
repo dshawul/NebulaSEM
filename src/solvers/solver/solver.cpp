@@ -43,6 +43,13 @@ int main(int argc, char* argv[]) {
 
 	/*message passing object*/
 	MP mp(argc, argv);
+	if(!strcmp(argv[1],"-h")) {
+		std::cout << "Usage:\n"
+				  << "  ./solver <inputfile>\n"
+				  << "Options:\n"
+				  << "  -h          --  Display this message\n\n";
+		return 0;
+	} 
 	ifstream input(argv[1]);
 
 	/*main options*/
@@ -196,18 +203,18 @@ void piso(istream& input) {
 	Scalar t_UR = Scalar(0.8);
 	Int n_PISO = 1;
 	Int n_ORTHO = 0;
-	/*Include bouyancy?*/
+	/*Include buoyancy?*/
 	enum BOUYANCY {
 		NONE, BOUSSINESQ_T1, BOUSSINESQ_T2, 
 		BOUSSINESQ_THETA1, BOUSSINESQ_THETA2,
 	};
-	BOUYANCY bouyancy = NONE;
+	BOUYANCY buoyancy = NONE;
 	/*piso options*/
 	Util::ParamList params("piso");
-	Util::Option* op = new Util::Option(&bouyancy, 5, 
+	Util::Option* op = new Util::Option(&buoyancy, 5, 
 			"NONE", "BOUSSINESQ_T1","BOUSSINESQ_T2",
 			"BOUSSINESQ_THETA1","BOUSSINESQ_THETA2");
-	params.enroll("bouyancy", op);
+	params.enroll("buoyancy", op);
 	params.enroll("velocity_UR", &velocity_UR);
 	params.enroll("pressure_UR", &pressure_UR);
 	params.enroll("t_UR", &t_UR);
@@ -229,7 +236,7 @@ void piso(istream& input) {
 	Util::read_params(input);
 
 	/*temperature*/
-	if(bouyancy != NONE)
+	if(buoyancy != NONE)
 		T.construct("T",READWRITE);
 
 	/*wall distance*/
@@ -250,20 +257,20 @@ void piso(istream& input) {
 		{
 			VectorCellField Sc = turb->getTurbSource();
 			ScalarCellField eddy_mu = turb->getTurbVisc();
-			/* Add bouyancy in two ways
+			/* Add buoyancy in two ways
 			 *  1. pm = p - rho*g*h
 			 *  2. pm = p - rho_m*g*h
 			 */
-			if (bouyancy != NONE) {
+			if (buoyancy != NONE) {
 				Scalar beta;
-				if(bouyancy <= BOUSSINESQ_T2) 
+				if(buoyancy <= BOUSSINESQ_T2) 
 					beta = GENERAL::beta;
 				else
 					beta = 1 / GENERAL::T0;
-				if (bouyancy == BOUSSINESQ_T1 || bouyancy == BOUSSINESQ_THETA1) {  
+				if (buoyancy == BOUSSINESQ_T1 || buoyancy == BOUSSINESQ_THETA1) {  
 					ScalarCellField rhok = rho * (0 - beta * (T - GENERAL::T0));
 					Sc += (rhok * VectorCellField(Controls::gravity));
-				} else if(bouyancy == BOUSSINESQ_T2 || bouyancy == BOUSSINESQ_THETA2) {
+				} else if(buoyancy == BOUSSINESQ_T2 || buoyancy == BOUSSINESQ_THETA2) {
 					ScalarCellField gz = dot(Mesh::cC,VectorCellField(Controls::gravity));
 					Sc += gz * (rho * beta) * gradi(T);
 				}
@@ -275,7 +282,7 @@ void piso(istream& input) {
 				Solve(M == gP);
 			}
 			/*energy predicition*/
-			if (bouyancy != NONE) {
+			if (buoyancy != NONE) {
 				ScalarFacetField mu = cds(eddy_mu) / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
 				ScalarCellMatrix Mt = transport(T, F, mu, rho, t_UR);
 				Solve(Mt);

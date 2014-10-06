@@ -4,12 +4,14 @@
 
 using namespace std;
 
-/*boundary*/
+/**
+Boundary information
+*/
 struct Bdry {
 	string name;
 	IntVector index;
-	/*point in polygon*
-	int pnpoly(Vertices keys,Vertex C) {
+	/*point in polygon*/
+	int pnpoly(const Vertices& keys,const Vertex& C) {
 		Vector ki,kj;
 		int i, j, nvert = index.size(), c = 0;
 		for (i = 0, j = nvert-1; i < nvert; j = i++) {
@@ -21,10 +23,12 @@ struct Bdry {
 				c = !c;
 		}
 		return c;
-	}*/
+	}
 };
 
-/*generate mesh*/
+/**
+Mesh generator application
+*/
 int main(int argc,char* argv[]) {
 	using namespace Mesh;
 	using namespace Util;
@@ -49,7 +53,15 @@ int main(int argc,char* argv[]) {
 			i++;
 			Export = true;
 			e_file_name = argv[i];
-		}
+		} else if(!strcmp(argv[i],"-h")) {
+			std::cout << "Usage:\n"
+					  << "  ./mesh <inputfile> <Options>\n"
+					  << "Options:\n"
+					  << "  -i     --  Import from Fluent .msh file\n"
+					  << "  -o     --  Export to Fluent .msh file format\n"
+					  << "  -h     --  Display this message\n\n";
+			return 0;
+		} 
 	}
 
 	/*export to msh file format*/
@@ -238,14 +250,16 @@ int main(int argc,char* argv[]) {
 			Scalar d = mag(N ^ N1);
 			Scalar d2 = sqrt(mag(N & H));
 			if(d <= 10e-4 && d2 <= 10e-4) {
-				/*
-				Vector C(0);
-				forEach(f,m)
-					C += gVertices[f[m]];
-				C /= Scalar(f.size());
-				if(Bdrys[i].pnpoly(keys,C))
-					*/
+				if(false) {
+					Vector C(0);
+					forEach(f,m)
+						C += gVertices[f[m]];
+					C /= Scalar(f.size());
+					if(Bdrys[i].pnpoly(keys,C))
+						list.push_back(j);
+				} else {
 					list.push_back(j);
+				}
 			}
 		}
 		if(!list.empty()) {
@@ -259,11 +273,18 @@ int main(int argc,char* argv[]) {
 	}
 	/*default specified*/
 	if(!default_name.empty()) {
+		IntVector faceInB;
+		faceInB.assign(gFacets.size(),0);
+		forEachIt(Boundaries,gBoundaries,it) {
+			IntVector& gB = it->second;	
+			forEach(gB,j)
+				faceInB[gB[j]] = 1;
+		}
+	
 		IntVector& gB = gBoundaries[default_name.c_str()];
 		forEachS(gFacets,i,gMesh.nf) {
-			if(!faceInBoundary(i)) {
+			if(!faceInB[i])
 				gB.push_back(i);
-			}
 		}
 	}
 	/*write it*/

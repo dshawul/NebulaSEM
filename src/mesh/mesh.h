@@ -71,7 +71,6 @@ namespace Mesh {
 	extern  Vertices         probePoints;
 	extern  IntVector        probeCells;
 	
-	bool faceInBoundary(Int);
 	void addBoundaryCells();
 	void calcGeometry();
 	void removeBoundary(IntVector&);

@@ -1,5 +1,4 @@
 #include "mesh.h"
-
 using namespace std;
 
 /*global mesh*/
@@ -76,19 +75,10 @@ void Mesh::MeshObject::write(ostream& os) {
 		os << it->first << " " << it->second << endl;
 	os << dec;
 }
-/*Is face in boundary*/
-bool Mesh::faceInBoundary(Int f) {
-	forEachIt(Boundaries,gBoundaries,it) {
-		IntVector& gB = it->second;
-		forEach(gB,j) {
-			if(gB[j] == f)
-				return true;
-		}
-	}
-	return false;
-}
 /*add boundary cells*/
 void Mesh::addBoundaryCells() {
+	cout << "Adding boundary cells. " << endl;
+	
 	using namespace Constants;
 	Int i,index;
 
@@ -106,10 +96,18 @@ void Mesh::addBoundaryCells() {
 		}
 	}
 	/*Flag boundary faces not in gBoundaries for auto deletion*/
+	IntVector faceInB;
+	faceInB.assign(gFacets.size(),0);
+	forEachIt(Boundaries,gBoundaries,it) {
+		IntVector& gB = it->second;	
+		forEach(gB,j)
+			faceInB[gB[j]] = 1;
+	}
+	
 	IntVector& gDelete = gBoundaries["delete"];
 	forEach(gFN,i) {
 		if(gFN[i] == MAX_INT) {
-			if(!faceInBoundary(i))
+			if(!faceInB[i])
 				gDelete.push_back(i);
 		}
 	}
@@ -129,8 +127,9 @@ void Mesh::addBoundaryCells() {
 	}
 }
 void Mesh::calcGeometry() {
+	cout << "Calculating geometric fields. " << endl;
+	
 	Int i;
-
 	/*allocate*/
 	_fC.assign(gFacets.size(),Vector(0));
 	_cC.assign(gCells.size(),Vector(0));
@@ -231,6 +230,7 @@ void Mesh::removeBoundary(IntVector& fs) {
 			}
 		}
 	}
+
 	/*updated facet id*/
 	forEach(fs,i)
 		Idf[fs[i]] = Constants::MAX_INT;
@@ -241,18 +241,19 @@ void Mesh::removeBoundary(IntVector& fs) {
 		else
 			gFacets[i].clear();
 	}
+
 	/*erase facets*/
+	IntVector fzeroIndices;
 	forEach(gFacets,i) {
-		if(gFacets[i].size() == 0) {
-			gFacets.erase(gFacets.begin() + i);
-			gFO.erase(gFO.begin() + i);
-			gFN.erase(gFN.begin() + i);
-			_fC.erase(_fC.begin() + i);
-			_fN.erase(_fN.begin() + i);
-			--i;
-		}
+		if(gFacets[i].size() == 0)
+			fzeroIndices.push_back(i);
 	}
-	/*updated facet id*/
+	erase_indices(gFacets,fzeroIndices);
+	erase_indices(gFO,fzeroIndices);
+	erase_indices(gFN,fzeroIndices);
+	erase_indices(_fC,fzeroIndices);
+	erase_indices(_fN,fzeroIndices);
+	/*updated cell id*/
 	count = 0;
 	forEach(gCells,i) {
 		if(gCells[i].size() != 0) 
@@ -261,16 +262,19 @@ void Mesh::removeBoundary(IntVector& fs) {
 			Idc[i] = Constants::MAX_INT;
 	}
 	/*erase cells*/
+	IntVector czeroIndices;
 	forEach(gCells,i) {
-		if(gCells[i].size() == 0) { 
-			gCells.erase(gCells.begin() + i); 
-			_cC.erase(_cC.begin() + i);
-			_cV.erase(_cV.begin() + i);
-			--i;
-		} else {
-			forEach(gCells[i],j) {
-				gCells[i][j] = Idf[gCells[i][j]];
-			}
+		if(gCells[i].size() == 0)
+			czeroIndices.push_back(i);
+	}
+	erase_indices(gCells,czeroIndices);
+	erase_indices(_cC,czeroIndices);
+	erase_indices(_cV,czeroIndices);
+	
+	/*updated facet id*/
+	forEach(gCells,i) {
+		forEach(gCells[i],j) {
+			gCells[i][j] = Idf[gCells[i][j]];
 		}
 	}
 	/*facet owner and neighbor*/

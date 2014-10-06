@@ -5,7 +5,9 @@
 using namespace std;
 using namespace Mesh;
 
-/*duplicate fields*/
+/**
+duplicate fields
+*/
 template <class T>
 void duplicateFields(istream& is,ostream& of) {
 	MeshField<T,CELL> f;
@@ -42,7 +44,9 @@ void duplicateFields(istream& is,ostream& of) {
 		of << bc << endl;
 	}
 }
-/*decompose fields*/
+/**
+decompose fields
+*/
 void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start_index) {
 	int size;
 	std::string str;
@@ -63,7 +67,7 @@ void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start
 				str = fields[i] + "0";
 				ofstream of(str.c_str());
 
-				/*seekg to beg*/
+				/*seekg to beginning*/
 				is >> str >> size;
 				is.seekg(0,fstream::beg);
 
@@ -81,26 +85,16 @@ void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start
 		System::cd("..");
 	}
 }
-/*decompose in x,y,z direction*/
-int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq) {
-	
-	using Constants::MAX_INT;
-	Int i,j,ID,count,total = n[0] * n[1] * n[2];
+/**
+Decompose in x,y,z direction
+*/
+void Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq,IntVector& blockIndex) {
+	Int i,j,ID;
 	Vector maxV(Scalar(-10e30)),minV(Scalar(10e30)),delta;
 	Vector axis(nq[0],nq[1],nq[2]);
 	Scalar theta = nq[3];
 	Vector C;
-
-	/*decomposed mesh*/
-	MeshObject* meshes = new MeshObject[total];
-	IntVector* vLoc = new IntVector[total];
-	IntVector* fLoc = new IntVector[total];
-	IntVector* cLoc = new IntVector[total];
-	for(i = 0;i < total;i++) {
-		vLoc[i].assign(mo.v.size(),0);
-		fLoc[i].assign(mo.f.size(),0);
-	}
-
+	
 	/*max and min points*/
 	forEach(mo.v,i) {
 		C = rotate(mo.v[i],axis,theta);
@@ -112,28 +106,52 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq) {
     delta = maxV - minV;
 	for(j = 0;j < 3;j++) 
 		delta[j] /= Scalar(n[j]);
-
-	/*decompose cells*/
-	MeshObject *pmesh;
-	IntVector *pvLoc,*pfLoc,blockIndex;
-	
-	blockIndex.assign(gBCellsStart,0);
-
+		
+	/*assign block indices to cells*/
 	for(i = 0;i < gBCellsStart;i++) {
-		Cell& c = mo.c[i];
-
-		/* add cell */
 		C = rotate(_cC[i],axis,theta);
 		C = (C - minV) / delta;
 		ID = Int(C[0]) * n[1] * n[2] + 
 			 Int(C[1]) * n[2] + 
 			 Int(C[2]);
+		blockIndex[i] = ID;
+	}
+}
+/**
+Decompose
+*/
+int Prepare::decompose(Mesh::MeshObject& mo,Int* n,Scalar* nq) {	
+	using Constants::MAX_INT;
+	Int i,j,ID,count,total = n[0] * n[1] * n[2];
+
+	/*decomposed mesh*/
+	MeshObject* meshes = new MeshObject[total];
+	IntVector* vLoc = new IntVector[total];
+	IntVector* fLoc = new IntVector[total];
+	IntVector* cLoc = new IntVector[total];
+	for(i = 0;i < total;i++) {
+		vLoc[i].assign(mo.v.size(),0);
+		fLoc[i].assign(mo.f.size(),0);
+	}
+
+	/*decompose cells*/
+	MeshObject *pmesh;
+	IntVector *pvLoc,*pfLoc,blockIndex;
+	blockIndex.assign(gBCellsStart,0);
+	
+	decomposeXYZ(mo,n,nq,blockIndex);
+	
+	/*add cells*/
+	for(i = 0;i < gBCellsStart;i++) {
+		Cell& c = mo.c[i];
+
+		/* add cell */
+		ID = blockIndex[i];
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
 		pfLoc = &fLoc[ID];
 		pmesh->c.push_back(c);
 		cLoc[ID].push_back(i);
-		blockIndex[i] = ID;
 		
 		/* mark vertices and facets */
 		forEach(c,j) {
@@ -144,7 +162,8 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq) {
 			}
 		}
 	}
-	/*add vertices & cells*/
+	
+	/*add vertices & facets*/
 	for(ID = 0;ID < total;ID++) {
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
@@ -266,7 +285,9 @@ int Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq) {
 	delete[] cLoc;
 	return 0;
 }
-/*read fields*/
+/**
+read fields
+*/
 template <class T>
 void readFields(istream& is,void* pFields,const IntVector& cLoc) {
 	MeshField<T,CELL>& f = *((MeshField<T,CELL>*)pFields);
@@ -278,7 +299,9 @@ void readFields(istream& is,void* pFields,const IntVector& cLoc) {
 	}
 	is >> symbol;
 }
-/*create fields*/
+/**
+create fields
+*/
 void createFields(vector<string>& fields,void**& pFields,Int start_index) {
 	std::string str;
 	Int size;
@@ -305,7 +328,9 @@ void createFields(vector<string>& fields,void**& pFields,Int start_index) {
 		}
 	}
 }
-/*open fields*/
+/**
+open fields
+*/
 Int checkFields(vector<string>& fields,void**& pFields,Int step) {
 	Int count = 0;
 	forEach(fields,i) {
@@ -321,7 +346,9 @@ Int checkFields(vector<string>& fields,void**& pFields,Int step) {
 		Mesh::read_fields(step);
 	return count;
 }
-/*Reverse decomposition*/
+/**
+Reverse decomposition
+*/
 int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 					 vector<string>& fields,std::string mName,Int start_index) {
     /*create fields*/
@@ -374,7 +401,9 @@ int Prepare::merge(Mesh::MeshObject& mo,Int* n,
 
 	return 0;
 }
-/*Convert to VTK format*/
+/**
+Convert to VTK format
+*/
 int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
     /*create fields*/
 	void** pFields;
@@ -391,7 +420,9 @@ int Prepare::convertVTK(Mesh::MeshObject& mo,vector<string>& fields,Int start_in
 
 	return 0;
 }
-/*Probe values at certain locations*/
+/**
+Probe values at specified locations
+*/
 int Prepare::probe(Mesh::MeshObject& mo,vector<string>& fields,Int start_index) {
 	/*probe points*/
 	IntVector probes;

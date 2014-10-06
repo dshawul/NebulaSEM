@@ -3,6 +3,9 @@
 
 using namespace Mesh;
 
+/**
+Center of a triangle
+*/
 Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
 	Vector v12 = v1 - v2;
 	Vector v13 = v1 - v3;
@@ -13,7 +16,9 @@ Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
 	Scalar c = magSq(v12) * (v13 & v23) / d;
 	return a * v1 + b * v2 + c * v3;
 }
-
+/**
+Add different shapes of edges
+*/
 void ADDV(int w,Scalar m,Vector* vp,Edge* edges,Vector* vd) {
 	Edge& e = edges[w];
 	if(e.type == NONE) {
@@ -28,6 +33,9 @@ void ADDV(int w,Scalar m,Vector* vp,Edge* edges,Vector* vd) {
 			(4 * m * (1 - m)) * e.N;
 	}
 }
+/**
+Generate hexahedral mesh
+*/
 void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	Int i,j,k,m;
 
@@ -316,7 +324,9 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	/*end*/
 }
 
-/*remove duplicate*/
+/**
+Remove duplicate vertices,faces and cells
+*/
 void remove_duplicate(Mesh::MeshObject& p) {
 	Int i,j,sz,corr;
 	int count;
@@ -401,9 +411,12 @@ void remove_duplicate(Mesh::MeshObject& p) {
 		}
 	}
 }
-/*Merge meshes*/
+
 #define MAXNUM 1073741824
 
+/**
+Merge meshes
+*/
 void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 	Int i,j,found,s0,s1,s2,s3;
 

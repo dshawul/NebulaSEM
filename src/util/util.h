@@ -29,6 +29,7 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 	return is;
 }
 
+template<>
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
 
 /*equal vectors*/
@@ -44,6 +45,27 @@ bool equal(std::vector<T>& v1,std::vector<T>& v2) {
 			return false;
 	}
 	return true;
+}
+	
+/*erase indices from vector -- assumes indices are sorted*/
+template<typename T>
+void erase_indices(std::vector<T>& data, std::vector<Int>& indicesToDelete) {
+	std::vector<T> temp;
+	temp.reserve(data.size() - indicesToDelete.size());
+
+	typename std::vector<T>::const_iterator itBlockBegin = data.begin();
+	for(std::vector<Int>::const_iterator it = indicesToDelete.begin(); 
+		it != indicesToDelete.end(); ++ it) {
+		typename std::vector<T>::const_iterator itBlockEnd = data.begin() + *it;
+		if(itBlockBegin != itBlockEnd)
+			std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
+		itBlockBegin = itBlockEnd + 1;
+	}
+	typename std::vector<T>::const_iterator itBlockEnd = data.end();
+	if(itBlockBegin != itBlockEnd) 
+		std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
+
+	data = temp;
 }
 
 /*Utililty functions*/
