@@ -415,7 +415,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 #define MAXNUM 1073741824
 
 /**
-Merge meshes
+Merge mesh m2 onto m1 (internal) and b (boundary) meshes
 */
 void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 	Int i,j,found,s0,s1,s2,s3;
@@ -519,6 +519,9 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		m1.c.insert(m1.c.end(),m2.c.begin(),m2.c.end());
 	}
 }
+/**
+Merge boundary and internals
+*/
 void merge(Mesh::MeshObject& m,MergeObject& b) {
 	m.nv = m.v.size();
 	m.nf = m.f.size();

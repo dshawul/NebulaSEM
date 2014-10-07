@@ -50,16 +50,21 @@ int main(int argc,char* argv[]) {
 	ifstream input(argv[1]);
 
     /*read mesh & fields*/
+    Int decomptype = 2;
 	vector<string> fields;
 	vector<Int> n;
 	vector<Scalar> axis(4);
 	axis[0] = 1;
+	
 	Util::ParamList params("general");
 	params.enroll("mesh",&Mesh::gMeshName);
 	params.enroll("fields",&fields);
 	params.enroll("decompose",&n);
 	params.enroll("axis",&axis);
 	params.enroll("probe",&Mesh::probePoints);
+	Util::Option* op = new Util::Option(&decomptype, 4, 
+			"XYZ","INDEX","METIS","NONE");
+	params.enroll("decomptype",op);
 	params.read(input); 
 
 	/*Mesh*/
@@ -82,7 +87,7 @@ int main(int argc,char* argv[]) {
 	} else if(work == 3) {
 		Prepare::probe(Mesh::gMesh,fields,start_index);
 	} else{
-		Prepare::decompose(Mesh::gMesh,&n[0],&axis[0]);
+		Prepare::decompose(Mesh::gMesh,&n[0],&axis[0],decomptype);
 		Prepare::decomposeFields(fields,Mesh::gMeshName,start_index);
 	} 
 	return 0;

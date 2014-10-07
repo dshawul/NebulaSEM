@@ -1,6 +1,7 @@
 #include <sstream>
 #include "prepare.h"
 #include "system.h"
+#include "metis.h"
 
 using namespace std;
 using namespace Mesh;
@@ -118,9 +119,63 @@ void Prepare::decomposeXYZ(Mesh::MeshObject& mo,Int* n,Scalar* nq,IntVector& blo
 	}
 }
 /**
+Decompose by cell indices
+*/
+void Prepare::decomposeIndex(Mesh::MeshObject& mo,Int total,IntVector& blockIndex) {
+	for(Int i = 0;i < gBCellsStart;i++)
+		blockIndex[i] = (i / (gBCellsStart / total));
+}
+/**
+Decompose using METIS 5.0
+*/
+void Prepare::decomposeMetis(Mesh::MeshObject& mo,int total,IntVector& blockIndex) {
+	int ncon = 1;
+	int edgeCut = 0;
+	int ncells = gBCellsStart;
+	std::vector<int> xadj,adjncy;
+	std::vector<int> options(METIS_NOPTIONS);
+	
+	/*default options*/
+    METIS_SetDefaultOptions(&options[0]);
+    
+    /*build adjacency*/
+    for(Int i = 0;i < gBCellsStart;i++) {
+    	Cell& c = gCells[i];
+    	xadj.push_back(adjncy.size());
+    	forEach(c,j) {
+    		Int f = c[j];
+			if(i == gFO[f]) {
+				if(gFN[f] < gBCellsStart)
+					adjncy.push_back(gFN[f]);
+			} else if(i == gFN[f]) {
+				if(gFO[f] < gBCellsStart)
+					adjncy.push_back(gFO[f]);
+			}
+		}
+    }
+    xadj.push_back(adjncy.size());
+
+    /*partition*/
+	METIS_PartGraphRecursive (
+		&ncells,
+		&ncon,
+		&xadj[0],
+		&adjncy[0],
+		NULL,
+		NULL,
+		NULL,
+		&total,
+		NULL,
+		NULL,
+		&options[0],
+		&edgeCut,
+		(int*)(&blockIndex[0])
+    );
+}
+/**
 Decompose
 */
-int Prepare::decompose(Mesh::MeshObject& mo,Int* n,Scalar* nq) {	
+int Prepare::decompose(Mesh::MeshObject& mo,Int* n,Scalar* nq,int type) {	
 	using Constants::MAX_INT;
 	Int i,j,ID,count,total = n[0] * n[1] * n[2];
 
@@ -139,7 +194,14 @@ int Prepare::decompose(Mesh::MeshObject& mo,Int* n,Scalar* nq) {
 	IntVector *pvLoc,*pfLoc,blockIndex;
 	blockIndex.assign(gBCellsStart,0);
 	
-	decomposeXYZ(mo,n,nq,blockIndex);
+	/*choose*/
+	if(type == 0) 
+		decomposeXYZ(mo,n,nq,blockIndex);
+	else if(type == 1)
+		decomposeIndex(mo,total,blockIndex);
+	else if(type == 2)
+		decomposeMetis(mo,total,blockIndex);
+	else; //default -- assigns all to processor 0
 	
 	/*add cells*/
 	for(i = 0;i < gBCellsStart;i++) {
