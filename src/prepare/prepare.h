@@ -5,14 +5,15 @@
 #include "vtk.h"
 
 namespace Prepare {
-	int decompose(Mesh::MeshObject&,Int*,Scalar*,int);
-	void decomposeXYZ(Mesh::MeshObject&,Int*,Scalar*,IntVector&);
-	void decomposeIndex(Mesh::MeshObject&,Int,IntVector&);
-	void decomposeMetis(Mesh::MeshObject&,int,IntVector&);
+	int decompose(Int*,Scalar*,int);
+	void decomposeXYZ(Int*,Scalar*,IntVector&);
+	void decomposeIndex(Int,IntVector&);
+	void decomposeMetis(int,IntVector&);
 	void decomposeFields(std::vector<std::string>& fields,std::string,Int);
-	int merge(Mesh::MeshObject&,Int*,std::vector<std::string>& fields,std::string,Int);
-	int convertVTK(Mesh::MeshObject&,std::vector<std::string>& fields,Int);
-	int probe(Mesh::MeshObject&,std::vector<std::string>& fields,Int);
+	int merge(Int*,std::vector<std::string>& fields,std::string,Int);
+	int convertVTK(std::vector<std::string>& fields,Int);
+	int probe(std::vector<std::string>& fields,Int);
+	void refineMesh(const IntVector&,const Int,const Int,const Vector&);
 }
 
 #endif

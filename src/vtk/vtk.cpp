@@ -63,7 +63,7 @@ void Vtk::write_vtk(Int step) {
 
 		of << "CELL_TYPES " << gBCellsStart << endl;
 		for(i = 0;i < gBCellsStart;i++)
-			of << 42 << endl;
+			of << "42" << endl;
 	} else {
 		/*hexahedral cells*/
 		of << "CELLS " << gBCellsStart << " " << gBCellsStart * 9 << endl;
