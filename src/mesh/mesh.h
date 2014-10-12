@@ -50,6 +50,15 @@ namespace Mesh {
 		Int      nc;
 		/*funcs*/
 		void write(std::ostream& os);
+		void clear() {
+			v.clear();
+			f.clear();
+			c.clear();
+			bdry.clear();
+			fo.clear();
+			fn.clear();
+			interMesh.clear();
+		}
 	};
 
 	extern std::vector<Vector> _fC;
@@ -71,10 +80,11 @@ namespace Mesh {
 	extern  Vertices         probePoints;
 	extern  IntVector        probeCells;
 	
+	void clear();
 	void addBoundaryCells();
 	void calcGeometry();
 	void removeBoundary(IntVector&);
-	void readMesh();
+	bool readMesh(Int = 0,bool = true);
 	void enroll(Util::ParamList& params);
 	Int  findNearestCell(const Vector& v);
 	Int  findNearestFace(const Vector& v);
@@ -280,5 +290,10 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 /*list of all BCS*/
 namespace Mesh {
 	extern  std::vector<BasicBCondition*> AllBConditions;
+	inline void clearBC() {
+		forEach(AllBConditions,i)
+			delete AllBConditions[i];
+		AllBConditions.clear();
+	}
 }
 #endif

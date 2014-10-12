@@ -1,3 +1,4 @@
+#include <sstream>
 #include "mesh.h"
 using namespace std;
 
@@ -23,11 +24,30 @@ namespace Mesh {
 	std::vector<Scalar> _cV;
 	std::vector<bool>   _reversed;
 }
-
+void Mesh::clear() {
+	gMesh.clear();
+	Mesh::clearBC();
+	probeCells.clear();
+	probePoints.clear();
+}
 /*read mesh*/
-void Mesh::readMesh() {
+bool Mesh::readMesh(Int step,bool first) {
+	/*open file*/
+	stringstream path;
+	path << gMeshName << "_" << step;
+	string str = path.str();
+	ifstream is(str.c_str());
+	if(is.fail()) {
+		if(first) {
+			str = gMeshName;
+			is.open(str.c_str());
+		} else
+			return false;
+	}
+	/*read*/
+	cout << "--------------------"<<str<<"------------------------\n";
+	clear();
 	cout << "Reading mesh :" << endl;
-	ifstream is(gMeshName.c_str());
 	is >> hex;
 	is >> gVertices;
 	cout << " \t" << gVertices.size() << " vertices" << endl;
@@ -62,6 +82,7 @@ void Mesh::readMesh() {
 		buffer_index += b.f->size();
 	}
 	is >> dec;
+	return true;
 }
 /*write mesh*/
 void Mesh::MeshObject::write(ostream& os) {

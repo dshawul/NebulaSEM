@@ -50,6 +50,9 @@ bool equal(std::vector<T>& v1,std::vector<T>& v2) {
 /*erase indices from vector -- assumes indices are sorted*/
 template<typename T>
 void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete) {
+	if(indicesToDelete.size() == 0)
+		return;
+		
 	std::vector<T> temp;
 	temp.reserve(data.size() - indicesToDelete.size());
 

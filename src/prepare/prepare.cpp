@@ -7,20 +7,94 @@ using namespace std;
 using namespace Mesh;
 
 /**
+read fields
+*/
+template <class T>
+void readFields(istream& is,void* pFields,const IntVector& cLoc) {
+	MeshField<T,CELL>& f = *((MeshField<T,CELL>*)pFields);
+	Int size;
+	char symbol;
+	is >> size >> symbol;
+	for(Int j = 0;j < size;j++) {
+		is >> f[cLoc[j]];
+	}
+	is >> symbol;
+}
+/**
+create fields
+*/
+void createFields(vector<string>& fields,IntVector& field_sizes,void**& pFields,Int step) {
+	std::string str;
+	Int size;
+
+	/*for each field*/
+	pFields = new void*[fields.size()];
+	field_sizes.assign(fields.size(),0);
+	forEach(fields,i) {
+		/*read at time 0*/
+		stringstream path;
+		path << fields[i] << step;
+		str = path.str(); 
+
+		ifstream is(str.c_str());
+		if(!is.fail()) {
+			/*fields*/
+			is >> str >> size;
+			field_sizes[i] = size;
+			switch(size) {
+				case 1 :  pFields[i] = new ScalarCellField(fields[i].c_str(),READWRITE); break;
+				case 3 :  pFields[i] = new VectorCellField(fields[i].c_str(),READWRITE); break;
+				case 6 :  pFields[i] = new STensorCellField(fields[i].c_str(),READWRITE); break;
+				case 9 :  pFields[i] = new TensorCellField(fields[i].c_str(),READWRITE); break;
+			}
+			/*end*/
+		}
+	}
+}
+/**
+destroy fields
+*/
+void destroyFields(void**& pFields,IntVector& field_sizes) {
+#define destroy(T) {\
+	T x = (T)pFields[i];\
+	x->deallocate(false);\
+	delete x;\
+}
+	forEach(field_sizes,i) {
+		switch(field_sizes[i]) {
+			case 1 :  destroy(ScalarCellField*); break;
+			case 3 :  destroy(VectorCellField*); break;
+			case 6 :  destroy(STensorCellField*); break;
+			case 9 :  destroy(TensorCellField*); break;
+		}
+	}
+#undef destroy
+}
+/**
+open fields
+*/
+Int checkFields(vector<string>& fields,void**& pFields,Int step) {
+	Int count = 0;
+	forEach(fields,i) {
+		stringstream fpath;
+		fpath << fields[i] << step;
+		ifstream is(fpath.str().c_str());
+		if(is.fail())
+			continue;
+		count++;
+		break;
+	}
+	if(count)
+		Mesh::read_fields(step);
+	return count;
+}
+/**
 duplicate fields
 */
 template <class T>
-void duplicateFields(istream& is,ostream& of) {
-	MeshField<T,CELL> f;
-
-	/*internal*/
-	f.readInternal(is);
-
-	/*index file*/
-	IntVector cLoc;
-	ifstream index("index");
-	index >> cLoc;
-
+void duplicateFields(ostream& of,void* pFields,IntVector& cLoc) {
+	MeshField<T,CELL>& f = *((MeshField<T,CELL>*)pFields);
+	
 	/*write it out*/
 	of << "size "<< sizeof(T) / sizeof(Scalar) << endl;
 	of << cLoc.size() << endl;
@@ -30,60 +104,14 @@ void duplicateFields(istream& is,ostream& of) {
 	of << "}" << endl;
 
 	/*boundaries*/
-	char c;
-	string bname,cname;
-	while((c = Util::nextc(is)) && isalpha(c)) {
-		BCondition<T> bc(" ");
-		is >> bc;
-		of << bc << endl;
-	}
-
-	/*interMesh boundaries*/
-	while((c = Util::nextc(index)) && isalpha(c)) {
-		BCondition<T> bc(" ");
-		index >> bc;
-		of << bc << endl;
-	}
-}
-/**
-decompose fields
-*/
-void Prepare::decomposeFields(vector<string>& fields,std::string mName,Int start_index) {
-	int size;
-	std::string str;
-
-	for(Int ID = start_index;;ID++) {
-		/*cd*/
-		stringstream path;
-		path << mName << ID;
-		if(!System::cd(path.str()))
-			break;
-		
-		/*for each field*/
-		forEach(fields,i) {
-			/*read at time 0*/
-			string str = "../" + fields[i] + "0";
-			ifstream is(str.c_str());
-			if(!is.fail()) {
-				str = fields[i] + "0";
-				ofstream of(str.c_str());
-
-				/*seekg to beginning*/
-				is >> str >> size;
-				is.seekg(0,fstream::beg);
-
-				/*fields*/
-				switch(size) {
-				case 1 :  duplicateFields<Scalar>(is,of); break;
-				case 3 :  duplicateFields<Vector>(is,of); break;
-				case 6 :  duplicateFields<STensor>(is,of); break;
-				case 9 :  duplicateFields<Tensor>(is,of); break;
-				}
-				/*end*/
-			}
+	BasicBCondition* bbc;
+	BCondition<T>* bc;
+	forEach(AllBConditions,i) {
+		bbc = AllBConditions[i];
+		if(bbc->fIndex == f.fIndex) {
+			bc = static_cast<BCondition<T>*> (bbc);
+			of << *bc << std::endl;
 		}
-		/*go back*/
-		System::cd("..");
 	}
 }
 /**
@@ -175,11 +203,24 @@ void Prepare::decomposeMetis(int total,IntVector& blockIndex) {
 /**
 Decompose
 */
-int Prepare::decompose(Int* n,Scalar* nq,int type) {	
+int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int step) {	
 	using Constants::MAX_INT;
 	Int i,j,ID,count,total = n[0] * n[1] * n[2];
+	
+	/*Read mesh*/
+	Mesh::LoadMesh(step,true,false);
 
-	/*decomposed mesh*/
+	/*Read fields*/
+	void** pFields = 0;
+	IntVector field_sizes;
+	destroyFields(pFields,field_sizes);
+	createFields(fields,field_sizes,pFields,step);
+	if(!checkFields(fields,pFields,step))
+		return 1;
+		
+	/**********************
+	 * decompose mesh
+	 **********************/
 	MeshObject* meshes = new MeshObject[total];
 	IntVector* vLoc = new IntVector[total];
 	IntVector* fLoc = new IntVector[total];
@@ -281,7 +322,9 @@ int Prepare::decompose(Int* n,Scalar* nq,int type) {
 		}
 	}
 
-	/*write meshes to file */
+	/***************************
+	 * write mesh/index/fields
+	 ***************************/
 	for(ID = 0;ID < total;ID++) {
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
@@ -317,10 +360,6 @@ int Prepare::decompose(Int* n,Scalar* nq,int type) {
 				of << b << endl;
 			}
 		}
-
-		/*index file*/
-		ofstream of2("index");
-		of2 << cLoc[ID] << endl;
 		
 		/*inter mesh boundaries*/
 		for(j = 0;j < total;j++) {
@@ -328,12 +367,42 @@ int Prepare::decompose(Int* n,Scalar* nq,int type) {
 			if(f.size()) {
 				of << "interMesh_" << ID << "_" << j << " ";
 				of << f << endl;
-				of2 << "interMesh_" << ID << "_" << j << " "
-					<< "{\n\ttype GHOST\n}" << endl;
 			}
 		}
-
+		
 		of << dec;
+		
+		/*index file*/
+		stringstream path1;
+		path1 << "index_" << step;
+		ofstream of2(path1.str().c_str());
+		of2 << cLoc[ID] << endl;
+		
+		/*fields*/
+		forEach(fields,i) {
+			stringstream path;
+			path << fields[i] << step;
+			string str = path.str();
+			ofstream of3(str.c_str());
+
+			/*fields*/
+			switch(field_sizes[i]) {
+			case 1 :  duplicateFields<Scalar>(of3,pFields[i],cLoc[ID]); break;
+			case 3 :  duplicateFields<Vector>(of3,pFields[i],cLoc[ID]); break;
+			case 6 :  duplicateFields<STensor>(of3,pFields[i],cLoc[ID]); break;
+			case 9 :  duplicateFields<Tensor>(of3,pFields[i],cLoc[ID]); break;
+			}
+			
+			/*inter mesh boundaries*/
+			for(j = 0;j < total;j++) {
+				IntVector& f = imesh[ID * total + j];
+				if(f.size()) {
+					of3 << "interMesh_" << ID << "_" << j << " "
+						<< "{\n\ttype GHOST\n}" << endl;
+				}
+			}
+		}
+		
 		/*go back*/
 		if(!System::cd("..")) 
 			return 1;
@@ -348,96 +417,40 @@ int Prepare::decompose(Int* n,Scalar* nq,int type) {
 	return 0;
 }
 /**
-read fields
-*/
-template <class T>
-void readFields(istream& is,void* pFields,const IntVector& cLoc) {
-	MeshField<T,CELL>& f = *((MeshField<T,CELL>*)pFields);
-	Int size;
-	char symbol;
-	is >> size >> symbol;
-	for(Int j = 0;j < size;j++) {
-		is >> f[cLoc[j]];
-	}
-	is >> symbol;
-}
-/**
-create fields
-*/
-void createFields(vector<string>& fields,void**& pFields,Int start_index) {
-	std::string str;
-	Int size;
-
-	/*for each field*/
-	pFields = new void*[fields.size()];
-	forEach(fields,i) {
-		/*read at time 0*/
-		stringstream path;
-		path << fields[i] << start_index;
-		str = path.str(); 
-
-		ifstream is(str.c_str());
-		if(!is.fail()) {
-			/*fields*/
-			is >> str >> size;
-			switch(size) {
-				case 1 :  pFields[i] = new ScalarCellField(fields[i].c_str(),READWRITE); break;
-				case 3 :  pFields[i] = new VectorCellField(fields[i].c_str(),READWRITE); break;
-				case 6 :  pFields[i] = new STensorCellField(fields[i].c_str(),READWRITE); break;
-				case 9 :  pFields[i] = new TensorCellField(fields[i].c_str(),READWRITE); break;
-			}
-			/*end*/
-		}
-	}
-}
-/**
-open fields
-*/
-Int checkFields(vector<string>& fields,void**& pFields,Int step) {
-	Int count = 0;
-	forEach(fields,i) {
-		stringstream fpath;
-		fpath << fields[i] << step;
-		ifstream is(fpath.str().c_str());
-		if(is.fail())
-			continue;
-		count++;
-		break;
-	}
-	if(count)
-		Mesh::read_fields(step);
-	return count;
-}
-/**
 Reverse decomposition
 */
-int Prepare::merge(Int* n,vector<string>& fields,std::string mName,Int start_index) {
-    /*create fields*/
-	void** pFields;
-	createFields(fields,pFields,start_index);
-
+int Prepare::merge(Int* n,vector<string>& fields,Int start_index) {
 	/*indexes*/
 	Int total = n[0] * n[1] * n[2];
 	IntVector* cLoc = new IntVector[total];
-	std::string str;
+	string str;
 	Int size;
 
-	for(Int ID = 0;ID < total;ID++) {
-		stringstream path;
-		path << mName << ID;
-		str = path.str() + "/index"; 
-		ifstream index(str.c_str());
-		index >> cLoc[ID];
-	}
-
-	/*for each time step*/
-	Int step = start_index;
-	Mesh::read_fields(step);
-	for(step = start_index + 1;;step++) {
+	/*merge at each time step*/
+	void** pFields = 0;
+	IntVector field_sizes;
+	for(Int step = start_index;;step++) {
+	
+		/*load mesh and fields*/
+		if(Mesh::LoadMesh(step,(step == start_index),true)) {
+			destroyFields(pFields,field_sizes);
+			createFields(fields,field_sizes,pFields,step);
+			checkFields(fields,pFields,step);
+			for(Int ID = 0;ID < total;ID++) {
+				stringstream path;
+				path << Mesh::gMeshName << ID << "/index_" << step;
+				ifstream index(path.str().c_str());
+				cLoc[ID].clear();
+				index >> cLoc[ID];
+			}
+		}
+		if(step == start_index) continue;
+		
+		/*read and merge fields*/
 		Int count = 0;
 		for(Int ID = 0;ID < total;ID++) {
 			stringstream path;
-			path << mName << ID;
+			path << Mesh::gMeshName << ID;
 			forEach(fields,i) {
 				stringstream fpath;
 				fpath << fields[i] << step;
@@ -466,15 +479,15 @@ int Prepare::merge(Int* n,vector<string>& fields,std::string mName,Int start_ind
 Convert to VTK format
 */
 int Prepare::convertVTK(vector<string>& fields,Int start_index) {
-    /*create fields*/
-	void** pFields;
-	createFields(fields,pFields,start_index);
-
-	/*for each time step*/
+	void** pFields = 0;
+	IntVector field_sizes;
 	for(Int step = start_index;;step++) {
+		if(Mesh::LoadMesh(step,(step == start_index),true)) {
+			destroyFields(pFields,field_sizes);
+			createFields(fields,field_sizes,pFields,step);
+		}
 		if(!checkFields(fields,pFields,step))
 			break;
-
 		/*write vtk*/
 		Vtk::write_vtk(step);
 	}
@@ -487,20 +500,23 @@ Probe values at specified locations
 int Prepare::probe(vector<string>& fields,Int start_index) {
 	/*probe points*/
 	IntVector probes;
-	getProbeFaces(probes);
 	ofstream of("probes");
 
-    /*create fields*/
-	void** pFields;
-	createFields(fields,pFields,start_index);
-
-	/*for each time step*/
+    /*probe at each time step*/
+	void** pFields = 0;
+	IntVector field_sizes;
 	for(Int step = start_index;;step++) {
+		if(Mesh::LoadMesh(step,(step == start_index),true)) {
+			destroyFields(pFields,field_sizes);
+			createFields(fields,field_sizes,pFields,step);
+			probes.clear();
+			getProbeFaces(probes);
+		}
 		if(!checkFields(fields,pFields,step))
 			break;
 
 		/*Interpolate*/
-		forEachField(interpolateVertexAll());
+		forEachCellField(interpolateVertexAll());
 		
 		/*write probes*/
 #define ADD(v,value,weight) {										\
@@ -559,16 +575,87 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
 	return 0;
 }
 /**
+refine fields
+*/
+template <class T>
+void refineField(MeshField<T,CELL>& fo,Int step,IntVector& cellMap) {
+	MeshField<T,CELL> f(fo.fName.c_str(),fo.access,false);
+	forEach(f,i)
+		f[i] = fo[cellMap[i]];
+	f.write(step);
+}
+/**
 Refine mesh
 */
-void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
-						 const Int refine_shape, const Vector& refine_dir) {
+void Prepare::refineMesh(vector<string>& fields,const RefineParams& rparams, Int step) {
+			
+	/*Read mesh*/
+	Mesh::LoadMesh(step,true,false);
 
-	/*Remove boundary cells*/
+	/*Read fields*/
+	void** pFields = 0;
+	IntVector field_sizes;
+	destroyFields(pFields,field_sizes);
+	createFields(fields,field_sizes,pFields,step);
+	if(!checkFields(fields,pFields,step))
+		return;
+		
+	/*find quantity of interest*/
+	ScalarCellField qoi;
+	vector<string>::iterator it = 
+		find(fields.begin(), fields.end(), rparams.field);
+	if(it != fields.end()) {
+		Int i = it - fields.begin();
+		switch(field_sizes[i]) {
+		case 1 :  qoi = mag(*((ScalarCellField*)pFields[i])); break;
+		case 3 :  qoi = mag(*((VectorCellField*)pFields[i])); break;
+		}
+	}
+	qoi = mag(gradi(qoi));
+	Scalar maxq = 0,minq = 10e30;
+	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+		if(qoi[i] > maxq) maxq = qoi[i];
+		if(qoi[i] < minq) minq = qoi[i];
+	}
+	maxq = max(Constants::MachineEpsilon,maxq);
+	qoi /= maxq;
+	maxq = 1;
+	minq = minq / maxq;
+
+	/*get cells to refine*/
 	gCells.erase(gCells.begin() + gBCellsStart,gCells.end());
+	IntVector rCells;
+	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+		if(qoi[i] >= rparams.field_max)
+			rCells.push_back(i);
+	}
+	/*refine mesh and fields*/
+	IntVector cellMap;
+	refineMesh(rCells,rparams,cellMap);
+	forEach(fields,i) {
+		switch(field_sizes[i]) {
+		case 1 :  refineField<Scalar>(*((ScalarCellField*)pFields[i]),step,cellMap); break;
+		case 3 :  refineField<Vector>(*((VectorCellField*)pFields[i]),step,cellMap); break;
+		case 6 :  refineField<STensor>(*((STensorCellField*)pFields[i]),step,cellMap); break;
+		case 9 :  refineField<Tensor>(*((TensorCellField*)pFields[i]),step,cellMap); break;
+		}
+	}
 	
+	/*Write mesh*/
+	stringstream path;
+	path << gMeshName << "_" << step;
+	ofstream os(path.str().c_str());
+	gMesh.write(os);
+}
+
+void Prepare::refineMesh(IntVector& rCells,const RefineParams& rparams,IntVector& cellMap) {
+			
 	/*build refine flags array*/
-	IntVector refineC,refineF,rFacets;
+	IntVector refineC,refineF,
+			  rFacets,rsFacets;
+	cellMap.assign(gBCellsStart,0);
+	forEach(cellMap,i)
+		cellMap[i] = i;
 	refineC.assign(gBCellsStart,0);
 	refineF.assign(gFacets.size(),0);
 	forEach(rCells,i) {
@@ -580,24 +667,26 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 	}
 	
 	/*choose faces to refine*/
-	bool refine3D = equal(Scalar(0.0),mag(refine_dir));
+	bool refine3D = equal(Scalar(0.0),mag(rparams.dir));
 	forEach(refineF,i) {
 		if(refineF[i]) {
 			Vector eu = unit(fN[i]);
 			if(refine3D || 
-				equal(refine_dir,eu) || 
-				equal(refine_dir,-eu))
+				equal(rparams.dir,eu) || 
+				equal(rparams.dir,-eu))
 				rFacets.push_back(i);
 			else
 				refineF[i] = 0;
 		}
 	}
 	
-	/*refine facets*/
+	/***************************
+	 * Refine facets
+	 ***************************/
 	Int nj;
 	IntVector startF;
 	startF.assign(gFacets.size(),0);
-	Int iBegin = gVertices.size();
+	Int ivBegin = gVertices.size();
 	forEach(rFacets,i) {
 		Int fi = rFacets[i];
 		Facet f = gFacets[fi];
@@ -607,7 +696,7 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 		Int fci = gVertices.size() - 1;
 		
 		/*quadrilaterals*/
-		if(refine_shape == 0) {
+		if(rparams.shape == 0) {
 			/*add vertices*/
 			IntVector midpts;
 			Vector v1,v2;
@@ -620,7 +709,7 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 				Vector Ce = (v1 + v2) / 2.0;
 			
 				//duplicate
-				Int k = iBegin;
+				Int k = ivBegin;
 				for(; k < gVertices.size();k++) {
 					if(equal(Ce,gVertices[k])) {
 						midpts.push_back(k);
@@ -669,75 +758,204 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 			}
 		}
 	}
-	/*add cells*/
-	if(refine_type == 0) {
-		forEach(rCells,i) {
-			Int ci = rCells[i];
-			Cell c = gCells[ci];
-			Vector C = cC[ci];
-			gVertices.push_back(C);
-			Int cci = gVertices.size() - 1;
-			Int iBegin = gFacets.size();
-			forEach(c,j) {
-				Int fi = c[j];
-				
-				/*cell is refined but face is not?*/
-				IntVector list;
-				if(!refineF[fi]) {
-					list.push_back(fi);
-				} else {
-					forEach(gFacets[fi],k)
-						list.push_back(startF[fi] + k);
-				}
+	/*************************
+	 * Refine cells
+	 *************************/
+	forEach(rCells,i) {
+		Int ci = rCells[i];
+		Cell c = gCells[ci];
+		Vector C = cC[ci];
+		gVertices.push_back(C);
+		Int cci = gVertices.size() - 1;
+		Int ifBegin = gFacets.size();
+		Cells newc;
+		
+		forEach(c,j) {
+			Int fi = c[j];
+			
+			/*cell is refined but face is not?*/
+			IntVector list;
+			if(!refineF[fi]) {
+				list.push_back(fi);
+			} else {
+				forEach(gFacets[fi],k)
+					list.push_back(startF[fi] + k);
+			}
 
-				/*refine cells*/
-				forEach(list,k) {
-					Int fni = list[k];
-					Facet f = gFacets[fni];
-				
-					Cell cn;
-					cn.push_back(fni);
+			/*refine cells*/
+			forEach(list,k) {
+				Int fni = list[k];
+				Facet f = gFacets[fni];
+			
+				Cell cn;
+				cn.push_back(fni);
 
-					Int v1i,v2i,nj;
-					forEach(f,l) {
-						v1i = f[l];
-						nj = l + 1;
-						if(nj == f.size())
-							nj = 0;
-						v2i = f[nj];
-						//triangular face
-						Facet fn;
-						fn.push_back(v1i);
-						fn.push_back(v2i);
-						fn.push_back(cci);
-						//duplicate
-						Int k = iBegin;
-						for(; k < gFacets.size();k++) {
-							if(equal(fn,gFacets[k])) {
-								cn.push_back(k);
-								break;
-							}
-						}
-						if(k == gFacets.size()) {
-							gFacets.push_back(fn);
+				Int v1i,v2i,nj;
+				forEach(f,l) {
+					v1i = f[l];
+					nj = l + 1;
+					if(nj == f.size())
+						nj = 0;
+					v2i = f[nj];
+					//triangular face
+					Facet fn;
+					fn.push_back(v1i);
+					fn.push_back(v2i);
+					fn.push_back(cci);
+					//duplicate
+					Int k = ifBegin;
+					for(; k < gFacets.size();k++) {
+						if(equal(fn,gFacets[k])) {
 							cn.push_back(k);
+							break;
 						}
 					}
-					gCells.push_back(cn);
+					if(k == gFacets.size()) {
+						gFacets.push_back(fn);
+						cn.push_back(k);
+					}
+				}
+				newc.push_back(cn);
+			}
+		}
+		/*merge cells*/
+		if(rparams.shape == 0) {
+			/*cells on same face*/
+			IntVector ownerf;
+			forEach(c,j) {
+				Int fi = c[j];
+				forEach(gFacets[fi],k)
+					ownerf.push_back(fi);
+			}
+			/*find cells to merge with a shared face*/
+			Cells mergec;
+			forEach(newc,j) {
+				Int o1 = ownerf[j];
+				Cell& c1 = newc[j];
+				IntVector mg;
+				forEachS(newc,k,j+1) {
+					Int o2 = ownerf[k];
+					Cell& c2 = newc[k];
+					if(o1 == o2) continue;
+					forEach(c1,m) {
+						Int f1 = c1[m];
+						forEach(c2,n) {
+							Int f2 = c2[n];
+							if(f1 == f2) {
+								mg.push_back(k);
+								c1.erase(c1.begin() + m);
+								c2.erase(c2.begin() + n);
+								rsFacets.push_back(f1);
+								goto END;
+							}
+						}
+					}
+					END:;					
+				}
+				mergec.push_back(mg);
+			}
+			/*merge cells*/
+			IntVector erasei;
+			erasei.assign(newc.size(),0);
+			forEachRev(mergec,j) {
+				IntVector& cm = mergec[j];
+				forEach(cm,k)
+					erasei[cm[k]] = 1;
+				if(cm.size()) {
+					Cell& c1 = newc[j];
+					Cell& c2 = newc[cm[0]];
+					c1.insert(c1.end(),c2.begin(),c2.end());
+				}
+			}
+			/*erase cells*/
+			IntVector erasec;
+			forEach(erasei,j) {
+				if(erasei[j])
+					erasec.push_back(j);
+			}
+			erase_indices(newc,erasec);
+			/*two cells should share only one face*/
+			forEach(newc,j) {
+				Cell& c1 = newc[j];
+				forEachS(newc,k,j+1) {
+					Cell& c2 = newc[k];
+					//find shared faces
+					IntVector shared1,shared2;
+					forEach(c1,m) {
+						Int f1 = c1[m];
+						forEach(c2,n) {
+							Int f2 = c2[n];
+							if(f1 == f2) {
+								shared1.push_back(m);
+								shared2.push_back(n);
+							}
+						}
+					}
+					//two faces shared between two cells
+					if(shared1.size() == 2) {
+						Int fi1 = c1[shared1[0]];
+						Int fi2 = c1[shared1[1]];
+						Facet& f1 = gFacets[fi1];
+						Facet& f2 = gFacets[fi2];
+						erase_indices(c1,shared1);
+						erase_indices(c2,shared2);
+						rsFacets.push_back(fi1);
+						rsFacets.push_back(fi2);
+						//add new face by merging two faces
+						Facet f;
+						if(f1[0] == f2[0]) {
+							f.push_back(f1[1]);
+							f.push_back(f1[0]);
+							f.push_back(f2[1]);
+							f.push_back(f2[2]);
+						} else if(f1[0] == f2[1]) {
+							f.push_back(f1[1]);
+							f.push_back(f1[0]);
+							f.push_back(f2[0]);
+							f.push_back(f2[2]);
+						} else if(f1[1] == f2[1]) {
+							f.push_back(f1[0]);
+							f.push_back(f1[1]);
+							f.push_back(f2[0]);
+							f.push_back(f2[2]);
+						} else if(f1[1] == f2[0]) {
+							f.push_back(f1[0]);
+							f.push_back(f1[1]);
+							f.push_back(f2[1]);
+							f.push_back(f2[2]);
+						}
+						gFacets.push_back(f);
+						Int fi = gFacets.size() - 1;
+						c1.push_back(fi);
+						c2.push_back(fi);
+					}
 				}
 			}
 		}
+		/*add cells*/
+		gCells.insert(gCells.end(),newc.begin(),newc.end());
+		forEach(newc,j)
+			cellMap.push_back(ci);
+	}
+	/*************************************
+	 *  Remove refined facets and cells
+	 *************************************/
+	/*add additional facets to remove*/
+	refineF.resize(gFacets.size(),0);
+	forEach(rsFacets,i) {
+		Int fi = rsFacets[i];
+		if(!refineF[fi]) {
+			refineF[fi] = Constants::MAX_INT - 1;
+			rFacets.push_back(fi);
+		}
 	}
 	/*adjust facet indexes in cells and boundaries*/
-	refineF.resize(gFacets.size(),0);
-	Int l = 0;
+	Int count = 0;
 	forEach(refineF,i) {
-		if(!refineF[i]) 
-			refineF[i] = l++;
-		else
-			refineF[i] = Constants::MAX_INT;
+		if(refineF[i] == 0) refineF[i] = count++;
+		else if(refineF[i] == Constants::MAX_INT - 1);
+		else refineF[i] = Constants::MAX_INT;
 	}
-
 	/*erase old facets and add the new ones*/
 #define ERASEADD() {\
 	IntVector newF,eraseF;\
@@ -756,7 +974,6 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 	erase_indices(c,eraseF);\
 	c.insert(c.end(),newF.begin(),newF.end());\
 }
-
 	forEach(gCells,i) {
 		Cell& c = gCells[i];
 		ERASEADD();
@@ -766,15 +983,22 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 		ERASEADD();
 	}
 #undef ERASEADD
+
+	/*erase facets*/
+	sort(rFacets.begin(),rFacets.end());
 	erase_indices(gFacets,rFacets);
 	
 	/*erase cells*/
-	if(refine_type == 0)
-		erase_indices(gCells,rCells);
+	sort(rCells.begin(),rCells.end());
+	erase_indices(gCells,rCells);
+	erase_indices(cellMap,rCells);
+	gBCellsStart = gCells.size();
 	
-	/* Break edge of faces that are not set for refinement 
-	 * but should be due to neighboring refined faces*/
-	if(refine_shape == 0) {
+	/*******************************************************
+	 * Break edge of faces that are not set for refinement 
+	 * but should be due to neighboring refined faces 
+	 *******************************************************/
+	if(rparams.shape == 0) {
 		forEach(gFacets,i) {
 			Facet& f = gFacets[i];
 			IntVector addf;
@@ -789,7 +1013,7 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 				Vector Ce = (v1 + v2) / 2.0;
 		
 				//duplicate
-				Int k = iBegin;
+				Int k = ivBegin;
 				for(; k < gVertices.size();k++) {
 					if(equal(Ce,gVertices[k])) {
 						addf[j] = k;
@@ -808,8 +1032,4 @@ void Prepare::refineMesh(const IntVector& rCells, const Int refine_type,
 			}
 		}
 	}
-	
-	/*write*/
-	ofstream os(gMeshName.c_str());
-	gMesh.write(os);
 }

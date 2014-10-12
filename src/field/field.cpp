@@ -41,35 +41,49 @@ namespace DG {
 	Int NP = 1, NPM1 = NP - 1;
 }
 /*
+ * Load mesh
+ */
+bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
+	if(readMesh(step,first)) {
+		/*initialize mesh*/
+		addBoundaryCells();
+		calcGeometry();
+		/* remove empty faces*/
+		if(remove_empty) {
+			Boundaries::iterator it = gBoundaries.find("delete");
+			if(it != gBoundaries.end()) {
+				removeBoundary(gBoundaries["delete"]);
+				gBoundaries.erase(it);
+			}
+		}
+		/*erase interior and empty boundaries*/
+		for(Boundaries::iterator it = gBoundaries.begin();
+					it != gBoundaries.end();) {
+			if(it->second.size() <= 0 || 
+				it->first.find("interior") != std::string::npos
+				) {
+					gBoundaries.erase(it++);
+			} else ++it;
+		}
+		/*geometric mesh fields*/
+		remove_fields();
+		initGeomMeshFields();
+		cout << "--------------------------------------------\n";
+		return true;
+	}
+	return false;
+}
+/*
  * Initialize geometric mesh fields
  */
-void Mesh::initGeomMeshFields(bool remove_empty) {
-	/*initialize mesh*/
-	addBoundaryCells();
-	calcGeometry();
-	/* remove empty faces*/
-	if(remove_empty) {
-		Boundaries::iterator it = gBoundaries.find("delete");
-		if(it != gBoundaries.end()) {
-			removeBoundary(gBoundaries["delete"]);
-			gBoundaries.erase(it);
-		}
-	}
-	/*erase interior and empty boundaries*/
-	for(Boundaries::iterator it = gBoundaries.begin();
-                it != gBoundaries.end();) {
-		if(it->second.size() <= 0 || 
-			it->first.find("interior") != std::string::npos
-			) {
-				gBoundaries.erase(it++);
-		} else ++it;
-	}
+void Mesh::initGeomMeshFields() {
 	/* Allocate fields*/
 	vC.allocate(gVertices);
 	fC.allocate(_fC);
 	cC.allocate(_cC);
 	fN.allocate(_fN);
 	cV.allocate(_cV);
+	fI.deallocate(false);
 	fI.allocate();
 	/* Facet interpolation factor to the owner of the face.
 	 * Neighbor takes (1 - f) */
@@ -84,9 +98,10 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
 	}
 	/*Construct wall distance field*/
 	{
+		yWall.deallocate(false);
 		yWall.construct("yWall");
 		yWall = Scalar(0);
-		/*boundary*/
+		//boundary
 		BCondition<Scalar>* bc;
 		forEachIt(Boundaries,gBoundaries,it) {
 			string bname = it->first;
@@ -105,15 +120,21 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
 		}
 		updateExplicitBCs(yWall,true,true);
 	}
+	/*end*/
 }
 /*
  * Read/Write
  */
 void Mesh::write_fields(Int step) {
-	forEachField(writeAll(step));
+	forEachCellField(writeAll(step));
 }
 void Mesh::read_fields(Int step) {
-	forEachField(readAll(step));
+	forEachCellField(readAll(step));
+}
+void Mesh::remove_fields() {
+	forEachCellField(removeAll());
+	forEachFacetField(removeAll());
+	forEachVertexField(removeAll());
 }
 void Mesh::enroll(Util::ParamList& params) {
 	using namespace Controls;

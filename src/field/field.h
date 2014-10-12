@@ -92,9 +92,9 @@ public:
 	static std::list<type*> mem_;
 
     /*constructors*/
-	MeshField(const char* str = "", ACCESS a = NO) : 
+	MeshField(const char* str = "", ACCESS a = NO,bool recycle = true) : 
 				P(0),allocated(0),access(a),fName(str) {
-		construct(str,a);
+		construct(str,a,recycle);
 	}
 	MeshField(const MeshField& p) : allocated(0) {
 		allocate(); 
@@ -109,8 +109,8 @@ public:
 	explicit MeshField(const bool) : allocated(0) {
 	}
 	/*allocators*/
-	void allocate() {
-		if(mem_.empty()) {
+	void allocate(bool recycle = true) {
+		if(!recycle || mem_.empty()) {
 			switch(entity) {
 				case CELL:   SIZE = Mesh::gCells.size() * DG::NP;	 break;
 				case FACET:  SIZE = Mesh::gFacets.size();            break;
@@ -124,30 +124,36 @@ public:
 		allocated = 1;
 	}
 	void allocate(std::vector<type>& q) {
-		switch(entity) {
-				case CELL:   SIZE = Mesh::gCells.size() * DG::NP;	 break;
-				case FACET:  SIZE = Mesh::gFacets.size();            break;
-				case VERTEX: SIZE = Mesh::gVertices.size();          break;
-		}
+		SIZE = q.size();
 		P = &q[0];
 		allocated = 0;
 	}
-	void construct(const char* str = "", ACCESS a = NO) {
+	void deallocate(bool recycle = true) {
+		if(allocated) {
+			allocated = 0;
+			if(recycle) {
+				mem_.push_front(P);
+			} else {
+				delete P;
+				P = 0;
+			}
+			if(fIndex)
+				fields_.remove(this);
+		}
+	}
+	void construct(const char* str = "", ACCESS a = NO, bool recycle = true) {
 		access = a;
 		fName = str;
 		if(Mesh::gCells.size())
-			allocate();
+			allocate(recycle);
 		fIndex = Util::hash_function(str);
 		if(fIndex)
 			fields_.push_back(this);
 	}
 	/*d'tor re-cycles memory */
 	~MeshField() {
-		if(allocated && !Util::Terminated) {
-			mem_.push_front(P);
-			if(fIndex)
-				fields_.remove(this);
-		}
+		if(!Util::Terminated)
+			deallocate();
 	}
 
 	/*static functions*/
@@ -288,6 +294,12 @@ public:
 				(*it)->write(step);
 		}
 	} 
+	static void removeAll() {
+		fields_.clear();
+		forEachIt(typename std::list<type*>,mem_,it)
+			delete (*it);
+		mem_.clear();
+	} 
 	static int count_writable() {
 		int count = 0;
 		forEachIt(typename std::list<MeshField*>, fields_, it) {
@@ -413,11 +425,23 @@ public:
 		return is;
 	}
 };
-#define forEachField(X)	 { \
+#define forEachCellField(X)	 { \
 	ScalarCellField::X;    \
     VectorCellField::X;    \
 	STensorCellField::X;   \
 	TensorCellField::X;    \
+}
+#define forEachFacetField(X)	 { \
+	ScalarFacetField::X;    \
+    VectorFacetField::X;    \
+	STensorFacetField::X;   \
+	TensorFacetField::X;    \
+}
+#define forEachVertexField(X)	 { \
+	ScalarVertexField::X;    \
+    VectorVertexField::X;    \
+	STensorVertexField::X;   \
+	TensorVertexField::X;    \
 }
 /* typedefs */
 typedef MeshField<Scalar,CELL>    ScalarCellField;
@@ -540,10 +564,12 @@ namespace Mesh {
 	extern ScalarFacetField  fI;
 	extern ScalarCellField   yWall;
 
-	void   initGeomMeshFields(bool = true);
+	bool   LoadMesh(Int = 0,bool = true, bool = true);
+	void   initGeomMeshFields();
+	void   calc_walldist(Int,Int = 1);
 	void   write_fields(Int);
 	void   read_fields(Int);
-	void   calc_walldist(Int,Int = 1);
+	void   remove_fields();
 }
 
 /* **********************************************
@@ -631,7 +657,6 @@ void MeshField<T,E>::write(Int step) {
 	std::stringstream path;
 	path << fName << step;
 	std::ofstream of(path.str().c_str());
-
 	/*size*/
 	of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
 

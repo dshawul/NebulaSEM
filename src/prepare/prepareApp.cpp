@@ -19,8 +19,6 @@ int main(int argc,char* argv[]) {
 	
 	/*cmd line*/
 	int work = 0;
-	int refine_type = 0,refine_shape = 0;
-	Vector refine_dir(0.0);
 	Int start_index = 0;
 	for(int i = 1;i < argc;i++) {
 		if(!strcmp(argv[i],"-merge")) {
@@ -55,7 +53,8 @@ int main(int argc,char* argv[]) {
 	ifstream input(argv[1]);
 
     /*read mesh & fields*/
-    Int decomptype = 2;
+    RefineParams ref_params;
+    Int decomptype = 3;
 	vector<string> fields;
 	vector<Int> n;
 	vector<Scalar> axis(4);
@@ -75,46 +74,46 @@ int main(int argc,char* argv[]) {
 		params.enroll("axis",&axis);
 		Util::Option* op = new Util::Option(&decomptype, 4, 
 				"XYZ","INDEX","METIS","NONE");
-		params.enroll("decomptype",op);
+		params.enroll("type",op);
 		params.read(input); 
 	}
 	{
 		Util::ParamList params("refinement");
 		Util::Option* op;
-		op = new Util::Option(&refine_type, 2,"CELL","FACE");
-		params.enroll("type",op);
-		op = new Util::Option(&refine_shape, 2,"QUAD","TRI");
+		op = new Util::Option(&ref_params.shape, 2,"QUAD","TRI");
 		params.enroll("shape",op);
-		params.enroll("direction",&refine_dir);
+		params.enroll("direction",&ref_params.dir);
+		params.enroll("field",&ref_params.field);
+		params.enroll("field_max",&ref_params.field_max);
+		params.enroll("field_min",&ref_params.field_min);
+		params.enroll("limit",&ref_params.limit);
 		params.read(input); 
 	}
-	/*Mesh*/
+	/*switch directory*/
 	if(mp.n_hosts > 1) {
 		stringstream s;
 		s << Mesh::gMeshName << mp.host_id;
 		if(!System::cd(s.str()))
 			return 1;
 	}
-	Mesh::readMesh();
-	Mesh::initGeomMeshFields(false);
-	cout << "fields " << fields << endl;
 	atexit(Util::cleanup);
 
 	/*do work*/
 	if(work == 1) {
-		Prepare::merge(&n[0],fields,Mesh::gMeshName,start_index);
+		cout << "Merging decomposed domain.\n";
+		Prepare::merge(&n[0],fields,start_index);
 	} else if(work == 2) {
+		cout << "Converting result to VTK format.\n";
 		Prepare::convertVTK(fields,start_index);
 	} else if(work == 3) {
+		cout << "Probing result at specified locations.\n";
 		Prepare::probe(fields,start_index);
 	} else if(work == 4) {
-		IntVector rCells;
-		for(Int i = 0;i < Mesh::gBCellsStart;i++)
-			rCells.push_back(i);
-		Prepare::refineMesh(rCells,refine_type,refine_shape,refine_dir);
+		cout << "Refining grid.\n";
+		Prepare::refineMesh(fields,ref_params,start_index);
 	} else {
-		Prepare::decompose(&n[0],&axis[0],decomptype);
-		Prepare::decomposeFields(fields,Mesh::gMeshName,start_index);
+		cout << "Decomposing domain.\n";
+		Prepare::decompose(fields,&n[0],&axis[0],decomptype,start_index);
 	} 
 	return 0;
 }

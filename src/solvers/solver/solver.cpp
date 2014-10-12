@@ -68,8 +68,7 @@ int main(int argc, char* argv[]) {
 		if (!System::cd(s.str()))
 			return 1;
 	}
-	Mesh::readMesh();
-	Mesh::initGeomMeshFields();
+	Mesh::LoadMesh();
 	atexit(Util::cleanup);
 
 	/*call solver*/
@@ -111,7 +110,7 @@ public:
 
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
-		forEachField (initTimeSeries());
+		forEachCellField (initTimeSeries());
 	}
 	bool start() {
 		return (i == starti);
