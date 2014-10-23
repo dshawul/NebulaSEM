@@ -392,12 +392,14 @@ Vector dot(const Vector&,const STensor&);
 STensor sym(const Tensor& p);
 Tensor skw(const Tensor& p);
 Tensor trn(const Tensor& p);
+Scalar det(const Tensor& p);
+Tensor inv(const Tensor& p);
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta); 
 
 /*constants*/
 namespace Constants {
 	enum {
-		XX, YY , ZZ , XY, YZ , XZ , YX, ZY , ZX
+		XX, YY, ZZ, XY, YZ, XZ, YX, ZY, ZX
 	};
 	const Int MAX_INT = Int(1 << 31);
 	const Scalar PI = Scalar(3.14159265358979323846264);

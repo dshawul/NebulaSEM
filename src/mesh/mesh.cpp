@@ -10,9 +10,9 @@ namespace Mesh {
 	Facets&          gFacets   = gMesh.f;
 	Cells&           gCells    = gMesh.c;
 	Boundaries&      gBoundaries = gMesh.bdry;
-	IntVector&       gFO = gMesh.fo;
-	IntVector&       gFN = gMesh.fn;
-	Int&             gBCellsStart = gMesh.nc;
+	IntVector&       gFOC = gMesh.fo;
+	IntVector&       gFNC = gMesh.fn;
+	Int&             gBCS = gMesh.nc;
 	vector<BasicBCondition*> AllBConditions;
 	std::vector<interBoundary>& gInterMesh = gMesh.interMesh;
 	Vertices         probePoints;
@@ -104,16 +104,16 @@ void Mesh::addBoundaryCells() {
 	Int i,index;
 
 	/*neighbor and owner cells of face*/
-	gBCellsStart = gCells.size();
-	gFO.assign(gFacets.size(),MAX_INT);
-	gFN.assign(gFacets.size(),MAX_INT);
-	for(i = 0;i < gBCellsStart;i++) {
+	gBCS = gCells.size();
+	gFOC.assign(gFacets.size(),MAX_INT);
+	gFNC.assign(gFacets.size(),MAX_INT);
+	for(i = 0;i < gBCS;i++) {
 		forEach(gCells[i],j) {
 			index = gCells[i][j];
-			if(gFO[index] == MAX_INT) 
-				gFO[index] = i;
+			if(gFOC[index] == MAX_INT) 
+				gFOC[index] = i;
 			else 
-				gFN[index] = i;
+				gFNC[index] = i;
 		}
 	}
 	/*Flag boundary faces not in gBoundaries for auto deletion*/
@@ -126,8 +126,8 @@ void Mesh::addBoundaryCells() {
 	}
 	
 	IntVector& gDelete = gBoundaries["delete"];
-	forEach(gFN,i) {
-		if(gFN[i] == MAX_INT) {
+	forEach(gFNC,i) {
+		if(gFNC[i] == MAX_INT) {
 			if(!faceInB[i])
 				gDelete.push_back(i);
 		}
@@ -138,11 +138,11 @@ void Mesh::addBoundaryCells() {
 		forEach(facets,j) {
 			i = facets[j];
 			/*external patch*/
-			if(gFN[i] == MAX_INT) {
+			if(gFNC[i] == MAX_INT) {
 				Cell c;
 				c.push_back(i);
 				gCells.push_back(c);
-				gFN[i] = gCells.size() - 1;
+				gFNC[i] = gCells.size() - 1;
 			}
 		}
 	}
@@ -166,7 +166,6 @@ void Mesh::calcGeometry() {
 			C += gVertices[f[j]];
 		_fC[i] = C / Scalar(f.size());
 	}
-
 	/* cell centre */
 	forEach(gCells,i) {
 		Cell& c = gCells[i];
@@ -196,7 +195,7 @@ void Mesh::calcGeometry() {
 			N += Ni;
 		}
 		_fC[i] = C / Ntot;    /*corrected face centre*/
-		v = _fC[i] - _cC[gFO[i]];
+		v = _fC[i] - _cC[gFOC[i]];
 		if((v & N) < 0) {
 			N = -N;
 			_reversed[i] = true;
@@ -204,7 +203,7 @@ void Mesh::calcGeometry() {
 		_fN[i] = N / Scalar(2);
 	}
 	/* cell volumes */
-	for(i = 0;i < gBCellsStart;i++) {
+	for(i = 0;i < gBCS;i++) {
 		Cell& c = gCells[i];
 		Scalar V(0),Vi;
 		Vector v = _cC[i],C(0);
@@ -218,9 +217,10 @@ void Mesh::calcGeometry() {
 		_cV[i] = V / Scalar(3);
 	}
 	/*boundary cell centre and volume*/
-	forEachS(gCells,i,gBCellsStart) {
-		_cV[i] = _cV[gFO[gCells[i][0]]];
-		_cC[i] = _fC[gCells[i][0]];
+	forEachS(gCells,i,gBCS) {
+		Int fi = gCells[i][0];
+		_cV[i] = _cV[gFOC[fi]];
+		_cC[i] = _fC[fi];
 	}
 }
 /* 
@@ -236,14 +236,14 @@ void Mesh::removeBoundary(IntVector& fs) {
 	/*erase facet reference*/
 	forEach(fs,i) {
 		Int f = fs[i];
-		Cell& co = gCells[gFO[f]];
+		Cell& co = gCells[gFOC[f]];
 		forEach(co,j) {
 			if(co[j] == f) {
 				co.erase(co.begin() + j); 
 				break; 
 			}
 		}
-		Cell& cn = gCells[gFN[f]];
+		Cell& cn = gCells[gFNC[f]];
 		forEach(cn,j) {
 			if(cn[j] == f) { 
 				cn.erase(cn.begin() + j); 
@@ -270,8 +270,8 @@ void Mesh::removeBoundary(IntVector& fs) {
 			fzeroIndices.push_back(i);
 	}
 	erase_indices(gFacets,fzeroIndices);
-	erase_indices(gFO,fzeroIndices);
-	erase_indices(gFN,fzeroIndices);
+	erase_indices(gFOC,fzeroIndices);
+	erase_indices(gFNC,fzeroIndices);
 	erase_indices(_fC,fzeroIndices);
 	erase_indices(_fN,fzeroIndices);
 	/*updated cell id*/
@@ -300,8 +300,8 @@ void Mesh::removeBoundary(IntVector& fs) {
 	}
 	/*facet owner and neighbor*/
 	forEach(gFacets,i) {
-		gFO[i] = Idc[gFO[i]];
-		gFN[i] = Idc[gFN[i]];
+		gFOC[i] = Idc[gFOC[i]];
+		gFNC[i] = Idc[gFNC[i]];
 	}
 	/*patches*/
 	forEachIt(Boundaries,gBoundaries,it) {
@@ -312,12 +312,13 @@ void Mesh::removeBoundary(IntVector& fs) {
 
 	cout << "Total faces: " << gFacets.size() << endl;
 }
+/////////////////////// TODO /////////////////
 /*find nearest cell*/
 Int Mesh::findNearestCell(const Vector& v) {
 	Scalar mindist,dist;
 	Int bi = 0;
 	mindist = mag(v - _cC[0]);
-	for(Int i = 0;i < gBCellsStart;i++) {
+	for(Int i = 0;i < gBCS;i++) {
 		dist = mag(v - _cC[i]);
 		if(dist < mindist) {
 			mindist = dist;
@@ -339,6 +340,7 @@ Int Mesh::findNearestFace(const Vector& v) {
 	}
 	return bi;
 }
+////////////////////////////////////////////////
 void Mesh::getProbeCells(IntVector& probes) {
 	forEach(probePoints,j) {
 		Vector v = probePoints[j];

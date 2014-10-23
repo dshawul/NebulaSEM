@@ -133,7 +133,7 @@ public:
 			return;
 
 		/*update time series*/
-		forEachField(updateTimeSeries(i));
+		forEachCellField(updateTimeSeries(i));
 
 		/*write result to file*/
 		if((i % Controls::write_interval) == 0) {
@@ -277,13 +277,13 @@ void piso(istream& input) {
 			/*momentum prediction*/
 			{
 				ScalarFacetField mu = cds(eddy_mu) + rho * nu;
-				M = transport(U, F, mu, rho, velocity_UR, Sc, Scalar(0));
+				M = transport(U, U, F, mu, rho, velocity_UR, Sc, Scalar(0));
 				Solve(M == gP);
 			}
 			/*energy predicition*/
 			if (buoyancy != NONE) {
 				ScalarFacetField mu = cds(eddy_mu) / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
-				ScalarCellMatrix Mt = transport(T, F, mu, rho, t_UR);
+				ScalarCellMatrix Mt = transport(T, U, F, mu, rho, t_UR);
 				Solve(Mt);
 				T = max(T, Constants::MachineEpsilon);
 			}
@@ -398,12 +398,11 @@ void convection(istream& input) {
 	Util::read_params(input);
 
 	/*Calculate for each time step*/
-	ScalarFacetField F, mu = Scalar(0);
-
-	for (Iteration it; !it.end(); it.next()) {
-		F = flx(rho * U);
+	Iteration it;
+	ScalarFacetField F = flx(rho * U), mu = Scalar(0);
+	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = convection(T, F, mu, rho, t_UR);
+		M = convection(T, U, F, mu, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -434,12 +433,11 @@ void transport(istream& input) {
 	Util::read_params(input);
 
 	/*Calculate for each time step*/
-	ScalarFacetField F, mu = rho * DT;
-
-	for (Iteration it; !it.end(); it.next()) {
-		F = flx(rho * U);
+	Iteration it;
+	ScalarFacetField F = flx(rho * U), mu = rho * DT;
+	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = transport(T, F, mu, rho, t_UR);
+		M = transport(T, U, F, mu, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -479,7 +477,7 @@ void potential(istream& input) {
 	Util::read_params(input);
 
 	/*set internal field to zero*/
-	for (Int i = 0; i < Mesh::gBCellsStart; i++) {
+	for (Int i = 0; i < Mesh::gBCSfield; i++) {
 		U[i] = Vector(0, 0, 0);
 		p[i] = Scalar(0);
 	}

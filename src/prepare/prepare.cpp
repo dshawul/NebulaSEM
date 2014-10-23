@@ -85,7 +85,7 @@ Int checkFields(vector<string>& fields,void**& pFields,Int step) {
 		break;
 	}
 	if(count)
-		Mesh::read_fields(step);
+		read_fields(step);
 	return count;
 }
 /**
@@ -137,7 +137,7 @@ void Prepare::decomposeXYZ(Int* n,Scalar* nq,IntVector& blockIndex) {
 		delta[j] /= Scalar(n[j]);
 		
 	/*assign block indices to cells*/
-	for(i = 0;i < gBCellsStart;i++) {
+	for(i = 0;i < gBCS;i++) {
 		C = rotate(_cC[i],axis,theta);
 		C = (C - minV) / delta;
 		ID = Int(C[0]) * n[1] * n[2] + 
@@ -150,8 +150,8 @@ void Prepare::decomposeXYZ(Int* n,Scalar* nq,IntVector& blockIndex) {
 Decompose by cell indices
 */
 void Prepare::decomposeIndex(Int total,IntVector& blockIndex) {
-	for(Int i = 0;i < gBCellsStart;i++)
-		blockIndex[i] = (i / (gBCellsStart / total));
+	for(Int i = 0;i < gBCS;i++)
+		blockIndex[i] = (i / (gBCS / total));
 }
 /**
 Decompose using METIS 5.0
@@ -159,7 +159,7 @@ Decompose using METIS 5.0
 void Prepare::decomposeMetis(int total,IntVector& blockIndex) {
 	int ncon = 1;
 	int edgeCut = 0;
-	int ncells = gBCellsStart;
+	int ncells = gBCS;
 	std::vector<int> xadj,adjncy;
 	std::vector<int> options(METIS_NOPTIONS);
 	
@@ -167,16 +167,16 @@ void Prepare::decomposeMetis(int total,IntVector& blockIndex) {
     METIS_SetDefaultOptions(&options[0]);
     
     /*build adjacency*/
-    for(Int i = 0;i < gBCellsStart;i++) {
+    for(Int i = 0;i < gBCS;i++) {
     	Cell& c = gCells[i];
     	xadj.push_back(adjncy.size());
     	forEach(c,j) {
     		Int f = c[j];
 			if(i == gFO[f]) {
-				if(gFN[f] < gBCellsStart)
+				if(gFN[f] < gBCS)
 					adjncy.push_back(gFN[f]);
 			} else {
-				if(gFO[f] < gBCellsStart)
+				if(gFO[f] < gBCS)
 					adjncy.push_back(gFO[f]);
 			}
 		}
@@ -208,7 +208,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	Int i,j,ID,count,total = n[0] * n[1] * n[2];
 	
 	/*Read mesh*/
-	Mesh::LoadMesh(step,true,false);
+	LoadMesh(step,true,false);
 
 	/*Read fields*/
 	void** pFields = 0;
@@ -233,7 +233,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	/*decompose cells*/
 	MeshObject *pmesh;
 	IntVector *pvLoc,*pfLoc,blockIndex;
-	blockIndex.assign(gBCellsStart,0);
+	blockIndex.assign(gBCS,0);
 	
 	/*choose*/
 	if(type == 0) 
@@ -245,7 +245,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	else; //default -- assigns all to processor 0
 	
 	/*add cells*/
-	for(i = 0;i < gBCellsStart;i++) {
+	for(i = 0;i < gBCS;i++) {
 		Cell& c = gCells[i];
 
 		/* add cell */
@@ -312,7 +312,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	IntVector* imesh = new IntVector[total * total];
 	Int co,cn;
 	forEach(gFacets,i) {
-		if(gFN[i] < gBCellsStart) {
+		if(gFN[i] < gBCS) {
 			co = blockIndex[gFO[i]];
 			cn = blockIndex[gFN[i]];
 			if(co != cn) {
@@ -432,13 +432,13 @@ int Prepare::merge(Int* n,vector<string>& fields,Int start_index) {
 	for(Int step = start_index;;step++) {
 	
 		/*load mesh and fields*/
-		if(Mesh::LoadMesh(step,(step == start_index),true)) {
+		if(LoadMesh(step,(step == start_index),true)) {
 			destroyFields(pFields,field_sizes);
 			createFields(fields,field_sizes,pFields,step);
 			checkFields(fields,pFields,step);
 			for(Int ID = 0;ID < total;ID++) {
 				stringstream path;
-				path << Mesh::gMeshName << ID << "/index_" << step;
+				path << gMeshName << ID << "/index_" << step;
 				ifstream index(path.str().c_str());
 				cLoc[ID].clear();
 				index >> cLoc[ID];
@@ -450,7 +450,7 @@ int Prepare::merge(Int* n,vector<string>& fields,Int start_index) {
 		Int count = 0;
 		for(Int ID = 0;ID < total;ID++) {
 			stringstream path;
-			path << Mesh::gMeshName << ID;
+			path << gMeshName << ID;
 			forEach(fields,i) {
 				stringstream fpath;
 				fpath << fields[i] << step;
@@ -470,7 +470,7 @@ int Prepare::merge(Int* n,vector<string>& fields,Int start_index) {
 			}
 		}
 		if(count == 0) break;
-		Mesh::write_fields(step);
+		write_fields(step);
 	}
 
 	return 0;
@@ -482,7 +482,7 @@ int Prepare::convertVTK(vector<string>& fields,Int start_index) {
 	void** pFields = 0;
 	IntVector field_sizes;
 	for(Int step = start_index;;step++) {
-		if(Mesh::LoadMesh(step,(step == start_index),true)) {
+		if(LoadMesh(step,(step == start_index),true)) {
 			destroyFields(pFields,field_sizes);
 			createFields(fields,field_sizes,pFields,step);
 		}
@@ -506,7 +506,7 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
 	void** pFields = 0;
 	IntVector field_sizes;
 	for(Int step = start_index;;step++) {
-		if(Mesh::LoadMesh(step,(step == start_index),true)) {
+		if(LoadMesh(step,(step == start_index),true)) {
 			destroyFields(pFields,field_sizes);
 			createFields(fields,field_sizes,pFields,step);
 			probes.clear();
@@ -590,7 +590,7 @@ Refine mesh
 void Prepare::refineMesh(vector<string>& fields,const RefineParams& rparams, Int step) {
 			
 	/*Read mesh*/
-	Mesh::LoadMesh(step,true,false);
+	LoadMesh(step,true,false);
 
 	/*Read fields*/
 	void** pFields = 0;
@@ -613,7 +613,7 @@ void Prepare::refineMesh(vector<string>& fields,const RefineParams& rparams, Int
 	}
 	qoi = mag(gradi(qoi));
 	Scalar maxq = 0,minq = 10e30;
-	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+	for(Int i = 0;i < gBCS;i++) {
 		if(qoi[i] > maxq) maxq = qoi[i];
 		if(qoi[i] < minq) minq = qoi[i];
 	}
@@ -623,9 +623,9 @@ void Prepare::refineMesh(vector<string>& fields,const RefineParams& rparams, Int
 	minq = minq / maxq;
 
 	/*get cells to refine*/
-	gCells.erase(gCells.begin() + gBCellsStart,gCells.end());
+	gCells.erase(gCells.begin() + gBCS,gCells.end());
 	IntVector rCells;
-	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+	for(Int i = 0;i < gBCS;i++) {
 		if(qoi[i] >= rparams.field_max)
 			rCells.push_back(i);
 	}
@@ -653,10 +653,10 @@ void Prepare::refineMesh(IntVector& rCells,const RefineParams& rparams,IntVector
 	/*build refine flags array*/
 	IntVector refineC,refineF,
 			  rFacets,rsFacets;
-	cellMap.assign(gBCellsStart,0);
+	cellMap.assign(gBCS,0);
 	forEach(cellMap,i)
 		cellMap[i] = i;
-	refineC.assign(gBCellsStart,0);
+	refineC.assign(gBCS,0);
 	refineF.assign(gFacets.size(),0);
 	forEach(rCells,i) {
 		Int ci = rCells[i];
@@ -992,7 +992,7 @@ void Prepare::refineMesh(IntVector& rCells,const RefineParams& rparams,IntVector
 	sort(rCells.begin(),rCells.end());
 	erase_indices(gCells,rCells);
 	erase_indices(cellMap,rCells);
-	gBCellsStart = gCells.size();
+	gBCS = gCells.size();
 	
 	/*******************************************************
 	 * Break edge of faces that are not set for refinement 

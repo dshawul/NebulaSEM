@@ -2,7 +2,7 @@
 # Target executable and files
 ############################
 EXE = prepare
-OBJ = mesh.o tensor.o util.o vtk.o field.o mp.o prepare.o prepareApp.o
+OBJ = mesh.o tensor.o util.o vtk.o field.o dg.o mp.o prepare.o prepareApp.o
 
 #############################
 # paths

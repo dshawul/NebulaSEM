@@ -12,7 +12,7 @@ typedef std::vector<Int>      IntVector;
 
 /*our basic building blocks */
 enum ENTITY {
-	CELL, FACET, VERTEX
+	CELL, FACET, VERTEX, /*others*/CELLMAT
 };
 
 /*typdefs*/
@@ -73,9 +73,9 @@ namespace Mesh {
 	extern  Facets&			 gFacets;
 	extern  Cells&			 gCells;
 	extern  Boundaries&      gBoundaries;
-	extern  IntVector&       gFO;
-	extern  IntVector&       gFN;
-	extern  Int&             gBCellsStart;
+	extern  IntVector&       gFOC;
+	extern  IntVector&       gFNC;
+	extern  Int&             gBCS;
 	extern  std::vector<interBoundary>& gInterMesh;
 	extern  Vertices         probePoints;
 	extern  IntVector        probeCells;
@@ -211,7 +211,6 @@ struct BCondition : public BasicBCondition {
 	}
 	void init_indices() {
 		bdry = &Mesh::gBoundaries[bname];
-		fixed.resize(bdry->size());
 		first = true;
 		read = false;
 		fIndex = Util::hash_function(fname);

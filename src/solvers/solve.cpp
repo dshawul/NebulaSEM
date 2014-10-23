@@ -10,7 +10,7 @@ Scalar getResidual(const MeshField<type,entity>& r,
 	type res[2];
 	res[0] = type(0);
 	res[1] = type(0); 
-	for(Int i = 0;i < Mesh::gBCellsStart;i++) {
+	for(Int i = 0;i < Mesh::gBCSfield;i++) {
 		res[0] += (r[i] * r[i]);
 		res[1] += (cF[i] * cF[i]);
 	}
@@ -25,8 +25,8 @@ Scalar getResidual(const MeshField<type,entity>& r,
 
 template<class type>
 void SolveT(const MeshMatrix<type>& M) {
-
 	using namespace Mesh;
+	using namespace DG;
 	MeshField<type,CELL> r,p,AP;
 	MeshField<type,CELL> r1(false),p1(false),AP1(false);   
 	MeshField<type,CELL>& cF = *M.cF;
@@ -36,7 +36,6 @@ void SolveT(const MeshMatrix<type>& M) {
 	type alpha,beta,o_rr = type(0),oo_rr;
 	Int iterations = 0;
 	bool converged = false;
-	register Int i;
 
 	/****************************
 	 * Parallel controls
@@ -84,19 +83,32 @@ void SolveT(const MeshMatrix<type>& M) {
 				D *=  (2.0 / Controls::SOR_omega - 1.0);	
 			} else if(Controls::Preconditioner == Controls::DILU) {
 				/*D-ILU(0)*/
-				for(i = 0;i < gBCellsStart;i++) {
-					Cell& c = gCells[i];
-					forEach(c,j) {								
-						Int f = c[j];							
-						Int c1 = gFO[f];						
-						Int c2 = gFN[f];						
-						if(i == c1) {
-							if(c2 > i) D[c2] -= 
-								(M.an[0][f] * M.an[1][f] * iD[c1]);	
-						} else {
-							if(c1 > i) D[c1] -= 
-								(M.an[0][f] * M.an[1][f] * iD[c2]);		
-						}										
+				for(Int ii = 0;ii < gBCS;ii++) {
+					Cell& c = gCells[ii];
+					for(Int j = 0;j < NP;j++) {	
+						Int i = ii * NP + j;
+						if(NPMAT) {
+							Scalar val = 0.0;
+							for(Int k = 0;k < NP;k++)
+								val += M.adg[ii * NPMAT + j * NP + k] *
+								       M.adg[ii * NPMAT + k * NP + j];
+							D[i] -= val * iD[i];
+						}	
+						forEach(c,j) {								
+							Int faceid = c[j];
+							for(Int n = 0; n < NPF;n++) {
+								Int k = faceid * NPF + n;							
+								Int c1 = gFO[k];						
+								Int c2 = gFN[k];						
+								if(i == c1) {
+									if(c2 > i) D[c2] -= 
+									(M.an[0][k] * M.an[1][k] * iD[c1]);	
+								} else {
+									if(c1 > i) D[c1] -= 
+									(M.an[0][k] * M.an[1][k] * iD[c2]);		
+								}		
+							}								
+						}
 					}			
 				}
 				iD = (1.0 / D);
@@ -109,68 +121,103 @@ void SolveT(const MeshMatrix<type>& M) {
 	 ***************************/
 #define JacobiSweep() {								\
 	AP = iD * getRHS(M);							\
-	for(i = 0;i < gBCellsStart;i++)					\
+	for(Int i = 0;i < gBCSfield;i++)				\
 		cF[i] = AP[i];								\
 }
 	/****************************
 	 *  Forward/backward GS sweeps
 	 ****************************/
-#define Sweep_(X,B,i) {								\
-	Cell& c = gCells[i];							\
-	type ncF = B[i];								\
-	forEach(c,j) {									\
-		Int f = c[j];								\
-		if(i == gFO[f])								\
-			ncF += X[gFN[f]] * M.an[1][f];			\
-		else										\
-			ncF += X[gFO[f]] * M.an[0][f];			\
+#define Sweep_(X,B,ii) {							\
+	Cell& c = gCells[ii];							\
+	for(Int j = 0;j < NP;j++) {						\
+		Int i = ii * NP + j;						\
+		type ncF = B[i];							\
+		if(NPMAT) {									\
+			type val(Scalar(0));					\
+			for(Int k = 0;k < NP;k++)				\
+				val += X[ii * NP + k] * 			\
+				   M.adg[ii * NPMAT + j * NP + k];	\
+			ncF -= val;								\
+		}											\
+		forEach(c,j) {								\
+			Int faceid = c[j];						\
+ 			for(Int n = 0; n < NPF;n++) {			\
+				Int k = faceid * NPF + n;			\
+				Int c1 = gFO[k];					\
+				Int c2 = gFN[k];					\
+				if(i == c1)							\
+					ncF += X[c2] * M.an[1][k];		\
+				else if(i == c2)					\
+					ncF += X[c1] * M.an[0][k];		\
+			}										\
+		}											\
+		ncF *= iD[i];								\
+		X[i] = X[i] * (1 - Controls::SOR_omega) +	\
+			ncF * (Controls::SOR_omega);			\
 	}												\
-	ncF *= iD[i];									\
-	X[i] = X[i] * (1 - Controls::SOR_omega) +		\
-		ncF * (Controls::SOR_omega);				\
 }
 #define ForwardSweep(X,B) {							\
-	for(i = 0;i < gBCellsStart;i++)					\
-		Sweep_(X,B,i);								\
+	for(Int ii = 0;ii < gBCS;ii++)					\
+		Sweep_(X,B,ii);								\
 }
 #define BackwardSweep(X,B) {						\
-	for(int i = gBCellsStart - 1;i >= 0;i--)		\
-		Sweep_(X,B,i);								\
+	for(int ii = gBCS - 1;ii >= 0;ii--)				\
+		Sweep_(X,B,ii);								\
 }
 	/***********************************
 	 *  Forward/backward substitution
 	 ***********************************/
-#define Substitute_(X,B,i,forw,tr) {				\
-	Cell& c = gCells[i];							\
-	type ncF = B[i];								\
-	forEach(c,j) {									\
-		Int f = c[j];								\
-		Int c1 = gFO[f];							\
-	    Int c2 = gFN[f];							\
-		if(i == c1) {								\
-			if((forw && (c2 < c1)) ||				\
-			  (!forw && (c1 < c2)))	{				\
-				ncF += X[c2] * M.an[1 - tr][f];		\
+#define Substitute_(X,B,ii,forw,tr) {				\
+	Cell& c = gCells[ii];							\
+	for(Int j = 0;j < NP;j++) {						\
+		Int i = ii * NP + j;						\
+		type ncF = B[i];							\
+		if(NPMAT) {									\
+			type val(Scalar(0));					\
+			for(Int k = 0;k < NP;k++) {				\
+				if((forw && (k < j)) ||				\
+				  (!forw && (j < k))) {				\
+				  	Int ind;						\
+				  	if(tr) ind = k * NP + j;		\
+				  	else   ind = j * NP + k;		\
+					val += X[ii * NP + k] * 		\
+				   		M.adg[ii * NPMAT + ind];	\
+				}									\
 			}										\
-		} else {									\
-			if((forw && (c2 > c1)) ||				\
-			  (!forw && (c1 > c2)))					\
-				ncF += X[c1] * M.an[0 + tr][f];		\
+			ncF -= val;								\
 		}											\
+		forEach(c,j) {								\
+			Int faceid = c[j];						\
+ 			for(Int n = 0; n < NPF;n++) {			\
+				Int k = faceid * NPF + n;			\
+				Int c1 = gFO[k];					\
+				Int c2 = gFN[k];					\
+				if(i == c1) {						\
+					if((forw && (c2 < c1)) ||		\
+					  (!forw && (c1 < c2)))	{		\
+					ncF += X[c2] * M.an[1 - tr][k];	\
+					}								\
+				} else if(i == c2) {				\
+					if((forw && (c2 > c1)) ||		\
+					  (!forw && (c1 > c2)))			\
+					ncF += X[c1] * M.an[0 + tr][k];	\
+				}									\
+			}										\
+		}											\
+		ncF *= iD[i];								\
+		X[i] = ncF;									\
 	}												\
-	ncF *= iD[i];									\
-	X[i] = ncF;										\
 }
 #define ForwardSub(X,B,TR) {						\
-	for(i = 0;i < gBCellsStart;i++)					\
-		Substitute_(X,B,i,true,TR);					\
+	for(Int ii = 0;ii < gBCS;ii++)					\
+		Substitute_(X,B,ii,true,TR);				\
 }
 #define BackwardSub(X,B,TR) {						\
-	for(i = gBCellsStart;i > 0;i--)					\
-		Substitute_(X,B,i-1,false,TR);				\
+	for(int ii = gBCS;ii >= 0;ii--)					\
+		Substitute_(X,B,ii,false,TR);				\
 }
 #define DiagSub(X,B) {								\
-	for(i = 0;i < gBCellsStart;i++)					\
+	for(Int i = 0;i < gBCSfield;i++)				\
 		X[i] = B[i] * iD[i];						\
 }
 	/***********************************
@@ -197,12 +244,12 @@ void SolveT(const MeshMatrix<type>& M) {
 	 *  SAXPY and DOT operations
 	 ***********************************/
 #define Taxpy(Y,I,X,alpha_) {						\
-	for(i = 0;i < gBCellsStart;i++)					\
+	for(Int i = 0;i < gBCSfield;i++)				\
 		Y[i] = I[i] + X[i] * alpha_;				\
 }
 #define Tdot(X,Y,sum) {								\
 	sum = type(0);									\
-	for(i = 0;i < gBCellsStart;i++)					\
+	for(Int i = 0;i < gBCSfield;i++)				\
 		sum += X[i] * Y[i];							\
 }
 	/***********************************
@@ -221,10 +268,10 @@ void SolveT(const MeshMatrix<type>& M) {
 	 ***********************************/
 #define CALC_RESID() {								\
 	r = M.Su - mul(M,cF);							\
-	forEachS(r,k,gBCellsStart)						\
+	forEachS(r,k,gBCSfield)							\
 		r[k] = type(0);								\
 	precondition(r,AP);								\
-	forEachS(AP,k,gBCellsStart)						\
+	forEachS(AP,k,gBCSfield)						\
 		AP[k] = type(0);							\
 	res = getResidual(AP,cF,sync);					\
 	if(Controls::Solver == Controls::PCG) {			\
@@ -252,9 +299,16 @@ void SolveT(const MeshMatrix<type>& M) {
 			interBoundary& b = gInterMesh[i];
 			if(b.from < b.to) {
 				IntVector& f = *(b.f);
-				forEach(f,j)
-					buffer[j] = cF[gFO[f[j]]];
-				MP::send(&buffer[0],f.size(),b.to,MP::FIELD);
+				/*send*/
+				Int buf_size = f.size() * DG::NP;
+ 				forEach(f,j) {
+ 					Int faceid = f[j];
+ 					for(Int n = 0; n < NPF;n++) {
+				 	 	Int k = faceid * NPF + n;
+ 						buffer[j * NPF + n] = cF[gFO[k]];
+ 					}
+ 				}
+ 				MP::send(&buffer[0],buf_size,b.to,MP::FIELD);
 			}
 		}
 	}
@@ -270,14 +324,14 @@ void SolveT(const MeshMatrix<type>& M) {
 			/*Jacobi solver*/
 			p = cF;
 			JacobiSweep();
-			for(i = 0;i < gBCellsStart;i++)
+			for(Int i = 0;i < gBCSfield;i++)
 				AP[i] = cF[i] - p[i];
 			/*end*/
 		} else if(Controls::Solver == Controls::SOR) {
 			/*Asynchronous SOR solver*/
 			p = cF;
 			ForwardSweep(cF,M.Su);
-			for(i = 0;i < gBCellsStart;i++)
+			for(Int i = 0;i < gBCSfield;i++)
 				AP[i] = cF[i] - p[i];
 			/*end*/
 		} else if(M.flags & M.SYMMETRIC) {
@@ -347,10 +401,16 @@ PROBE:
 				/*parse message*/
 				if(message_id == MP::FIELD) {
 					IntVector& f = *(b.f);
+					Int buf_size = f.size() * DG::NP;
 					/*recieve*/
-					MP::recieve(&buffer[0],f.size(),source,message_id);
-					forEach(f,j)
-						cF[gFN[f[j]]] = buffer[j];
+					MP::recieve(&buffer[0],buf_size,source,message_id);
+					forEach(f,j) {
+						Int faceid = f[j];
+						for(Int n = 0; n < NPF;n++) {
+							Int k = faceid * NPF + n;
+							cF[gFN[k]] = buffer[j * NPF + n];
+						}
+					}
 					/*Re-calculate residual.*/
 					CALC_RESID();
 					if(res > Controls::tolerance
@@ -366,9 +426,15 @@ PROBE:
 						}
 					} else {
 						/*send back our part*/
-						forEach(f,j)
-							buffer[j] = cF[gFO[f[j]]];
-						MP::send(&buffer[0],f.size(),source,message_id);
+						Int buf_size = f.size() * DG::NP;
+						forEach(f,j) {
+							Int faceid = f[j];
+							for(Int n = 0; n < NPF;n++) {
+								Int k = faceid * NPF + n;
+								buffer[j * NPF + n] = cF[gFO[k]];
+							}
+						}
+						MP::send(&buffer[0],buf_size,source,message_id);
 					}
 				} else if(message_id == MP::END) {
 					/*END marker recieved*/

@@ -19,7 +19,7 @@ Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
 /**
 Add different shapes of edges
 */
-void ADDV(int w,Scalar m,Vector* vp,Edge* edges,Vector* vd) {
+void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
 	Edge& e = edges[w];
 	if(e.type == NONE) {
 		vd[w] = (1 - m) * e.v[0] + (m) * e.v[1];
@@ -141,18 +141,18 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 }
 
 #define ADD() {                                     \
-	ADDV(0,sc[0][i],vp,edges,vd);					\
-	ADDV(1,sc[1][i],vp,edges,vd);					\
-	ADDV(2,sc[2][i],vp,edges,vd);					\
-	ADDV(3,sc[3][i],vp,edges,vd);					\
-	ADDV(4,sc[4][j],vp,edges,vd);					\
-	ADDV(5,sc[5][j],vp,edges,vd);					\
-	ADDV(6,sc[6][j],vp,edges,vd);					\
-	ADDV(7,sc[7][j],vp,edges,vd);					\
-	ADDV(8,sc[8][k],vp,edges,vd);					\
-	ADDV(9,sc[9][k],vp,edges,vd);					\
-	ADDV(10,sc[10][k],vp,edges,vd);					\
-	ADDV(11,sc[11][k],vp,edges,vd);					\
+	ADDV(0,sc[0][i],edges,vd);						\
+	ADDV(1,sc[1][i],edges,vd);						\
+	ADDV(2,sc[2][i],edges,vd);						\
+	ADDV(3,sc[3][i],edges,vd);						\
+	ADDV(4,sc[4][j],edges,vd);						\
+	ADDV(5,sc[5][j],edges,vd);						\
+	ADDV(6,sc[6][j],edges,vd);						\
+	ADDV(7,sc[7][j],edges,vd);						\
+	ADDV(8,sc[8][k],edges,vd);						\
+	ADDV(9,sc[9][k],edges,vd);						\
+	ADDV(10,sc[10][k],edges,vd);					\
+	ADDV(11,sc[11][k],edges,vd);					\
 	rx = i / Scalar(nx - 1);						\
 	ry = j / Scalar(ny - 1);						\
 	rz = k / Scalar(nz - 1);						\

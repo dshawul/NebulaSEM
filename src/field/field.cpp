@@ -3,13 +3,16 @@
 using namespace std;
 
 namespace Mesh {
-	VectorVertexField vC;
-	VectorFacetField  fC;
-	VectorCellField   cC;
-	VectorFacetField  fN;
-	ScalarCellField   cV;
-	ScalarFacetField  fI;
+	VectorVertexField vC(false);
+	VectorFacetField  fC(false);
+	VectorCellField   cC(false);
+	VectorFacetField  fN(false);
+	ScalarCellField   cV(false);
+	ScalarFacetField  fI(false);
 	ScalarCellField   yWall(false);
+	IntVector         gFO;
+	IntVector         gFN;
+	Int   		gBCSfield;
 }
 namespace Controls {
 	Scheme convection_scheme = HYBRID;
@@ -36,10 +39,6 @@ namespace Controls {
 	CommMethod parallel_method = BLOCKED;
 	Vector gravity = Vector(0,-9.81,0);
 }
-namespace DG {
-	Int Nop[3] = {0, 0, 0};
-	Int NP = 1, NPM1 = NP - 1;
-}
 /*
  * Load mesh
  */
@@ -48,6 +47,7 @@ bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
 		/*initialize mesh*/
 		addBoundaryCells();
 		calcGeometry();
+		DG::init_poly();
 		/* remove empty faces*/
 		if(remove_empty) {
 			Boundaries::iterator it = gBoundaries.find("delete");
@@ -77,24 +77,53 @@ bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
  * Initialize geometric mesh fields
  */
 void Mesh::initGeomMeshFields() {
+	gFO = gFOC;
+	gFN = gFNC;
+	gBCSfield = gBCS * DG::NP;
+	/*DG fields*/
+	if(DG::NPMAT) {
+		_cC.resize(gCells.size() * DG::NP);
+		_cV.resize(gCells.size() * DG::NP);
+		_fN.resize(gFacets.size() * DG::NPF);
+		_fC.resize(gFacets.size() * DG::NPF);
+	}
 	/* Allocate fields*/
+	vC.deallocate(false);
 	vC.allocate(gVertices);
+	fC.deallocate(false);
 	fC.allocate(_fC);
+	cC.deallocate(false);
 	cC.allocate(_cC);
+	fN.deallocate(false);
 	fN.allocate(_fN);
+	cV.deallocate(false);
 	cV.allocate(_cV);
 	fI.deallocate(false);
 	fI.allocate();
+	/*expand*/
+	if(DG::NPMAT) {
+		DG::expand(cC);
+		DG::expand(cV);
+		DG::expand(fC);
+		DG::expand(fN);
+		DG::expand(fI);
+		DG::init_basis();
+	}
 	/* Facet interpolation factor to the owner of the face.
 	 * Neighbor takes (1 - f) */
 	exchange_ghost(&cV[0]);
 	exchange_ghost(&cC[0]);
-	forEach(gFacets,i) {
-		Int c1 = gFO[i];
-		Int c2 = gFN[i];
-		Scalar s1 = mag(cC[c1] - fC[i]);
-		Scalar s2 = mag(cC[c2] - fC[i]);
-		fI[i] = 1.f - s1 / (s1 + s2);
+	forEach(gFacets,faceid) {
+		for(Int n = 0; n < DG::NPF;n++) {
+			Int k = faceid * DG::NPF + n;
+			Int c1 = gFO[k];
+			Int c2 = gFN[k];
+			Scalar s1 = mag(cC[c1] - fC[k]) + 
+						Constants::MachineEpsilon;
+			Scalar s2 = mag(cC[c2] - fC[k]) + 
+						Constants::MachineEpsilon;
+			fI[k] = 1.f - s1 / (s1 + s2);
+		}
 	}
 	/*Construct wall distance field*/
 	{
@@ -120,7 +149,6 @@ void Mesh::initGeomMeshFields() {
 		}
 		updateExplicitBCs(yWall,true,true);
 	}
-	/*end*/
 }
 /*
  * Read/Write
@@ -183,4 +211,8 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("parallel_method",op);
 	op = new Util::BoolOption(&save_average);
 	params.enroll("average",op);
+	params.enroll("NPX",&DG::Nop[0]);
+	params.enroll("NPY",&DG::Nop[1]);
+	params.enroll("NPZ",&DG::Nop[2]);
 }
+

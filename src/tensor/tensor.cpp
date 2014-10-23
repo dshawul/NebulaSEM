@@ -127,3 +127,24 @@ Vector rotate(const Vector& v,const Vector& N,const Scalar& theta) {
 	r[ZZ] = N[ZZ] * sum * (1 - cost) + v[ZZ] * cost + (-N[YY] * v[XX] + N[XX] * v[YY]) * sint;
 	return r;
 }
+Scalar det(const Tensor& p) {
+	Scalar r;
+	r =  p[XX] * (p[YY] * p[ZZ] - p[YZ] * p[ZY]) +
+	     p[XY] * (p[YZ] * p[ZX] - p[YX] * p[ZZ]) +
+	     p[XZ] * (p[YX] * p[ZY] - p[YY] * p[ZX]);
+	return r;
+}
+Tensor inv(const Tensor& p) {
+	Tensor r;
+	r[XX] = p[YY] * p[ZZ] - p[YZ] * p[ZY];
+	r[YY] = p[XX] * p[ZZ] - p[XZ] * p[ZX];
+	r[ZZ] = p[XX] * p[YY] - p[XY] * p[YX];
+	r[XY] = p[XZ] * p[ZY] - p[XY] * p[ZZ];
+	r[XZ] = p[XY] * p[YZ] - p[XZ] * p[YY];
+	r[YX] = p[YZ] * p[ZX] - p[YX] * p[ZZ];
+	r[YZ] = p[XZ] * p[YX] - p[XX] * p[YZ];
+	r[ZX] = p[YX] * p[ZY] - p[YY] * p[ZX];
+	r[ZY] = p[XY] * p[ZX] - p[XX] * p[ZY];
+	Scalar d = p[XX] * r[XX] + p[XY] * r[YX] + p[XZ] * r[ZX];
+	return r / d;
+}

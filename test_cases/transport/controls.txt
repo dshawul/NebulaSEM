@@ -3,7 +3,7 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       piso
+    solver                       convection
     mesh                         grid
 
 ######################################
@@ -15,7 +15,7 @@ general
 #  Time increment
 #############################
 
-    state                        STEADY
+    state                        TRANSIENT
     start_step                   0
     end_step                     1
     write_interval               1
@@ -36,6 +36,7 @@ general
 ############################
 
     method                       PCG
+    preconditioner               DILU
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
@@ -68,7 +69,10 @@ diffusion
     DT                           1
     t_UR                         0.7
 }
-transport
+convection
+{
+    t_UR                         0.7
+}transport
 {
     DT                           0.1
     t_UR                         1

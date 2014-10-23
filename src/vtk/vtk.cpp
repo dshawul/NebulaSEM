@@ -54,20 +54,20 @@ void Vtk::write_vtk(Int step) {
 	if(write_polyhedral) {
 		/*polyhedral cells*/
 		total = 0;
-		for(i = 0;i < gBCellsStart;i++)
+		for(i = 0;i < gBCS;i++)
 			total += cell_count(gCells[i]);
 
-		of << "CELLS " << gBCellsStart << " " << total << endl;
-		for(i = 0;i < gBCellsStart;i++)
+		of << "CELLS " << gBCS << " " << total << endl;
+		for(i = 0;i < gBCS;i++)
 			cell_vtk(of,gCells[i]);
 
-		of << "CELL_TYPES " << gBCellsStart << endl;
-		for(i = 0;i < gBCellsStart;i++)
+		of << "CELL_TYPES " << gBCS << endl;
+		for(i = 0;i < gBCS;i++)
 			of << "42" << endl;
 	} else {
 		/*hexahedral cells*/
-		of << "CELLS " << gBCellsStart << " " << gBCellsStart * 9 << endl;
-		for(i = 0;i < gBCellsStart;i++) {
+		of << "CELLS " << gBCS << " " << gBCS * 9 << endl;
+		for(i = 0;i < gBCS;i++) {
 			Cell& c = gCells[i];
 			Facet f1 = gFacets[c[0]];
 			Facet f2 = gFacets[c[1]];
@@ -78,8 +78,8 @@ void Vtk::write_vtk(Int step) {
 				of << f2[j] << " ";
 			of << endl;
 		}
-		of << "CELL_TYPES " << gBCellsStart << endl;
-		for(i = 0;i < gBCellsStart;i++) {
+		of << "CELL_TYPES " << gBCS << endl;
+		for(i = 0;i < gBCS;i++) {
 			of << "12" << endl;
 		}
 	}
@@ -89,11 +89,11 @@ void Vtk::write_vtk(Int step) {
 			STensorCellField::count_writable() +
 			TensorCellField::count_writable();
 	if(write_cell_value) {
-		of << "CELL_DATA " << gBCellsStart << endl;
+		of << "CELL_DATA " << gBCS << endl;
 		of << "FIELD attributes "<< total + 1 << endl;
 		forEachCellField(writeVtkCellAll(of));
-		of << "cellID  1 " << Mesh::gBCellsStart << " int" << endl;
-		for(Int i = 0;i < Mesh::gBCellsStart;i++) of << i << endl;
+		of << "cellID  1 " << gBCS << " int" << endl;
+		for(Int i = 0;i < gBCS;i++) of << i << endl;
 	}
 	of << "POINT_DATA " << gVertices.size() << endl;
 	of << "FIELD attributes "<< total << endl;

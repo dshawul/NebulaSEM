@@ -89,6 +89,7 @@ int main(int argc,char* argv[]) {
 		params.enroll("limit",&ref_params.limit);
 		params.read(input); 
 	}
+
 	/*switch directory*/
 	if(mp.n_hosts > 1) {
 		stringstream s;

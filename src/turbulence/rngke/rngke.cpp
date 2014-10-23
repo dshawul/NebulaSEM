@@ -37,7 +37,7 @@ void RNG_KE_Model::solve() {
 
 	/*turbulent dissipation*/
 	mu = cds(eddy_mu) / SigmaX + rho * nu;
-	M = transport(x, F, mu, rho, x_UR,
+	M = transport(x, U, F, mu, rho, x_UR,
 				(C1x * Pk * x / k),
 				-(C2eStar * rho * x / k));
 	FixNearWallValues(M);
@@ -46,7 +46,7 @@ void RNG_KE_Model::solve() {
 
 	/*turbulent kinetic energy*/
 	mu = cds(eddy_mu) / SigmaK + rho * nu;
-	M = transport(k, F, mu, rho, k_UR,
+	M = transport(k, U, F, mu, rho, k_UR,
 					Pk,
 					-(rho * x / k));
 	if(wallModel == STANDARD)
