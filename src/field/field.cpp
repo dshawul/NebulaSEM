@@ -12,6 +12,7 @@ namespace Mesh {
 	ScalarCellField   yWall(false);
 	IntVector         gFO;
 	IntVector         gFN;
+	IntVector  probeCells;
 	Int   		gBCSfield;
 }
 namespace Controls {
@@ -80,27 +81,28 @@ void Mesh::initGeomMeshFields() {
 	gFO = gFOC;
 	gFN = gFNC;
 	gBCSfield = gBCS * DG::NP;
-	/*DG fields*/
-	if(DG::NPMAT) {
-		_cC.resize(gCells.size() * DG::NP);
-		_cV.resize(gCells.size() * DG::NP);
-		_fN.resize(gFacets.size() * DG::NPF);
-		_fC.resize(gFacets.size() * DG::NPF);
-	}
 	/* Allocate fields*/
 	vC.deallocate(false);
 	vC.allocate(gVertices);
 	fC.deallocate(false);
-	fC.allocate(_fC);
+	fC.allocate();
 	cC.deallocate(false);
-	cC.allocate(_cC);
+	cC.allocate();
 	fN.deallocate(false);
-	fN.allocate(_fN);
+	fN.allocate();
 	cV.deallocate(false);
-	cV.allocate(_cV);
+	cV.allocate();
 	fI.deallocate(false);
 	fI.allocate();
 	/*expand*/
+	forEach(_cC,i) {
+		cC[i] = _cC[i];
+		cV[i] = _cV[i];
+	}
+	forEach(_fC,i) {
+		fC[i] = _fC[i];
+		fN[i] = _fN[i];
+	}
 	if(DG::NPMAT) {
 		DG::expand(cC);
 		DG::expand(cV);
@@ -123,6 +125,8 @@ void Mesh::initGeomMeshFields() {
 			Scalar s2 = mag(cC[c2] - fC[k]) + 
 						Constants::MachineEpsilon;
 			fI[k] = 1.f - s1 / (s1 + s2);
+			if(DG::NPMAT && c2 >= gBCSfield) 
+				fI[k] = 0.5;
 		}
 	}
 	/*Construct wall distance field*/
@@ -148,6 +152,47 @@ void Mesh::initGeomMeshFields() {
 			AllBConditions.push_back(bc);
 		}
 		updateExplicitBCs(yWall,true,true);
+	}
+}
+/*find nearest cell*/
+Int Mesh::findNearestCell(const Vector& v) {
+	Scalar mindist,dist;
+	Int bi = 0;
+	mindist = mag(v - cC[0]);
+	for(Int i = 0;i < gBCSfield;i++) {
+		dist = mag(v - cC[i]);
+		if(dist < mindist) {
+			mindist = dist;
+			bi = i;
+		}
+	}
+	return bi;
+}
+Int Mesh::findNearestFace(const Vector& v) {
+	Scalar mindist,dist;
+	Int bi = 0;
+	mindist = mag(v - fC[0]);
+	forEach(fC,i) {
+		dist = mag(v - fC[i]);
+		if(dist < mindist) {
+			mindist = dist;
+			bi = i;
+		}
+	}
+	return bi;
+}
+void Mesh::getProbeCells(IntVector& probes) {
+	forEach(probePoints,j) {
+		Vector v = probePoints[j];
+		Int index = findNearestCell(v);
+		probes.push_back(index);
+	}
+}
+void Mesh::getProbeFaces(IntVector& probes) {
+	forEach(probePoints,j) {
+		Vector v = probePoints[j];
+		Int index = findNearestFace(v);
+		probes.push_back(index);
 	}
 }
 /*

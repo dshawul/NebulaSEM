@@ -78,7 +78,7 @@ namespace Mesh {
 	extern  Int&             gBCS;
 	extern  std::vector<interBoundary>& gInterMesh;
 	extern  Vertices         probePoints;
-	extern  IntVector        probeCells;
+	extern  Cells            faceID;
 	
 	void clear();
 	void addBoundaryCells();
@@ -86,10 +86,6 @@ namespace Mesh {
 	void removeBoundary(IntVector&);
 	bool readMesh(Int = 0,bool = true);
 	void enroll(Util::ParamList& params);
-	Int  findNearestCell(const Vector& v);
-	Int  findNearestFace(const Vector& v);
-	void getProbeCells(IntVector&);
-	void getProbeFaces(IntVector&);
 }
 /*
  * Model for flow close to the wall (Law of the wall).
@@ -208,6 +204,7 @@ struct BCondition : public BasicBCondition {
 		value = tvalue = type(0);
 		shape = tshape = zMin = zMax = Scalar(0);
 		dir = Vector(0,0,1);
+		fixed.clear();
 	}
 	void init_indices() {
 		bdry = &Mesh::gBoundaries[bname];

@@ -107,7 +107,6 @@ public:
 		n_deferred = Controls::n_deferred;
 		i = starti;
 		idf = 0;
-
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
 		forEachCellField (initTimeSeries());
@@ -366,7 +365,6 @@ void diffusion(istream& input) {
 
 	/*Calculate for each time step*/
 	ScalarFacetField mu = rho * DT;
-
 	for (Iteration it; !it.end(); it.next()) {
 		ScalarCellMatrix M;
 		M = diffusion(T, mu, rho, t_UR);
@@ -396,7 +394,7 @@ void convection(istream& input) {
 
 	/*read parameters*/
 	Util::read_params(input);
-
+	
 	/*Calculate for each time step*/
 	Iteration it;
 	ScalarFacetField F = flx(rho * U), mu = Scalar(0);

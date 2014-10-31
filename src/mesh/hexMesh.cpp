@@ -230,11 +230,11 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 };
 
 	/*interior*/
-	for(i = 1;i < nx - 1;i++) {
+	for(i = 0;i < nx - 1;i++) {
 		for(j = 0;j < ny - 1;j++) {
-			for(k = 0;k < nz - 1;k++) {
-				ADD(m,m + nz,m + nz + 1,m + 1);
-				FI[I1(i,j,k)] = mo.f.size() - 1;
+			for(k = 1;k < nz - 1;k++) {
+				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
+				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}
 	}
@@ -246,21 +246,21 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 			}
 		}
 	}
-	for(i = 0;i < nx - 1;i++) {
+	for(i = 1;i < nx - 1;i++) {
 		for(j = 0;j < ny - 1;j++) {
-			for(k = 1;k < nz - 1;k++) {
-				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
-				FI[I3(i,j,k)] = mo.f.size() - 1;
+			for(k = 0;k < nz - 1;k++) {
+				ADD(m,m + nz,m + nz + 1,m + 1);
+				FI[I1(i,j,k)] = mo.f.size() - 1;
 			}
 		}
 	}
 	mo.nf = mo.f.size();
 	/*boundaries*/
-	for(i = 0;i < nx; i += (nx - 1)) {
-		for(j = 0;j < ny - 1;j++) {
-			for(k = 0;k < nz - 1;k++) {
-				ADD(m,m + nz,m + nz + 1,m + 1);
-				FI[I1(i,j,k)] = mo.f.size() - 1;
+	for(k = 0;k < nz; k += (nz - 1)) {
+		for(i = 0;i < nx - 1;i++) {
+			for(j = 0;j < ny - 1;j++) {
+				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
+				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}
 	}
@@ -272,14 +272,15 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 			}
 		}
 	}
-	for(k = 0;k < nz; k += (nz - 1)) {
-		for(i = 0;i < nx - 1;i++) {
-			for(j = 0;j < ny - 1;j++) {
-				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
-				FI[I3(i,j,k)] = mo.f.size() - 1;
+	for(i = 0;i < nx; i += (nx - 1)) {
+		for(j = 0;j < ny - 1;j++) {
+			for(k = 0;k < nz - 1;k++) {
+				ADD(m,m + nz,m + nz + 1,m + 1);
+				FI[I1(i,j,k)] = mo.f.size() - 1;
 			}
 		}
 	}
+	
 	/*end*/
 #undef ADD
 
@@ -288,17 +289,17 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
 				Cell c;
-				m = I1(i,j,k);
-				c.push_back(FI[m]);
-				c.push_back(FI[m + (ny - 1) * (nz - 1)]);
-
-				m = I2(i,j,k);;
-				c.push_back(FI[m]);
-				c.push_back(FI[m + (nz - 1)]);
-
 				m = I3(i,j,k);;
 				c.push_back(FI[m]);
 				c.push_back(FI[m + 1]);
+				
+				m = I2(i,j,k);;
+				c.push_back(FI[m]);
+				c.push_back(FI[m + (nz - 1)]);
+				
+				m = I1(i,j,k);
+				c.push_back(FI[m]);
+				c.push_back(FI[m + (ny - 1) * (nz - 1)]);
 
 				mo.c.push_back(c);
 			}

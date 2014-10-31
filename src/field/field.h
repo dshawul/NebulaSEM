@@ -68,6 +68,7 @@ namespace DG {
     extern Int NP,NPMAT,NPF;
 };
 namespace Mesh {
+	extern IntVector  probeCells;
 	extern Int  gBCSfield; 
 };
 enum ACCESS {
@@ -119,7 +120,12 @@ public:
 				case VERTEX: SIZE = Mesh::gVertices.size();          break;
 				case CELLMAT:SIZE = Mesh::gCells.size() * DG::NPMAT; break;
 			}
-			P = new type[SIZE];
+			Int sz = SIZE;
+			if(entity == CELL) 
+				sz += 1;
+			else if(entity == CELLMAT) 
+				sz += DG::NP;
+			P = new type[sz];
 		} else {
 			P = mem_.front();
 			mem_.pop_front();
@@ -137,7 +143,7 @@ public:
 			if(recycle) {
 				mem_.push_front(P);
 			} else {
-				delete P;
+				delete[] P;
 				P = 0;
 			}
 			if(fIndex)
@@ -575,6 +581,10 @@ namespace Mesh {
 	void   write_fields(Int);
 	void   read_fields(Int);
 	void   remove_fields();
+	Int  findNearestCell(const Vector& v);
+	Int  findNearestFace(const Vector& v);
+	void getProbeCells(IntVector&);
+	void getProbeFaces(IntVector&);
 }
 
 /* **********************************************
@@ -1566,30 +1576,26 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& rhoU,
 	/*compute differentiation matrix - volume integral*/
 	if(NPMAT) {
 		for(Int ci = 0; ci < gBCS;ci++) {
-			forEachLgl(i,j,k) {
-				Int ind1 = INDEX3(i,j,k);
-				forEachLgl(a,b,c) {
-					Int ind2 = INDEX3(a,b,c);
+			forEachLgl(ii,jj,kk) {
+				Int ind1 = INDEX3(ii,jj,kk);
+				forEachLgl(i,j,k) {
+					Int ind2 = INDEX3(i,j,k);
 				
-					Scalar val = Scalar(0);
-					forEachLgl(ii,jj,kk) {
-						Int index = INDEX4(ci,ii,jj,kk);
-						Tensor& Jin = Jinv[index];
-						Scalar psi_i    =  psi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];
-						Scalar dpsi_j_0 = dpsi[0][ii][a] *   psi[1][jj][b] *   psi[2][kk][c];
-						Scalar dpsi_j_1 =  psi[0][ii][a] *  dpsi[1][jj][b] *   psi[2][kk][c];
-						Scalar dpsi_j_2 =  psi[0][ii][a] *   psi[1][jj][b] *  dpsi[2][kk][c];
-						Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
-						Scalar dpsiU = rhoU[index] & dot(dpsi_j,Jin);
-						val += psi_i * dpsiU * cV[index];
-					}
-				
-					Int index = ci * NPMAT + ind1 * NP + ind2;
+					Int index = INDEX4(ci,ii,jj,kk);
+					Tensor& Jin = Jinv[index];
+					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];
+					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];
+					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];
+					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
+					Scalar dpsiU = rhoU[index] & dot(dpsi_j,Jin);
+					Scalar val = dpsiU * cV[index];
+					
+					index = ci * NPMAT + ind2 * NP + ind1;
 					if(ind1 == ind2) {
-						m.ap[ci * NP + ind1] = -val;
+						m.ap[ci * NP + ind1] = val;
 						m.adg[index] = 0;
 					} else {
-						m.adg[index] = -val;
+						m.adg[index] = val;
 					}
 				}
 			}

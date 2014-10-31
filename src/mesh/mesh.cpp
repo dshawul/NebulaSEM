@@ -16,7 +16,7 @@ namespace Mesh {
 	vector<BasicBCondition*> AllBConditions;
 	std::vector<interBoundary>& gInterMesh = gMesh.interMesh;
 	Vertices         probePoints;
-	IntVector        probeCells;
+	Cells            faceID;
 
 	std::vector<Vector> _fC;
 	std::vector<Vector> _cC;
@@ -27,7 +27,6 @@ namespace Mesh {
 void Mesh::clear() {
 	gMesh.clear();
 	Mesh::clearBC();
-	probeCells.clear();
 	probePoints.clear();
 }
 /*read mesh*/
@@ -233,20 +232,33 @@ void Mesh::removeBoundary(IntVector& fs) {
 	IntVector Idf(gFacets.size(),0);
 	IntVector Idc(gCells.size(),0);
 
+	/*facet ids*/
+	faceID.clear();
+	forEach(gCells,i) {
+		IntVector b;
+		forEach(gCells[i],j)
+			b.push_back(j);
+		faceID.push_back(b);
+	}
+	
 	/*erase facet reference*/
 	forEach(fs,i) {
 		Int f = fs[i];
 		Cell& co = gCells[gFOC[f]];
+		Cell& coid = faceID[gFOC[f]];
 		forEach(co,j) {
 			if(co[j] == f) {
 				co.erase(co.begin() + j); 
+				coid.erase(coid.begin() + j);
 				break; 
 			}
 		}
 		Cell& cn = gCells[gFNC[f]];
+		Cell& cnid = faceID[gFNC[f]];
 		forEach(cn,j) {
 			if(cn[j] == f) { 
 				cn.erase(cn.begin() + j); 
+				cnid.erase(cnid.begin() + j); 
 				break; 
 			}
 		}
@@ -289,6 +301,7 @@ void Mesh::removeBoundary(IntVector& fs) {
 			czeroIndices.push_back(i);
 	}
 	erase_indices(gCells,czeroIndices);
+	erase_indices(faceID,czeroIndices);
 	erase_indices(_cC,czeroIndices);
 	erase_indices(_cV,czeroIndices);
 	
@@ -311,47 +324,4 @@ void Mesh::removeBoundary(IntVector& fs) {
 	}
 
 	cout << "Total faces: " << gFacets.size() << endl;
-}
-/////////////////////// TODO /////////////////
-/*find nearest cell*/
-Int Mesh::findNearestCell(const Vector& v) {
-	Scalar mindist,dist;
-	Int bi = 0;
-	mindist = mag(v - _cC[0]);
-	for(Int i = 0;i < gBCS;i++) {
-		dist = mag(v - _cC[i]);
-		if(dist < mindist) {
-			mindist = dist;
-			bi = i;
-		}
-	}
-	return bi;
-}
-Int Mesh::findNearestFace(const Vector& v) {
-	Scalar mindist,dist;
-	Int bi = 0;
-	mindist = mag(v - _fC[0]);
-	forEach(gFacets,i) {
-		dist = mag(v - _fC[i]);
-		if(dist < mindist) {
-			mindist = dist;
-			bi = i;
-		}
-	}
-	return bi;
-}
-////////////////////////////////////////////////
-void Mesh::getProbeCells(IntVector& probes) {
-	forEach(probePoints,j) {
-		Vector v = probePoints[j];
-		Int index = findNearestCell(v);
-		probes.push_back(index);
-	}
-}
-void Mesh::getProbeFaces(IntVector& probes) {
-	forEach(probePoints,j) {
-		Vector v = probePoints[j];
-		Int index = findNearestFace(v);
-		probes.push_back(index);
-	}
 }

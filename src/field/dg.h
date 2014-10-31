@@ -16,17 +16,16 @@
 				for(Int k_ = 0;k_ < NPZ;k_++)					
 				
 #define INDEX4(c_,i_,j_,k_) \
-	(c_ * NPX * NPY * NPZ + i_ * NPY * NPZ + j_ * NPZ + k_)
+	((c_) * NPX * NPY * NPZ + (i_) * NPY * NPZ + (j_) * NPZ + (k_))
 	
 #define INDEX3(i_,j_,k_) \
-	(i_ * NPY * NPZ + j_ * NPZ + k_)
+	((i_) * NPY * NPZ + (j_) * NPZ + (k_))
 	
 namespace DG {
 	extern Scalar **psi[3];
 	extern Scalar **dpsi[3];
 	extern Scalar *xgl[3];
 	extern Scalar *wgl[3];
-	extern TensorCellField J;
 	extern TensorCellField Jinv;
 	extern Int NPX,NPY,NPZ;
 	
@@ -36,6 +35,7 @@ namespace DG {
 	void lagrange_der(Scalar x,int N, Scalar* xgl,Scalar* dpsi);
 	void init_poly();
 	void init_basis();
+	void init_geom();
 	
 	/*expand fields*/
 	template<class type, ENTITY entity>

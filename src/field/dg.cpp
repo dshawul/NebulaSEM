@@ -1,14 +1,13 @@
 #include "field.h"
 
 namespace DG {
-	Int Nop[3] = {0, 0, 0};
+	Int Nop[3] = {1, 0, 0};
 	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
 	
 	Scalar **psi[3];
 	Scalar **dpsi[3];
 	Scalar *xgl[3];
 	Scalar *wgl[3];
-	TensorCellField J(false);
 	TensorCellField Jinv(false);
 }
 
@@ -130,32 +129,15 @@ void DG::init_poly() {
 	    NPF = NPX * NPY;
 }
 /**
-Initialize basis functions
+Initialize geometry
 */
-void DG::init_basis() {
+void DG::init_geom() {
 	using namespace Mesh;
 	using namespace Constants;
-
-	//directional LGL
-	for(int i = 0;i < 3;i++) {
-		Int ngl = Nop[i] + 1;
-		
-		xgl[i] = new Scalar[ngl];
-		wgl[i] = new Scalar[ngl];
-		legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
-		psi[i] = new Scalar*[ngl];
-		dpsi[i] = new Scalar*[ngl];
-		for(int j = 0;j < ngl;j++) {
-			psi[i][j] = new Scalar[ngl];
-			dpsi[i][j] = new Scalar[ngl];
-			lagrange(xgl[i][j],ngl,xgl[i],psi[i][j]);
-			lagrange_der(xgl[i][j],ngl,xgl[i],dpsi[i][j]);
-		}
-	}
-
+	
 	//compute coordinates of nodes via transfinite interpolation
-	gFO.assign(gFacets.size() * NPF,0);
-	gFN.assign(gFacets.size() * NPF,0);
+	gFO.assign(gFacets.size() * NPF,gCells.size() * NP);
+	gFN.assign(gFacets.size() * NPF,gCells.size() * NP);
 	for(Int ci = 0; ci < gBCS;ci++) {
 		Cell& c = gCells[ci];
 		Facet& f1 = gFacets[c[0]];
@@ -163,11 +145,27 @@ void DG::init_basis() {
 		
 		//vertices
 		Vertex vp[8];
-		forEach(f1,i)
-			vp[i + 0] = gVertices[f1[i]];
-		forEach(f2,i)
-			vp[i + 4] = gVertices[f2[i]];	
+		{
+			Vertex vp1[8];
+			forEach(f1,i)
+				vp1[i + 0] = gVertices[f1[i]];
+			forEach(f2,i)
+				vp1[i + 4] = gVertices[f2[i]];	
 			
+			Int id = faceID[ci][0];
+			if(id == 2) {
+				Int order[8] = {0,1,5,4,3,2,6,7};
+				for(Int i = 0;i < 8;i++) 
+					vp[order[i]] = vp1[i];
+			} else if(id == 4) {
+				Int order[8] = {0,3,7,4,1,2,6,5};
+				for(Int i = 0;i < 8;i++) 
+					vp[order[i]] = vp1[i];
+			} else {
+				for(Int i = 0;i < 8;i++) 
+					vp[i] = vp1[i];
+			}
+		}	
 		//edges
 		static const int sides[12][2] = {
 			{0,1}, {3,2}, {7,6}, {4,5},
@@ -179,6 +177,7 @@ void DG::init_basis() {
 			ev[i][0] = vp[sides[i][0]];
 			ev[i][1] = vp[sides[i][1]];
 		}
+		
 		//coordinates
 		Vertex v,vd[12],vf[6];
 		Scalar rx,ry,rz;
@@ -240,8 +239,9 @@ void DG::init_basis() {
 			cV[index] *= wgt;
 		}
 		
-		forEach(c,face) {
-			Int fi = c[face];
+		forEach(c,mm) {
+			Int face = faceID[ci][mm];
+			Int fi = c[mm];
 			Int cj = gFNC[fi];
 			if(cj == ci) 
 				continue;
@@ -252,7 +252,7 @@ void DG::init_basis() {
 					Scalar wgt = wgl[0][i] * wgl[1][j] / 4;
 					Int indf = fi * NPF + i * NPY + j;
 					Int index0 = INDEX4(ci,i,j,ff);
-					Int index1 = INDEX4(cj,i,j,NPZ - 1 - ff);
+					Int index1 = INDEX4(cj,i,j,(NPZ - 1) - ff);
 					gFO[indf] = index0;
 					gFN[indf] = index1;
 					fC[indf] = cC[index0];
@@ -264,7 +264,7 @@ void DG::init_basis() {
 					Scalar wgt = wgl[0][i] * wgl[2][k] / 4;
 					Int indf = fi * NPF + i * NPZ + k;
 					Int index0 = INDEX4(ci,i,ff,k);
-					Int index1 = INDEX4(cj,i,NPY - 1 - ff,k);
+					Int index1 = INDEX4(cj,i,(NPY - 1) - ff,k);
 					gFO[indf] = index0;
 					gFN[indf] = index1;
 					fC[indf] = cC[index0];
@@ -276,7 +276,7 @@ void DG::init_basis() {
 					Scalar wgt = wgl[1][j] * wgl[2][k] / 4;
 					Int indf = fi * NPF + j * NPZ + k;
 					Int index0 = INDEX4(ci,ff,j,k);
-					Int index1 = INDEX4(cj,NPX - 1 - ff,j,k);
+					Int index1 = INDEX4(cj,(NPX - 1) - ff,j,k);
 					gFO[indf] = index0;
 					gFN[indf] = index1;
 					fC[indf] = cC[index0];
@@ -290,7 +290,7 @@ void DG::init_basis() {
 #undef ADDC
 #undef ADD
 	}
-	//boundary cells
+	//boundary cell volumes and centre
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
 		Scalar offset = mag(gVertices[gFacets[faceid][0]] - 
@@ -301,14 +301,40 @@ void DG::init_basis() {
 			cC[gFN[k]] = cC[gFO[k]] + offset * unit(fN[k]);
 		}
 	}
+}
+/**
+Initialize basis functions
+*/
+void DG::init_basis() {
+	using namespace Mesh;
+	using namespace Constants;
+	
+	//directional LGL
+	for(int i = 0;i < 3;i++) {
+		Int ngl = Nop[i] + 1;
+		
+		xgl[i] = new Scalar[ngl];
+		wgl[i] = new Scalar[ngl];
+		legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
+		psi[i] = new Scalar*[ngl];
+		dpsi[i] = new Scalar*[ngl];
+		for(int j = 0;j < ngl;j++) {
+			psi[i][j] = new Scalar[ngl];
+			dpsi[i][j] = new Scalar[ngl];
+			lagrange(xgl[i][j],ngl,xgl[i],psi[i][j]);
+			lagrange_der(xgl[i][j],ngl,xgl[i],dpsi[i][j]);
+		}
+	}
+
+	//init geometry
+	init_geom();
+	
 	//Compute Jacobian matrix
-	J.deallocate(false);
-	J.construct();
 	Jinv.deallocate(false);
 	Jinv.construct();
 	for(Int ci = 0; ci < gBCS;ci++) {
 		forEachLgl(ii,jj,kk) {
-			Tensor Ji(0.0);
+			Tensor Ji(Scalar(0));
 
 			forEachLgl(i,j,k) {
 				Int index = INDEX4(ci,i,j,k);
@@ -326,12 +352,18 @@ void DG::init_basis() {
 				Ji[YZ] += C[2] * dpsi_1;
 				Ji[ZZ] += C[2] * dpsi_2;
 			}
-
+			
+			if(NPX == 1) Ji[XX] = 1;
+			if(NPY == 1) Ji[YY] = 1;
+			if(NPZ == 1) Ji[ZZ] = 1;
+			Ji = inv(Ji);
+			if(NPX == 1) Ji[XX] = 0;
+			if(NPY == 1) Ji[YY] = 0;
+			if(NPZ == 1) Ji[ZZ] = 0;
+			
 			Int index = INDEX4(ci,ii,jj,kk);
-			J[index] = Ji;
-			Jinv[index] = inv(Ji);
+			Jinv[index] = Ji;
 		}
 	}
-			
 }
 
