@@ -139,6 +139,107 @@ T cudaTdot(T* x,
         c += sum[i];
 	return c;
 }
+/* **************************************
+ *   CSR - compressed sparse row format
+ *       * Used for on GPU computation
+ *       * Propably for AMG too
+ * **************************************/
+template <class T>
+class CSRMatrix {
+public:
+	std::vector<Int>  rows;
+	std::vector<Int>  cols;
+	std::vector<Scalar> an;
+	std::vector<Scalar> anT;
+	std::vector<T> cF;
+	std::vector<T> Su;
+public:
+	template <class T1>
+	CSRMatrix(const MeshMatrix<T1>& A) {
+		using namespace Mesh;
+		using namespace DG;
+		const Int N  = A.ap.size();
+		const Int NN = A.ap.size() + 
+			           A.an[0].size() + 
+					   A.an[1].size() +
+					   (NPMAT ? (A.adg.size() - A.ap.size()) : 0); 
+		register Int i,f;
+
+		/*resize*/
+		cF.resize(N);
+		Su.resize(N);
+		rows.reserve(N + 1);
+		cols.reserve(NN);
+		an.reserve(NN);
+		anT.reserve(NN);
+
+        /*source term*/
+		for(i = 0;i < N;i++) {
+			Su[i] = A.Su[i];
+			cF[i] = (*A.cF)[i];
+		}
+
+		/*fill matrix in CSR format.Diagonal element 
+		  is always at the start of a row */
+		Int cn = 0;
+		for(ii = 0;ii < gCells.size();ii++) {
+			Cell& c = gCells[ii];
+			for(Int j = 0;j < NP;j++) {
+				Int i = ii * NP + j;
+
+				rows.push_back(cn);
+
+				an.push_back(A.ap[i]);
+				anT.push_back(A.ap[i]);
+				cols.push_back(i);
+				cn++;
+
+				forEach(c,k) {
+					f = c[k];
+					if(i == gFO[f]) {
+						an.push_back(A.an[1][f]);
+						anT.push_back(A.an[0][f]);
+						cols.push_back(gFN[f]);
+						cn++;
+					} else {
+						an.push_back(A.an[0][f]);
+						anT.push_back(A.an[1][f]);
+						cols.push_back(gFO[f]);
+						cn++;
+					}
+				}
+				
+				if(NPMAT) {
+					for(Int k = 0;k < NP;k++) {
+						if(k == j) continue;
+						an.push_back(A.adg[ii * NPMAT + j * NP + k]);
+						anT.push_back(A.adg[ii * NPMAT + k * NP + j]);
+						cols.push_back();
+						cn++;
+					}
+				}
+			}
+		}
+		/*push extra row*/
+		rows.push_back(cn);
+	}
+	/*IO*/
+	friend std::ostream& operator << (std::ostream& os, const CSRMatrix& p) {
+		os << p.rows << std::endl;
+		os << p.cols << std::endl;
+		os << p.an << std::endl;
+		os << p.Su << std::endl;
+		return os;
+	}
+	friend std::istream& operator >> (std::istream& is, CSRMatrix& p) {
+		is >> p.rows;
+		is >> p.cols;
+		is >> p.an;
+		is >> p.Su;
+		return is;
+	}
+	/*end*/
+};
 /***********************************************
  * Template class to solve equations on GPU
  *		Solver must do many iterations to compensate
@@ -148,7 +249,7 @@ T cudaTdot(T* x,
 template<class T>
 __host__
 void SolveT(const MeshMatrix<T>& M) {
-	const Int N = Mesh::gBCellsStart;
+	const Int N = Mesh::gBCSfield;
 	const Int Nall = M.ap.size();
 	const Int nBlocks = (N + nThreads - 1) / nThreads;
 	const Int nBlocks32 = ((nBlocks > 32) ? 32 : nBlocks);

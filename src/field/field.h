@@ -867,7 +867,7 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 				for(Int k = 0;k < NP;k++)
 					val += q[i * NP + k] * 
 						p.adg[i * NPMAT + j * NP + k];
-				r[i * NP + j] += val;
+				r[i * NP + j] -= val;
 			}
 		}
 	}
@@ -894,7 +894,7 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 				for(Int k = 0;k < NP;k++)
 					val += q[i * NP + k] * 
 						p.adg[i * NPMAT + k * NP + j];
-				r[i * NP + j] += val;
+				r[i * NP + j] -= val;
 			}
 		}
 	}
@@ -921,7 +921,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 				for(Int k = 0;k < NP;k++)
 					val += (*p.cF)[i * NP + k] * 
 						p.adg[i * NPMAT + j * NP + k];
-				r[i * NP + j] -= val;
+				r[i * NP + j] += val;
 			}
 		}
 	}
@@ -933,93 +933,6 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 	}
 	return r;
 }
-
-/* **************************************
- *   CSR - compressed sparse row format
- *       * Used for on GPU computation
- *       * Propably for AMG too
- * **************************************/
-template <class T>
-class CSRMatrix {
-public:
-	std::vector<Int>  rows;
-	std::vector<Int>  cols;
-	std::vector<Scalar> an;
-	std::vector<Scalar> anT;
-	std::vector<T> cF;
-	std::vector<T> Su;
-public:
-	template <class T1>
-	CSRMatrix(const MeshMatrix<T1>& A) {
-		using namespace Mesh;
-		const Int N  = A.ap.size();
-		const Int NN = A.ap.size() + 
-			           A.an[0].size() + 
-					   A.an[1].size(); 
-		register Int i,f;
-
-		/*resize*/
-		cF.resize(N);
-		Su.resize(N);
-		rows.reserve(N + 1);
-		cols.reserve(NN);
-		an.reserve(NN);
-		anT.reserve(NN);
-
-        /*source term*/
-		for(i = 0;i < N;i++) {
-			Su[i] = A.Su[i];
-			cF[i] = (*A.cF)[i];
-		}
-
-		/*fill matrix in CSR format.Diagonal element 
-		  is always at the start of a row */
-		Int cn = 0;
-		for(i = 0;i < N;i++) {
-			Cell& c = gCells[i];
-
-			rows.push_back(cn);
-
-			an.push_back(A.ap[i]);
-			anT.push_back(A.ap[i]);
-			cols.push_back(i);
-			cn++;
-
-			forEach(c,j) {
-				f = c[j];
-				if(i == gFO[f]) {
-					an.push_back(A.an[1][f]);
-					anT.push_back(A.an[0][f]);
-					cols.push_back(gFN[f]);
-					cn++;
-				} else {
-					an.push_back(A.an[0][f]);
-					anT.push_back(A.an[1][f]);
-					cols.push_back(gFO[f]);
-					cn++;
-				}
-			}
-		}
-		/*push extra row*/
-		rows.push_back(cn);
-	}
-	/*IO*/
-	friend std::ostream& operator << (std::ostream& os, const CSRMatrix& p) {
-		os << p.rows << std::endl;
-		os << p.cols << std::endl;
-		os << p.an << std::endl;
-		os << p.Su << std::endl;
-		return os;
-	}
-	friend std::istream& operator >> (std::istream& is, CSRMatrix& p) {
-		is >> p.rows;
-		is >> p.cols;
-		is >> p.an;
-		is >> p.Su;
-		return is;
-	}
-	/*end*/
-};
 
 /* ***************************************
  * Implicit boundary conditions
@@ -1589,13 +1502,12 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& rhoU,
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
 					Scalar dpsiU = rhoU[index] & dot(dpsi_j,Jin);
 					Scalar val = dpsiU * cV[index];
-					
 					index = ci * NPMAT + ind2 * NP + ind1;
 					if(ind1 == ind2) {
 						m.ap[ci * NP + ind1] = val;
 						m.adg[index] = 0;
 					} else {
-						m.adg[index] = val;
+						m.adg[index] = -val;
 					}
 				}
 			}
@@ -1804,16 +1716,16 @@ void addTemporal(MeshMatrix<type>& M,const ScalarCellField& rho,Scalar cF_UR) {
 				ScalarCellField mdt = Controls::dt / (rho * Mesh::cV);
 				if (runge_kutta == 2) {
 					MeshField<type, CELL> k2 = M.Su - mul(M, *M.cF + k1 * mdt);
-					M = (M * (implicit_factor) + k2 * (1 - implicit_factor) + k1) / 2;
+					M = M * (implicit_factor) + ((k2 + k1) / 2) * (1 - implicit_factor);
 				} else if (runge_kutta == 3) {
 					MeshField<type, CELL> k2 = M.Su - mul(M, *M.cF + k1 * mdt / 2);
 					MeshField<type, CELL> k3 = M.Su - mul(M, *M.cF + (2 * k2 - k1) * mdt);
-					M = (M * (implicit_factor) + k3 * (1 - implicit_factor) + 4 * k2 + k1) / 6;
+					M = M * (implicit_factor) + ((k3 + 4 * k2 + k1) / 6) * (1 - implicit_factor);
 				} else if (runge_kutta == 4) {
 					MeshField<type, CELL> k2 = M.Su - mul(M, *M.cF + k1 * mdt / 2);
 					MeshField<type, CELL> k3 = M.Su - mul(M, *M.cF + k2 * mdt / 2);
 					MeshField<type, CELL> k4 = M.Su - mul(M, *M.cF + k3 * mdt);
-					M = (M * (implicit_factor) + k4 * (1 - implicit_factor) + 2 * k3 + 2 * k2 + k1) / 6;
+					M = M * (implicit_factor) + ((k4 + 2 * k3 + 2 * k2 + k1) / 6) * (1 - implicit_factor);
 				}
 			}
 			if(equal(implicit_factor,0))

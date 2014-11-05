@@ -103,7 +103,7 @@ void SolveT(const MeshMatrix<type>& M) {
 								if(i == c1) {
 									if(c2 > i) D[c2] -= 
 									(M.an[0][k] * M.an[1][k] * iD[c1]);	
-								} else {
+								} else if(i == c2) {
 									if(c1 > i) D[c1] -= 
 									(M.an[0][k] * M.an[1][k] * iD[c2]);		
 								}		
@@ -137,7 +137,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			for(Int k = 0;k < NP;k++)				\
 				val += X[ii * NP + k] * 			\
 				   M.adg[ii * NPMAT + j * NP + k];	\
-			ncF -= val;								\
+			ncF += val;								\
 		}											\
 		forEach(c,j) {								\
 			Int faceid = c[j];						\
@@ -184,7 +184,7 @@ void SolveT(const MeshMatrix<type>& M) {
 				   		M.adg[ii * NPMAT + ind];	\
 				}									\
 			}										\
-			ncF -= val;								\
+			ncF += val;								\
 		}											\
 		forEach(c,j) {								\
 			Int faceid = c[j];						\
