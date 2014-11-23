@@ -310,7 +310,7 @@ void DG::init_basis() {
 	using namespace Constants;
 	
 	//directional LGL
-	for(int i = 0;i < 3;i++) {
+	for(Int i = 0;i < 3;i++) {
 		Int ngl = Nop[i] + 1;
 		
 		xgl[i] = new Scalar[ngl];
@@ -318,7 +318,7 @@ void DG::init_basis() {
 		legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
 		psi[i] = new Scalar*[ngl];
 		dpsi[i] = new Scalar*[ngl];
-		for(int j = 0;j < ngl;j++) {
+		for(Int j = 0;j < ngl;j++) {
 			psi[i][j] = new Scalar[ngl];
 			dpsi[i][j] = new Scalar[ngl];
 			lagrange(xgl[i][j],ngl,xgl[i],psi[i][j]);
