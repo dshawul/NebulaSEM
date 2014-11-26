@@ -97,7 +97,7 @@ int main(int argc,char* argv[]) {
 		if(!System::cd(s.str()))
 			return 1;
 	}
-	atexit(Util::cleanup);
+	atexit(MP::cleanup);
 
 	/*do work*/
 	if(work == 1) {

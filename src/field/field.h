@@ -161,7 +161,7 @@ public:
 	}
 	/*d'tor re-cycles memory */
 	~MeshField() {
-		if(!Util::Terminated)
+		if(!MP::Terminated)
 			deallocate();
 	}
 
@@ -861,7 +861,7 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 	Int c1,c2;
 	r = q * p.ap;
 	if(NPMAT) {
-		for(Int i = 0;i < gCells.size();i++) {
+		for(Int i = 0;i < gBCS;i++) {
 			for(Int j = 0;j < NP;j++) {
 				T val(Scalar(0));
 				for(Int k = 0;k < NP;k++)
@@ -888,7 +888,7 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 	Int c1,c2;
 	r = q * p.ap;
 	if(NPMAT) {
-		for(Int i = 0;i < gCells.size();i++) {
+		for(Int i = 0;i < gBCS;i++) {
 			for(Int j = 0;j < NP;j++) {
 				T val(Scalar(0));
 				for(Int k = 0;k < NP;k++)
@@ -915,7 +915,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 	Int c1,c2;
 	r = p.Su;
 	if(NPMAT) {
-		for(Int i = 0;i < gCells.size();i++) {
+		for(Int i = 0;i < gBCS;i++) {
 			for(Int j = 0;j < NP;j++) {
 				T val(Scalar(0));
 				for(Int k = 0;k < NP;k++)
@@ -993,54 +993,49 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
  void exchange_ghost(T* P) {
  	using namespace Mesh;
  	using namespace DG;
- 	/*blocked exchange*/
+ 	/**
+ 	 * Blocked exchange
+ 	 */
  	if(Controls::ghost_exchange == Controls::BLOCKED) {
  		MeshField<T,CELL> buffer;
  		forEach(gInterMesh,i) {
  			interBoundary& b = gInterMesh[i];
  			IntVector& f = *(b.f);
  			Int buf_size = f.size() * NPF;
+ 			
+#define SEND() {									\
+	forEach(f,j) {									\
+		Int faceid = f[j];							\
+		for(Int n = 0; n < NPF;n++) {				\
+			Int k = faceid * NPF + n;				\
+			buffer[j * NPF + n] = P[gFO[k]];		\
+		}											\
+	}												\
+	MP::send(&buffer[0],buf_size,b.to,MP::FIELD);	\
+}
+#define RECV() {									\
+	MP::recieve(&buffer[0],buf_size,b.to,MP::FIELD);\
+	forEach(f,j) {									\
+		Int faceid = f[j];							\
+		for(Int n = 0; n < NPF;n++) {				\
+			Int k = faceid * NPF + n;				\
+			P[gFN[k]] = buffer[j * NPF + n];		\
+		}											\
+	}												\
+}
  			if(b.from < b.to) {
- 				//---send
- 				forEach(f,j) {
- 					Int faceid = f[j];
- 					for(Int n = 0; n < NPF;n++) {
-				 	 	Int k = faceid * NPF + n;
- 						buffer[j * NPF + n] = P[gFO[k]];
- 					}
- 				}
- 				MP::send(&buffer[0],buf_size,b.to,MP::FIELD);
- 				//---receive
- 				MP::recieve(&buffer[0],buf_size,b.to,MP::FIELD);
- 				forEach(f,j) {
- 					Int faceid = f[j];
- 					for(Int n = 0; n < NPF;n++) {
-				 	 	Int k = faceid * NPF + n;
- 						P[gFN[k]] = buffer[j * NPF + n];
- 					}
- 				}
+ 				SEND();
+ 				RECV();
  			} else {
- 				//---receive
- 				MP::recieve(&buffer[0],buf_size,b.to,MP::FIELD);
- 				forEach(f,j) {
- 					Int faceid = f[j];
- 					for(Int n = 0; n < NPF;n++) {
-				 	 	Int k = faceid * NPF + n;
- 						P[gFN[k]] = buffer[j * NPF + n];
- 					}
- 				}
- 				//---send
- 				forEach(f,j) {
- 					Int faceid = f[j];
- 					for(Int n = 0; n < NPF;n++) {
-				 	 	Int k = faceid * NPF + n;
- 						buffer[j * NPF + n] = P[gFO[k]];
- 					}
- 				}
- 				MP::send(&buffer[0],buf_size,b.to,MP::FIELD);
+				RECV();
+				SEND();
  			}
  		}
-    /*Asynchronous exchange*/
+#undef SEND
+#undef RECV
+    /**
+     * Asynchronous exchange
+     */
  	} else {
  		MeshField<T,CELL> sendbuf,recvbuf;
  		std::vector<MP::REQUEST> request(2 * gInterMesh.size(),0);
@@ -1054,7 +1049,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
  				Int faceid = f[j];
  				for(Int n = 0; n < NPF;n++) {
 				 	Int k = faceid * NPF + n;
- 					sendbuf[b.buffer_index * NPF + n] = P[gFO[k]];
+ 					sendbuf[(b.buffer_index + j) * NPF + n] = P[gFO[k]];
  				}
  			}
  		}
@@ -1063,10 +1058,10 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
  			interBoundary& b = gInterMesh[i];
  			Int buf_size = b.f->size() * NPF;
  			//non-blocking send/recive
- 			MP::isend(&sendbuf[b.buffer_index],buf_size,
+ 			MP::isend(&sendbuf[b.buffer_index * NPF],buf_size,
  				b.to,MP::FIELD,&request[rcount]);
  			rcount++;
- 			MP::irecieve(&recvbuf[b.buffer_index],buf_size,
+ 			MP::irecieve(&recvbuf[b.buffer_index * NPF],buf_size,
  				b.to,MP::FIELD,&request[rcount]);
  			rcount++;
  		}
@@ -1082,14 +1077,13 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 				Int faceid = f[j];
 				for(Int n = 0; n < NPF;n++) {
 					Int k = faceid * NPF + n;
-					P[gFN[k]] = recvbuf[b.buffer_index * NPF + n];
+					P[gFN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];
 				}
 			}
  		}
  	}
  	/*end*/
  }
- 
  /* ***************************************
  * Explicit boundary conditions
  * **************************************/

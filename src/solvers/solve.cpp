@@ -68,55 +68,6 @@ void SolveT(const MeshMatrix<type>& M) {
 		}
 	}
 	/****************************
-	 * Initialization
-	 ***************************/
-	if(Controls::Solver == Controls::PCG) {
-		if(!(M.flags & M.SYMMETRIC)) {
-			/* Allocate BiCG vars*/
-			r1.allocate();
-			p1.allocate();
-			AP1.allocate();
-		} else {
-			if(Controls::Preconditioner == Controls::SORP) {
-				/*SOR and GS*/
-				iD *= Controls::SOR_omega;
-				D *=  (2.0 / Controls::SOR_omega - 1.0);	
-			} else if(Controls::Preconditioner == Controls::DILU) {
-				/*D-ILU(0)*/
-				for(Int ii = 0;ii < gBCS;ii++) {
-					Cell& c = gCells[ii];
-					for(Int j = 0;j < NP;j++) {	
-						Int i = ii * NP + j;
-						if(NPMAT) {
-							Scalar val = 0.0;
-							for(Int k = 0;k < NP;k++)
-								val += M.adg[ii * NPMAT + j * NP + k] *
-								       M.adg[ii * NPMAT + k * NP + j];
-							D[i] -= val * iD[i];
-						}	
-						forEach(c,j) {								
-							Int faceid = c[j];
-							for(Int n = 0; n < NPF;n++) {
-								Int k = faceid * NPF + n;							
-								Int c1 = gFO[k];						
-								Int c2 = gFN[k];						
-								if(i == c1) {
-									if(c2 > i) D[c2] -= 
-									(M.an[0][k] * M.an[1][k] * iD[c1]);	
-								} else if(i == c2) {
-									if(c1 > i) D[c1] -= 
-									(M.an[0][k] * M.an[1][k] * iD[c2]);		
-								}		
-							}								
-						}
-					}			
-				}
-				iD = (1.0 / D);
-			}
-			/*end*/
-		}
-	}
-	/****************************
 	 * Jacobi sweep
 	 ***************************/
 #define JacobiSweep() {								\
@@ -255,13 +206,15 @@ void SolveT(const MeshMatrix<type>& M) {
 	/***********************************
 	 *  Synchronized sum and exchange
 	 ***********************************/
-#define SUM_ALL(typ,var)	if(sync)	{			\
-	typ t;											\
-	MP::allsum(&var,&t,1);							\
-	var = t;										\
+#define REDUCE(typ,var)	 {							\
+	if(sync)	{									\
+		typ t;										\
+		MP::allsum(&var,&t,1);						\
+		var = t;									\
+	}												\
 }
-#define EXCHANGE(var)		if(sync)	{			\
-	exchange_ghost(&var[0]);						\
+#define EXCHANGE(var)	{							\
+	if(sync) exchange_ghost(&var[0]);				\
 }
 	/***********************************
 	 *  Residual
@@ -276,7 +229,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	res = getResidual(AP,cF,sync);					\
 	if(Controls::Solver == Controls::PCG) {			\
 		Tdot(r,AP,o_rr);							\
-		SUM_ALL(type,o_rr);							\
+		REDUCE(type,o_rr);							\
 		p = AP;										\
 		if(!(M.flags & M.SYMMETRIC)) {				\
 			r1 = r;									\
@@ -284,6 +237,55 @@ void SolveT(const MeshMatrix<type>& M) {
 		}											\
 	}												\
 }
+	/****************************
+	 * Initialization
+	 ***************************/
+	if(Controls::Solver == Controls::PCG) {
+		if(!(M.flags & M.SYMMETRIC)) {
+			/* Allocate BiCG vars*/
+			r1.allocate();
+			p1.allocate();
+			AP1.allocate();
+		} else {
+			if(Controls::Preconditioner == Controls::SORP) {
+				/*SOR and GS*/
+				iD *= Controls::SOR_omega;
+				D *=  (2.0 / Controls::SOR_omega - 1.0);	
+			} else if(Controls::Preconditioner == Controls::DILU) {
+				/*D-ILU(0)*/
+				for(Int ii = 0;ii < gBCS;ii++) {
+					Cell& c = gCells[ii];
+					for(Int j = 0;j < NP;j++) {	
+						Int i = ii * NP + j;
+						if(NPMAT) {
+							Scalar val = 0.0;
+							for(Int k = 0;k < NP;k++)
+								val += M.adg[ii * NPMAT + j * NP + k] *
+								       M.adg[ii * NPMAT + k * NP + j];
+							D[i] -= val * iD[i];
+						}	
+						forEach(c,j) {								
+							Int faceid = c[j];
+							for(Int n = 0; n < NPF;n++) {
+								Int k = faceid * NPF + n;							
+								Int c1 = gFO[k];						
+								Int c2 = gFN[k];						
+								if(i == c1) {
+									if(c2 > i) D[c2] -= 
+									(M.an[0][k] * M.an[1][k] * iD[c1]);	
+								} else if(i == c2) {
+									if(c1 > i) D[c1] -= 
+									(M.an[0][k] * M.an[1][k] * iD[c2]);		
+								}		
+							}								
+						}
+					}			
+				}
+				iD = (1.0 / D);
+			}
+			/*end*/
+		}
+	}
 	/***********************
 	 *  Initialize residual
 	 ***********************/
@@ -292,23 +294,24 @@ void SolveT(const MeshMatrix<type>& M) {
 	/********************************************************
 	* Initialize exchange of ghost cells just once.
 	* Lower numbered processors send message to higher ones.
-	*********************************************************/
+	*********************************************************/  
 	if(!sync) {
 		end_count = gInterMesh.size();
 		forEach(gInterMesh,i) {
 			interBoundary& b = gInterMesh[i];
 			if(b.from < b.to) {
 				IntVector& f = *(b.f);
+				Int buf_size = f.size() * NPF;
 				/*send*/
-				Int buf_size = f.size() * DG::NP;
- 				forEach(f,j) {
- 					Int faceid = f[j];
- 					for(Int n = 0; n < NPF;n++) {
-				 	 	Int k = faceid * NPF + n;
- 						buffer[j * NPF + n] = cF[gFO[k]];
- 					}
- 				}
- 				MP::send(&buffer[0],buf_size,b.to,MP::FIELD);
+				forEach(f,j) {
+					Int faceid = f[j];
+					Int offset = j * NPF;
+					for(Int n = 0; n < NPF;n++) {
+						Int k = faceid * NPF + n;
+						buffer[offset + n] = cF[gFO[k]];
+					}
+				}
+				MP::send(&buffer[0],buf_size,b.to,MP::FIELD);
 			}
 		}
 	}
@@ -320,33 +323,32 @@ void SolveT(const MeshMatrix<type>& M) {
 		iterations++;
 
 		/*select solver*/
-		if(Controls::Solver == Controls::JACOBI) {
-			/*Jacobi solver*/
+		if(Controls::Solver != Controls::PCG) {
 			p = cF;
-			JacobiSweep();
+			/*Jacobi and SOR solvers*/
+			if(Controls::Solver == Controls::JACOBI) {
+				JacobiSweep();
+			} else {
+				ForwardSweep(cF,M.Su);
+			}
+			/*residual*/
 			for(Int i = 0;i < gBCSfield;i++)
 				AP[i] = cF[i] - p[i];
 			/*end*/
-		} else if(Controls::Solver == Controls::SOR) {
-			/*Asynchronous SOR solver*/
-			p = cF;
-			ForwardSweep(cF,M.Su);
-			for(Int i = 0;i < gBCSfield;i++)
-				AP[i] = cF[i] - p[i];
-			/*end*/
+			EXCHANGE(cF);
 		} else if(M.flags & M.SYMMETRIC) {
 			/*conjugate gradient*/
 			EXCHANGE(p);
 			AP = mul(M,p);
 			Tdot(p,AP,oo_rr);
-			SUM_ALL(type,oo_rr);
+			REDUCE(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
 			Taxpy(cF,cF,p,alpha);
 			Taxpy(r,r,AP,-alpha);
 			precondition(r,AP);
 			oo_rr = o_rr;
 			Tdot(r,AP,o_rr);
-			SUM_ALL(type,o_rr);
+			REDUCE(type,o_rr);
 			beta = sdiv(o_rr , oo_rr);
 			Taxpy(p,AP,p,beta);
 			/*end*/
@@ -357,7 +359,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			AP = mul(M,p);
 			AP1 = mult(M,p1);
 			Tdot(p1,AP,oo_rr);
-			SUM_ALL(type,oo_rr);
+			REDUCE(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
 			Taxpy(cF,cF,p,alpha);
 			Taxpy(r,r,AP,-alpha);
@@ -366,7 +368,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			preconditionT(r1,AP1);
 			oo_rr = o_rr;
 			Tdot(r1,AP,o_rr);
-			SUM_ALL(type,o_rr);
+			REDUCE(type,o_rr);
 			beta = sdiv(o_rr , oo_rr);
 			Taxpy(p,AP,p,beta);
 			Taxpy(p1,AP1,p1,beta);
@@ -375,7 +377,6 @@ void SolveT(const MeshMatrix<type>& M) {
 		/* *********************************************
 		* calculate norm of residual & check convergence
 		* **********************************************/
-		EXCHANGE(cF);
 		res = getResidual(AP,cF,sync);
 		if(res <= Controls::tolerance
 			|| iterations == Controls::max_iterations)
@@ -386,8 +387,7 @@ PROBE:
 		 * every iteration,rather a non-blocking probe is used to 
 		 * process messages as they arrive.
 		 ************************************************************/
-		if(!sync)
-		{
+		if(!sync) {
 			int source,message_id;
 			/*probe*/
 			while(MP::iprobe(source,message_id)) {
@@ -401,17 +401,20 @@ PROBE:
 				/*parse message*/
 				if(message_id == MP::FIELD) {
 					IntVector& f = *(b.f);
-					Int buf_size = f.size() * DG::NP;
+					Int buf_size = f.size() * NPF;
+					
 					/*recieve*/
 					MP::recieve(&buffer[0],buf_size,source,message_id);
 					forEach(f,j) {
 						Int faceid = f[j];
+						Int offset = j * NPF;
 						for(Int n = 0; n < NPF;n++) {
 							Int k = faceid * NPF + n;
-							cF[gFN[k]] = buffer[j * NPF + n];
+							cF[gFN[k]] = buffer[offset + n];
 						}
 					}
-					/*Re-calculate residual.*/
+					
+					/*Re-calculate residual.*/					
 					CALC_RESID();
 					if(res > Controls::tolerance
 						&& iterations < Controls::max_iterations)
@@ -424,18 +427,20 @@ PROBE:
 							MP::send(source,MP::END);
 							sent_end[patchi] = true;
 						}
-					} else {
-						/*send back our part*/
-						Int buf_size = f.size() * DG::NP;
-						forEach(f,j) {
-							Int faceid = f[j];
-							for(Int n = 0; n < NPF;n++) {
-								Int k = faceid * NPF + n;
-								buffer[j * NPF + n] = cF[gFO[k]];
-							}
-						}
-						MP::send(&buffer[0],buf_size,source,message_id);
+						continue;
 					}
+					
+					/*send*/
+					forEach(f,j) {
+						Int faceid = f[j];
+						Int offset = j * NPF;
+						for(Int n = 0; n < NPF;n++) {
+							Int k = faceid * NPF + n;
+							buffer[offset + n] = cF[gFO[k]];
+						}
+					}
+					MP::send(&buffer[0],buf_size,source,message_id);
+					
 				} else if(message_id == MP::END) {
 					/*END marker recieved*/
 					MP::recieve(source,message_id);
@@ -469,7 +474,7 @@ PROBE:
 	MP::barrier();
 
 	/*update boundary conditons*/
-	updateExplicitBCs(cF);
+	updateExplicitBCs(cF,true,false);
 }
 /***************************
  * Explicit instantiations

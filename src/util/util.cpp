@@ -4,8 +4,6 @@
 using namespace std;
 
 namespace Util {
-	bool Terminated = false;
-
 	std::map<std::string,ParamList*> ParamList::list;
 }
 
@@ -26,10 +24,6 @@ int Util::nextc(std::istream& is) {
 		return 0;
 	is.putback(c);
 	return c;
-}
-void Util::cleanup () {
-	Terminated = true;
-	printf("Exiting application\n");
 }
 void Util::read_params(istream& is,std::string block) {
 	string str;

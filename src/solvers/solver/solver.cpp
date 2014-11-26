@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 			return 1;
 	}
 	Mesh::LoadMesh();
-	atexit(Util::cleanup);
+	atexit(MP::cleanup);
 
 	/*call solver*/
 	if (!Util::compare(sname, "piso")) {

@@ -23,6 +23,8 @@ public:
 	static int n_hosts,host_id,name_len;
 	static char host_name[512];
 	static int _start_time;
+	static bool Terminated;
+	static void cleanup();
 	static void loop();
 	static void barrier();
 	static int iprobe(int&,int&);

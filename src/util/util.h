@@ -73,7 +73,6 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
 
 /*Utililty functions*/
 namespace Util {
-	extern bool Terminated;
 	Int hash_function(std::string s);
 	int nextc(std::istream&);
 	void cleanup();

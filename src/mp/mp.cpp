@@ -8,6 +8,7 @@ int  MP::host_id;
 int  MP::name_len;
 char MP::host_name[512];
 int  MP::_start_time = 0;
+bool MP::Terminated = false;
 
 /*Initialize*/
 MP::MP(int argc,char* argv[]) {
@@ -68,4 +69,10 @@ void MP::print(const char* format,...) {
 	vprintf(format, ap);
 	va_end(ap);
 	fflush(stdout);
+}
+/*cleanup*/
+void MP::cleanup () {
+	Terminated = true;
+	printf("%d [%d] Exiting application\n", 
+		System::get_time() - MP::_start_time, MP::host_id);
 }
