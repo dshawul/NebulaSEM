@@ -70,6 +70,8 @@ namespace DG {
 namespace Mesh {
 	extern IntVector  probeCells;
 	extern Int  gBCSfield; 
+	extern Int  gBCSIfield;
+	extern Int  gBFSfield;
 };
 enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
@@ -714,7 +716,7 @@ struct MeshMatrix {
 	MeshField<Scalar,CELLMAT> adg;
 	Int flags;
 	enum FLAG {
-		SYMMETRIC = 1
+		SYMMETRIC = 1, DIAGONAL = 2
 	};
 	/*c'tors*/
 	MeshMatrix() {
@@ -732,7 +734,7 @@ struct MeshMatrix {
 	}
 	MeshMatrix(MeshField<type,CELL>* pcF) {
 		cF = pcF;
-		flags = SYMMETRIC;
+		flags = (SYMMETRIC | DIAGONAL);
 		ap = Scalar(0);
 		an[0] = Scalar(0);
 		an[1] = Scalar(0);
@@ -741,7 +743,7 @@ struct MeshMatrix {
 	}
 	MeshMatrix(const MeshField<type,CELL>& p) {
 		cF = 0;
-		flags = SYMMETRIC;
+		flags = (SYMMETRIC | DIAGONAL);
 		ap = Scalar(0);
 		an[0] = Scalar(0);
 		an[1] = Scalar(0);
@@ -850,15 +852,156 @@ typedef MeshMatrix<Vector>  VectorCellMatrix;
 typedef MeshMatrix<Tensor>  TensorCellMatrix;
 typedef MeshMatrix<STensor> STensorCellMatrix;
 
+/*************************************
+ *  send and receive buffers
+ *************************************/
+#define SENDBUF(sendbuf) {											\
+	forEach(f,j) {													\
+		Int faceid = f[j];											\
+		for(Int n = 0; n < NPF;n++) {								\
+			Int k = faceid * NPF + n;								\
+			sendbuf[(b.buffer_index + j) * NPF + n] = P[gFO[k]];	\
+		}															\
+	}																\
+}
+#define RECVBUF(recvbuf) {											\
+	forEach(f,j) {													\
+		Int faceid = f[j];											\
+		for(Int n = 0; n < NPF;n++) {								\
+			Int k = faceid * NPF + n;								\
+			P[gFN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];	\
+		}															\
+	}																\
+}
+/*************************************
+ *  Asynchronous communication
+ *************************************/
+template <class T> 
+class ASYNC_COMM {
+private:
+	T* P;
+	Int rcount;
+	std::vector<MP::REQUEST> request;
+	MeshField<T,CELL> sendbuf,recvbuf;
+public:
+	ASYNC_COMM(T* p) : P(p)
+	{
+	}
+	void send() {
+		using namespace Mesh;
+		using namespace DG;
+		//---fill send buffer and send
+		request.assign(2 * Mesh::gInterMesh.size(),0);
+		rcount = 0;
+		forEach(gInterMesh,i) {
+			interBoundary& b = gInterMesh[i];
+			IntVector& f = *(b.f);
+			Int buf_size = b.f->size() * NPF;
+			
+			SENDBUF(sendbuf);
+
+			//non-blocking send/recive
+			MP::isend(&sendbuf[b.buffer_index * NPF],buf_size,
+				b.to,MP::FIELD,&request[rcount]);
+			rcount++;
+			MP::irecieve(&recvbuf[b.buffer_index * NPF],buf_size,
+				b.to,MP::FIELD,&request[rcount]);
+			rcount++;
+		}
+	}
+	void recv() {
+		using namespace Mesh;
+		using namespace DG;
+		
+		//---wait
+ 		MP::waitall(rcount,&request[0]);
+ 		
+ 		//---recieve buffer
+ 		forEach(gInterMesh,i) {
+ 			interBoundary& b = gInterMesh[i];
+ 			IntVector& f = *(b.f);
+ 			
+ 			RECVBUF(recvbuf);
+ 		}
+	}
+};
+/*************************************
+ *  Synchronous communication
+ *************************************/
+template <class T> 
+class SYNC_COMM {
+private:
+	T* P;
+public:
+	SYNC_COMM(T* p) : P(p)
+	{
+	}
+	/*ordered send receive*/
+	void sendrecv() {
+		using namespace Mesh;
+		using namespace DG;
+		
+		MeshField<T,CELL> buffer;
+ 		forEach(gInterMesh,i) {
+ 			interBoundary& b = gInterMesh[i];
+ 			IntVector& f = *(b.f);
+ 			Int buf_size = f.size() * NPF;
+ 			
+#define SEND() {													\
+	SENDBUF(buffer);												\
+	MP::send(&buffer[b.buffer_index],buf_size,b.to,MP::FIELD);		\
+}
+#define RECV() {													\
+	MP::recieve(&buffer[b.buffer_index],buf_size,b.to,MP::FIELD); 	\
+	RECVBUF(buffer);												\
+}
+ 			if(b.from < b.to) {
+ 				SEND();
+ 				RECV();
+ 			} else {
+				RECV();
+				SEND();
+ 			}
+#undef SEND
+#undef RECV
+
+ 		}
+	}
+};
+
+#undef SENDBUF
+#undef RECVBUF
+
+/*************************************
+ * Exchange ghost cell information
+ *************************************/
+template <class T> 
+void exchange_ghost(T* P) {
+ 	if(Controls::ghost_exchange == Controls::BLOCKED) {
+ 		/* Blocked exchange */
+		SYNC_COMM<T> comm(P);
+		comm.sendrecv();
+ 	} else {
+ 		/* Asynchronous exchange */
+		ASYNC_COMM<T> comm(P);
+		comm.send();
+		comm.recv();
+ 	}
+}
+ 
 /* *******************************
  * matrix - vector product p * q
  * *******************************/
 template <class T> 
-MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
+MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
 	MeshField<T,CELL> r;
 	Int c1,c2;
+	ASYNC_COMM<T> comm(&q[0]);
+	
+	if(sync) comm.send();
+	
 	r = q * p.ap;
 	if(NPMAT) {
 		for(Int i = 0;i < gBCS;i++) {
@@ -871,21 +1014,36 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 			}
 		}
 	}
-	forEach(fI,f) {
+	
+	for(Int f = 0; f < gBFS; f++) {
 		c1 = gFO[f];
 		c2 = gFN[f];
 		r[c1] -= q[c2] * p.an[1][f];
 		r[c2] -= q[c1] * p.an[0][f];
 	}
+	
+	if(sync) comm.recv();
+	
+	for(Int f = gBFS; f < fI.size(); f++) {
+		c1 = gFO[f];
+		c2 = gFN[f];
+		r[c1] -= q[c2] * p.an[1][f];
+		r[c2] -= q[c1] * p.an[0][f];
+	}
+	
 	return r;
 }
 /*matrix transopose - vector product pT * q */
 template <class T> 
-MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
+MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
 	MeshField<T,CELL> r;
 	Int c1,c2;
+	ASYNC_COMM<T> comm(&q[0]);
+	
+	if(sync) comm.send();
+	
 	r = q * p.ap;
 	if(NPMAT) {
 		for(Int i = 0;i < gBCS;i++) {
@@ -898,21 +1056,36 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q) {
 			}
 		}
 	}
-	forEach(fI,f) {
+	
+	for(Int f = 0; f < gBFS; f++) {
 		c1 = gFO[f];
 		c2 = gFN[f];
 		r[c2] -= q[c1] * p.an[1][f];
 		r[c1] -= q[c2] * p.an[0][f];
 	}
+	
+	if(sync) comm.recv();
+	
+	for(Int f = gBFS; f < fI.size(); f++) {
+		c1 = gFO[f];
+		c2 = gFN[f];
+		r[c2] -= q[c1] * p.an[1][f];
+		r[c1] -= q[c2] * p.an[0][f];
+	}
+	
 	return r;
 }
 /* calculate RHS sum */
 template <class T> 
-MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
+MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
 	MeshField<T,CELL> r;
 	Int c1,c2;
+	ASYNC_COMM<T> comm(&(*p.cF)[0]);
+	
+	if(sync) comm.send();
+	
 	r = p.Su;
 	if(NPMAT) {
 		for(Int i = 0;i < gBCS;i++) {
@@ -925,12 +1098,22 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 			}
 		}
 	}
-	forEach(fI,f) {
+	for(Int f = 0; f < gBFS; f++) {
 		c1 = gFO[f];
 		c2 = gFN[f];
 		r[c1] += (*p.cF)[c2] * p.an[1][f];
 		r[c2] += (*p.cF)[c1] * p.an[0][f];
 	}
+	
+	if(sync) comm.recv();
+	
+	for(Int f = gBFS; f < fI.size(); f++) {
+		c1 = gFO[f];
+		c2 = gFN[f];
+		r[c1] += (*p.cF)[c2] * p.an[1][f];
+		r[c2] += (*p.cF)[c1] * p.an[0][f];
+	}
+	
 	return r;
 }
 
@@ -986,104 +1169,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p) {
 	 }
  }
  
-  /*************************************
-  * Exchange ghost cell information
-  *************************************/
- template <class T> 
- void exchange_ghost(T* P) {
- 	using namespace Mesh;
- 	using namespace DG;
- 	/**
- 	 * Blocked exchange
- 	 */
- 	if(Controls::ghost_exchange == Controls::BLOCKED) {
- 		MeshField<T,CELL> buffer;
- 		forEach(gInterMesh,i) {
- 			interBoundary& b = gInterMesh[i];
- 			IntVector& f = *(b.f);
- 			Int buf_size = f.size() * NPF;
- 			
-#define SEND() {									\
-	forEach(f,j) {									\
-		Int faceid = f[j];							\
-		for(Int n = 0; n < NPF;n++) {				\
-			Int k = faceid * NPF + n;				\
-			buffer[j * NPF + n] = P[gFO[k]];		\
-		}											\
-	}												\
-	MP::send(&buffer[0],buf_size,b.to,MP::FIELD);	\
-}
-#define RECV() {									\
-	MP::recieve(&buffer[0],buf_size,b.to,MP::FIELD);\
-	forEach(f,j) {									\
-		Int faceid = f[j];							\
-		for(Int n = 0; n < NPF;n++) {				\
-			Int k = faceid * NPF + n;				\
-			P[gFN[k]] = buffer[j * NPF + n];		\
-		}											\
-	}												\
-}
- 			if(b.from < b.to) {
- 				SEND();
- 				RECV();
- 			} else {
-				RECV();
-				SEND();
- 			}
- 		}
-#undef SEND
-#undef RECV
-    /**
-     * Asynchronous exchange
-     */
- 	} else {
- 		MeshField<T,CELL> sendbuf,recvbuf;
- 		std::vector<MP::REQUEST> request(2 * gInterMesh.size(),0);
- 		Int rcount = 0;
- 		
- 		//---fill send buffer
- 		forEach(gInterMesh,i) {
- 			interBoundary& b = gInterMesh[i];
- 			IntVector& f = *(b.f);
- 			forEach(f,j) {
- 				Int faceid = f[j];
- 				for(Int n = 0; n < NPF;n++) {
-				 	Int k = faceid * NPF + n;
- 					sendbuf[(b.buffer_index + j) * NPF + n] = P[gFO[k]];
- 				}
- 			}
- 		}
-		//--send/recieve
- 		forEach(gInterMesh,i) {
- 			interBoundary& b = gInterMesh[i];
- 			Int buf_size = b.f->size() * NPF;
- 			//non-blocking send/recive
- 			MP::isend(&sendbuf[b.buffer_index * NPF],buf_size,
- 				b.to,MP::FIELD,&request[rcount]);
- 			rcount++;
- 			MP::irecieve(&recvbuf[b.buffer_index * NPF],buf_size,
- 				b.to,MP::FIELD,&request[rcount]);
- 			rcount++;
- 		}
- 		
- 		//---wait
- 		MP::waitall(rcount,&request[0]);
- 		
- 		//---recieve buffer
- 		forEach(gInterMesh,i) {
- 			interBoundary& b = gInterMesh[i];
- 			IntVector& f = *(b.f);
- 			forEach(f,j) {
-				Int faceid = f[j];
-				for(Int n = 0; n < NPF;n++) {
-					Int k = faceid * NPF + n;
-					P[gFN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];
-				}
-			}
- 		}
- 	}
- 	/*end*/
- }
+
  /* ***************************************
  * Explicit boundary conditions
  * **************************************/
@@ -1339,7 +1425,7 @@ template<class type>
 MeshMatrix<type> src(MeshField<type,CELL>& cF,const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
 	MeshMatrix<type> m;
 	m.cF = &cF;
-	m.flags |= m.SYMMETRIC;
+	m.flags |= (m.SYMMETRIC | m.DIAGONAL);
 	m.ap = -(Sp * Mesh::cV);
 	m.Su = (Su * Mesh::cV);
 	//others
@@ -1665,7 +1751,7 @@ template<class type>
 MeshMatrix<type> ddt(MeshField<type,CELL>& cF,const ScalarCellField& rho) {
 	MeshMatrix<type> m;
 	m.cF = &cF;
-	m.flags |= m.SYMMETRIC;
+	m.flags |= (m.SYMMETRIC | m.DIAGONAL);
 	//ddt schemes
 	if(Controls::time_scheme == Controls::EULER || !(cF.access & STOREPREV)) {
 		if(Controls::time_scheme != Controls::EULER) cF.initStore();
@@ -1685,7 +1771,7 @@ template<class type>
 MeshMatrix<type> ddt2(MeshField<type,CELL>& cF,const ScalarCellField& rho) {
 	MeshMatrix<type> m;
 	m.cF = &cF;
-	m.flags |= m.SYMMETRIC;
+	m.flags |= (m.SYMMETRIC | m.DIAGONAL);
 	if(!(cF.access & STOREPREV)) cF.initStore();
 	//diagonal mass matrix
 	m.ap = (Mesh::cV * rho) / -(Controls::dt * Controls::dt);
@@ -1723,7 +1809,7 @@ void addTemporal(MeshMatrix<type>& M,const ScalarCellField& rho,Scalar cF_UR) {
 				}
 			}
 			if(equal(implicit_factor,0))
-				M.flags = M.SYMMETRIC;
+				M.flags = (M.SYMMETRIC | M.DIAGONAL);
 		}
 		M += ddt(*M.cF,rho);
 	}

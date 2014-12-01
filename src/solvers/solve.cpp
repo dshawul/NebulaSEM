@@ -62,7 +62,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			switch(Controls::Preconditioner) {
 			case Controls::NOP: MP::print("PCG :"); break;
 			case Controls::DIAG: MP::print("DIAG-PCG :"); break;
-			case Controls::SORP: MP::print("SOR-PCG :"); break;
+			case Controls::SORP: MP::print("SSOR-PCG :"); break;
 			case Controls::DILU: MP::print("DILU-PCG :"); break;
 			}
 		}
@@ -71,9 +71,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	 * Jacobi sweep
 	 ***************************/
 #define JacobiSweep() {								\
-	AP = iD * getRHS(M);							\
-	for(Int i = 0;i < gBCSfield;i++)				\
-		cF[i] = AP[i];								\
+	cF = iD * getRHS(M,sync);						\
 }
 	/****************************
 	 *  Forward/backward GS sweeps
@@ -108,11 +106,12 @@ void SolveT(const MeshMatrix<type>& M) {
 	}												\
 }
 #define ForwardSweep(X,B) {							\
-	for(Int ii = 0;ii < gBCS;ii++)					\
+	ASYNC_COMM<type> comm(&X[0]);					\
+	comm.send();									\
+	for(Int ii = 0;ii < gBCSI;ii++)					\
 		Sweep_(X,B,ii);								\
-}
-#define BackwardSweep(X,B) {						\
-	for(int ii = gBCS - 1;ii >= 0;ii--)				\
+	comm.recv();									\
+	for(Int ii = gBCSI;ii < gBCS;ii++)				\
 		Sweep_(X,B,ii);								\
 }
 	/***********************************
@@ -182,7 +181,6 @@ void SolveT(const MeshMatrix<type>& M) {
 		DiagSub(Z,R);								\
 	} else {										\
 		if(Controls::Solver == Controls::PCG) {		\
-			Z = type(0);							\
 			ForwardSub(Z,R,TR);						\
 			Z = Z * D;								\
 			BackwardSub(Z,Z,TR);					\
@@ -204,17 +202,12 @@ void SolveT(const MeshMatrix<type>& M) {
 		sum += X[i] * Y[i];							\
 }
 	/***********************************
-	 *  Synchronized sum and exchange
+	 *  Synchronized sum
 	 ***********************************/
-#define REDUCE(typ,var)	 {							\
-	if(sync)	{									\
-		typ t;										\
-		MP::allsum(&var,&t,1);						\
-		var = t;									\
-	}												\
-}
-#define EXCHANGE(var)	{							\
-	if(sync) exchange_ghost(&var[0]);				\
+#define REDUCE(typ,var)	if(sync) {					\
+	typ t;											\
+	MP::allsum(&var,&t,1);							\
+	var = t;										\
 }
 	/***********************************
 	 *  Residual
@@ -334,12 +327,9 @@ void SolveT(const MeshMatrix<type>& M) {
 			/*residual*/
 			for(Int i = 0;i < gBCSfield;i++)
 				AP[i] = cF[i] - p[i];
-			/*end*/
-			EXCHANGE(cF);
 		} else if(M.flags & M.SYMMETRIC) {
 			/*conjugate gradient*/
-			EXCHANGE(p);
-			AP = mul(M,p);
+			AP = mul(M,p,sync);
 			Tdot(p,AP,oo_rr);
 			REDUCE(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
@@ -354,10 +344,8 @@ void SolveT(const MeshMatrix<type>& M) {
 			/*end*/
 		} else {
 			/* biconjugate gradient*/
-			EXCHANGE(p);
-			EXCHANGE(p1);
-			AP = mul(M,p);
-			AP1 = mult(M,p1);
+			AP = mul(M,p,sync);
+			AP1 = mult(M,p1,sync);
 			Tdot(p1,AP,oo_rr);
 			REDUCE(type,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
@@ -469,32 +457,41 @@ PROBE:
 	if(print)
 		MP::print("Iterations %d Initial Residual "
 		"%.5e Final Residual %.5e\n",iterations,ires,res);
-
-	/*barrier*/
-	MP::barrier();
-
-	/*update boundary conditons*/
-	updateExplicitBCs(cF,true,false);
+}
+template<class type>
+void SolveTexplicit(const MeshMatrix<type>& M) {
+	if(MP::host_id == 0) {
+		MP::printH("DIAG-DIAG:");
+		MP::print("Iterations %d Initial Residual "
+		"%.5e Final Residual %.5e\n",1,0.0,0.0);
+	}
+	*M.cF = M.Su / M.ap;
 }
 /***************************
  * Explicit instantiations
  ***************************/
+#define SOLVE() {							\
+	applyImplicitBCs(A);					\
+	if(A.flags & A.DIAGONAL)				\
+		SolveTexplicit(A);					\
+	else									\
+		SolveT(A);							\
+	MP::barrier();							\
+	updateExplicitBCs(*A.cF,true,false);	\
+}
 void Solve(const MeshMatrix<Scalar>& A) {
-	applyImplicitBCs(A);
-	SolveT(A);
+	SOLVE();
 }
 void Solve(const MeshMatrix<Vector>& A) {
-	applyImplicitBCs(A);
-	SolveT(A);
+	SOLVE();
 }
 void Solve(const MeshMatrix<STensor>& A) {
-	applyImplicitBCs(A);
-	SolveT(A);
+	SOLVE();
 }
 void Solve(const MeshMatrix<Tensor>& A) {
-	applyImplicitBCs(A);
-	SolveT(A);
+	SOLVE();
 }
+#undef SOLVE
 /* ********************
  *        End
  * ********************/

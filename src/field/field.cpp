@@ -14,6 +14,8 @@ namespace Mesh {
 	IntVector         gFN;
 	IntVector  probeCells;
 	Int   		gBCSfield;
+	Int   		gBCSIfield;
+	Int   		gBFSfield;
 }
 namespace Controls {
 	Scheme convection_scheme = HYBRID;
@@ -81,6 +83,8 @@ void Mesh::initGeomMeshFields() {
 	gFO = gFOC;
 	gFN = gFNC;
 	gBCSfield = gBCS * DG::NP;
+	gBCSIfield = gBCSI * DG::NP;
+	gBFSfield = gBFS * DG::NPF;
 	/* Allocate fields*/
 	vC.deallocate(false);
 	vC.allocate(gVertices);

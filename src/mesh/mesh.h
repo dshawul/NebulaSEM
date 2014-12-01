@@ -48,6 +48,7 @@ namespace Mesh {
 		Int      nv;
 		Int      nf;
 		Int      nc;
+		Int      nci;
 		/*funcs*/
 		void write(std::ostream& os);
 		void clear() {
@@ -76,6 +77,8 @@ namespace Mesh {
 	extern  IntVector&       gFOC;
 	extern  IntVector&       gFNC;
 	extern  Int&             gBCS;
+	extern  Int&             gBCSI;
+	extern  Int&             gBFS;
 	extern  std::vector<interBoundary>& gInterMesh;
 	extern  Vertices         probePoints;
 	extern  Cells            faceID;

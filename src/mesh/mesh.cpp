@@ -13,6 +13,8 @@ namespace Mesh {
 	IntVector&       gFOC = gMesh.fo;
 	IntVector&       gFNC = gMesh.fn;
 	Int&             gBCS = gMesh.nc;
+	Int&             gBFS = gMesh.nf;
+	Int&             gBCSI = gMesh.nci;
 	vector<BasicBCondition*> AllBConditions;
 	std::vector<interBoundary>& gInterMesh = gMesh.interMesh;
 	Vertices         probePoints;
@@ -100,48 +102,128 @@ void Mesh::addBoundaryCells() {
 	cout << "Adding boundary cells. " << endl;
 	
 	using namespace Constants;
-	Int i,index;
 
 	/*neighbor and owner cells of face*/
 	gBCS = gCells.size();
 	gFOC.assign(gFacets.size(),MAX_INT);
 	gFNC.assign(gFacets.size(),MAX_INT);
-	for(i = 0;i < gBCS;i++) {
-		forEach(gCells[i],j) {
-			index = gCells[i][j];
-			if(gFOC[index] == MAX_INT) 
-				gFOC[index] = i;
+	forEach(gCells,i) {
+		Cell& c = gCells[i];
+		forEach(c,j) {
+			Int fi = c[j];
+			if(gFOC[fi] == MAX_INT) 
+				gFOC[fi] = i;
 			else 
-				gFNC[index] = i;
+				gFNC[fi] = i;
 		}
 	}
 	/*Flag boundary faces not in gBoundaries for auto deletion*/
-	IntVector faceInB;
-	faceInB.assign(gFacets.size(),0);
-	forEachIt(Boundaries,gBoundaries,it) {
-		IntVector& gB = it->second;	
-		forEach(gB,j)
-			faceInB[gB[j]] = 1;
-	}
-	
-	IntVector& gDelete = gBoundaries["delete"];
-	forEach(gFNC,i) {
-		if(gFNC[i] == MAX_INT) {
-			if(!faceInB[i])
-				gDelete.push_back(i);
+	{
+		IntVector faceInB;
+		faceInB.assign(gFacets.size(),0);
+		forEachIt(Boundaries,gBoundaries,it) {
+			IntVector& gB = it->second;	
+			forEach(gB,j)
+				faceInB[gB[j]] = 1;
 		}
+	
+		IntVector& gDelete = gBoundaries["delete"];
+		forEach(gFNC,i) {
+			if(gFNC[i] == MAX_INT) {
+				if(!faceInB[i])
+					gDelete.push_back(i);
+			}
+		}
+	}
+	/*reorder facets*/
+	Int bdry_size;
+	{
+		Facets bfs;
+		IntVector order, allbs;
+		Int count,count1;
+		
+		forEachIt(Boundaries,gBoundaries,it) {
+			IntVector& gB = it->second;	
+			allbs.insert(allbs.end(),gB.begin(),gB.end());
+		}
+		
+		bdry_size = allbs.size();
+		count = gFacets.size() - bdry_size;
+		count1 = 0;
+		gBFS = count;
+		order.assign(gFacets.size(),0);
+		bfs.resize(bdry_size);
+		forEachIt(Boundaries,gBoundaries,it) {
+			IntVector& gB = it->second;	
+			forEach(gB,j) {
+				Int fi = gB[j];
+				gB[j] = count;
+				order[fi] = count;
+				bfs[count1] = gFacets[fi];
+				count++;
+				count1++;
+			}
+		}
+
+		count = 0;
+		forEach(order,i) {
+			if(!order[i])
+				order[i] = count++;
+		}
+
+		std::sort(allbs.begin(),allbs.end());
+		erase_indices(gFacets,allbs);
+		gFacets.insert(gFacets.end(),bfs.begin(),bfs.end());
+
+		gFOC.assign(gFacets.size(),MAX_INT);
+		gFNC.assign(gFacets.size(),MAX_INT);
+		forEach(gCells,i) {
+			Cell& c = gCells[i];
+			forEach(c,j) {
+				Int fi = order[c[j]];
+				c[j] = fi;
+				if(gFOC[fi] == MAX_INT) 
+					gFOC[fi] = i;
+				else 
+					gFNC[fi] = i;
+			}
+		}
+	}
+	/*reorder cells*/
+	{
+		Cells bcs;
+		IntVector allbs;
+		Int count = 0;
+		bcs.resize(bdry_size);
+		allbs.resize(bdry_size);
+		forEach(gCells,i) {
+			Cell& c = gCells[i];
+			forEach(c,j) {
+				Int fi = c[j];
+				if(gFNC[fi] == MAX_INT) {
+					allbs[count] = i;
+					bcs[count] = c;
+					count++;
+					break;
+				}
+			}
+		}
+		gBCSI = gBCS - count;
+		allbs.resize(count);
+		bcs.resize(count);
+		erase_indices(gCells,allbs);
+		gCells.insert(gCells.end(),bcs.begin(),bcs.end());
 	}
 	/*add boundary cells*/
 	forEachIt(Boundaries,gBoundaries,it) {
-		IntVector& facets = it->second;
-		forEach(facets,j) {
-			i = facets[j];
-			/*external patch*/
-			if(gFNC[i] == MAX_INT) {
+		IntVector& gB = it->second;
+		forEach(gB,j) {
+			Int fi = gB[j];
+			if(gFNC[fi] == MAX_INT) {
 				Cell c;
-				c.push_back(i);
+				c.push_back(fi);
 				gCells.push_back(c);
-				gFNC[i] = gCells.size() - 1;
+				gFNC[fi] = gCells.size() - 1;
 			}
 		}
 	}

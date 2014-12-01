@@ -45,6 +45,14 @@ public:
 		MPI_Send(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD);
 	}
 	template <class type>
+	static void sendrecv(type* sbuffer,type* dbuffer,int size,int source,int dest, int message_id) {
+		const int count = (size * sizeof(type) / sizeof(Scalar));
+		MPI_Status status;
+		MPI_Sendrecv(sbuffer,count,MPI_SCALAR,dest  ,message_id,
+					 dbuffer,count,MPI_SCALAR,source,message_id, 
+					 MPI_COMM_WORLD,&status);
+	}
+	template <class type>
 	static void allsum(type* sendbuf,type* recvbuf,int size) {
 		const int count = (size * sizeof(type) / sizeof(Scalar));
 		MPI_Allreduce(sendbuf,recvbuf,count,MPI_SCALAR,MPI_SUM,MPI_COMM_WORLD);
