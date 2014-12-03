@@ -30,7 +30,7 @@ namespace Controls {
 	Scalar dt = Scalar(.1);
 	Scalar SOR_omega = Scalar(1.7);
 	Solvers Solver = PCG; 
-	Preconditioners Preconditioner = SORP;
+	Preconditioners Preconditioner = SSOR;
 	State state = STEADY;
 	Int max_iterations = 500;
 	Int write_interval = 20;
@@ -38,7 +38,6 @@ namespace Controls {
 	Int end_step = 2;
 	Int n_deferred = 0;
 	Int save_average = 0;
-	CommMethod ghost_exchange = BLOCKED;
 	CommMethod parallel_method = BLOCKED;
 	Vector gravity = Vector(0,-9.81,0);
 }
@@ -250,12 +249,10 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("runge_kutta",&runge_kutta);
 	op = new Option(&Solver,3,"JACOBI","SOR","PCG");
 	params.enroll("method",op);
-	op = new Option(&Preconditioner,4,"NONE","DIAG","SOR","DILU");
+	op = new Option(&Preconditioner,4,"NONE","DIAG","SSOR","DILU");
 	params.enroll("preconditioner",op);
 	op = new Option(&state,2,"STEADY","TRANSIENT");
 	params.enroll("state",op);
-	op = new Option(&ghost_exchange,2,"BLOCKED","ASYNCHRONOUS");
-	params.enroll("ghost_exchange",op);
 	op = new Option(&parallel_method,2,"BLOCKED","ASYNCHRONOUS");
 	params.enroll("parallel_method",op);
 	op = new Util::BoolOption(&save_average);

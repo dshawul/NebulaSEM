@@ -26,7 +26,7 @@ namespace Controls {
 		JACOBI, SOR, PCG
 	};
 	enum Preconditioners {
-		NOP,DIAG,SORP,DILU
+		NOPR,DIAG,SSOR,DILU
 	};
 	enum CommMethod {
 		BLOCKED, ASYNCHRONOUS
@@ -42,7 +42,6 @@ namespace Controls {
 	extern TimeScheme time_scheme;
 	extern Solvers Solver; 
 	extern Preconditioners Preconditioner;
-	extern CommMethod ghost_exchange;
 	extern CommMethod parallel_method;
 	extern State state;
 
@@ -853,27 +852,6 @@ typedef MeshMatrix<Tensor>  TensorCellMatrix;
 typedef MeshMatrix<STensor> STensorCellMatrix;
 
 /*************************************
- *  send and receive buffers
- *************************************/
-#define SENDBUF(sendbuf) {											\
-	forEach(f,j) {													\
-		Int faceid = f[j];											\
-		for(Int n = 0; n < NPF;n++) {								\
-			Int k = faceid * NPF + n;								\
-			sendbuf[(b.buffer_index + j) * NPF + n] = P[gFO[k]];	\
-		}															\
-	}																\
-}
-#define RECVBUF(recvbuf) {											\
-	forEach(f,j) {													\
-		Int faceid = f[j];											\
-		for(Int n = 0; n < NPF;n++) {								\
-			Int k = faceid * NPF + n;								\
-			P[gFN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];	\
-		}															\
-	}																\
-}
-/*************************************
  *  Asynchronous communication
  *************************************/
 template <class T> 
@@ -882,7 +860,6 @@ private:
 	T* P;
 	Int rcount;
 	std::vector<MP::REQUEST> request;
-	MeshField<T,CELL> sendbuf,recvbuf;
 public:
 	ASYNC_COMM(T* p) : P(p)
 	{
@@ -890,7 +867,9 @@ public:
 	void send() {
 		using namespace Mesh;
 		using namespace DG;
+		
 		//---fill send buffer and send
+		MeshField<T,CELL> sendbuf;
 		request.assign(2 * Mesh::gInterMesh.size(),0);
 		rcount = 0;
 		forEach(gInterMesh,i) {
@@ -898,95 +877,37 @@ public:
 			IntVector& f = *(b.f);
 			Int buf_size = b.f->size() * NPF;
 			
-			SENDBUF(sendbuf);
+			//--fill send buffer
+			forEach(f,j) {
+				Int faceid = f[j];
+				for(Int n = 0; n < NPF;n++) {
+					Int k = faceid * NPF + n;
+					sendbuf[(b.buffer_index + j) * NPF + n] = P[gFO[k]];	
+				}															
+			}	
 
-			//non-blocking send/recive
+			//--non-blocking send/recive
 			MP::isend(&sendbuf[b.buffer_index * NPF],buf_size,
 				b.to,MP::FIELD,&request[rcount]);
 			rcount++;
-			MP::irecieve(&recvbuf[b.buffer_index * NPF],buf_size,
+			MP::irecieve(&P[gFN[f[0]]],buf_size,
 				b.to,MP::FIELD,&request[rcount]);
 			rcount++;
 		}
 	}
 	void recv() {
-		using namespace Mesh;
-		using namespace DG;
-		
-		//---wait
  		MP::waitall(rcount,&request[0]);
- 		
- 		//---recieve buffer
- 		forEach(gInterMesh,i) {
- 			interBoundary& b = gInterMesh[i];
- 			IntVector& f = *(b.f);
- 			
- 			RECVBUF(recvbuf);
- 		}
 	}
 };
-/*************************************
- *  Synchronous communication
- *************************************/
-template <class T> 
-class SYNC_COMM {
-private:
-	T* P;
-public:
-	SYNC_COMM(T* p) : P(p)
-	{
-	}
-	/*ordered send receive*/
-	void sendrecv() {
-		using namespace Mesh;
-		using namespace DG;
-		
-		MeshField<T,CELL> buffer;
- 		forEach(gInterMesh,i) {
- 			interBoundary& b = gInterMesh[i];
- 			IntVector& f = *(b.f);
- 			Int buf_size = f.size() * NPF;
- 			
-#define SEND() {													\
-	SENDBUF(buffer);												\
-	MP::send(&buffer[b.buffer_index],buf_size,b.to,MP::FIELD);		\
-}
-#define RECV() {													\
-	MP::recieve(&buffer[b.buffer_index],buf_size,b.to,MP::FIELD); 	\
-	RECVBUF(buffer);												\
-}
- 			if(b.from < b.to) {
- 				SEND();
- 				RECV();
- 			} else {
-				RECV();
-				SEND();
- 			}
-#undef SEND
-#undef RECV
-
- 		}
-	}
-};
-
-#undef SENDBUF
-#undef RECVBUF
 
 /*************************************
  * Exchange ghost cell information
  *************************************/
 template <class T> 
 void exchange_ghost(T* P) {
- 	if(Controls::ghost_exchange == Controls::BLOCKED) {
- 		/* Blocked exchange */
-		SYNC_COMM<T> comm(P);
-		comm.sendrecv();
- 	} else {
- 		/* Asynchronous exchange */
-		ASYNC_COMM<T> comm(P);
-		comm.send();
-		comm.recv();
- 	}
+	ASYNC_COMM<T> comm(P);
+	comm.send();
+	comm.recv();
 }
  
 /* *******************************
@@ -1028,7 +949,6 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const 
 		c1 = gFO[f];
 		c2 = gFN[f];
 		r[c1] -= q[c2] * p.an[1][f];
-		r[c2] -= q[c1] * p.an[0][f];
 	}
 	
 	return r;
@@ -1069,7 +989,6 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const
 	for(Int f = gBFS; f < fI.size(); f++) {
 		c1 = gFO[f];
 		c2 = gFN[f];
-		r[c2] -= q[c1] * p.an[1][f];
 		r[c1] -= q[c2] * p.an[0][f];
 	}
 	
@@ -1111,7 +1030,6 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 		c1 = gFO[f];
 		c2 = gFN[f];
 		r[c1] += (*p.cF)[c2] * p.an[1][f];
-		r[c2] += (*p.cF)[c1] * p.an[0][f];
 	}
 	
 	return r;

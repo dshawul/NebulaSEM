@@ -60,9 +60,9 @@ void SolveT(const MeshMatrix<type>& M) {
 			MP::print("SOR :");
 		else {
 			switch(Controls::Preconditioner) {
-			case Controls::NOP: MP::print("PCG :"); break;
+			case Controls::NOPR: MP::print("NONE-PCG :"); break;
 			case Controls::DIAG: MP::print("DIAG-PCG :"); break;
-			case Controls::SORP: MP::print("SSOR-PCG :"); break;
+			case Controls::SSOR: MP::print("SSOR-PCG :"); break;
 			case Controls::DILU: MP::print("DILU-PCG :"); break;
 			}
 		}
@@ -175,7 +175,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	 ***********************************/
 #define precondition_(R,Z,TR) {						\
 	using namespace Controls;						\
-	if(Preconditioner == Controls::NOP) {			\
+	if(Preconditioner == Controls::NOPR) {			\
 		Z = R;										\
 	} else if(Preconditioner == Controls::DIAG) {	\
 		DiagSub(Z,R);								\
@@ -240,12 +240,12 @@ void SolveT(const MeshMatrix<type>& M) {
 			p1.allocate();
 			AP1.allocate();
 		} else {
-			if(Controls::Preconditioner == Controls::SORP) {
-				/*SOR and GS*/
+			if(Controls::Preconditioner == Controls::SSOR) {
+				/*SSOR pre-conditioner*/
 				iD *= Controls::SOR_omega;
 				D *=  (2.0 / Controls::SOR_omega - 1.0);	
 			} else if(Controls::Preconditioner == Controls::DILU) {
-				/*D-ILU(0)*/
+				/*D-ILU(0) pre-conditioner*/
 				for(Int ii = 0;ii < gBCS;ii++) {
 					Cell& c = gCells[ii];
 					for(Int j = 0;j < NP;j++) {	
@@ -264,10 +264,10 @@ void SolveT(const MeshMatrix<type>& M) {
 								Int c1 = gFO[k];						
 								Int c2 = gFN[k];						
 								if(i == c1) {
-									if(c2 > i) D[c2] -= 
+									if(c2 > c1) D[c2] -= 
 									(M.an[0][k] * M.an[1][k] * iD[c1]);	
 								} else if(i == c2) {
-									if(c1 > i) D[c1] -= 
+									if(c1 > c2) D[c1] -= 
 									(M.an[0][k] * M.an[1][k] * iD[c2]);		
 								}		
 							}								
