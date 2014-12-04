@@ -125,8 +125,8 @@ void SolveT(const MeshMatrix<type>& M) {
 		if(NPMAT) {									\
 			type val(Scalar(0));					\
 			for(Int k = 0;k < NP;k++) {				\
-				if((forw && (j < k)) ||				\
-				  (!forw && (k < j))) {				\
+				if((forw && (k < j)) ||				\
+				  (!forw && (j > k))) {				\
 				  	Int ind;						\
 				  	if(tr) ind = k * NP + j;		\
 				  	else   ind = j * NP + k;		\
