@@ -435,23 +435,23 @@ public:
 		return is;
 	}
 };
-#define forEachCellField(X)	 { \
-	ScalarCellField::X;    \
-    VectorCellField::X;    \
-	STensorCellField::X;   \
-	TensorCellField::X;    \
+#define forEachCellField(X)	 { 		\
+	ScalarCellField::X;    			\
+    VectorCellField::X;    			\
+	STensorCellField::X;   			\
+	TensorCellField::X;    			\
 }
-#define forEachFacetField(X)	 { \
-	ScalarFacetField::X;    \
-    VectorFacetField::X;    \
-	STensorFacetField::X;   \
-	TensorFacetField::X;    \
+#define forEachFacetField(X)	 { 	\
+	ScalarFacetField::X;    		\
+    VectorFacetField::X;    		\
+	STensorFacetField::X;   		\
+	TensorFacetField::X;    		\
 }
-#define forEachVertexField(X)	 { \
-	ScalarVertexField::X;    \
-    VectorVertexField::X;    \
-	STensorVertexField::X;   \
-	TensorVertexField::X;    \
+#define forEachVertexField(X)	 { 	\
+	ScalarVertexField::X;    		\
+    VectorVertexField::X;    		\
+	STensorVertexField::X;   		\
+	TensorVertexField::X;    		\
 }
 /* typedefs */
 typedef MeshField<Scalar,CELL>    ScalarCellField;
@@ -466,7 +466,6 @@ typedef MeshField<Tensor,VERTEX>  TensorVertexField;
 typedef MeshField<STensor,CELL>   STensorCellField;
 typedef MeshField<STensor,FACET>  STensorFacetField;
 typedef MeshField<STensor,VERTEX> STensorVertexField;
-
 
 /***********************************
  *  Specific tensor operations
@@ -582,10 +581,10 @@ namespace Mesh {
 	void   write_fields(Int);
 	void   read_fields(Int);
 	void   remove_fields();
-	Int  findNearestCell(const Vector& v);
-	Int  findNearestFace(const Vector& v);
-	void getProbeCells(IntVector&);
-	void getProbeFaces(IntVector&);
+	Int    findNearestCell(const Vector& v);
+	Int    findNearestFace(const Vector& v);
+	void   getProbeCells(IntVector&);
+	void   getProbeFaces(IntVector&);
 }
 
 /* **********************************************
@@ -617,13 +616,23 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 			val += MeshField<T,E>(perterb / 2) * 
 					(MeshField<Scalar,E>(1.0) + cos(R * Constants::PI));
 			*this = val;
+		} else if(str == "gaussian") {
+			Vector center,radius;
+			T perterb;
+			is >> value >> perterb >> center >> radius;
+			VectorCellField cB = center;
+			ScalarCellField R = mag((cC - cB) / radius);
+			MeshField<T,E> val = value;
+			val += MeshField<T,E>(perterb / 2) *  exp(-R*R);
+			*this = val;
 		} else if(str == "hydrostatic") {
 			T p0;
 			Scalar scale, expon;
 			is >> p0 >> scale >> expon;
 			Vector gu = unit(Controls::gravity);
 			ScalarCellField gz = -dot(cC,VectorCellField(gu));
-			*this = MeshField<T,E>(p0) * pow(MeshField<Scalar,E>(1.0) - scale * gz, expon);
+			*this = MeshField<T,E>(p0) * 
+				pow(MeshField<Scalar,E>(1.0) - scale * gz, expon);
 		} else
 			*this = value;
 	} else {
@@ -663,7 +672,7 @@ void MeshField<T,E>::read(Int step) {
 	}
 
 	/*update BCs*/
-	updateExplicitBCs(*this,true,true);
+	applyExplicitBCs(*this,true,true);
 }
 template <class T,ENTITY E> 
 void MeshField<T,E>::write(Int step) {
@@ -1050,7 +1059,8 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 		 bbc = AllBConditions[i];
 		 if(bbc->fIndex == cF.fIndex) {
 			 if(bbc->cIndex == NEUMANN ||
-				 bbc->cIndex == SYMMETRY)
+				 bbc->cIndex == SYMMETRY ||
+				 bbc->cIndex == ROBIN)
 				 ;
 			 else continue;
 
@@ -1092,7 +1102,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
  * Explicit boundary conditions
  * **************************************/
 template<class T,ENTITY E>
-void updateExplicitBCs(const MeshField<T,E>& cF,
+void applyExplicitBCs(const MeshField<T,E>& cF,
 							  bool update_ghost = false,
 							  bool update_fixed = false
 							  ) {
@@ -1177,15 +1187,24 @@ void updateExplicitBCs(const MeshField<T,E>& cF,
 							(1 - bc->shape) * (cF[c1] + bc->tvalue * mag(dv));
 					} else if(bc->cIndex == SYMMETRY) {
 						cF[c2] = sym(cF[c1],fN[k]);
-					} else if(bc->cIndex == CYCLIC) {
+					} else if(bc->cIndex == CYCLIC ||
+							  bc->cIndex == RECYCLE) {
 						Int fi;
 						if(j < sz / 2) 
 							fi = (*bc->bdry)[j + sz/2];
 						else
 							fi = (*bc->bdry)[j - sz/2];
-						for(Int m = 0; m < DG::NPF;m++) {
-				 			Int c22 = gFO[fi * DG::NPF + m];
-							cF[c2] = cF[c22];
+						Int k1 = fi * DG::NPF + n;
+						Int c11 = gFO[k1];
+				 		Int c22 = gFN[k1];
+						if(bc->cIndex == CYCLIC) {
+							cF[c2] = cF[c11];
+							cF[c22] = cF[c1];
+						} else {
+							if(c2 >= gBCSfield)
+								cF[c2] = cF[c11];
+							else
+								cF[c22] = cF[c1];
 						}
 					} else { 
 						if(update_fixed) {
@@ -1472,7 +1491,7 @@ inline VectorCellField div(const TensorCellField& p) {
 }
 /* Implicit */
 template<class type>
-MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& rhoU,
+MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 					const ScalarFacetField& flux,const ScalarFacetField& mu) {
 	using namespace Controls;
 	using namespace Mesh;
@@ -1498,7 +1517,7 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& rhoU,
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
-					Scalar dpsiU = rhoU[index] & dot(dpsi_j,Jin);
+					Scalar dpsiU = flux_cell[index] & dot(dpsi_j,Jin);
 					Scalar val = dpsiU * cV[index];
 					index = ci * NPMAT + ind2 * NP + ind1;
 					if(ind1 == ind2) {
@@ -1743,24 +1762,40 @@ MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 	return M;
 }
 template<class type>
-MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& U,
-        const ScalarFacetField& F, const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
-	MeshMatrix<type> M = div(cF,rho * U, F,mu);
-	addTemporal(M,rho,cF_UR);
-	return M;
-}
-template<class type>
-MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& U,const ScalarFacetField& F,
-		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
-	MeshMatrix<type> M = div(cF,rho * U,F,mu) - lap(cF,mu);
-	addTemporal(M,rho,cF_UR);
-	return M;
-}
-template<class type>
-MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& U,const ScalarFacetField& F,
+MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR, 
 		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
-	MeshMatrix<type> M = div(cF,rho * U,F,mu) - lap(cF,mu) - src(cF,Su,Sp);
+	MeshMatrix<type> M = -lap(cF,mu) - src(cF,Su,Sp);
+	addTemporal(M,rho,cF_UR);
+	return M;
+}
+template<class type>
+MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
+        const ScalarFacetField& F,const ScalarCellField& rho,Scalar cF_UR) {
+	MeshMatrix<type> M = div(cF,Fc,F,Scalar(0));
+	addTemporal(M,rho,cF_UR);
+	return M;
+}
+template<class type>
+MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
+        const ScalarFacetField& F, const ScalarCellField& rho,Scalar cF_UR, 
+		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
+	MeshMatrix<type> M = div(cF,Fc,F,Scalar(0)) - src(cF,Su,Sp);
+	addTemporal(M,rho,cF_UR);
+	return M;
+}
+template<class type>
+MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
+		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
+	MeshMatrix<type> M = div(cF,Fc,F,mu) - lap(cF,mu);
+	addTemporal(M,rho,cF_UR);
+	return M;
+}
+template<class type>
+MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
+		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR, 
+		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
+	MeshMatrix<type> M = div(cF,Fc,F,mu) - lap(cF,mu) - src(cF,Su,Sp);
 	addTemporal(M,rho,cF_UR);
 	return M;
 }

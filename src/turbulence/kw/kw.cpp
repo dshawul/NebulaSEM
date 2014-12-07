@@ -27,7 +27,7 @@ void KW_Model::solve() {
 
 	/*turbulent dissipation*/
 	mu = cds(eddy_mu) / SigmaX + rho * nu;
-	M = transport(x, U, F, mu, rho, x_UR,
+	M = transport(x, rho * U, F, mu, rho, x_UR,
 				(C1x * Pk * x / k),
 				-(C2x * rho * x));
 	FixNearWallValues(M);
@@ -36,7 +36,7 @@ void KW_Model::solve() {
 
 	/*turbulent kinetic energy*/
 	mu = cds(eddy_mu) / SigmaK + rho * nu;
-	M = transport(k, U, F, mu, rho, k_UR,
+	M = transport(k, rho * U, F, mu, rho, k_UR,
 					Pk,
 					-(Cmu * rho * x));
 	if(wallModel == STANDARD)

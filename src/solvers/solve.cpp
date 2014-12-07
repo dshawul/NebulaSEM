@@ -126,7 +126,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			type val(Scalar(0));					\
 			for(Int k = 0;k < NP;k++) {				\
 				if((forw && (k < j)) ||				\
-				  (!forw && (j > k))) {				\
+				  (!forw && (j < k))) {				\
 				  	Int ind;						\
 				  	if(tr) ind = k * NP + j;		\
 				  	else   ind = j * NP + k;		\
@@ -136,8 +136,8 @@ void SolveT(const MeshMatrix<type>& M) {
 			}										\
 			ncF += val;								\
 		}											\
-		forEach(c,j) {								\
-			Int faceid = c[j];						\
+		forEach(c,ci) {								\
+			Int faceid = c[ci];						\
  			for(Int n = 0; n < NPF;n++) {			\
 				Int k = faceid * NPF + n;			\
 				Int c1 = gFO[k];					\
@@ -254,11 +254,12 @@ void SolveT(const MeshMatrix<type>& M) {
 							Scalar val = 0.0;
 							for(Int k = 0;k < NP;k++)
 								val += M.adg[ii * NPMAT + j * NP + k] *
-								       M.adg[ii * NPMAT + k * NP + j];
-							D[i] -= val * iD[i];
+								       M.adg[ii * NPMAT + k * NP + j] *
+								       iD[ii * NP + k];
+							D[i] -= val;
 						}	
-						forEach(c,j) {								
-							Int faceid = c[j];
+						forEach(c,ci) {								
+							Int faceid = c[ci];
 							for(Int n = 0; n < NPF;n++) {
 								Int k = faceid * NPF + n;							
 								Int c1 = gFO[k];						
@@ -477,7 +478,7 @@ void SolveTexplicit(const MeshMatrix<type>& M) {
 	else									\
 		SolveT(A);							\
 	MP::barrier();							\
-	updateExplicitBCs(*A.cF,true,false);	\
+	applyExplicitBCs(*A.cF,true,false);		\
 }
 void Solve(const MeshMatrix<Scalar>& A) {
 	SOLVE();

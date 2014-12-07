@@ -15,6 +15,8 @@ namespace GENERAL {
 	Scalar beta = 3.33e-3;
 	Scalar T0 = 300;
 	Scalar P0 = 10000;
+	Scalar cp = 1004.67;
+	Scalar cv = 715.5;
 	
 	void enroll(Util::ParamList& params) {
 		params.enroll("rho", &density);
@@ -24,6 +26,8 @@ namespace GENERAL {
 		params.enroll("beta", &beta);
 		params.enroll("T0", &T0);
 		params.enroll("P0", &P0);
+		params.enroll("cp", &cp);
+		params.enroll("cv", &cv);
 	}
 }
 
@@ -34,6 +38,7 @@ void convection(istream&);
 void potential(istream&);
 void transport(istream&);
 void walldist(istream&);
+void euler(istream&);
 /**
  \verbatim
  Main application entry point for different solvers.
@@ -74,6 +79,8 @@ int main(int argc, char* argv[]) {
 	/*call solver*/
 	if (!Util::compare(sname, "piso")) {
 		piso(input);
+	} else if (!Util::compare(sname, "euler")) {
+		euler(input);
 	} else if (!Util::compare(sname, "diffusion")) {
 		diffusion(input);
 	} else if (!Util::compare(sname, "convection")) {
@@ -276,13 +283,13 @@ void piso(istream& input) {
 			/*momentum prediction*/
 			{
 				ScalarFacetField mu = cds(eddy_mu) + rho * nu;
-				M = transport(U, U, F, mu, rho, velocity_UR, Sc, Scalar(0));
+				M = transport(U, rho * U, F, mu, rho, velocity_UR, Sc, Scalar(0));
 				Solve(M == gP);
 			}
 			/*energy predicition*/
 			if (buoyancy != NONE) {
 				ScalarFacetField mu = cds(eddy_mu) / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
-				ScalarCellMatrix Mt = transport(T, U, F, mu, rho, t_UR);
+				ScalarCellMatrix Mt = transport(T, rho * U, F, mu, rho, t_UR);
 				Solve(Mt);
 				T = max(T, Constants::MachineEpsilon);
 			}
@@ -298,7 +305,7 @@ void piso(istream& input) {
 		for (Int j = 0; j < n_PISO; j++) {
 			/* Ua = H(U) / ap*/
 			U = getRHS(M) * api;
-			updateExplicitBCs(U, true);
+			applyExplicitBCs(U, true);
 
 			/*solve pressure poisson equation to satisfy continuity*/
 			{
@@ -310,11 +317,11 @@ void piso(istream& input) {
 			/*explicit velocity correction : add pressure contribution*/
 			gP = -grad(p);
 			U -= gP * api;
-			updateExplicitBCs(U, true);
+			applyExplicitBCs(U, true);
 		}
 
 		/*update fluctuations*/
-		updateExplicitBCs(U, true, true);
+		applyExplicitBCs(U, true, true);
 		F = flx(rho * U);
 
 		/*solve turbulence transport equations*/
@@ -339,6 +346,71 @@ void piso(istream& input) {
 		Mesh::write_fields(Iteration::get_end());
 	}
 }
+/**
+  \verbatim
+  Euler equations solver
+  ~~~~~~~~~~~~~~~~~~~~~~
+  d(rho*(1))/dt + div(1,F,0) = 0
+  d(rho*(U))/dt + div(U,F,0) = -grad(p)
+  d(rho*(T))/dt + div(T,F,0) = 0
+  \endverbatim
+ */
+void euler(istream& input) {
+	/*Solver specific parameters*/
+	Scalar rho_UR = Scalar(0.5);
+	Scalar velocity_UR = Scalar(0.8);
+	Scalar t_UR = Scalar(0.8);
+
+	/*transport*/
+	Util::ParamList params("euler");
+	params.enroll("rho_UR",&rho_UR);
+	params.enroll("t_UR", &t_UR);
+	params.enroll("velocity_UR", &velocity_UR);
+
+	ScalarCellField rho("rho",READWRITE);
+	VectorCellField U("U", READWRITE);
+	ScalarCellField T("T",READWRITE);
+
+	/*read parameters*/
+	Util::read_params(input);
+	
+	/*gas constants*/
+	Scalar p_factor, gamma;
+	{
+		using namespace GENERAL;
+		Scalar R = cp - cv;
+		gamma = cp / cv;
+		p_factor = P0 * pow(R / P0, gamma);
+	}
+	
+	/*Calculate for each time step*/
+	VectorCellField Fc;
+	ScalarFacetField F;
+	for (Iteration it; !it.end(); it.next()) {
+		Fc = rho * U;
+		F = flx(Fc);
+		/*rho-equation*/
+		{
+			ScalarCellMatrix M(&rho);
+			addTemporal(M,Scalar(1),rho_UR);
+			Solve(M == -div(Fc));
+		}
+		/*T-equation*/
+		{
+			ScalarCellMatrix M(&T);
+			addTemporal(M,rho,t_UR);
+			Solve(M == -div(Fc * T));
+		}
+		/*U-equation*/
+		{
+			ScalarCellField p = p_factor * pow(rho * T, gamma);
+			VectorCellMatrix M(&U);
+			addTemporal(M,rho,velocity_UR);
+			Solve(M == -div(mul(Fc,U)) - grad(p));
+		}
+	}
+}
+
 /**
  \verbatim
  Diffusion solver
@@ -397,10 +469,11 @@ void convection(istream& input) {
 	
 	/*Calculate for each time step*/
 	Iteration it;
-	ScalarFacetField F = flx(rho * U), mu = Scalar(0);
+	VectorCellField Fc = rho * U;
+	ScalarFacetField F = flx(Fc);
 	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = convection(T, U, F, mu, rho, t_UR);
+		M = convection(T, Fc, F, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -435,7 +508,7 @@ void transport(istream& input) {
 	ScalarFacetField F = flx(rho * U), mu = rho * DT;
 	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = transport(T, U, F, mu, rho, t_UR);
+		M = transport(T, rho * U, F, mu, rho, t_UR);
 		Solve(M);
 	}
 }
@@ -479,8 +552,8 @@ void potential(istream& input) {
 		U[i] = Vector(0, 0, 0);
 		p[i] = Scalar(0);
 	}
-	updateExplicitBCs(U, true);
-	updateExplicitBCs(p, true);
+	applyExplicitBCs(U, true);
+	applyExplicitBCs(p, true);
 
 	for (Iteration it; it.start(); it.next()) {
 		/*solve potential equation*/
@@ -491,7 +564,7 @@ void potential(istream& input) {
 
 		/*correct velocity*/
 		U -= gradi(p);
-		updateExplicitBCs(U, true);
+		applyExplicitBCs(U, true);
 	}
 }
 /**

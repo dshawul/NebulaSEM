@@ -170,6 +170,7 @@ namespace Mesh {
 	const Int ROBIN        = Util::hash_function("ROBIN");
 	const Int SYMMETRY     = Util::hash_function("SYMMETRY");
     const Int CYCLIC       = Util::hash_function("CYCLIC");
+    const Int RECYCLE      = Util::hash_function("RECYCLE");
 	const Int GHOST        = Util::hash_function("GHOST");
 	const Int POWER        = Util::hash_function("POWER");
 	const Int LOG          = Util::hash_function("LOG");

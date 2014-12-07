@@ -1,0 +1,84 @@
+general
+{
+######################################
+#  mesh file name and solver type  
+######################################
+    solver                       convection
+    mesh                         grid
+
+######################################
+#  Fluid properties specific to solver
+######################################
+    rho                          1
+    viscosity                    0.1
+#############################
+#  Time increment
+#############################
+
+    state                        TRANSIENT
+    start_step                   0
+    end_step                     25
+    write_interval               25
+    dt                           0.1
+
+############################
+#  Discretization schemes
+############################
+
+    convection_scheme            UDS
+    interpolation_scheme         CDS
+    nonortho_scheme              OVER_RELAXED
+    time_scheme_factor           1
+    blend_factor                 0.2
+
+############################
+#  Solver options
+############################
+
+    method                       PCG
+    preconditioner               DILU
+    tolerance                    1e-5
+    max_iterations               6400
+    SOR_omega                    1.7
+    ghost_exchange               BLOCKED
+    parallel_method              BLOCKED
+
+############################
+#  Probe locations
+############################
+    probe 0 {
+    }
+}
+
+
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             KE
+    velocity_UR                  1
+    pressure_UR                  1
+    k_UR                         1
+    x_UR                         1
+    n_PISO                       1
+    n_ORTHO                      0
+}
+diffusion
+{
+    DT                           1
+    t_UR                         0.7
+}
+convection
+{
+    t_UR                         0.7
+}transport
+{
+    DT                           0.1
+    t_UR                         1
+}
+turbulence
+{
+    k_UR                         0.5
+    x_UR                         0.5
+}

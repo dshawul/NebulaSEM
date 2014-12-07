@@ -1,7 +1,7 @@
 #include "field.h"
 
 namespace DG {
-	Int Nop[3] = {5, 0, 0};
+	Int Nop[3] = {0, 0, 0};
 	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
 	
 	Scalar **psi[3];

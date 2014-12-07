@@ -154,7 +154,7 @@ void Mesh::initGeomMeshFields() {
 			bc->init_indices();
 			AllBConditions.push_back(bc);
 		}
-		updateExplicitBCs(yWall,true,true);
+		applyExplicitBCs(yWall,true,true);
 	}
 }
 /*find nearest cell*/
