@@ -1,0 +1,69 @@
+general
+{
+######################################
+#  mesh file name and solver type  
+######################################
+    solver                       euler
+    mesh                         grid
+
+######################################
+#  Fluid properties specific to solver
+######################################
+    rho                          1
+    viscosity                    1.846e-5
+	
+#############################
+#  Time increment
+#############################
+
+    state                        TRANSIENT
+    start_step                   0
+    end_step                     3000
+    write_interval               3000
+    dt                           0.1
+
+############################
+#  Discretization schemes
+############################
+
+    convection_scheme            UDS
+    interpolation_scheme         CDS
+    nonortho_scheme              OVER_RELAXED
+    implicit_factor              0
+    blend_factor                 0.2
+
+############################
+#  Solver options
+############################
+
+    method                       PCG
+    preconditioner               SSOR
+    tolerance                    1e-5
+    max_iterations               6400
+    SOR_omega                    1.7
+
+############################
+#  Probe locations
+############################
+
+}
+
+
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             NONE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       2
+    n_ORTHO                      0
+    buoyancy                     BOUSSINESQ_T2
+}
+
+turbulence
+{
+    k_UR                         0.5
+    x_UR                         0.5
+}
