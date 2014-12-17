@@ -8,7 +8,7 @@ OBJDIR   = $(BDIR)/build
 OBJLIST  = $(addprefix   $(OBJDIR)/, $(OBJ))
 VPATH    = $(addprefix   $(SRCDIR)/, $(ALLDIR))
 INC      = $(addprefix -I$(SRCDIR)/, $(ALLDIR))
-
+INSDIR   = /usr/local/bin
 ######################
 # Compiler choice
 ######################
@@ -82,6 +82,10 @@ strip:
 	$(STRIP) $(EXEDIR)/$(EXE)
 
 all: $(EXEDIR)/$(EXE)
+
+install:
+	-mkdir -p -m 755  $(INSDIR)
+	-cp $(EXEDIR)/$(EXE) $(INSDIR)
 	
 help:
 	@echo ""
