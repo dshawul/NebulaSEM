@@ -8,8 +8,8 @@ using namespace std;
 
 /*general properties*/
 namespace GENERAL {
-	Scalar density = 1.2041;
-	Scalar viscosity = 1.461e-5;
+	Scalar density = 1.177;
+	Scalar viscosity = 1.568e-5;
 	Scalar Pr = 0.9;
 	Scalar Prt = 0.7;
 	Scalar beta = 3.33e-3;
@@ -137,7 +137,8 @@ public:
 		idf++;
 		if(idf <= n_deferred)
 			return;
-
+		idf = 0;
+		
 		/*update time series*/
 		forEachCellField(updateTimeSeries(i));
 
@@ -384,29 +385,29 @@ void euler(istream& input) {
 	}
 	
 	/*Calculate for each time step*/
-	VectorCellField Fc;
 	ScalarFacetField F;
+	VectorCellField Fc;
 	for (Iteration it; !it.end(); it.next()) {
 		Fc = rho * U;
 		F = flx(Fc);
 		/*rho-equation*/
 		{
-			ScalarCellMatrix M(&rho);
-			addTemporal(M,Scalar(1),rho_UR);
-			Solve(M == -div(Fc));
+			ScalarCellMatrix M;
+			M = convection(rho, Fc, F, Scalar(1), rho_UR);
+			Solve(M);
 		}
 		/*T-equation*/
 		{
-			ScalarCellMatrix M(&T);
-			addTemporal(M,rho,t_UR);
-			Solve(M == -div(Fc * T));
+			ScalarCellMatrix M;
+			M = convection(T, Fc, F, rho, t_UR);
+			Solve(M);
 		}
 		/*U-equation*/
 		{
 			ScalarCellField p = p_factor * pow(rho * T, gamma);
-			VectorCellMatrix M(&U);
-			addTemporal(M,rho,velocity_UR);
-			Solve(M == -div(mul(Fc,U)) - grad(p));
+			VectorCellMatrix M;
+			M = convection(U, Fc, F, rho, velocity_UR);
+			Solve(M == -grad(p));
 		}
 	}
 }

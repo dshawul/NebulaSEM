@@ -37,7 +37,6 @@ namespace Controls {
 
 	extern Scheme convection_scheme;
 	extern Int TVDbruner;
-	extern Scheme interpolation_scheme;
 	extern NonOrthoScheme nonortho_scheme;
 	extern TimeScheme time_scheme;
 	extern Solvers Solver; 

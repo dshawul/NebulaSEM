@@ -477,7 +477,6 @@ void SolveTexplicit(const MeshMatrix<type>& M) {
 		SolveTexplicit(A);					\
 	else									\
 		SolveT(A);							\
-	MP::barrier();							\
 	applyExplicitBCs(*A.cF,true,false);		\
 }
 void Solve(const MeshMatrix<Scalar>& A) {

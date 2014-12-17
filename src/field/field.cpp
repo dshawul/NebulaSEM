@@ -20,7 +20,6 @@ namespace Mesh {
 namespace Controls {
 	Scheme convection_scheme = HYBRID;
 	Int TVDbruner = 0;
-	Scheme interpolation_scheme = CDS;
 	NonOrthoScheme nonortho_scheme = OVER_RELAXED;
 	TimeScheme time_scheme = EULER;
 	Scalar implicit_factor = 1;
@@ -240,8 +239,6 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("convection_scheme",op);
 	op = new BoolOption(&TVDbruner);
 	params.enroll("tvd_bruner",op);
-	op = new Option(&interpolation_scheme,2,"CDS","UDS");
-	params.enroll("interpolation_scheme",op);
 	op = new Option(&nonortho_scheme,4,"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED");
 	params.enroll("nonortho_scheme",op);
 	op = new Option(&time_scheme,2,"EULER","SECOND_ORDER");
