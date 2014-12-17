@@ -57,6 +57,7 @@ namespace Controls {
 	extern Int end_step;
 	extern Int n_deferred;
 	extern Int save_average;
+	extern Int print;
 
 	extern Vector gravity;
 }
@@ -896,10 +897,10 @@ public:
 
 			//--non-blocking send/recive
 			MP::isend(&sendbuf[b.buffer_index * NPF],buf_size,
-				b.to,MP::FIELD,&request[rcount]);
+				b.to,MP::FIELD_BLK,&request[rcount]);
 			rcount++;
 			MP::irecieve(&P[gFN[f[0]]],buf_size,
-				b.to,MP::FIELD,&request[rcount]);
+				b.to,MP::FIELD_BLK,&request[rcount]);
 			rcount++;
 		}
 	}
@@ -1113,6 +1114,12 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 		   zmax = Scalar(0),
 		   zR = Scalar(0);
 	Vector C(0);
+	
+	/*update ghost cells*/
+	bool sync = (update_ghost && gInterMesh.size());
+	ASYNC_COMM<T> comm(&cF[0]);
+	
+	if(sync) comm.send();
 
 	/*boundary conditions*/
 	forEach(AllBConditions,i) {
@@ -1240,17 +1247,14 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 			bc->first = false;
 		}
 	}
-	/*ghost cells*/
-	if(update_ghost && gInterMesh.size()) {
-		exchange_ghost(&cF[0]);
-	}
+	
+	if(sync) comm.recv();
 }
 /* ***************************************
  * Fill boundary from internal values
  * **************************************/
 template<class T,ENTITY E>
-const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF,
-			 bool update_ghost = false) {
+const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF) {
 	/*neumann update*/
 	using namespace Mesh;
 	forEachS(gCells,i,gBCS) {
@@ -1260,25 +1264,8 @@ const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF,
 			cF[gFN[k]] = cF[gFO[k]];
 		}
 	}
-	/*ghost cells*/
-	if(update_ghost && gInterMesh.size()) {
-		exchange_ghost(&cF[0]);
-	}
 	return cF;
 }
-
-/*******************************************************************************
- * Non-integrated field operations. The field operations to be defined later
- * such as div,lap,grad,ddt,ddt2,src etc.. are values integrated over a volume. 
- * The following macro versions give the corresponding non-integrated cell
- * center values by dividing with the cell volumes
- *******************************************************************************/
-#define divi(x)  fillBCs((div(x)   / Mesh::cV),true)
-#define lapi(x)  fillBCs((lap(x)   / Mesh::cV),true)
-#define gradi(x) fillBCs((grad(x)  / Mesh::cV),true)
-#define ddti(x)  fillBCs((ddt(x)   / Mesh::cV),true)
-#define ddt2i(x) fillBCs((ddt2(x)  / Mesh::cV),true)
-#define srci(x)  fillBCs((src(x)   / Mesh::cV),true)
 
 /* **************************
  * Integrate field operation
@@ -1375,7 +1362,10 @@ template<class type>
 MeshField<type,CELL> src(const MeshField<type,CELL>& Su) {
 	return (Su * Mesh::cV);
 }
- 
+template<class type>
+MeshField<type,CELL> srci(const MeshField<type,CELL>& Su) {
+	return (Su);
+} 
  /***********************************************
  * Gradient field operation.
  ***********************************************/
@@ -1393,6 +1383,7 @@ inline TensorCellField grad(const VectorFacetField& p) {
 inline TensorCellField grad(const VectorCellField& p) {
 	return grad(cds(p));
 }
+#define gradi(x) (grad(x)  / Mesh::cV)
 
 /* *********************************************
  * Laplacian field operation
@@ -1488,6 +1479,8 @@ inline VectorCellField div(const TensorFacetField& p) {
 inline VectorCellField div(const TensorCellField& p) {
 	return sum(flx(p));
 }
+#define divi(x)  (div(x)   / Mesh::cV)
+
 /* Implicit */
 template<class type>
 MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,

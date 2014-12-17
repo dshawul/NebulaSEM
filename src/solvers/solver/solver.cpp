@@ -117,6 +117,7 @@ public:
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
 		forEachCellField (initTimeSeries());
+		MP::printH("Starting iterations.\n");
 	}
 	bool start() {
 		return (i == starti);
@@ -125,7 +126,7 @@ public:
 		if(i > endi)
 			return true;
 		/*iteration number*/
-		if(MP::host_id == 0) {
+		if(MP::host_id == 0 && Controls::print) {
 			if(Controls::state == Controls::STEADY)
 				MP::printH("Step %d\n",i);
 			else
@@ -299,7 +300,7 @@ void piso(istream& input) {
 		/*
 		 * Correction
 		 */
-		ScalarCellField api = fillBCs(1.0 / M.ap, true);
+		ScalarCellField api = fillBCs(1.0 / M.ap);
 		ScalarCellField rmu = rho * api * Mesh::cV;
 
 		/*PISO loop*/

@@ -43,10 +43,10 @@ void MP::barrier() {
 }
 
 /*probe for messages*/
-int MP::iprobe(int& source,int& message_id) {
+int MP::iprobe(int& source,int& message_id,int tag) {
 	int flag;
 	MPI_Status mpi_status;
-	MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,&flag,&mpi_status);
+	MPI_Iprobe(MPI_ANY_SOURCE, tag, MPI_COMM_WORLD,&flag,&mpi_status);
 	if(flag) {
 		message_id = mpi_status.MPI_TAG;
 		source = mpi_status.MPI_SOURCE;

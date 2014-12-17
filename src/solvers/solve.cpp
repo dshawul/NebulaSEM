@@ -40,7 +40,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	/****************************
 	 * Parallel controls
 	 ***************************/
-	bool print = (MP::host_id == 0);
+	bool print = (MP::host_id == 0 && Controls::print);
 	int  end_count = 0;
 	bool sync = (Controls::parallel_method == Controls::BLOCKED)
 		&& gInterMesh.size();
@@ -379,16 +379,17 @@ PROBE:
 		if(!sync) {
 			int source,message_id;
 			/*probe*/
-			while(MP::iprobe(source,message_id)) {
+			while(MP::iprobe(source,message_id,MP::FIELD)
+			   || MP::iprobe(source,message_id,MP::END)) {
 				/*find the boundary*/
 				Int patchi;
 				for(patchi = 0;patchi < gInterMesh.size();patchi++) {
 					if(gInterMesh[patchi].to == (Int)source) 
 						break;
 				}
-				interBoundary& b = gInterMesh[patchi];
 				/*parse message*/
 				if(message_id == MP::FIELD) {
+					interBoundary& b = gInterMesh[patchi];
 					IntVector& f = *(b.f);
 					Int buf_size = f.size() * NPF;
 					
@@ -461,7 +462,7 @@ PROBE:
 }
 template<class type>
 void SolveTexplicit(const MeshMatrix<type>& M) {
-	if(MP::host_id == 0) {
+	if(MP::host_id == 0 && Controls::print) {
 		MP::printH("DIAG-DIAG:");
 		MP::print("Iterations %d Initial Residual "
 		"%.5e Final Residual %.5e\n",1,0.0,0.0);

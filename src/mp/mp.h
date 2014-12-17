@@ -13,7 +13,7 @@
 class MP {
 public:
 	enum {
-		FIELD, END
+		FIELD, END, FIELD_BLK
 	};
 	MP(int argc,char* argv[]);
 	~MP();
@@ -27,7 +27,7 @@ public:
 	static void cleanup();
 	static void loop();
 	static void barrier();
-	static int iprobe(int&,int&);
+	static int iprobe(int&,int&,int);
 	static void send(int,int);
 	static void recieve(int,int);
 	static void printH(const char* format,...);
