@@ -1,23 +1,14 @@
-############################
-# Target executable and files
-############################
-EXE = prepare
-OBJ = mesh.o tensor.o util.o vtk.o field.o dg.o mp.o prepare.o prepareApp.o
-
 #############################
 # paths
 ############################
 BDIR     = ../..
-METISDIR = /usr/local
 SRCDIR   = $(BDIR)/src
-ALLDIR   = field mesh tensor util vtk mp prepare solvers/piso
 EXEDIR   = $(BDIR)/bin
 OBJDIR   = $(BDIR)/build
-OBJLIST  = $(addprefix $(OBJDIR)/, $(OBJ))
+OBJLIST  = $(addprefix   $(OBJDIR)/, $(OBJ))
 VPATH    = $(addprefix   $(SRCDIR)/, $(ALLDIR))
 INC      = $(addprefix -I$(SRCDIR)/, $(ALLDIR))
-INC     += -I$(METISDIR)/include
-LINC     = -L$(METISDIR)/lib
+
 ######################
 # Compiler choice
 ######################
@@ -37,7 +28,7 @@ endif
 #  Compiler flags
 ###########################
 CXXFLAGS = -Wall -fomit-frame-pointer -fstrict-aliasing -fno-rtti $(INC)
-LXXFLAGS = -lm -lmetis $(LINC)
+LXXFLAGS = -lm $(LINC)
 
 ifeq ($(COMP),gcc)
 	CXXFLAGS += -msse
@@ -99,7 +90,7 @@ help:
 	@echo "  n ="
 	@echo "	0: Compile optimized binary (-03)"
 	@echo "	1: Compile with profile guided optimization (PGO)"
-	@echo "	2: Compile for deugging (default)"
+	@echo "	2: Compile for debugging (default)"
 	@echo "	3: Prepare for PGO"
 	@echo ""
 	@echo "  c ="
