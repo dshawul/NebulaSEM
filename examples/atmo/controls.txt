@@ -3,14 +3,14 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       piso
+    solver                       euler
     mesh                         grid
 
 ######################################
 #  Fluid properties specific to solver
 ######################################
-    rho                          1.1614
-    viscosity                    1.846e-5
+    rho                          1.177
+    viscosity                    1.568e-5
 	
 #############################
 #  Time increment
@@ -18,29 +18,31 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     10000
-    write_interval               1000
-    dt                           0.1
+    end_step                     2000
+    write_interval               2000
+    dt                           0.025
+    n_deferred                   0
 
 ############################
 #  Discretization schemes
 ############################
 
-    convection_scheme            HYBRID
-    interpolation_scheme         CDS
+    convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-    time_scheme_factor           1
+    implicit_factor              0
     blend_factor                 0.2
+    parallel_method              BLOCKED
+    print                        YES
 
 ############################
 #  Solver options
 ############################
 
     method                       PCG
+    preconditioner               SSOR
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
-    ghost_exchange               BLOCKED
 
 ############################
 #  Probe locations
@@ -59,7 +61,7 @@ piso
     pressure_UR                  0.3
     n_PISO                       2
     n_ORTHO                      0
-    buoyancy                     BOUSSINESQ_T2
+    buoyancy                     BOUSSINESQ_T1
 }
 
 turbulence

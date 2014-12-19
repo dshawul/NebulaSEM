@@ -14,7 +14,7 @@ namespace GENERAL {
 	Scalar Prt = 0.7;
 	Scalar beta = 3.33e-3;
 	Scalar T0 = 300;
-	Scalar P0 = 10000;
+	Scalar P0 = 101325;
 	Scalar cp = 1004.67;
 	Scalar cv = 715.5;
 	
@@ -250,7 +250,7 @@ void piso(istream& input) {
 	if (turb->needWallDist())
 		Mesh::calc_walldist(Iteration::get_start());
 
-	/*Calculate for each time step*/
+	/*Time loop*/
 	Iteration it;
 	ScalarCellField po = p;
 	VectorCellField gP = -grad(p);
@@ -300,7 +300,7 @@ void piso(istream& input) {
 		/*
 		 * Correction
 		 */
-		ScalarCellField api = fillBCs(1.0 / M.ap);
+		ScalarCellField api = fillBCs(1.0 / M.ap,true);
 		ScalarCellField rmu = rho * api * Mesh::cV;
 
 		/*PISO loop*/
@@ -353,25 +353,29 @@ void piso(istream& input) {
   Euler equations solver
   ~~~~~~~~~~~~~~~~~~~~~~
   d(rho*(1))/dt + div(1,F,0) = 0
-  d(rho*(U))/dt + div(U,F,0) = -grad(p)
+  d(rho*(U))/dt + div(U,F,0) = -grad(p) + rho * gravity
   d(rho*(T))/dt + div(T,F,0) = 0
   \endverbatim
  */
 void euler(istream& input) {
 	/*Solver specific parameters*/
-	Scalar rho_UR = Scalar(0.5);
+	Scalar pressure_UR = Scalar(0.5);
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar t_UR = Scalar(0.8);
+	Int buoyancy = true;
 
 	/*transport*/
 	Util::ParamList params("euler");
-	params.enroll("rho_UR",&rho_UR);
-	params.enroll("t_UR", &t_UR);
 	params.enroll("velocity_UR", &velocity_UR);
+	params.enroll("pressure_UR", &pressure_UR);
+	params.enroll("t_UR", &t_UR);
+	Util::Option* op = new Util::BoolOption(&buoyancy);
+	params.enroll("buoyancy",op);
 
-	ScalarCellField rho("rho",READWRITE);
-	VectorCellField U("U", READWRITE);
+	ScalarCellField p("p",READWRITE);
+	VectorCellField U("U",READWRITE);
 	ScalarCellField T("T",READWRITE);
+	ScalarCellField rho("rho",NO);
 
 	/*read parameters*/
 	Util::read_params(input);
@@ -385,16 +389,31 @@ void euler(istream& input) {
 		p_factor = P0 * pow(R / P0, gamma);
 	}
 	
-	/*Calculate for each time step*/
+	/*Read fields*/
+	Iteration it;
 	ScalarFacetField F;
 	VectorCellField Fc;
-	for (Iteration it; !it.end(); it.next()) {
+	
+	/*form rho BCs*/
+	Mesh::duplicateBC<Scalar>(p.fName,rho.fName);
+	
+	/*calculate rho from p*/
+	rho = pow(p / p_factor, 1 / gamma) / T;
+	applyExplicitBCs(rho, true);
+	
+	/*mean rho*/
+	Scalar rho_mean = Scalar(0);
+	forEach(rho,i) rho_mean += rho[i];
+	rho_mean /= rho.size();
+	
+	/*Time loop*/
+	for (; !it.end(); it.next()) {
 		Fc = rho * U;
 		F = flx(Fc);
 		/*rho-equation*/
 		{
 			ScalarCellMatrix M;
-			M = convection(rho, Fc, F, Scalar(1), rho_UR);
+			M = convection(rho, U, flx(U), Scalar(1), pressure_UR);
 			Solve(M);
 		}
 		/*T-equation*/
@@ -404,12 +423,18 @@ void euler(istream& input) {
 			Solve(M);
 		}
 		/*U-equation*/
-		{
-			ScalarCellField p = p_factor * pow(rho * T, gamma);
+		{	
+			VectorCellField Sc = Vector(0);
+			if(buoyancy)
+				Sc += ((rho - rho_mean) * VectorCellField(Controls::gravity));
+			
 			VectorCellMatrix M;
-			M = convection(U, Fc, F, rho, velocity_UR);
+			M = convection(U, Fc, F, rho, velocity_UR, Sc, Scalar(0));
 			Solve(M == -grad(p));
 		}
+		/*calculate p*/
+		p = p_factor * pow(rho * T, gamma);
+		applyExplicitBCs(p, true);
 	}
 }
 
@@ -437,7 +462,7 @@ void diffusion(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*Calculate for each time step*/
+	/*Time loop*/
 	ScalarFacetField mu = rho * DT;
 	for (Iteration it; !it.end(); it.next()) {
 		ScalarCellMatrix M;
@@ -469,7 +494,7 @@ void convection(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 	
-	/*Calculate for each time step*/
+	/*Time loop*/
 	Iteration it;
 	VectorCellField Fc = rho * U;
 	ScalarFacetField F = flx(Fc);
@@ -505,7 +530,7 @@ void transport(istream& input) {
 	/*read parameters*/
 	Util::read_params(input);
 
-	/*Calculate for each time step*/
+	/*Time loop*/
 	Iteration it;
 	ScalarFacetField F = flx(rho * U), mu = rho * DT;
 	for (; !it.end(); it.next()) {
@@ -557,6 +582,7 @@ void potential(istream& input) {
 	applyExplicitBCs(U, true);
 	applyExplicitBCs(p, true);
 
+	/*Time loop*/
 	for (Iteration it; it.start(); it.next()) {
 		/*solve potential equation*/
 		ScalarCellField divU = div(U);

@@ -1254,7 +1254,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
  * Fill boundary from internal values
  * **************************************/
 template<class T,ENTITY E>
-const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF) {
+const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF,
+			 bool update_ghost = false) {
 	/*neumann update*/
 	using namespace Mesh;
 	forEachS(gCells,i,gBCS) {
@@ -1264,9 +1265,12 @@ const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF) {
 			cF[gFN[k]] = cF[gFO[k]];
 		}
 	}
+	/*ghost cells*/
+	if(update_ghost && gInterMesh.size()) {
+		exchange_ghost(&cF[0]);
+	}
 	return cF;
 }
-
 /* **************************
  * Integrate field operation
  * **************************/
@@ -1383,7 +1387,7 @@ inline TensorCellField grad(const VectorFacetField& p) {
 inline TensorCellField grad(const VectorCellField& p) {
 	return grad(cds(p));
 }
-#define gradi(x) (grad(x)  / Mesh::cV)
+#define gradi(x) fillBCs(grad(x)  / Mesh::cV, true)
 
 /* *********************************************
  * Laplacian field operation
@@ -1479,7 +1483,7 @@ inline VectorCellField div(const TensorFacetField& p) {
 inline VectorCellField div(const TensorCellField& p) {
 	return sum(flx(p));
 }
-#define divi(x)  (div(x)   / Mesh::cV)
+#define divi(x)  fillBCs(div(x)   / Mesh::cV,true)
 
 /* Implicit */
 template<class type>

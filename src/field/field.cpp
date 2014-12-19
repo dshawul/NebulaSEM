@@ -37,7 +37,7 @@ namespace Controls {
 	Int end_step = 2;
 	Int n_deferred = 0;
 	Int save_average = 0;
-	Int print = 0;
+	Int print = 1;
 	CommMethod parallel_method = BLOCKED;
 	Vector gravity = Vector(0,-9.81,0);
 }
