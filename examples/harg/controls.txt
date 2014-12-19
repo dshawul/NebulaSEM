@@ -26,9 +26,8 @@ general
 ############################
 
     convection_scheme            HYBRID
-    interpolation_scheme         CDS
     nonortho_scheme              OVER_RELAXED
-    time_scheme_factor           1
+    implicit_factor              1
     blend_factor                 0.2
 
 ############################

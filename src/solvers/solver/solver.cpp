@@ -92,7 +92,17 @@ int main(int argc, char* argv[]) {
 	} else if (!Util::compare(sname, "walldist")) {
 		walldist(input);
 	}
-
+	
+#ifdef _DEBUG
+	/*print memory usage*/
+	std::cout << "================================================" << std::endl;
+	std::cout << "Memory Usage:" << std::endl;
+	forEachCellField(printUsage());
+	forEachFacetField(printUsage());
+	forEachVertexField(printUsage());
+	std::cout << "================================================" << std::endl;
+#endif	
+	
 	return 0;
 }
 /**
@@ -126,7 +136,7 @@ public:
 		if(i > endi)
 			return true;
 		/*iteration number*/
-		if(MP::host_id == 0 && Controls::print) {
+		if(MP::printOn) {
 			if(Controls::state == Controls::STEADY)
 				MP::printH("Step %d\n",i);
 			else
@@ -139,6 +149,9 @@ public:
 		if(idf <= n_deferred)
 			return;
 		idf = 0;
+		
+		/*set output printing*/
+		MP::printOn = (MP::host_id == 0 && MP::hasElapsed(Controls::print_time)); 
 		
 		/*update time series*/
 		forEachCellField(updateTimeSeries(i));
@@ -253,7 +266,7 @@ void piso(istream& input) {
 	/*Time loop*/
 	Iteration it;
 	ScalarCellField po = p;
-	VectorCellField gP = -grad(p);
+	VectorCellField gP = -gradf(p);
 	F = flx(rho * U);
 
 	for (; !it.end(); it.next()) {
@@ -311,13 +324,13 @@ void piso(istream& input) {
 
 			/*solve pressure poisson equation to satisfy continuity*/
 			{
-				ScalarCellField rhs = div(rho * U);
+				ScalarCellField rhs = divf(rho * U);
 				for (Int k = 0; k <= n_ORTHO; k++)
 					Solve(lap(p, rmu) += rhs);
 			}
 
 			/*explicit velocity correction : add pressure contribution*/
-			gP = -grad(p);
+			gP = -gradf(p);
 			U -= gP * api;
 			applyExplicitBCs(U, true);
 		}
@@ -332,7 +345,7 @@ void piso(istream& input) {
 		/*explicitly under relax pressure*/
 		if (Controls::state == Controls::STEADY) {
 			p.Relax(po, pressure_UR);
-			gP = -grad(p);
+			gP = -gradf(p);
 			po = p;
 		}
 	}
@@ -362,7 +375,8 @@ void euler(istream& input) {
 	Scalar pressure_UR = Scalar(0.5);
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar t_UR = Scalar(0.8);
-	Int buoyancy = true;
+	Int buoyancy = 1;
+	Int diffusion = 0;
 
 	/*transport*/
 	Util::ParamList params("euler");
@@ -371,6 +385,8 @@ void euler(istream& input) {
 	params.enroll("t_UR", &t_UR);
 	Util::Option* op = new Util::BoolOption(&buoyancy);
 	params.enroll("buoyancy",op);
+	op = new Util::BoolOption(&diffusion);
+	params.enroll("diffusion",op);
 
 	ScalarCellField p("p",READWRITE);
 	VectorCellField U("U",READWRITE);
@@ -425,12 +441,19 @@ void euler(istream& input) {
 		/*U-equation*/
 		{	
 			VectorCellField Sc = Vector(0);
-			if(buoyancy)
+			/*buoyancy*/
+			if(buoyancy) {
 				Sc += ((rho - rho_mean) * VectorCellField(Controls::gravity));
-			
+			}
+			/*artificial viscosity*/
+			if(diffusion){
+				ScalarCellField visc = GENERAL::viscosity;
+				Sc += lapi(U,visc);
+			}
+			/*solve*/
 			VectorCellMatrix M;
 			M = convection(U, Fc, F, rho, velocity_UR, Sc, Scalar(0));
-			Solve(M == -grad(p));
+			Solve(M == -gradf(p));
 		}
 		/*calculate p*/
 		p = p_factor * pow(rho * T, gamma);
@@ -585,7 +608,7 @@ void potential(istream& input) {
 	/*Time loop*/
 	for (Iteration it; it.start(); it.next()) {
 		/*solve potential equation*/
-		ScalarCellField divU = div(U);
+		ScalarCellField divU = divf(U);
 		ScalarFacetField one = Scalar(1);
 		for (Int k = 0; k <= n_ORTHO; k++)
 			Solve(lap(p, one) == divU);

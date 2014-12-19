@@ -24,6 +24,7 @@ public:
 	static char host_name[512];
 	static int _start_time;
 	static bool Terminated;
+	static bool printOn;
 	static void cleanup();
 	static void loop();
 	static void barrier();
@@ -32,6 +33,7 @@ public:
 	static void recieve(int,int);
 	static void printH(const char* format,...);
 	static void print(const char* format,...);
+	static bool hasElapsed(const int);
 
 	/*send and recieve messages*/
 	template <class type>

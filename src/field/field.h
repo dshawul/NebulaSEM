@@ -57,7 +57,7 @@ namespace Controls {
 	extern Int end_step;
 	extern Int n_deferred;
 	extern Int save_average;
-	extern Int print;
+	extern Int print_time;
 
 	extern Vector gravity;
 }
@@ -433,6 +433,16 @@ public:
 		forEach(p,i)
 			is >> p[i];
 		return is;
+	}
+	/*Memory usage*/
+	static void printUsage() {
+		if(mem_.size()) {
+			std::cout << mem_.size() 
+				<< " fields of vector of size " 
+				<< TYPE_SIZE 
+				<< " at " << entity
+				<< std::endl;
+		}
 	}
 };
 #define forEachCellField(X)	 { 		\
@@ -1348,6 +1358,8 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 /* *******************************
  * Linearized source term
  * *******************************/
+
+/*Implicit*/
 template<class type>
 MeshMatrix<type> src(MeshField<type,CELL>& cF,const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
 	MeshMatrix<type> m;
@@ -1361,37 +1373,42 @@ MeshMatrix<type> src(MeshField<type,CELL>& cF,const MeshField<type,CELL>& Su,con
 	m.an[1] = Scalar(0);
 	return m;
 }
+
 /*Explicit*/
 template<class type>
-MeshField<type,CELL> src(const MeshField<type,CELL>& Su) {
+MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
 	return (Su * Mesh::cV);
 }
-template<class type>
-MeshField<type,CELL> srci(const MeshField<type,CELL>& Su) {
-	return (Su);
-} 
+
  /***********************************************
  * Gradient field operation.
  ***********************************************/
 
 /*Explicit*/
-inline VectorCellField grad(const ScalarFacetField& p) {
+inline VectorCellField gradf(const ScalarFacetField& p) {
 	return sum(mul(Mesh::fN,p));
 }
-inline VectorCellField grad(const ScalarCellField& p) {
-	return grad(cds(p));
+inline VectorCellField gradf(const ScalarCellField& p) {
+	return gradf(cds(p));
 }
-inline TensorCellField grad(const VectorFacetField& p) {
+inline TensorCellField gradf(const VectorFacetField& p) {
 	return sum(mul(Mesh::fN,p));
 }
-inline TensorCellField grad(const VectorCellField& p) {
-	return grad(cds(p));
+inline TensorCellField gradf(const VectorCellField& p) {
+	return gradf(cds(p));
 }
-#define gradi(x) fillBCs(grad(x)  / Mesh::cV, true)
+#define gradi(x) fillBCs(gradf(x)  / Mesh::cV, true)
 
 /* *********************************************
  * Laplacian field operation
  * ********************************************/
+
+/*Explicit*/
+template<class type, ENTITY entity>
+MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
+	return divf(mu * gradi(cF));
+}
+#define lapi(x,y) fillBCs(lapf(x,y)  / Mesh::cV, true)
 
 /*Implicit*/
 template<class type>
@@ -1471,19 +1488,19 @@ inline VectorFacetField flx(const TensorCellField& p) {
 	return flx(cds(p));
 }
 /* Explicit */
-inline ScalarCellField div(const VectorFacetField& p) {
+inline ScalarCellField divf(const VectorFacetField& p) {
 	return sum(flx(p));
 }
-inline ScalarCellField div(const VectorCellField& p) {
+inline ScalarCellField divf(const VectorCellField& p) {
 	return sum(flx(p));
 }
-inline VectorCellField div(const TensorFacetField& p) {
+inline VectorCellField divf(const TensorFacetField& p) {
 	return sum(flx(p));
 }
-inline VectorCellField div(const TensorCellField& p) {
+inline VectorCellField divf(const TensorCellField& p) {
 	return sum(flx(p));
 }
-#define divi(x)  fillBCs(div(x)   / Mesh::cV,true)
+#define divi(x)  fillBCs(divf(x)   / Mesh::cV,true)
 
 /* Implicit */
 template<class type>
@@ -1670,11 +1687,6 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		m.Su = sum(flux * corr);
 	}
 	return m;
-}
-
-template<class type,ENTITY E>
-inline MeshMatrix<type> div(MeshField<type,CELL>& cF,const MeshField<Vector,E>& rhoU,const ScalarFacetField& mu) {
-	return div(cF,rhoU,div(rhoU),mu);
 }
 
 /* *******************************

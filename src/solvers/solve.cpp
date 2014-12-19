@@ -40,7 +40,6 @@ void SolveT(const MeshMatrix<type>& M) {
 	/****************************
 	 * Parallel controls
 	 ***************************/
-	bool print = (MP::host_id == 0 && Controls::print);
 	int  end_count = 0;
 	bool sync = (Controls::parallel_method == Controls::BLOCKED)
 		&& gInterMesh.size();
@@ -49,7 +48,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	/****************************
 	 * Identify solver type
 	 ***************************/
-	if(print) {
+	if(MP::printOn) {
 		if(M.flags & M.SYMMETRIC)
 			MP::printH("SYMM-");
 		else
@@ -456,13 +455,13 @@ PROBE:
 	}
 
 	/*solver info*/
-	if(print)
+	if(MP::printOn)
 		MP::print("Iterations %d Initial Residual "
 		"%.5e Final Residual %.5e\n",iterations,ires,res);
 }
 template<class type>
 void SolveTexplicit(const MeshMatrix<type>& M) {
-	if(MP::host_id == 0 && Controls::print) {
+	if(MP::printOn) {
 		MP::printH("DIAG-DIAG:");
 		MP::print("Iterations %d Initial Residual "
 		"%.5e Final Residual %.5e\n",1,0.0,0.0);

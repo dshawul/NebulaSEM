@@ -18,21 +18,21 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     2000
-    write_interval               2000
-    dt                           0.025
+    end_step                     82000
+    write_interval               82000
+    dt                           0.005
     n_deferred                   0
 
 ############################
 #  Discretization schemes
 ############################
 
-    convection_scheme            BLENDED
+    convection_scheme            CDS
     nonortho_scheme              OVER_RELAXED
     implicit_factor              0
     blend_factor                 0.2
     parallel_method              BLOCKED
-    print                        YES
+    print_time                   1000
 
 ############################
 #  Solver options

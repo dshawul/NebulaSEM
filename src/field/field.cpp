@@ -37,7 +37,7 @@ namespace Controls {
 	Int end_step = 2;
 	Int n_deferred = 0;
 	Int save_average = 0;
-	Int print = 1;
+	Int print_time = 0;
 	CommMethod parallel_method = BLOCKED;
 	Vector gravity = Vector(0,-9.81,0);
 }
@@ -255,8 +255,7 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("parallel_method",op);
 	op = new Util::BoolOption(&save_average);
 	params.enroll("average",op);
-	op = new Util::BoolOption(&print);
-	params.enroll("print",op);
+	params.enroll("print_time",&print_time);
 	params.enroll("NPX",&DG::Nop[0]);
 	params.enroll("NPY",&DG::Nop[1]);
 	params.enroll("NPZ",&DG::Nop[2]);
