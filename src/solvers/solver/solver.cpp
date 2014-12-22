@@ -95,12 +95,12 @@ int main(int argc, char* argv[]) {
 	
 #ifdef _DEBUG
 	/*print memory usage*/
-	std::cout << "================================================" << std::endl;
+	std::cout << "====================================" << std::endl;
 	std::cout << "Memory Usage:" << std::endl;
 	forEachCellField(printUsage());
 	forEachFacetField(printUsage());
 	forEachVertexField(printUsage());
-	std::cout << "================================================" << std::endl;
+	std::cout << "====================================" << std::endl;
 #endif	
 	
 	return 0;
@@ -458,6 +458,9 @@ void euler(istream& input) {
 		/*calculate p*/
 		p = p_factor * pow(rho * T, gamma);
 		applyExplicitBCs(p, true);
+		/*cournat number*/
+		if(Controls::state != Controls::STEADY)
+			Mesh::calc_courant(U,Controls::dt);
 	}
 }
 

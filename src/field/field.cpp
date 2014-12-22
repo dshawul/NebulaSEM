@@ -198,6 +198,18 @@ void Mesh::getProbeFaces(IntVector& probes) {
 		probes.push_back(index);
 	}
 }
+void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
+	if(MP::printOn) {
+		ScalarCellField Courant;
+		Courant = mag(U) * dt / pow(cV,1.0/3);
+		Scalar minc = 1.0e200, maxc = 0.0;
+		forEach(Courant,i) {
+			if(Courant[i] < minc) minc = Courant[i];
+			if(Courant[i] > maxc) maxc = Courant[i];
+		}
+		MP::printH("Courant number: Max: %g Min: %g\n",maxc,minc);
+	}
+}
 /*
  * Read/Write
  */

@@ -94,6 +94,7 @@ public:
 	static const Int TYPE_SIZE = sizeof(type) / sizeof(Scalar);
 	static std::list<MeshField*> fields_;
 	static std::list<type*> mem_;
+	static Int n_alloc,n_alloc_max;
 
     /*constructors*/
 	MeshField(const char* str = "", ACCESS a = NO,bool recycle = true) : 
@@ -131,6 +132,9 @@ public:
 			P = mem_.front();
 			mem_.pop_front();
 		}
+		n_alloc++;
+		if(n_alloc > n_alloc_max)
+			n_alloc_max = n_alloc;
 		allocated = 1;
 	}
 	void allocate(std::vector<type>& q) {
@@ -149,6 +153,7 @@ public:
 			}
 			if(fIndex)
 				fields_.remove(this);
+			n_alloc--;
 		}
 	}
 	void construct(const char* str = "", ACCESS a = NO, bool recycle = true) {
@@ -309,6 +314,7 @@ public:
 		forEachIt(typename std::list<type*>,mem_,it)
 			delete (*it);
 		mem_.clear();
+		n_alloc = 0;
 	} 
 	static int count_writable() {
 		int count = 0;
@@ -436,8 +442,8 @@ public:
 	}
 	/*Memory usage*/
 	static void printUsage() {
-		if(mem_.size()) {
-			std::cout << mem_.size() 
+		if(n_alloc_max) {
+			std::cout << n_alloc_max
 				<< " fields of vector of size " 
 				<< TYPE_SIZE 
 				<< " at " << entity
@@ -557,6 +563,12 @@ template <class T,ENTITY E>
 std::list<T*> MeshField<T,E>::mem_;
 
 template <class T,ENTITY E> 
+Int MeshField<T,E>::n_alloc;
+
+template <class T,ENTITY E> 
+Int MeshField<T,E>::n_alloc_max;
+
+template <class T,ENTITY E> 
 Int MeshField<T,E>::SIZE;
 
 template <class T,ENTITY E>
@@ -595,6 +607,7 @@ namespace Mesh {
 	Int    findNearestFace(const Vector& v);
 	void   getProbeCells(IntVector&);
 	void   getProbeFaces(IntVector&);
+	void   calc_courant(const VectorCellField& U, Scalar dt);
 }
 
 /* **********************************************
