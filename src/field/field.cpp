@@ -128,6 +128,7 @@ void Mesh::initGeomMeshFields() {
 			Scalar s2 = mag(cC[c2] - fC[k]) + 
 						Constants::MachineEpsilon;
 			fI[k] = 1.f - s1 / (s1 + s2);
+			
 			if(DG::NPMAT && c2 >= gBCSfield) 
 				fI[k] = 0.5;
 		}
@@ -199,15 +200,19 @@ void Mesh::getProbeFaces(IntVector& probes) {
 	}
 }
 void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
+	ScalarCellField Courant;
+	Courant = mag(U) * dt / pow(cV,1.0/3);
+	Scalar minc = 1.0e200, maxc = 0.0;
+	forEach(Courant,i) {
+		if(Courant[i] < minc) minc = Courant[i];
+		if(Courant[i] > maxc) maxc = Courant[i];
+	}
+	Scalar globalmax, globalmin;
+	MP::allreduce(&maxc,&globalmax,1,MP::OP_MAX);
+	MP::allreduce(&minc,&globalmin,1,MP::OP_MIN);
 	if(MP::printOn) {
-		ScalarCellField Courant;
-		Courant = mag(U) * dt / pow(cV,1.0/3);
-		Scalar minc = 1.0e200, maxc = 0.0;
-		forEach(Courant,i) {
-			if(Courant[i] < minc) minc = Courant[i];
-			if(Courant[i] > maxc) maxc = Courant[i];
-		}
-		MP::printH("Courant number: Max: %g Min: %g\n",maxc,minc);
+		MP::printH("Courant number: Max: %g Min: %g\n",
+			globalmax,globalmin);
 	}
 }
 /*

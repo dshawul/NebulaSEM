@@ -262,7 +262,6 @@ public:
 		if(SIZE == 6) r += Unroll<3>::dot(&p.P[3],&q.P[3]);
 		return r;
 	}
-
 	/*unrolled operations*/
 #define Op(name,$)													\
 	TTensor& operator $(const TTensor& q) {							\
@@ -333,6 +332,12 @@ public:
 	AddOperators(TTensor)
 	AddScalarOperators(TTensor)
 	/*others*/
+	friend Scalar dot(const TTensor& p,const TTensor& q) {
+		return p & q;
+	}
+	friend TTensor mul(const TTensor& p,const Scalar& q) {
+		return p * q;
+	}
 	friend Scalar magSq(const TTensor& p) {
 		return (p & p);
 	}

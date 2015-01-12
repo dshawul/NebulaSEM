@@ -1398,121 +1398,78 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
  ***********************************************/
 
 /*Explicit*/
-inline VectorCellField gradf(const ScalarFacetField& p) {
-	return sum(mul(Mesh::fN,p));
+#define GRAD(T1,T2)																			\
+inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
+	using namespace Mesh;																	\
+	using namespace DG;																		\
+	MeshField<T1,CELL> r;																	\
+																							\
+	r = sum(mul(Mesh::fN,cds(p)));															\
+																							\
+	if(NPMAT) {																				\
+		for(Int ci = 0; ci < gBCS;ci++) {													\
+			forEachLgl(ii,jj,kk) {															\
+				Int index = INDEX4(ci,ii,jj,kk);											\
+				forEachLgl(i,j,k) {															\
+					Tensor& Jin = Jinv[index];												\
+					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
+					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
+					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
+					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
+					r[index] += (mul(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
+				}																			\
+			}																				\
+		}																					\
+	}																						\
+																							\
+	return r;																				\
 }
-inline VectorCellField gradf(const ScalarCellField& p) {
-	return gradf(cds(p));
-}
-inline TensorCellField gradf(const VectorFacetField& p) {
-	return sum(mul(Mesh::fN,p));
-}
-inline TensorCellField gradf(const VectorCellField& p) {
-	return gradf(cds(p));
-}
+
+GRAD(Vector,Scalar);
+GRAD(Tensor,Vector);
+#undef GRAD
+
 #define gradi(x) fillBCs(gradf(x)  / Mesh::cV, true)
-
-/* *********************************************
- * Laplacian field operation
- * ********************************************/
-
-/*Explicit*/
-template<class type, ENTITY entity>
-MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
-	return divf(mu * gradi(cF));
-}
-#define lapi(x,y) fillBCs(lapf(x,y)  / Mesh::cV, true)
-
-/*Implicit*/
-template<class type>
-MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarFacetField& mu) {
-	using namespace Controls;
-	using namespace Mesh;
-	MeshMatrix<type> m;
-	VectorFacetField K;
-	Vector dv;
-	Int c1,c2;
-	Scalar D = 0;
-	/*clear*/
-	m.cF = &cF;
-	m.flags |= m.SYMMETRIC;
-	m.Su = type(0);
-	m.ap = Scalar(0);
-	m.adg = Scalar(0);
-	forEach(mu,i) {
-		c1 = gFO[i];
-		c2 = gFN[i];
-		dv = cC[c2] - cC[c1];
-		/*diffusivity coefficient*/
-		if(nonortho_scheme == NONE) {
-			D = mag(fN[i]) / mag(dv);
-		} else {
-			if(nonortho_scheme == OVER_RELAXED) {
-				D = ((fN[i] & fN[i]) / (fN[i] & dv));
-			} else if(nonortho_scheme == MINIMUM) {
-				D = ((fN[i] & dv) / (dv & dv));
-			} else if(nonortho_scheme == ORTHOGONAL) {
-				D = sqrt((fN[i] & fN[i]) / (dv & dv));
-			}
-			K[i] = fN[i] - D * dv;
-		}
-		/*coefficients*/
-		m.an[0][i] = D * mu[i];
-		m.an[1][i] = D * mu[i];
-		m.ap[c1]  += m.an[0][i];
-		m.ap[c2]  += m.an[1][i];
-	}
-	/*non-orthogonality handled through deferred correction*/
-	if(nonortho_scheme != NONE) {
-		MeshField<type,FACET> r = dot(cds(gradi(cF)),K);
-		type res;
-		forEach(mu,i) {
-			c1 = gFO[i];
-			c2 = gFN[i];
-			res = m.an[0][i] * (cF[c2] - cF[c1]);
-			if(mag(r[i]) > Scalar(0.5) * mag(res)) 
-				r[i] = Scalar(0.5) * res;
-		}
-		m.Su = sum(r);
-	}
-	/*end*/
-	return m;
-}
-
-template<class type>
-inline MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& mu) {
-	return lap(cF,cds(mu));
-}
 
 /* ***************************************************
  * Divergence field operation
  * ***************************************************/ 
-/*face flux*/
-inline ScalarFacetField flx(const VectorFacetField& p) {
-	return dot(p,Mesh::fN);
-}
-inline ScalarFacetField flx(const VectorCellField& p) {
-	return flx(cds(p));
-}
-inline VectorFacetField flx(const TensorFacetField& p) {
-	return dot(p,Mesh::fN);
-}
-inline VectorFacetField flx(const TensorCellField& p) {
-	return flx(cds(p));
-}
+
 /* Explicit */
-inline ScalarCellField divf(const VectorFacetField& p) {
-	return sum(flx(p));
+#define DIV(T1,T2)																			\
+inline MeshField<T1,FACET> flx(const MeshField<T2,CELL>& p) {								\
+	return dot(cds(p),Mesh::fN);															\
+}																							\
+inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
+	using namespace Mesh;																	\
+	using namespace DG;																		\
+	MeshField<T1,CELL> r;																	\
+																							\
+	r = sum(flx(p));																		\
+																							\
+	if(NPMAT) {																				\
+		for(Int ci = 0; ci < gBCS;ci++) {													\
+			forEachLgl(ii,jj,kk) {															\
+				Int index = INDEX4(ci,ii,jj,kk);											\
+				forEachLgl(i,j,k) {															\
+					Tensor& Jin = Jinv[index];												\
+					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
+					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
+					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
+					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
+					r[index] += (dot(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
+				}																			\
+			}																				\
+		}																					\
+	}																						\
+																							\
+	return r;																				\
 }
-inline ScalarCellField divf(const VectorCellField& p) {
-	return sum(flx(p));
-}
-inline VectorCellField divf(const TensorFacetField& p) {
-	return sum(flx(p));
-}
-inline VectorCellField divf(const TensorCellField& p) {
-	return sum(flx(p));
-}
+
+DIV(Scalar,Vector);
+DIV(Vector,Tensor);
+#undef DIV
+	
 #define divi(x)  fillBCs(divf(x)   / Mesh::cV,true)
 
 /* Implicit */
@@ -1534,23 +1491,22 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		for(Int ci = 0; ci < gBCS;ci++) {
 			forEachLgl(ii,jj,kk) {
 				Int ind1 = INDEX3(ii,jj,kk);
+				Int index = INDEX4(ci,ii,jj,kk);
 				forEachLgl(i,j,k) {
 					Int ind2 = INDEX3(i,j,k);
-				
-					Int index = INDEX4(ci,ii,jj,kk);
 					Tensor& Jin = Jinv[index];
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
-					Scalar dpsiU = flux_cell[index] & dot(dpsi_j,Jin);
+					Scalar dpsiU = dot(dot(dpsi_j,Jin), flux_cell[index]);
 					Scalar val = dpsiU * cV[index];
-					index = ci * NPMAT + ind2 * NP + ind1;
+					Int indexm = ci * NPMAT + ind2 * NP + ind1;
 					if(ind1 == ind2) {
 						m.ap[ci * NP + ind1] = val;
-						m.adg[index] = 0;
+						m.adg[indexm] = 0;
 					} else {
-						m.adg[index] = -val;
+						m.adg[indexm] = -val;
 					}
 				}
 			}
@@ -1700,6 +1656,78 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		m.Su = sum(flux * corr);
 	}
 	return m;
+}
+
+/* *********************************************
+ * Laplacian field operation
+ * ********************************************/
+
+/*Explicit*/
+template<class type, ENTITY entity>
+MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
+	return divf(mu * gradi(cF));
+}
+#define lapi(x,y) fillBCs(lapf(x,y)  / Mesh::cV, true)
+
+/*Implicit*/
+template<class type>
+MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarFacetField& mu) {
+	using namespace Controls;
+	using namespace Mesh;
+	MeshMatrix<type> m;
+	VectorFacetField K;
+	Vector dv;
+	Int c1,c2;
+	Scalar D = 0;
+	/*clear*/
+	m.cF = &cF;
+	m.flags |= m.SYMMETRIC;
+	m.Su = type(0);
+	m.ap = Scalar(0);
+	m.adg = Scalar(0);
+	forEach(mu,i) {
+		c1 = gFO[i];
+		c2 = gFN[i];
+		dv = cC[c2] - cC[c1];
+		/*diffusivity coefficient*/
+		if(nonortho_scheme == NONE) {
+			D = mag(fN[i]) / mag(dv);
+		} else {
+			if(nonortho_scheme == OVER_RELAXED) {
+				D = ((fN[i] & fN[i]) / (fN[i] & dv));
+			} else if(nonortho_scheme == MINIMUM) {
+				D = ((fN[i] & dv) / (dv & dv));
+			} else if(nonortho_scheme == ORTHOGONAL) {
+				D = sqrt((fN[i] & fN[i]) / (dv & dv));
+			}
+			K[i] = fN[i] - D * dv;
+		}
+		/*coefficients*/
+		m.an[0][i] = D * mu[i];
+		m.an[1][i] = D * mu[i];
+		m.ap[c1]  += m.an[0][i];
+		m.ap[c2]  += m.an[1][i];
+	}
+	/*non-orthogonality handled through deferred correction*/
+	if(nonortho_scheme != NONE) {
+		MeshField<type,FACET> r = dot(cds(gradi(cF)),K);
+		type res;
+		forEach(mu,i) {
+			c1 = gFO[i];
+			c2 = gFN[i];
+			res = m.an[0][i] * (cF[c2] - cF[c1]);
+			if(mag(r[i]) > Scalar(0.5) * mag(res)) 
+				r[i] = Scalar(0.5) * res;
+		}
+		m.Su = sum(r);
+	}
+	/*end*/
+	return m;
+}
+
+template<class type>
+inline MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& mu) {
+	return lap(cF,cds(mu));
 }
 
 /* *******************************

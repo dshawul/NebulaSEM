@@ -14,7 +14,7 @@ INSDIR   = /usr/local/bin
 ######################
 DEBUG = 0
 COMP = gcc
-STRIP = strip
+STRIP = strip $(EXEDIR)/$(EXE)
 RM = rm -rf
 DEFINES =
 
@@ -27,8 +27,12 @@ endif
 ###########################
 #  Compiler flags
 ###########################
-CXXFLAGS = -Wall -fomit-frame-pointer -fstrict-aliasing -fno-rtti $(INC)
+CXXFLAGS = -Wall -fno-rtti $(INC)
 LXXFLAGS = -lm $(LINC)
+
+ifneq ($(DEBUG),2)
+        CXXFLAGS += -fomit-frame-pointer -fstrict-aliasing
+endif
 
 ifeq ($(COMP),gcc)
 	CXXFLAGS += -msse
@@ -46,9 +50,9 @@ ifeq ($(DEBUG),3)
 	STRIP=
 else ifeq ($(DEBUG),2)
 	ifeq ($(COMP),icpc)
-		CXXFLAGS += -g -pg 
+		CXXFLAGS += -g -pg
 	else
-		CXXFLAGS += -g -pg 
+		CXXFLAGS += -g -pg
 		LXXFLAGS += -g -pg
 	endif
 	STRIP=
@@ -79,7 +83,7 @@ clean:
 	$(RM) $(OBJLIST) $(EXEDIR)/$(EXE)
 
 strip:
-	$(STRIP) $(EXEDIR)/$(EXE)
+	$(STRIP)
 
 all: $(EXEDIR)/$(EXE)
 

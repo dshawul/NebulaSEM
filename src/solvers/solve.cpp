@@ -16,7 +16,7 @@ Scalar getResidual(const MeshField<type,entity>& r,
 	}
 	if(sync) {
 		type global_res[2];
-		MP::allsum(res,global_res,2);
+		MP::allreduce(res,global_res,2,MP::OP_SUM);
 		res[0] = global_res[0];
 		res[1] = global_res[1];
 	}
@@ -205,7 +205,7 @@ void SolveT(const MeshMatrix<type>& M) {
 	 ***********************************/
 #define REDUCE(typ,var)	if(sync) {					\
 	typ t;											\
-	MP::allsum(&var,&t,1);							\
+	MP::allreduce(&var,&t,1,MP::OP_SUM);			\
 	var = t;										\
 }
 	/***********************************

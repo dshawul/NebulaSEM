@@ -15,6 +15,9 @@ public:
 	enum {
 		FIELD, END, FIELD_BLK
 	};
+	enum {
+		OP_MAX, OP_MIN, OP_SUM, OP_PROD
+	};
 	MP(int argc,char* argv[]);
 	~MP();
 public:
@@ -47,9 +50,16 @@ public:
 		MPI_Send(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD);
 	}
 	template <class type>
-	static void allsum(type* sendbuf,type* recvbuf,int size) {
+	static void allreduce(type* sendbuf,type* recvbuf,int size, Int op) {
 		const int count = (size * sizeof(type) / sizeof(Scalar));
-		MPI_Allreduce(sendbuf,recvbuf,count,MPI_SCALAR,MPI_SUM,MPI_COMM_WORLD);
+		MPI_Op mpi_op;
+		switch(op) {
+			case OP_MAX: mpi_op = MPI_MAX; break;
+			case OP_MIN: mpi_op = MPI_MIN; break;
+			case OP_SUM: mpi_op = MPI_SUM; break;
+			case OP_PROD: mpi_op = MPI_PROD; break;
+		}
+		MPI_Allreduce(sendbuf,recvbuf,count,MPI_SCALAR,mpi_op,MPI_COMM_WORLD);
 	}
 	template <class type>
 	static void irecieve(type* buffer,int size,int source,int message_id,void* request) {

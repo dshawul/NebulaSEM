@@ -127,7 +127,9 @@ public:
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
 		forEachCellField (initTimeSeries());
-		MP::printH("Starting iterations.\n");
+		MP::printOn = (MP::host_id == 0);
+		if(MP::printOn)
+			MP::printH("Starting iterations.\n");
 	}
 	bool start() {
 		return (i == starti);

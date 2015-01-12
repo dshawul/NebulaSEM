@@ -1,7 +1,7 @@
 #include "field.h"
 
 namespace DG {
-	Int Nop[3] = {0, 0, 0};
+	Int Nop[3] = {1, 1, 1};
 	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
 	
 	Scalar **psi[3];
@@ -229,7 +229,7 @@ void DG::init_geom() {
 	ADDF(5, ry,rz, 1,5,2,6, 5,6,9,10);					\
 	ADDC();												\
 };
-
+		
 		forEachLgl(i,j,k) {
 			ADD();
 			
@@ -255,7 +255,7 @@ void DG::init_geom() {
 					Int index1 = INDEX4(cj,i,j,(NPZ - 1) - ff);
 					gFO[indf] = index0;
 					gFN[indf] = index1;
-					fC[indf] = cC[index0];
+					if(NPZ > 1) fC[indf] = cC[index0];
 					fN[indf] *= wgt;
 				}
 			} else if(face == 2 || face == 3) {
@@ -267,7 +267,7 @@ void DG::init_geom() {
 					Int index1 = INDEX4(cj,i,(NPY - 1) - ff,k);
 					gFO[indf] = index0;
 					gFN[indf] = index1;
-					fC[indf] = cC[index0];
+					if(NPY > 1) fC[indf] = cC[index0];
 					fN[indf] *= wgt;
 				}
 			} else {
@@ -279,7 +279,7 @@ void DG::init_geom() {
 					Int index1 = INDEX4(cj,(NPX - 1) - ff,j,k);
 					gFO[indf] = index0;
 					gFN[indf] = index1;
-					fC[indf] = cC[index0];
+					if(NPX > 1) fC[indf] = cC[index0];
 					fN[indf] *= wgt;
 				}
 			}
@@ -290,6 +290,7 @@ void DG::init_geom() {
 #undef ADDC
 #undef ADD
 	}
+	
 	//boundary cell volumes and centre
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
@@ -325,7 +326,7 @@ void DG::init_basis() {
 			lagrange_der(xgl[i][j],ngl,xgl[i],dpsi[i][j]);
 		}
 	}
-
+	
 	//init geometry
 	init_geom();
 	
