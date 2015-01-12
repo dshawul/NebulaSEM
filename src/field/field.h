@@ -328,9 +328,11 @@ public:
 		MeshField<type,CELL>* pf;
 		forEachIt(typename std::list<MeshField*>, fields_, it) {
 			pf = *it;
+			if(DG::NPMAT)
+				*pf = dgavg(*pf);
 			if(pf->access & WRITE) {
 				os << pf->fName <<" "<< TYPE_SIZE <<" "
-					<< Mesh::gBCSfield << " float" << std::endl;
+					<< Mesh::gBCSfield << " double" << std::endl;
 				for(Int i = 0;i < Mesh::gBCSfield;i++)
 					os << (*pf)[i] << std::endl;
 				os << std::endl;
@@ -343,7 +345,7 @@ public:
 			if((*it)->access & WRITE) {
 				vf = cds(cds(*(*it)));
 				os << (*it)->fName <<" "<< TYPE_SIZE <<" "
-					<< vf.size() << " float" << std::endl;
+					<< vf.size() << " double" << std::endl;
 				forEach(vf,i)
 					os << vf[i] << std::endl;
 				os << std::endl;
@@ -554,7 +556,6 @@ MeshField<Tensor,E> trn(const MeshField<Tensor,E>& p) {
 		r[i] = trn(p[i]);
 	return r;
 }
-
 /*static variables*/
 template <class T,ENTITY E> 
 std::list<MeshField<T,E>*> MeshField<T,E>::fields_;
@@ -1321,7 +1322,18 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
 	}
 	return fF;
 }
-
+/*DG avraging*/
+template <class type>
+MeshField<type,CELL> dgavg(const MeshField<type,CELL>& p) {
+	using namespace Mesh;
+	MeshField<type,CELL> r = p;
+	forEach(fI,i) {
+		type val = (r[gFO[i]] * (fI[i]) + r[gFN[i]] * (1 - fI[i]));
+		r[gFO[i]] = val;
+		r[gFN[i]] = val;
+	}
+	return r;
+}
 /*upwind*/
 template<class type>
 MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const ScalarFacetField& flux) {
@@ -1409,14 +1421,15 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 	if(NPMAT) {																				\
 		for(Int ci = 0; ci < gBCS;ci++) {													\
 			forEachLgl(ii,jj,kk) {															\
-				Int index = INDEX4(ci,ii,jj,kk);											\
+				Int index1 = INDEX4(ci,ii,jj,kk);											\
 				forEachLgl(i,j,k) {															\
+					Int index = INDEX4(ci,i,j,k);											\
 					Tensor& Jin = Jinv[index];												\
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
-					r[index] += (mul(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
+					r[index1] += (mul(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
 				}																			\
 			}																				\
 		}																					\
@@ -1450,14 +1463,15 @@ inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
 	if(NPMAT) {																				\
 		for(Int ci = 0; ci < gBCS;ci++) {													\
 			forEachLgl(ii,jj,kk) {															\
-				Int index = INDEX4(ci,ii,jj,kk);											\
+				Int index1 = INDEX4(ci,ii,jj,kk);											\
 				forEachLgl(i,j,k) {															\
+					Int index = INDEX4(ci,i,j,k);											\
 					Tensor& Jin = Jinv[index];												\
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
-					r[index] += (dot(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
+					r[index1] += (dot(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
 				}																			\
 			}																				\
 		}																					\
@@ -1491,9 +1505,9 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		for(Int ci = 0; ci < gBCS;ci++) {
 			forEachLgl(ii,jj,kk) {
 				Int ind1 = INDEX3(ii,jj,kk);
-				Int index = INDEX4(ci,ii,jj,kk);
 				forEachLgl(i,j,k) {
 					Int ind2 = INDEX3(i,j,k);
+					Int index = INDEX4(ci,ii,jj,kk);
 					Tensor& Jin = Jinv[index];
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];
@@ -1501,9 +1515,9 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
 					Scalar dpsiU = dot(dot(dpsi_j,Jin), flux_cell[index]);
 					Scalar val = dpsiU * cV[index];
-					Int indexm = ci * NPMAT + ind2 * NP + ind1;
+					Int indexm = ci * NPMAT + ind1 * NP + ind2;
 					if(ind1 == ind2) {
-						m.ap[ci * NP + ind1] = val;
+						m.ap[ci * NP + ind2] = val;
 						m.adg[indexm] = 0;
 					} else {
 						m.adg[indexm] = -val;

@@ -1,7 +1,7 @@
 #include "field.h"
 
 namespace DG {
-	Int Nop[3] = {1, 1, 1};
+	Int Nop[3] = {2, 2, 1};
 	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
 	
 	Scalar **psi[3];
@@ -119,7 +119,8 @@ void DG::init_poly() {
 	NPY = Nop[1] + 1;
 	NPZ = Nop[2] + 1;
 	NP = NPX * NPY * NPZ;
-	if(NP > 1) NPMAT = NP * NP;
+	if(NP > 1) 
+		NPMAT = NP * NP;
 	else NPMAT = 0;
 	if(NPX <= NPY && NPX <= NPZ)
 		NPF = NPY * NPZ;
@@ -154,13 +155,13 @@ void DG::init_geom() {
 			
 			Int id = faceID[ci][0];
 			if(id == 2) {
-				Int order[8] = {0,1,5,4,3,2,6,7};
-				for(Int i = 0;i < 8;i++) 
-					vp[order[i]] = vp1[i];
-			} else if(id == 4) {
 				Int order[8] = {0,3,7,4,1,2,6,5};
 				for(Int i = 0;i < 8;i++) 
-					vp[order[i]] = vp1[i];
+					vp[i] = vp1[order[i]];
+			} else if(id == 4) {
+				Int order[8] = {0,1,5,4,3,2,6,7};
+				for(Int i = 0;i < 8;i++) 
+					vp[i] = vp1[order[i]];
 			} else {
 				for(Int i = 0;i < 8;i++) 
 					vp[i] = vp1[i];
@@ -238,7 +239,7 @@ void DG::init_geom() {
 			cC[index] = v;
 			cV[index] *= wgt;
 		}
-		
+
 		forEach(c,mm) {
 			Int face = faceID[ci][mm];
 			Int fi = c[mm];
@@ -284,7 +285,6 @@ void DG::init_geom() {
 				}
 			}
 		}
-
 #undef ADDV
 #undef ADDF
 #undef ADDC

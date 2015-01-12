@@ -339,7 +339,7 @@ public:
 		return p * q;
 	}
 	friend Scalar magSq(const TTensor& p) {
-		return (p & p);
+		return p & p;
 	}
 	friend Scalar mag(const TTensor& p) {
 		return sqrt(magSq(p));

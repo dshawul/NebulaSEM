@@ -45,7 +45,7 @@ void Vtk::write_vtk(Int step) {
 	of << "ASCII" << endl;
 	of << "DATASET UNSTRUCTURED_GRID" << endl;
 	
-	if(!DG::NPMAT) {
+	if(DG::NPMAT <= 1) {
 		/*vertices*/
 		{
 			of << "POINTS " << gVertices.size() << " float" << endl;
@@ -118,11 +118,9 @@ void Vtk::write_vtk(Int step) {
 		}
 		/*hexahedral cells*/
 		{
-			Int product = (NPX - 1) * (NPY - 1) * (NPZ - 1);
-			Int ncells = gBCS * product;
+			Int ncells = gBCS * (NPX - 1) * (NPY - 1) * (NPZ - 1);
 			of << "CELLS " << ncells << " " << ncells * 9 << endl;
-			for(i = 0;i < ncells;i++) {
-				Int ci = i / product;
+			for(Int ci = 0;ci < gBCS;ci++) {
 				for(Int r = 0;r < NPX - 1;r++)
 				for(Int s = 0;s < NPY - 1;s++)
 				for(Int t = 0;t < NPZ - 1;t++)
