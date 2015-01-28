@@ -78,7 +78,6 @@ namespace Mesh {
 	extern  IntVector&       gFNC;
 	extern  Int&             gBCS;
 	extern  Int&             gBCSI;
-	extern  Int&             gBFS;
 	extern  std::vector<interBoundary>& gInterMesh;
 	extern  Vertices         probePoints;
 	extern  Cells            faceID;

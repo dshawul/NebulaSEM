@@ -83,7 +83,6 @@ void Mesh::initGeomMeshFields() {
 	gFN = gFNC;
 	gBCSfield = gBCS * DG::NP;
 	gBCSIfield = gBCSI * DG::NP;
-	gBFSfield = gBFS * DG::NPF;
 	/* Allocate fields*/
 	vC.deallocate(false);
 	vC.allocate(gVertices);

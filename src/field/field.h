@@ -70,7 +70,6 @@ namespace Mesh {
 	extern IntVector  probeCells;
 	extern Int  gBCSfield; 
 	extern Int  gBCSIfield;
-	extern Int  gBFSfield;
 };
 enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
@@ -647,16 +646,15 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 			VectorCellField cB = center;
 			ScalarCellField R = mag((cC - cB) / radius);
 			MeshField<T,E> val = value;
-			val += MeshField<T,E>(perterb / 2) *  exp(-R*R);
+			val += MeshField<T,E>(perterb) *  exp(-R*R);
 			*this = val;
 		} else if(str == "hydrostatic") {
 			T p0;
 			Scalar scale, expon;
 			is >> p0 >> scale >> expon;
-			Vector gu = unit(Controls::gravity);
-			ScalarCellField gz = -dot(cC,VectorCellField(gu));
+			ScalarCellField gz = dot(cC,VectorCellField(Controls::gravity));
 			*this = MeshField<T,E>(p0) * 
-				pow(MeshField<Scalar,E>(1.0) - scale * gz, expon);
+				pow(MeshField<Scalar,E>(1.0) + scale * gz, expon);
 		} else
 			*this = value;
 	} else {
@@ -957,6 +955,7 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const 
 	if(sync) comm.send();
 	
 	r = q * p.ap;
+	
 	if(NPMAT) {
 		for(Int i = 0;i < gBCS;i++) {
 			for(Int j = 0;j < NP;j++) {
@@ -969,18 +968,20 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const 
 		}
 	}
 	
-	for(Int f = 0; f < gBFS; f++) {
-		c1 = gFO[f];
+	forEach(gFN,f) {
 		c2 = gFN[f];
+		if(c2 >= gBCSfield) continue;
+		c1 = gFO[f];
 		r[c1] -= q[c2] * p.an[1][f];
 		r[c2] -= q[c1] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
 	
-	for(Int f = gBFS; f < fI.size(); f++) {
-		c1 = gFO[f];
+	forEach(gFN,f) {
 		c2 = gFN[f];
+		if(c2 < gBCSfield) continue;
+		c1 = gFO[f];
 		r[c1] -= q[c2] * p.an[1][f];
 	}
 	
@@ -998,6 +999,7 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const
 	if(sync) comm.send();
 	
 	r = q * p.ap;
+	
 	if(NPMAT) {
 		for(Int i = 0;i < gBCS;i++) {
 			for(Int j = 0;j < NP;j++) {
@@ -1010,18 +1012,20 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const
 		}
 	}
 	
-	for(Int f = 0; f < gBFS; f++) {
-		c1 = gFO[f];
+	forEach(gFN,f) {
 		c2 = gFN[f];
+		if(c2 >= gBCSfield) continue;
+		c1 = gFO[f];
 		r[c2] -= q[c1] * p.an[1][f];
 		r[c1] -= q[c2] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
 	
-	for(Int f = gBFS; f < fI.size(); f++) {
-		c1 = gFO[f];
+	forEach(gFN,f) {
 		c2 = gFN[f];
+		if(c2 < gBCSfield) continue;
+		c1 = gFO[f];
 		r[c1] -= q[c2] * p.an[0][f];
 	}
 	
@@ -1039,6 +1043,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 	if(sync) comm.send();
 	
 	r = p.Su;
+	
 	if(NPMAT) {
 		for(Int i = 0;i < gBCS;i++) {
 			for(Int j = 0;j < NP;j++) {
@@ -1050,18 +1055,21 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 			}
 		}
 	}
-	for(Int f = 0; f < gBFS; f++) {
-		c1 = gFO[f];
+	
+	forEach(gFN,f) {
 		c2 = gFN[f];
+		if(c2 >= gBCSfield) continue;
+		c1 = gFO[f];
 		r[c1] += (*p.cF)[c2] * p.an[1][f];
 		r[c2] += (*p.cF)[c1] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
 	
-	for(Int f = gBFS; f < fI.size(); f++) {
-		c1 = gFO[f];
+	forEach(gFN,f) {
 		c2 = gFN[f];
+		if(c2 < gBCSfield) continue;
+		c1 = gFO[f];
 		r[c1] += (*p.cF)[c2] * p.an[1][f];
 	}
 	
@@ -1278,9 +1286,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
  * Fill boundary from internal values
  * **************************************/
 template<class T,ENTITY E>
-const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF,
-			 bool update_ghost = false) {
-	/*neumann update*/
+const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF) {
 	using namespace Mesh;
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
@@ -1288,10 +1294,6 @@ const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF,
 			Int k = faceid * DG::NPF + n;
 			cF[gFN[k]] = cF[gFO[k]];
 		}
-	}
-	/*ghost cells*/
-	if(update_ghost && gInterMesh.size()) {
-		exchange_ghost(&cF[0]);
 	}
 	return cF;
 }
@@ -1405,6 +1407,8 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
 	return (Su * Mesh::cV);
 }
 
+#define srci(x) (x)
+
  /***********************************************
  * Gradient field operation.
  ***********************************************/
@@ -1416,24 +1420,29 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 	using namespace DG;																		\
 	MeshField<T1,CELL> r;																	\
 																							\
-	r = sum(mul(Mesh::fN,cds(p)));															\
+	r = sum(mul(fN,cds(p)));																\
 																							\
 	if(NPMAT) {																				\
+		forEach(fI,i) {																		\
+			r[gFO[i]] -= mul(fN[i],p[gFO[i]]);												\
+			r[gFN[i]] += mul(fN[i],p[gFN[i]]);												\
+		}																					\
 		for(Int ci = 0; ci < gBCS;ci++) {													\
 			forEachLgl(ii,jj,kk) {															\
-				Int index1 = INDEX4(ci,ii,jj,kk);											\
+				Int index = INDEX4(ci,ii,jj,kk);											\
+				Tensor Jin = Jinv[index] * cV[index];										\
 				forEachLgl(i,j,k) {															\
-					Int index = INDEX4(ci,i,j,k);											\
-					Tensor& Jin = Jinv[index];												\
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
-					r[index1] += (mul(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
+					r[index] -= mul(dot(dpsi_j,Jin),p[index]);								\
 				}																			\
 			}																				\
 		}																					\
 	}																						\
+																							\
+	fillBCs(r);																				\
 																							\
 	return r;																				\
 }
@@ -1442,7 +1451,7 @@ GRAD(Vector,Scalar);
 GRAD(Tensor,Vector);
 #undef GRAD
 
-#define gradi(x) fillBCs(gradf(x)  / Mesh::cV, true)
+#define gradi(x) (gradf(x)  / Mesh::cV)
 
 /* ***************************************************
  * Divergence field operation
@@ -1458,24 +1467,29 @@ inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
 	using namespace DG;																		\
 	MeshField<T1,CELL> r;																	\
 																							\
-	r = sum(flx(p));																		\
+	r = sum(dot(cds(p),fN));																\
 																							\
 	if(NPMAT) {																				\
+		forEach(fI,i) {																		\
+			r[gFO[i]] -= dot(fN[i],p[gFO[i]]);												\
+			r[gFN[i]] += dot(fN[i],p[gFN[i]]);												\
+		}																					\
 		for(Int ci = 0; ci < gBCS;ci++) {													\
 			forEachLgl(ii,jj,kk) {															\
-				Int index1 = INDEX4(ci,ii,jj,kk);											\
+				Int index = INDEX4(ci,ii,jj,kk);											\
+				Tensor Jin = Jinv[index] * cV[index];										\
 				forEachLgl(i,j,k) {															\
-					Int index = INDEX4(ci,i,j,k);											\
-					Tensor& Jin = Jinv[index];												\
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
-					r[index1] += (dot(dot(dpsi_j,Jin),p[index]) * cV[index]);				\
+					r[index] -= dot(dot(dpsi_j,Jin),p[index]);								\
 				}																			\
 			}																				\
 		}																					\
 	}																						\
+																							\
+	fillBCs(r);																				\
 																							\
 	return r;																				\
 }
@@ -1484,7 +1498,7 @@ DIV(Scalar,Vector);
 DIV(Vector,Tensor);
 #undef DIV
 	
-#define divi(x)  fillBCs(divf(x)   / Mesh::cV,true)
+#define divi(x)  (divf(x)   / Mesh::cV)
 
 /* Implicit */
 template<class type>
@@ -1505,28 +1519,29 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		for(Int ci = 0; ci < gBCS;ci++) {
 			forEachLgl(ii,jj,kk) {
 				Int ind1 = INDEX3(ii,jj,kk);
+				Int index = INDEX4(ci,ii,jj,kk);
+				Vector Jr = dot(flux_cell[index],Jinv[index]) * cV[index];
+				
 				forEachLgl(i,j,k) {
 					Int ind2 = INDEX3(i,j,k);
-					Int index = INDEX4(ci,ii,jj,kk);
-					Tensor& Jin = Jinv[index];
+					
 					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];
 					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];
 					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];
 					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
-					Scalar dpsiU = dot(dot(dpsi_j,Jin), flux_cell[index]);
-					Scalar val = dpsiU * cV[index];
-					Int indexm = ci * NPMAT + ind1 * NP + ind2;
+					Scalar val = -dot(dpsi_j,Jr);
+					
+					Int indexm = ci * NPMAT + ind2 * NP + ind1;
 					if(ind1 == ind2) {
-						m.ap[ci * NP + ind2] = val;
+						m.ap[index] = -val;
 						m.adg[indexm] = 0;
 					} else {
-						m.adg[indexm] = -val;
+						m.adg[indexm] = val;
 					}
 				}
 			}
 		}
 	}
-	
 	/*Implicit convection schemes*/
 	bool isImplicit = (
 		convection_scheme == CDS ||
@@ -1681,7 +1696,7 @@ template<class type, ENTITY entity>
 MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
 	return divf(mu * gradi(cF));
 }
-#define lapi(x,y) fillBCs(lapf(x,y)  / Mesh::cV, true)
+#define lapi(x,y) (lapf(x,y)  / Mesh::cV)
 
 /*Implicit*/
 template<class type>

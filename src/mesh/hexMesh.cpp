@@ -114,7 +114,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	const Int B2 = (nx - 1) * (ny - 0) * (nz - 1);
 	const Int B3 = (nx - 1) * (ny - 1) * (nz - 0);
 	IntVector VI(nx * ny * nz,0);
-	IntVector FI(B1 + B2 + B3, 0);
+	IntVector FI(B1 + B2 + B3,0);
 
 	/*vertices*/
 	Vertex v,v1,v2,vd[12],vf[6];
@@ -233,7 +233,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	for(i = 0;i < nx - 1;i++) {
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 1;k < nz - 1;k++) {
-				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
+				ADD(m, m + nz, m + ny * nz + nz, m + ny * nz);
 				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}
@@ -241,7 +241,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	for(i = 0;i < nx - 1;i++) {
 		for(j = 1;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
-				ADD(m,m + 1,m + ny * nz + 1,m + ny * nz);
+				ADD(m,m + ny * nz,m + ny * nz + 1,m + 1);
 				FI[I2(i,j,k)] = mo.f.size() - 1;
 			}
 		}
@@ -259,7 +259,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	for(k = 0;k < nz; k += (nz - 1)) {
 		for(i = 0;i < nx - 1;i++) {
 			for(j = 0;j < ny - 1;j++) {
-				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
+				ADD(m, m + nz, m + ny * nz + nz, m + ny * nz);
 				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}
@@ -267,7 +267,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	for(j = 0;j < ny;j += (ny - 1)) {
 		for(i = 0;i < nx - 1;i++) {
 			for(k = 0;k < nz - 1;k++) {
-				ADD(m,m + 1,m + ny * nz + 1,m + ny * nz);
+				ADD(m,m + ny * nz,m + ny * nz + 1,m + 1);
 				FI[I2(i,j,k)] = mo.f.size() - 1;
 			}
 		}
@@ -289,11 +289,11 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
 				Cell c;
-				m = I3(i,j,k);;
+				m = I3(i,j,k);
 				c.push_back(FI[m]);
 				c.push_back(FI[m + 1]);
 				
-				m = I2(i,j,k);;
+				m = I2(i,j,k);
 				c.push_back(FI[m]);
 				c.push_back(FI[m + (nz - 1)]);
 				

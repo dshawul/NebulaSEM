@@ -146,5 +146,7 @@ Tensor inv(const Tensor& p) {
 	r[ZX] = p[YX] * p[ZY] - p[YY] * p[ZX];
 	r[ZY] = p[XY] * p[ZX] - p[XX] * p[ZY];
 	Scalar d = p[XX] * r[XX] + p[XY] * r[YX] + p[XZ] * r[ZX];
-	return r / d;
+	if(d == 0) r = Tensor(0);
+	else r /= d;
+	return r;
 }

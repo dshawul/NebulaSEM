@@ -139,7 +139,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
 		TensorCellField gradU = gradi(U);
 		calcEddyViscosity(gradU);
 		setWallEddyMu();
-		fillBCs(eddy_mu,true);
+		fillBCs(eddy_mu);
 		return divi(eddy_mu * dev(trn(gradU),2));
 	};
 

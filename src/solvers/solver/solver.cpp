@@ -315,7 +315,7 @@ void piso(istream& input) {
 		/*
 		 * Correction
 		 */
-		ScalarCellField api = fillBCs(1.0 / M.ap,true);
+		ScalarCellField api = fillBCs(1.0 / M.ap);
 		ScalarCellField rmu = rho * api * Mesh::cV;
 
 		/*PISO loop*/
@@ -397,37 +397,37 @@ void euler(istream& input) {
 
 	/*read parameters*/
 	Util::read_params(input);
-	
-	/*gas constants*/
-	Scalar p_factor, gamma;
-	{
-		using namespace GENERAL;
-		Scalar R = cp - cv;
-		gamma = cp / cv;
-		p_factor = P0 * pow(R / P0, gamma);
-	}
-	
+		
 	/*Read fields*/
 	Iteration it;
 	ScalarFacetField F;
 	VectorCellField Fc;
 	
-	/*form rho BCs*/
+	/*form rho BCs from p's*/
 	Mesh::duplicateBC<Scalar>(p.fName,rho.fName);
-	
+
 	/*calculate rho from p*/
-	rho = pow(p / p_factor, 1 / gamma) / T;
-	applyExplicitBCs(rho, true);
-	
-	/*mean rho*/
-	Scalar rho_mean = Scalar(0);
-	forEach(rho,i) rho_mean += rho[i];
-	rho_mean /= rho.size();
+	ScalarCellField p_ref,rho_ref;
+	Scalar p_factor, gamma;
+	{
+		/*gas constants*/
+		using namespace GENERAL;
+		Scalar R = cp - cv;
+		gamma = cp / cv;
+		p_factor = P0 * pow(R / P0, gamma);
+		
+		/*p0 is reference pressure*/
+		p_ref = p;
+		rho_ref = pow(p_ref / p_factor, 1 / gamma) / T0;
+		rho = pow(p / p_factor, 1 / gamma) / T;
+		applyExplicitBCs(rho, true);
+	}
 	
 	/*Time loop*/
 	for (; !it.end(); it.next()) {
 		Fc = rho * U;
 		F = flx(Fc);
+
 		/*rho-equation*/
 		{
 			ScalarCellMatrix M;
@@ -440,27 +440,28 @@ void euler(istream& input) {
 			M = convection(T, Fc, F, rho, t_UR);
 			Solve(M);
 		}
+		/*calculate p*/
+		p = p_factor * pow(rho * T, gamma);
+		applyExplicitBCs(p, true);
 		/*U-equation*/
 		{	
 			VectorCellField Sc = Vector(0);
 			/*buoyancy*/
 			if(buoyancy) {
-				Sc += ((rho - rho_mean) * VectorCellField(Controls::gravity));
+				Sc += ((rho - rho_ref) * VectorCellField(Controls::gravity));
 			}
 			/*artificial viscosity*/
-			if(diffusion){
+			if(diffusion) {
 				ScalarCellField visc = GENERAL::viscosity;
 				Sc += lapi(U,visc);
 			}
 			/*solve*/
 			VectorCellMatrix M;
 			M = convection(U, Fc, F, rho, velocity_UR, Sc, Scalar(0));
-			Solve(M == -gradf(p));
+			Solve(M == -gradf(p - p_ref));
 		}
-		/*calculate p*/
-		p = p_factor * pow(rho * T, gamma);
-		applyExplicitBCs(p, true);
-		/*cournat number*/
+		
+		/*courant number*/
 		if(Controls::state != Controls::STEADY)
 			Mesh::calc_courant(U,Controls::dt);
 	}

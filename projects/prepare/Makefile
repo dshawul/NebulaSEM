@@ -7,8 +7,9 @@ OBJ = mesh.o tensor.o util.o vtk.o field.o dg.o mp.o prepare.o prepareApp.o
 #############################
 # paths
 ############################
+ALLDIR   = field mesh tensor util vtk mp prepare solvers/piso
 METISDIR = /usr/local
-ALLDIR   = field mesh tensor util vtk mp prepare solvers/piso $(METISDIR)/include
+INC      = -I$(METISDIR)
 LINC     = -lmetis -L$(METISDIR)/lib
 
 #############################

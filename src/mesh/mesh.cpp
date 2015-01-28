@@ -13,7 +13,6 @@ namespace Mesh {
 	IntVector&       gFOC = gMesh.fo;
 	IntVector&       gFNC = gMesh.fn;
 	Int&             gBCS = gMesh.nc;
-	Int&             gBFS = gMesh.nf;
 	Int&             gBCSI = gMesh.nci;
 	vector<BasicBCondition*> AllBConditions;
 	std::vector<interBoundary>& gInterMesh = gMesh.interMesh;
@@ -102,7 +101,7 @@ void Mesh::addBoundaryCells() {
 	cout << "Adding boundary cells. " << endl;
 	
 	using namespace Constants;
-
+	
 	/*neighbor and owner cells of face*/
 	gBCS = gCells.size();
 	gFOC.assign(gFacets.size(),MAX_INT);
@@ -135,65 +134,15 @@ void Mesh::addBoundaryCells() {
 			}
 		}
 	}
-	/*reorder facets*/
-	Int bdry_size;
-	{
-		Facets bfs;
-		IntVector order, allbs;
-		Int count,count1;
-		
-		forEachIt(Boundaries,gBoundaries,it) {
-			IntVector& gB = it->second;	
-			allbs.insert(allbs.end(),gB.begin(),gB.end());
-		}
-		
-		bdry_size = allbs.size();
-		count = gFacets.size() - bdry_size;
-		count1 = 0;
-		gBFS = count;
-		order.assign(gFacets.size(),0);
-		bfs.resize(bdry_size);
-		forEachIt(Boundaries,gBoundaries,it) {
-			IntVector& gB = it->second;	
-			forEach(gB,j) {
-				Int fi = gB[j];
-				gB[j] = count;
-				order[fi] = count;
-				bfs[count1] = gFacets[fi];
-				count++;
-				count1++;
-			}
-		}
-
-		count = 0;
-		forEach(order,i) {
-			if(!order[i])
-				order[i] = count++;
-		}
-
-		std::sort(allbs.begin(),allbs.end());
-		erase_indices(gFacets,allbs);
-		gFacets.insert(gFacets.end(),bfs.begin(),bfs.end());
-
-		gFOC.assign(gFacets.size(),MAX_INT);
-		gFNC.assign(gFacets.size(),MAX_INT);
-		forEach(gCells,i) {
-			Cell& c = gCells[i];
-			forEach(c,j) {
-				Int fi = order[c[j]];
-				c[j] = fi;
-				if(gFOC[fi] == MAX_INT) 
-					gFOC[fi] = i;
-				else 
-					gFNC[fi] = i;
-			}
-		}
-	}
 	/*reorder cells*/
-	{
+	{	
 		Cells bcs;
 		IntVector allbs;
 		Int count = 0;
+		Int bdry_size = 0;
+		
+		forEachIt(Boundaries,gBoundaries,it)
+			bdry_size += it->second.size();
 		bcs.resize(bdry_size);
 		allbs.resize(bdry_size);
 		forEach(gCells,i) {
@@ -345,7 +294,7 @@ void Mesh::removeBoundary(IntVector& fs) {
 			}
 		}
 	}
-
+	
 	/*updated facet id*/
 	forEach(fs,i)
 		Idf[fs[i]] = Constants::MAX_INT;

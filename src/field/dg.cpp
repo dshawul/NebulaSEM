@@ -1,7 +1,7 @@
 #include "field.h"
 
 namespace DG {
-	Int Nop[3] = {2, 2, 1};
+	Int Nop[3] = {0, 0, 0};
 	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
 	
 	Scalar **psi[3];
@@ -14,22 +14,21 @@ namespace DG {
 /** 
 Compute legendre polynomial and its first & second derivatives
 */
-void DG::legendre(int p, Scalar x,
-                   Scalar& L0,Scalar& L0_1,Scalar& L0_2) {
+void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
     Scalar a,b;                
-    Scalar L2,L2_1,L2_2;
-    Scalar L1,L1_1,L1_2;
-    L1 = 0,L1_1 = 0,L1_2 = 0;
-    L0 = 1,L0_1 = 0,L0_2 = 0;
+    Scalar L2, L2_1, L2_2;
+    Scalar L1, L1_1, L1_2;
+    L1 = 0; L1_1 = 0; L1_2 = 0;
+    L0 = 1; L0_1 = 0; L0_2 = 0;
 
     for(int i = 1;i <= p;i++) {
-        L2=L1;L2_1=L1_1;L2_2=L1_2;
-        L1=L0;L1_1=L0_1;L1_2=L0_2;
-        a=(2*i-1.0)/i;
-        b=(i-1.0)/i;
-        L0=a*x*L1 - b*L2;
-        L0_1=a*(L1 + x*L1_1) - b*L2_1;
-        L0_2=a*(2*L1_1 + x*L1_2) - b*L2_2;
+        L2 = L1; L2_1 = L1_1; L2_2 = L1_2;
+        L1 = L0; L1_1 = L0_1; L1_2 = L0_2;
+        a = (2 * i - 1.0)/i;
+        b = (i - 1.0)/i;
+        L0 = a * x * L1 - b * L2;
+        L0_1 = a * (L1 + x * L1_1) - b * L2_1;
+        L0_2 = a * (2 * L1_1 + x * L1_2) - b * L2_2;
     }
 }
 
@@ -49,28 +48,28 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
 	}
 
     for(int i = 1; i <= ph; i++) {
-   		x=cos((2*i-1)*Constants::PI/(2*p+1));
+   		x = cos((2 * i - 1) * Constants::PI / (2 * p + 1));
    		for(int k = 1; k <= 20; k++) {
             legendre(p,x,L0,L0_1,L0_2);
-      		dx=-(1-x*x)*L0_1/(-2*x*L0_1 + (1-x*x)*L0_2);
-      		x=x+dx;
+      		dx = -(1 - x * x) * L0_1 / (-2 * x * L0_1 + (1 - x * x) * L0_2);
+      		x += dx;
       		if(fabs(dx) < 1.0e-20) 
          		break;
         }
-   	    xgl[p+1-i]=x;
-        wgl[p+1-i]=2/(p*(p+1)*L0*L0);
+   	    xgl[p + 1 - i] = x;
+        wgl[p + 1 - i] = 2 / (p * (p + 1) * L0 * L0);
     }
 
     if (p+1 != 2*ph) {
-   		x=0;
+   		x = 0;
    		legendre(p,x,L0,L0_1,L0_2);
-   		xgl[ph]=x;
-   		wgl[ph]=2/(p*(p+1)*L0*L0);
+   		xgl[ph] = x;
+   		wgl[ph] = 2 / (p * (p + 1) * L0 * L0);
 	}
    
     for(int i = 1; i <= ph; i++) {
-   		xgl[i-1]=-xgl[p+1-i];
-   		wgl[i-1]=+wgl[p+1-i];
+   		xgl[i - 1] = -xgl[p + 1 - i];
+   		wgl[i - 1] = +wgl[p + 1 - i];
 	}
 }
 /**
@@ -143,7 +142,6 @@ void DG::init_geom() {
 		Cell& c = gCells[ci];
 		Facet& f1 = gFacets[c[0]];
 		Facet& f2 = gFacets[c[1]];
-		
 		//vertices
 		Vertex vp[8];
 		{
@@ -152,16 +150,15 @@ void DG::init_geom() {
 				vp1[i + 0] = gVertices[f1[i]];
 			forEach(f2,i)
 				vp1[i + 4] = gVertices[f2[i]];	
-			
 			Int id = faceID[ci][0];
 			if(id == 2) {
-				Int order[8] = {0,3,7,4,1,2,6,5};
-				for(Int i = 0;i < 8;i++) 
-					vp[i] = vp1[order[i]];
-			} else if(id == 4) {
 				Int order[8] = {0,1,5,4,3,2,6,7};
 				for(Int i = 0;i < 8;i++) 
-					vp[i] = vp1[order[i]];
+					vp[order[i]] = vp1[i];
+			} else if(id == 4) {
+				Int order[8] = {0,3,7,4,1,2,6,5};
+				for(Int i = 0;i < 8;i++) 
+					vp[order[i]] = vp1[i];
 			} else {
 				for(Int i = 0;i < 8;i++) 
 					vp[i] = vp1[i];
@@ -290,7 +287,6 @@ void DG::init_geom() {
 #undef ADDC
 #undef ADD
 	}
-	
 	//boundary cell volumes and centre
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
@@ -343,20 +339,12 @@ void DG::init_basis() {
 				Scalar dpsi_0 = dpsi[0][ii][i] *  psi[1][jj][j] *  psi[2][kk][k];
 				Scalar dpsi_1 =  psi[0][ii][i] * dpsi[1][jj][j] *  psi[2][kk][k];
 				Scalar dpsi_2 =  psi[0][ii][i] *  psi[1][jj][j] * dpsi[2][kk][k];
-				Ji[XX] += C[0] * dpsi_0;
-				Ji[YX] += C[0] * dpsi_1;
-				Ji[ZX] += C[0] * dpsi_2;
-				Ji[XY] += C[1] * dpsi_0;
-				Ji[YY] += C[1] * dpsi_1;
-				Ji[ZY] += C[1] * dpsi_2;
-				Ji[XZ] += C[2] * dpsi_0;
-				Ji[YZ] += C[2] * dpsi_1;
-				Ji[ZZ] += C[2] * dpsi_2;
+				Ji += mul(Vector(dpsi_0,dpsi_1,dpsi_2),C);
 			}
 			
-			if(NPX == 1) Ji[XX] = 1;
-			if(NPY == 1) Ji[YY] = 1;
-			if(NPZ == 1) Ji[ZZ] = 1;
+			if(NPX == 1) {Ji[XX] = 1; Ji[YX] = 0; Ji[ZX] = 0;}
+			if(NPY == 1) {Ji[YY] = 1; Ji[XY] = 0; Ji[ZY] = 0;}
+			if(NPZ == 1) {Ji[ZZ] = 1; Ji[XZ] = 0; Ji[YZ] = 0;}
 			Ji = inv(Ji);
 			if(NPX == 1) Ji[XX] = 0;
 			if(NPY == 1) Ji[YY] = 0;

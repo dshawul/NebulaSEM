@@ -7,7 +7,7 @@ EXEDIR   = $(BDIR)/bin
 OBJDIR   = $(BDIR)/build
 OBJLIST  = $(addprefix   $(OBJDIR)/, $(OBJ))
 VPATH    = $(addprefix   $(SRCDIR)/, $(ALLDIR))
-INC      = $(addprefix -I$(SRCDIR)/, $(ALLDIR))
+INC     += $(addprefix -I$(SRCDIR)/, $(ALLDIR))
 INSDIR   = /usr/local/bin
 ######################
 # Compiler choice

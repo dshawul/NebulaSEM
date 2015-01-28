@@ -3,51 +3,49 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       euler
+    solver                       convection
     mesh                         grid
 
 ######################################
 #  Fluid properties specific to solver
 ######################################
-    rho                          1.177
-    viscosity                    1.568e-5
-	
+    rho                          1
+    viscosity                    0.1
 #############################
 #  Time increment
 #############################
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     82000
-    write_interval               82000
-    dt                           0.005
-    n_deferred                   0
+    end_step                     5000
+    write_interval               500
+    dt                           0.004
 
 ############################
 #  Discretization schemes
 ############################
 
-    convection_scheme            CDS
+    convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
     implicit_factor              0
-    blend_factor                 0.2
-    parallel_method              BLOCKED
-    print_time                   1000
+    blend_factor                 0.8
 
 ############################
 #  Solver options
 ############################
 
     method                       PCG
-    preconditioner               SSOR
+    preconditioner               DILU
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
+    parallel_method              BLOCKED
 
 ############################
 #  Probe locations
 ############################
-
+    probe 0 {
+    }
 }
 
 
@@ -56,14 +54,27 @@ general
 ######################################
 piso
 {
-    turbulence_model             NONE
-    velocity_UR                  0.7
-    pressure_UR                  0.3
-    n_PISO                       2
+    turbulence_model             KE
+    velocity_UR                  1
+    pressure_UR                  1
+    k_UR                         1
+    x_UR                         1
+    n_PISO                       1
     n_ORTHO                      0
-    buoyancy                     BOUSSINESQ_T1
 }
-
+diffusion
+{
+    DT                           1
+    t_UR                         0.7
+}
+convection
+{
+    t_UR                         0.7
+}transport
+{
+    DT                           0.1
+    t_UR                         1
+}
 turbulence
 {
     k_UR                         0.5

@@ -1,5 +1,6 @@
 size 1
-uniform 100000
+#uniform 101325
+hydrostatic 101325 3.31783e-6 3.474323
 top {
 	type NEUMANN 
 	value 0
