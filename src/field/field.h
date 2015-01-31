@@ -118,7 +118,7 @@ public:
 			switch(entity) {
 				case CELL:   SIZE = Mesh::gCells.size() * DG::NP;	 break;
 				case FACET:  SIZE = Mesh::gFacets.size() * DG::NPF;  break;
-				case VERTEX: SIZE = Mesh::gVertices.size();          break;
+				case VERTEX: SIZE = Mesh::gVertices.size();    	     break;
 				case CELLMAT:SIZE = Mesh::gCells.size() * DG::NPMAT; break;
 			}
 			Int sz = SIZE;
@@ -327,8 +327,6 @@ public:
 		MeshField<type,CELL>* pf;
 		forEachIt(typename std::list<MeshField*>, fields_, it) {
 			pf = *it;
-			if(DG::NPMAT)
-				*pf = dgavg(*pf);
 			if(pf->access & WRITE) {
 				os << pf->fName <<" "<< TYPE_SIZE <<" "
 					<< Mesh::gBCSfield << " double" << std::endl;
@@ -1324,18 +1322,6 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
 	}
 	return fF;
 }
-/*DG avraging*/
-template <class type>
-MeshField<type,CELL> dgavg(const MeshField<type,CELL>& p) {
-	using namespace Mesh;
-	MeshField<type,CELL> r = p;
-	forEach(fI,i) {
-		type val = (r[gFO[i]] * (fI[i]) + r[gFN[i]] * (1 - fI[i]));
-		r[gFO[i]] = val;
-		r[gFN[i]] = val;
-	}
-	return r;
-}
 /*upwind*/
 template<class type>
 MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const ScalarFacetField& flux) {
@@ -1414,6 +1400,12 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
  ***********************************************/
 
 /*Explicit*/
+#define GRADD(im,jm,km) {							\
+	Int index1 = INDEX4(ci,im,jm,km);				\
+	DPSI(im,jm,km);									\
+	r[index] += mul(dot(dpsi_j,Jin),p[index1]);		\
+}
+	
 #define GRAD(T1,T2)																			\
 inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 	using namespace Mesh;																	\
@@ -1431,13 +1423,9 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 			forEachLgl(ii,jj,kk) {															\
 				Int index = INDEX4(ci,ii,jj,kk);											\
 				Tensor Jin = Jinv[index] * cV[index];										\
-				forEachLgl(i,j,k) {															\
-					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
-					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
-					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
-					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
-					r[index] -= mul(dot(dpsi_j,Jin),p[index]);								\
-				}																			\
+				forEachLglX(i) GRADD(i,jj,kk);												\
+				forEachLglY(j) if(j != jj) GRADD(ii,j,kk);									\
+				forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);									\
 			}																				\
 		}																					\
 	}																						\
@@ -1450,6 +1438,7 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 GRAD(Vector,Scalar);
 GRAD(Tensor,Vector);
 #undef GRAD
+#undef GRADD
 
 #define gradi(x) (gradf(x)  / Mesh::cV)
 
@@ -1458,6 +1447,12 @@ GRAD(Tensor,Vector);
  * ***************************************************/ 
 
 /* Explicit */
+#define DIVD(im,jm,km) {							\
+	Int index1 = INDEX4(ci,im,jm,km);				\
+	DPSI(im,jm,km);									\
+	r[index] += dot(dot(dpsi_j,Jin),p[index1]);		\
+}
+
 #define DIV(T1,T2)																			\
 inline MeshField<T1,FACET> flx(const MeshField<T2,CELL>& p) {								\
 	return dot(cds(p),Mesh::fN);															\
@@ -1478,13 +1473,9 @@ inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
 			forEachLgl(ii,jj,kk) {															\
 				Int index = INDEX4(ci,ii,jj,kk);											\
 				Tensor Jin = Jinv[index] * cV[index];										\
-				forEachLgl(i,j,k) {															\
-					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
-					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
-					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
-					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);						\
-					r[index] -= dot(dot(dpsi_j,Jin),p[index]);								\
-				}																			\
+				forEachLglX(i) DIVD(i,jj,kk);												\
+				forEachLglY(j) if(j != jj) DIVD(ii,j,kk);									\
+				forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);									\
 			}																				\
 		}																					\
 	}																						\
@@ -1497,6 +1488,7 @@ inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
 DIV(Scalar,Vector);
 DIV(Vector,Tensor);
 #undef DIV
+#undef DIVD
 	
 #define divi(x)  (divf(x)   / Mesh::cV)
 
@@ -1513,6 +1505,7 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 	m.flags = 0;
 	m.Su = type(0);
 	m.ap = Scalar(0);
+	m.adg = Scalar(0);
 
 	/*compute differentiation matrix - volume integral*/
 	if(NPMAT) {
@@ -1522,23 +1515,23 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 				Int index = INDEX4(ci,ii,jj,kk);
 				Vector Jr = dot(flux_cell[index],Jinv[index]) * cV[index];
 				
-				forEachLgl(i,j,k) {
-					Int ind2 = INDEX3(i,j,k);
-					
-					Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];
-					Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];
-					Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];
-					Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
-					Scalar val = -dot(dpsi_j,Jr);
-					
-					Int indexm = ci * NPMAT + ind2 * NP + ind1;
-					if(ind1 == ind2) {
-						m.ap[index] = -val;
-						m.adg[indexm] = 0;
-					} else {
-						m.adg[indexm] = val;
-					}
-				}
+#define DIVD(im,jm,km) {									\
+	Int ind2 = INDEX3(im,jm,km);							\
+	DPSI(im,jm,km);											\
+	Scalar val = -dot(dpsi_j,Jr);							\
+	Int indexm = ci * NPMAT + ind2 * NP + ind1;				\
+	if(ind1 == ind2) {										\
+		m.ap[index] = -val;									\
+		m.adg[indexm] = 0;									\
+	} else {												\
+		m.adg[indexm] = val;								\
+	}														\
+}
+				forEachLglX(i) DIVD(i,jj,kk);
+				forEachLglY(j) if(j != jj) DIVD(ii,j,kk);
+				forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);
+#undef DIVD
+				
 			}
 		}
 	}

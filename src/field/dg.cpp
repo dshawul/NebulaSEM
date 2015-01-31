@@ -1,7 +1,7 @@
 #include "field.h"
 
 namespace DG {
-	Int Nop[3] = {0, 0, 0};
+	Int Nop[3] = {4, 4, 1};
 	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
 	
 	Scalar **psi[3];
@@ -12,7 +12,7 @@ namespace DG {
 }
 
 /** 
-Compute legendre polynomial and its first & second derivatives
+Compute legendre polynomial and its first & second derivatives, given p and x
 */
 void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
     Scalar a,b;                
@@ -31,7 +31,46 @@ void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
         L0_2 = a * (2 * L1_1 + x * L1_2) - b * L2_2;
     }
 }
+/**
+Compute Legendre-Gauss interpolation points and weights
+*/
+void DG::legendre_gauss(int N, Scalar* xgl, Scalar* wgl) {
+    Scalar L0,L0_1,L0_2;
+	int p = N - 1; 
+    int ph = floor( (p+1)/2 );
+    Scalar x,dx;
 
+	if(N == 1) {
+		xgl[0] = 0;
+		wgl[0] = 2;
+		return;
+	}
+
+    for(int i = 0; i < ph; i++) {
+   		x = cos((2 * i + 1) * Constants::PI / (2 * p + 1));
+   		for(int k = 1; k <= 20; k++) {
+            legendre(p + 1,x,L0,L0_1,L0_2);
+      		dx = -L0/L0_1;
+      		x += dx;
+      		if(fabs(dx) < 1.0e-20) 
+         		break;
+        }
+   	    xgl[p - i] = x;
+        wgl[p - i] = 2 / ((1 - x * x) * L0_1 * L0_1);
+    }
+
+    if (p+1 != 2*ph) {
+   		x = 0;
+   		legendre(p + 1,x,L0,L0_1,L0_2);
+   		xgl[ph] = x;
+   		wgl[ph] = 2 / ((1 - x * x) * L0_1 * L0_1);
+	}
+   
+    for(int i = 0; i < ph; i++) {
+   		xgl[i] = -xgl[p - i];
+   		wgl[i] = +wgl[p - i];
+	}
+}
 /**
 Compute Legendre-Gauss-Lobato interpolation points and weights
 */
@@ -47,8 +86,8 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
 		return;
 	}
 
-    for(int i = 1; i <= ph; i++) {
-   		x = cos((2 * i - 1) * Constants::PI / (2 * p + 1));
+    for(int i = 0; i < ph; i++) {
+   		x = cos((2 * i + 1) * Constants::PI / (2 * p + 1));
    		for(int k = 1; k <= 20; k++) {
             legendre(p,x,L0,L0_1,L0_2);
       		dx = -(1 - x * x) * L0_1 / (-2 * x * L0_1 + (1 - x * x) * L0_2);
@@ -56,8 +95,8 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
       		if(fabs(dx) < 1.0e-20) 
          		break;
         }
-   	    xgl[p + 1 - i] = x;
-        wgl[p + 1 - i] = 2 / (p * (p + 1) * L0 * L0);
+   	    xgl[p - i] = x;
+        wgl[p - i] = 2 / (p * (p + 1) * L0 * L0);
     }
 
     if (p+1 != 2*ph) {
@@ -67,32 +106,26 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
    		wgl[ph] = 2 / (p * (p + 1) * L0 * L0);
 	}
    
-    for(int i = 1; i <= ph; i++) {
-   		xgl[i - 1] = -xgl[p + 1 - i];
-   		wgl[i - 1] = +wgl[p + 1 - i];
+    for(int i = 0; i < ph; i++) {
+   		xgl[i] = -xgl[p - i];
+   		wgl[i] = +wgl[p - i];
 	}
 }
 /**
-Compute lagrange basis function at given point x, given LGL points
+Compute cardinal basis functions
 */
-void DG::lagrange(Scalar x, int N, Scalar* xgl, Scalar* psi) {
-	Scalar xi,xj;
+void DG::cardinal_basis(int v, int N, Scalar* xgl, Scalar* psi) {
 	for(int i = 0;i < N;i++) {
-		psi[i] = 1;
-		xi = xgl[i];
-		for(int j = 0;j < N;j++) {
-			if(i != j) {
-				xj = xgl[j];
-				psi[i] *= ((x - xj) / (xi - xj));
-			}
-		}
+		if(i != v) psi[i] = 0;
+		else psi[i] = 1;
 	}
 }
 /**
 Compute lagrange basis function derivatives at given point x, given LGL points
 */
-void DG::lagrange_der(Scalar x, int N, Scalar* xgl, Scalar* dpsi) {
+void DG::lagrange_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
 	Scalar xi,xj,xk,prod;
+	Scalar x = xgl[v];
 	for(int i = 0;i < N;i++) {
 		dpsi[i] = 0;
 		xi = xgl[i];
@@ -107,6 +140,33 @@ void DG::lagrange_der(Scalar x, int N, Scalar* xgl, Scalar* dpsi) {
 				}
 				dpsi[i] += prod / (xi - xj);
 			}
+		}
+	}
+}
+/**
+Compute lagrange basis function derivatives at given point x, given LGL points
+*/
+void DG::legendre_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
+	Scalar xi,x;
+	Scalar L0,L0_1,L0_2;
+	Scalar L1,L1_1,L1_2;
+	
+	x = xgl[v];
+	legendre(N - 1,x,L1,L1_1,L1_2);
+	
+	for(int i = 0;i < N;i++) {
+		if(i != v) {
+			xi = xgl[i];
+			legendre(N - 1,xi,L0,L0_1,L0_2);
+			
+			dpsi[i] = L1 / (L0 * (x - xi));
+		} else {
+			if(i == 0)
+				dpsi[i] = -(N - 1) * N / 4.0;
+			else if(i == N - 1)
+				dpsi[i] = +(N - 1) * N / 4.0;
+			else
+				dpsi[i] = 0;
 		}
 	}
 }
@@ -236,7 +296,14 @@ void DG::init_geom() {
 			cC[index] = v;
 			cV[index] *= wgt;
 		}
-
+	}	
+#undef ADDV
+#undef ADDF
+#undef ADDC
+#undef ADD
+	
+	for(Int ci = 0; ci < gBCS;ci++) {
+		Cell& c = gCells[ci];
 		forEach(c,mm) {
 			Int face = faceID[ci][mm];
 			Int fi = c[mm];
@@ -244,6 +311,21 @@ void DG::init_geom() {
 			if(cj == ci) 
 				continue;
 			
+#define ADD() {												\
+	gFO[indf] = index0;										\
+	gFN[indf] = index1;										\
+	if(index1 >= gBCSfield) {								\
+		Scalar d=dot(fC[indf] - cC[index0],unit(fN[indf]));	\
+		cC[index1] = cC[index0] + 2 * d * unit(fN[indf]);	\
+	}														\
+	Scalar d;												\
+	if(equal(cC[index0],cC[index1])) d = 0.5;				\
+	else d = dot(fC[indf] - cC[index0],fN[indf]) / 			\
+			 dot(cC[index1] - cC[index0],fN[indf]);			\
+	fC[indf] = cC[index0] + d * (cC[index1] - cC[index0]);	\
+	fN[indf] *= wgt;										\
+}
+
 			if(face == 0 || face == 1) {
 				Int ff = (face == 0) ? 0 : (NPZ - 1);
 				forEachLglXY(i,j) {
@@ -251,10 +333,7 @@ void DG::init_geom() {
 					Int indf = fi * NPF + i * NPY + j;
 					Int index0 = INDEX4(ci,i,j,ff);
 					Int index1 = INDEX4(cj,i,j,(NPZ - 1) - ff);
-					gFO[indf] = index0;
-					gFN[indf] = index1;
-					if(NPZ > 1) fC[indf] = cC[index0];
-					fN[indf] *= wgt;
+					ADD();
 				}
 			} else if(face == 2 || face == 3) {
 				Int ff = (face == 2) ? 0 : (NPY - 1);
@@ -263,10 +342,7 @@ void DG::init_geom() {
 					Int indf = fi * NPF + i * NPZ + k;
 					Int index0 = INDEX4(ci,i,ff,k);
 					Int index1 = INDEX4(cj,i,(NPY - 1) - ff,k);
-					gFO[indf] = index0;
-					gFN[indf] = index1;
-					if(NPY > 1) fC[indf] = cC[index0];
-					fN[indf] *= wgt;
+					ADD();
 				}
 			} else {
 				Int ff = (face == 4) ? 0 : (NPX - 1);
@@ -275,27 +351,20 @@ void DG::init_geom() {
 					Int indf = fi * NPF + j * NPZ + k;
 					Int index0 = INDEX4(ci,ff,j,k);
 					Int index1 = INDEX4(cj,(NPX - 1) - ff,j,k);
-					gFO[indf] = index0;
-					gFN[indf] = index1;
-					if(NPX > 1) fC[indf] = cC[index0];
-					fN[indf] *= wgt;
+					ADD();
 				}
 			}
-		}
-#undef ADDV
-#undef ADDF
-#undef ADDC
+			
 #undef ADD
+		}
 	}
-	//boundary cell volumes and centre
-	forEachS(gCells,i,gBCS) {
-		Int faceid = gCells[i][0];
-		Scalar offset = mag(gVertices[gFacets[faceid][0]] - 
-			                gVertices[gFacets[faceid][1]]);
+	//adjust boundary cell centre to make it suitable 
+	//for application of Neumann BC
+	forEachS(gCells,ci,gBCS) {
+		Int faceid = gCells[ci][0];
 		for(Int n = 0; n < NPF;n++) {
 			Int k = faceid * NPF + n;
-			cV[gFN[k]] = cV[gFO[k]];
-			cC[gFN[k]] = cC[gFO[k]] + offset * unit(fN[k]);
+			cC[gFN[k]] = fC[k] + sqrt(cV[gFN[k]]) * unit(fN[k]);
 		}
 	}
 }
@@ -309,7 +378,6 @@ void DG::init_basis() {
 	//directional LGL
 	for(Int i = 0;i < 3;i++) {
 		Int ngl = Nop[i] + 1;
-		
 		xgl[i] = new Scalar[ngl];
 		wgl[i] = new Scalar[ngl];
 		legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
@@ -318,8 +386,8 @@ void DG::init_basis() {
 		for(Int j = 0;j < ngl;j++) {
 			psi[i][j] = new Scalar[ngl];
 			dpsi[i][j] = new Scalar[ngl];
-			lagrange(xgl[i][j],ngl,xgl[i],psi[i][j]);
-			lagrange_der(xgl[i][j],ngl,xgl[i],dpsi[i][j]);
+			cardinal_basis(j,ngl,xgl[i],psi[i][j]);
+			lagrange_basis_derivative(j,ngl,xgl[i],dpsi[i][j]);
 		}
 	}
 	
@@ -332,15 +400,17 @@ void DG::init_basis() {
 	for(Int ci = 0; ci < gBCS;ci++) {
 		forEachLgl(ii,jj,kk) {
 			Tensor Ji(Scalar(0));
-
-			forEachLgl(i,j,k) {
-				Int index = INDEX4(ci,i,j,k);
-				Vector& C = cC[index];
-				Scalar dpsi_0 = dpsi[0][ii][i] *  psi[1][jj][j] *  psi[2][kk][k];
-				Scalar dpsi_1 =  psi[0][ii][i] * dpsi[1][jj][j] *  psi[2][kk][k];
-				Scalar dpsi_2 =  psi[0][ii][i] *  psi[1][jj][j] * dpsi[2][kk][k];
-				Ji += mul(Vector(dpsi_0,dpsi_1,dpsi_2),C);
-			}
+			
+#define JACD(im,jm,km) {									\
+	Int index = INDEX4(ci,im,jm,km);						\
+	Vector& C = cC[index];									\
+	DPSI(im,jm,km);											\
+	Ji += mul(dpsi_j,C);									\
+}
+			forEachLglX(i) JACD(i,jj,kk);
+			forEachLglY(j) if(j != jj) JACD(ii,j,kk);
+			forEachLglZ(k) if(k != kk) JACD(ii,jj,k);
+#undef JACD
 			
 			if(NPX == 1) {Ji[XX] = 1; Ji[YX] = 0; Ji[ZX] = 0;}
 			if(NPY == 1) {Ji[YY] = 1; Ji[XY] = 0; Ji[ZY] = 0;}

@@ -14,13 +14,25 @@
 #define forEachLglYZ(j_,k_) 							\
 			for(Int j_ = 0;j_ < NPY;j_++)				\
 				for(Int k_ = 0;k_ < NPZ;k_++)					
-				
+#define forEachLglX(i_)									\
+			for(Int i_ = 0;i_ < NPX;i_++)
+#define forEachLglY(j_)									\
+			for(Int j_ = 0;j_ < NPY;j_++)
+#define forEachLglZ(k_)									\
+			for(Int k_ = 0;k_ < NPZ;k_++)
+									
 #define INDEX4(c_,i_,j_,k_) \
 	((c_) * NPX * NPY * NPZ + (i_) * NPY * NPZ + (j_) * NPZ + (k_))
 	
 #define INDEX3(i_,j_,k_) \
 	((i_) * NPY * NPZ + (j_) * NPZ + (k_))
 	
+#define DPSI(i,j,k)															\
+	Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
+	Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
+	Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
+	Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
+			
 namespace DG {
 	extern Scalar **psi[3];
 	extern Scalar **dpsi[3];
@@ -30,9 +42,11 @@ namespace DG {
 	extern Int NPX,NPY,NPZ;
 	
 	void legendre(int p, Scalar x,Scalar& L0,Scalar& L0_1,Scalar& L0_2);
+	void legendre_gauss(int N, Scalar* xgl, Scalar* wgl);
 	void legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl);
-	void lagrange(Scalar x,int N, Scalar* xgl,Scalar* psi);
-	void lagrange_der(Scalar x,int N, Scalar* xgl,Scalar* dpsi);
+	void cardinal_basis(int i,int N, Scalar* xgl,Scalar* psi);
+	void lagrange_basis_derivative(int i,int N, Scalar* xgl,Scalar* dpsi);
+	void legendre_basis_derivative(int i,int N, Scalar* xgl,Scalar* dpsi);
 	void init_poly();
 	void init_basis();
 	void init_geom();

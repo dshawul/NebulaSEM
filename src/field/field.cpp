@@ -118,18 +118,16 @@ void Mesh::initGeomMeshFields() {
 	exchange_ghost(&cV[0]);
 	exchange_ghost(&cC[0]);
 	forEach(gFacets,faceid) {
+		Vector v0 = gVertices[gFacets[faceid][0]];
 		for(Int n = 0; n < DG::NPF;n++) {
 			Int k = faceid * DG::NPF + n;
 			Int c1 = gFO[k];
 			Int c2 = gFN[k];
-			Scalar s1 = mag(cC[c1] - fC[k]) + 
-						Constants::MachineEpsilon;
-			Scalar s2 = mag(cC[c2] - fC[k]) + 
-						Constants::MachineEpsilon;
-			fI[k] = 1.f - s1 / (s1 + s2);
-			
-			if(DG::NPMAT && c2 >= gBCSfield) 
+			if(equal(cC[c1],fC[k]))  
 				fI[k] = 0.5;
+			else 
+				fI[k] = 1 - dot(v0 - cC[c1],fN[k]) / 
+					        dot(cC[c2] - cC[c1],fN[k]);
 		}
 	}
 	/*Construct wall distance field*/
