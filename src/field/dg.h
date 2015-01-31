@@ -42,6 +42,7 @@ namespace DG {
 	extern Int NPX,NPY,NPZ;
 	
 	void legendre(int p, Scalar x,Scalar& L0,Scalar& L0_1,Scalar& L0_2);
+	void newton_cotes(int N, Scalar* xgl, Scalar* wgl);
 	void legendre_gauss(int N, Scalar* xgl, Scalar* wgl);
 	void legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl);
 	void cardinal_basis(int i,int N, Scalar* xgl,Scalar* psi);
