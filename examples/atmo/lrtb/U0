@@ -5,10 +5,10 @@ top {
 	value 0 0 0
 }
 bottom {
-	type SYMMETRY 
+	type SYMMETRY
 	value 0 0 0
 }
 sides {
-	type SYMMETRY 
+	type SYMMETRY
 	value 0 0 0
 }

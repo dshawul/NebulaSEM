@@ -113,23 +113,38 @@ void Mesh::initGeomMeshFields() {
 		DG::expand(fI);
 		DG::init_basis();
 	}
+	/*Ghost face marker*/
+	IntVector isGhostFace;
+	isGhostFace.assign(gFacets.size(),0);
+	forEach(gInterMesh,i) {
+		interBoundary& b = gInterMesh[i];
+		forEach(*b.f,j) {
+			Int faceid = (*b.f)[j];
+			isGhostFace[faceid] = 1;
+		}
+	}
 	/* Facet interpolation factor to the owner of the face.
 	 * Neighbor takes (1 - f) */
-	exchange_ghost(&cV[0]);
-	exchange_ghost(&cC[0]);
 	forEach(gFacets,faceid) {
 		Vector v0 = gVertices[gFacets[faceid][0]];
 		for(Int n = 0; n < DG::NPF;n++) {
 			Int k = faceid * DG::NPF + n;
 			Int c1 = gFO[k];
 			Int c2 = gFN[k];
-			if(equal(cC[c1],fC[k]))  
+			if(c2 >= gBCSfield && !isGhostFace[faceid]) {
+				fI[k] = 0;
+				cV[c2] = cV[c1];
+				cC[c2] = fC[k];
+			} else if(equal(cC[c1],fC[k]))  
 				fI[k] = 0.5;
 			else 
 				fI[k] = 1 - dot(v0 - cC[c1],fN[k]) / 
 					        dot(cC[c2] - cC[c1],fN[k]);
 		}
 	}
+	/*exchange ghost cell volume and center*/
+	exchange_ghost(&cV[0]);
+	exchange_ghost(&cC[0]);
 	/*Construct wall distance field*/
 	{
 		yWall.deallocate(false);
@@ -270,8 +285,8 @@ void Mesh::enroll(Util::ParamList& params) {
 	op = new Util::BoolOption(&save_average);
 	params.enroll("average",op);
 	params.enroll("print_time",&print_time);
-	params.enroll("NPX",&DG::Nop[0]);
-	params.enroll("NPY",&DG::Nop[1]);
-	params.enroll("NPZ",&DG::Nop[2]);
+	params.enroll("npx",&DG::Nop[0]);
+	params.enroll("npy",&DG::Nop[1]);
+	params.enroll("npz",&DG::Nop[2]);
 }
 

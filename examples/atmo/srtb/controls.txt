@@ -10,7 +10,7 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1.177
-    viscosity                    1.568e-5
+    viscosity                    2
 	
 #############################
 #  Time increment
@@ -18,8 +18,8 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     200000
-    write_interval               20000
+    end_step                     100000
+    write_interval               10000
     dt                           0.01
     n_deferred                   0
 
@@ -29,8 +29,8 @@ general
 
     convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-    implicit_factor              0
-    blend_factor                 1.0
+    implicit_factor              1
+    blend_factor                 0
     parallel_method              BLOCKED
     print_time                   1000
 
@@ -39,7 +39,7 @@ general
 ############################
 
     method                       PCG
-    preconditioner               SSOR
+    preconditioner               DIAG
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
@@ -47,9 +47,39 @@ general
 ############################
 #  Probe locations
 ############################
-
+    probe     0 {}
+    gravity   0 -9.81 0
+############################
+#  DG polynomial order
+############################
+    npx       4
+    npy       4
+    npz       1
 }
 
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    4 { U T p rho }
+}
+
+decomposition
+{
+    n 		3 {2 1 1}
+    type      	XYZ
+}
+
+refinement
+{
+    shape           QUAD
+    direction       0 0 0
+    field           U
+    field_min       0.1
+    field_max       0.9
+    limit           100000
+}
 
 ######################################
 #  PISO options

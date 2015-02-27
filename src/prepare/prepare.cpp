@@ -172,12 +172,12 @@ void Prepare::decomposeMetis(int total,IntVector& blockIndex) {
     	xadj.push_back(adjncy.size());
     	forEach(c,j) {
     		Int f = c[j];
-			if(i == gFO[f]) {
-				if(gFN[f] < gBCS)
-					adjncy.push_back(gFN[f]);
+			if(i == gFOC[f]) {
+				if(gFNC[f] < gBCS)
+					adjncy.push_back(gFNC[f]);
 			} else {
-				if(gFO[f] < gBCS)
-					adjncy.push_back(gFO[f]);
+				if(gFOC[f] < gBCS)
+					adjncy.push_back(gFOC[f]);
 			}
 		}
     }
@@ -312,9 +312,9 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	IntVector* imesh = new IntVector[total * total];
 	Int co,cn;
 	forEach(gFacets,i) {
-		if(gFN[i] < gBCS) {
-			co = blockIndex[gFO[i]];
-			cn = blockIndex[gFN[i]];
+		if(gFNC[i] < gBCS) {
+			co = blockIndex[gFOC[i]];
+			cn = blockIndex[gFNC[i]];
 			if(co != cn) {
 				imesh[co * total + cn].push_back(fLoc[co][i]);
 				imesh[cn * total + co].push_back(fLoc[cn][i]);

@@ -233,7 +233,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	for(i = 0;i < nx - 1;i++) {
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 1;k < nz - 1;k++) {
-				ADD(m, m + nz, m + ny * nz + nz, m + ny * nz);
+				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
 				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}
@@ -259,7 +259,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	for(k = 0;k < nz; k += (nz - 1)) {
 		for(i = 0;i < nx - 1;i++) {
 			for(j = 0;j < ny - 1;j++) {
-				ADD(m, m + nz, m + ny * nz + nz, m + ny * nz);
+				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
 				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}

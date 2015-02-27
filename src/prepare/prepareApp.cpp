@@ -64,9 +64,17 @@ int main(int argc,char* argv[]) {
 	{
 		Util::ParamList params("general");
 		params.enroll("mesh",&Mesh::gMeshName);
-		params.enroll("fields",&fields);
 		params.enroll("probe",&Mesh::probePoints);
+		params.enroll("npx",&DG::Nop[0]);
+		params.enroll("npy",&DG::Nop[1]);
+		params.enroll("npz",&DG::Nop[2]);
+		params.enroll("gravity",&Controls::gravity);
 		params.read(input); 
+	}
+	{
+		Util::ParamList params("prepare");
+		params.enroll("fields",&fields);
+		params.read(input);
 	}
 	{
 		Util::ParamList params("decomposition");

@@ -153,7 +153,8 @@ public:
 		idf = 0;
 		
 		/*set output printing*/
-		MP::printOn = (MP::host_id == 0 && MP::hasElapsed(Controls::print_time)); 
+		MP::printOn = (MP::host_id == 0 && 
+			(MP::hasElapsed(Controls::print_time) || i == endi - 1)); 
 		
 		/*update time series*/
 		forEachCellField(updateTimeSeries(i));
@@ -378,14 +379,15 @@ void euler(istream& input) {
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar t_UR = Scalar(0.8);
 	Int buoyancy = 1;
-	Int diffusion = 0;
+	Int diffusion = 1;
 
 	/*transport*/
 	Util::ParamList params("euler");
 	params.enroll("velocity_UR", &velocity_UR);
 	params.enroll("pressure_UR", &pressure_UR);
 	params.enroll("t_UR", &t_UR);
-	Util::Option* op = new Util::BoolOption(&buoyancy);
+	Util::Option* op;
+	op = new Util::BoolOption(&buoyancy);
 	params.enroll("buoyancy",op);
 	op = new Util::BoolOption(&diffusion);
 	params.enroll("diffusion",op);
@@ -393,7 +395,7 @@ void euler(istream& input) {
 	ScalarCellField p("p",READWRITE);
 	VectorCellField U("U",READWRITE);
 	ScalarCellField T("T",READWRITE);
-	ScalarCellField rho("rho",NO);
+	ScalarCellField rho("rho",WRITE);
 
 	/*read parameters*/
 	Util::read_params(input);
@@ -402,32 +404,27 @@ void euler(istream& input) {
 	Iteration it;
 	ScalarFacetField F;
 	VectorCellField Fc;
-	
-	/*form rho BCs from p's*/
-	Mesh::duplicateBC<Scalar>(p.fName,rho.fName);
 
-	/*calculate rho from p*/
-	ScalarCellField p_ref,rho_ref;
-	Scalar p_factor, gamma;
-	{
-		/*gas constants*/
-		using namespace GENERAL;
-		Scalar R = cp - cv;
-		gamma = cp / cv;
-		p_factor = P0 * pow(R / P0, gamma);
-		
-		/*p0 is reference pressure*/
-		p_ref = p;
-		rho_ref = pow(p_ref / p_factor, 1 / gamma) / T0;
-		rho = pow(p / p_factor, 1 / gamma) / T;
-		applyExplicitBCs(rho, true);
-	}
+	/*gas constants*/
+	Scalar p_factor, p_gamma, R, psi, iPr;
+	using namespace GENERAL;
+	R = cp - cv;
+	p_gamma = cp / cv;
+	p_factor = P0 * pow(R / P0, p_gamma);
+	psi = 1 / (R * T0);
+	iPr = 1 / Pr;
+
+	/*calculate rho*/
+	rho = pow(p / p_factor, 1 / p_gamma) / T;
+	Mesh::duplicateBCs<Scalar>(p,rho,psi);
+	rho.write(0);
 	
 	/*Time loop*/
+	ScalarCellField mu = rho * viscosity;
 	for (; !it.end(); it.next()) {
+		/*fluxes*/
 		Fc = rho * U;
 		F = flx(Fc);
-
 		/*rho-equation*/
 		{
 			ScalarCellMatrix M;
@@ -438,65 +435,24 @@ void euler(istream& input) {
 		{
 			ScalarCellMatrix M;
 			M = convection(T, Fc, F, rho, t_UR);
-			Solve(M);
+			Solve(M == lapf(T,mu * iPr));
 		}
 		/*calculate p*/
-		p = p_factor * pow(rho * T, gamma);
-		applyExplicitBCs(p, true);
+		p = p_factor * pow(rho * T, p_gamma);
 		/*U-equation*/
 		{	
 			VectorCellField Sc = Vector(0);
 			/*buoyancy*/
-			if(buoyancy) {
-				Sc += ((rho - rho_ref) * VectorCellField(Controls::gravity));
-			}
-			/*artificial viscosity*/
-			if(diffusion) {
-				ScalarCellField visc = GENERAL::viscosity;
-				Sc += lapi(U,visc);
-			}
+			if(buoyancy)
+				Sc += rho * VectorCellField(Controls::gravity);
 			/*solve*/
 			VectorCellMatrix M;
-			M = convection(U, Fc, F, rho, velocity_UR, Sc, Scalar(0));
-			Solve(M == -gradf(p - p_ref));
+			M = convection(U, Fc, F, rho, velocity_UR);
+			Solve(M == -gradf(p) + srcf(Sc) + lapf(U,mu));
 		}
-		
 		/*courant number*/
 		if(Controls::state != Controls::STEADY)
 			Mesh::calc_courant(U,Controls::dt);
-	}
-}
-
-/**
- \verbatim
- Diffusion solver
- ~~~~~~~~~~~~~~~~
- Solver for pdes of parabolic heat equation type:
-       dT/dt = lap(T,DT)
- \endverbatim
-*/
-void diffusion(istream& input) {
-	/*Solver specific parameters*/
-	Scalar& rho = GENERAL::density;
-	Scalar DT = Scalar(1);
-	Scalar t_UR = Scalar(1);
-
-	/*diffusion*/
-	Util::ParamList params("diffusion");
-	params.enroll("DT", &DT);
-	params.enroll("t_UR", &t_UR);
-
-	ScalarCellField T("T", READWRITE);
-
-	/*read parameters*/
-	Util::read_params(input);
-
-	/*Time loop*/
-	ScalarFacetField mu = rho * DT;
-	for (Iteration it; !it.end(); it.next()) {
-		ScalarCellMatrix M;
-		M = diffusion(T, mu, rho, t_UR);
-		Solve(M);
 	}
 }
 /**
@@ -530,6 +486,38 @@ void convection(istream& input) {
 	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
 		M = convection(T, Fc, F, rho, t_UR);
+		Solve(M);
+	}
+}
+/**
+ \verbatim
+ Diffusion solver
+ ~~~~~~~~~~~~~~~~
+ Solver for pdes of parabolic heat equation type:
+       dT/dt = lap(T,DT)
+ \endverbatim
+*/
+void diffusion(istream& input) {
+	/*Solver specific parameters*/
+	Scalar& rho = GENERAL::density;
+	Scalar DT = Scalar(1);
+	Scalar t_UR = Scalar(1);
+
+	/*diffusion*/
+	Util::ParamList params("diffusion");
+	params.enroll("DT", &DT);
+	params.enroll("t_UR", &t_UR);
+
+	ScalarCellField T("T", READWRITE);
+
+	/*read parameters*/
+	Util::read_params(input);
+
+	/*Time loop*/
+	ScalarFacetField mu = rho * DT;
+	for (Iteration it; !it.end(); it.next()) {
+		ScalarCellMatrix M;
+		M = diffusion(T, mu, rho, t_UR);
 		Solve(M);
 	}
 }

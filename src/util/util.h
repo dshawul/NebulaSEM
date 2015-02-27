@@ -14,7 +14,7 @@ std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
 	os << "{ " << std::endl;
 	forEach(p,i)
 		os << p[i] << std::endl;
-	os << "}" << std::endl;
+	os << "}";
 	return os;
 }
 template <class T>

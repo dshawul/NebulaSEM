@@ -171,6 +171,7 @@ public:
 	}
 
 	/*static functions*/
+	void calc_neumann(BCondition<type>*);
 	void readInternal(std::istream&);
 	void read(Int step);
 	void write(Int step);
@@ -606,6 +607,37 @@ namespace Mesh {
 	void   getProbeCells(IntVector&);
 	void   getProbeFaces(IntVector&);
 	void   calc_courant(const VectorCellField& U, Scalar dt);
+	template <class type>
+	void   duplicateBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
+}
+
+template <class type>
+void Mesh::duplicateBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
+	using namespace Mesh;
+	forEach(AllBConditions,i) {
+		BCondition<type> *bc, *bc1;
+		bc = static_cast<BCondition<type>*> (AllBConditions[i]);
+		if(bc->fIndex == src.fIndex) {
+			bc1 = new BCondition<type>(dest.fName);
+			*bc1 = *bc;
+			bc1->fIndex = dest.fIndex;
+
+			if(bc1->cIndex == NEUMANN) {
+				bc1->value *= psi;
+			} else if(bc1->cIndex == ROBIN) {
+				bc1->value *= psi;
+				bc1->tvalue *= psi;
+			} else if(bc1->cIndex == SYMMETRY ||
+			          bc1->cIndex == CYCLIC ||
+			          bc1->cIndex == RECYCLE) {
+			} else {
+				bc1->cIndex = GHOST;
+			}
+			
+			dest.calc_neumann(bc1);
+			AllBConditions.push_back(bc1);
+		}
+	}
 }
 
 /* **********************************************
@@ -664,6 +696,33 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 	}
 }
 template <class T,ENTITY E> 
+void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
+	using namespace Mesh;
+	
+	Int h = Util::hash_function(bc->cname);
+	if(h == CALC_NEUMANN) {
+		/*calculate slope*/
+		T slope = T(0);
+		Int sz = bc->bdry->size();
+		for(Int j = 0;j < sz;j++) {
+			 Int faceid = (*bc->bdry)[j];
+			 for(Int n = 0; n < DG::NPF;n++) {
+			 	 Int k = faceid * DG::NPF + n;
+				 Int c1 = gFO[k];
+				 Int c2 = gFN[k];
+				 if(!equal(cC[c1],cC[c2])) {
+ 				 	slope += ((*this)[c2] - (*this)[c1]) / 
+					      mag(cC[c2] - cC[c1]);
+				}
+			 }
+		}
+		slope /= sz;
+		/*set to neumann*/
+		bc->cIndex = NEUMANN;
+		bc->value = slope;
+	}
+}
+template <class T,ENTITY E> 
 void MeshField<T,E>::read(Int step) {
 	using namespace Mesh;
 
@@ -688,6 +747,7 @@ void MeshField<T,E>::read(Int step) {
 	while((c = Util::nextc(is)) && isalpha(c)) {
 		bc = new BCondition<T>(this->fName);
 		is >> *bc;
+		this->calc_neumann(bc);
 		AllBConditions.push_back(bc);
 	}
 
@@ -1088,11 +1148,8 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 	 forEach(AllBConditions,i) {
 		 bbc = AllBConditions[i];
 		 if(bbc->fIndex == cF.fIndex) {
-			 if(bbc->cIndex == NEUMANN ||
-				 bbc->cIndex == SYMMETRY ||
-				 bbc->cIndex == ROBIN)
-				 ;
-			 else continue;
+ 			if(bbc->cIndex == GHOST) 
+ 				continue;
 
 			 bc = static_cast<BCondition<T>*> (bbc);
 			 Int sz = bc->bdry->size();
@@ -1105,22 +1162,22 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 				 	 
 					 Int c1 = gFO[k];
 					 Int c2 = gFN[k];
-					 if(bc->cIndex == NEUMANN) {
-						 Vector dv = cC[c2] - cC[c1];
+					 /*break connection with boundary cell*/
+					 if(bc->cIndex == NEUMANN || bc->cIndex == SYMMETRY ||
+					    bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
 						 M.ap[c1] -= M.an[1][k];
-						 M.Su[c1] += M.an[1][k] * (bc->value * mag(dv));
+					 	 M.Su[c1] += M.an[1][k] * (cF[c2] - cF[c1]);
 						 M.an[1][k] = 0;
-					 } else if(bc->cIndex == ROBIN) {
-						 Vector dv = cC[c2] - cC[c1];
-						 M.ap[c1] -= (1 - bc->shape) * M.an[1][k];
-						 M.Su[c1] += M.an[1][k] * (bc->shape * bc->value + 
-							 (1 - bc->shape) * bc->tvalue * mag(dv));
-						 M.an[1][k] = 0;
-					 } else if(bc->cIndex == SYMMETRY) {
-						 M.ap[c1] -= M.an[1][k];
-						 M.Su[c1] += M.an[1][k] * (sym(cF[c1],fN[k]) - cF[c1]);
-						 M.an[1][k] = 0;
-					 }
+ 					 } else if(bc->cIndex == ROBIN) {
+ 						 Vector dv = cC[c2] - cC[c1];
+ 						 M.ap[c1] -= (1 - bc->shape) * M.an[1][k];
+ 						 M.Su[c1] += M.an[1][k] * (bc->shape * bc->value + 
+ 							 (1 - bc->shape) * bc->tvalue * mag(dv));
+ 						 M.an[1][k] = 0;
+ 					 } else {
+ 						 M.Su[c1] += M.an[1][k] * cF[c2];
+ 						 M.an[1][k] = 0;
+ 					 }
 				 }
 			 }
 		 }
@@ -1283,8 +1340,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 /* ***************************************
  * Fill boundary from internal values
  * **************************************/
-template<class T,ENTITY E>
-const MeshField<T,E>& fillBCs(const MeshField<T,E>& cF) {
+template<class T>
+const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF) {
 	using namespace Mesh;
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
@@ -1415,7 +1472,7 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 	r = sum(mul(fN,cds(p)));																\
 																							\
 	if(NPMAT) {																				\
-		forEach(fI,i) {																		\
+		forEach(fN,i) {																		\
 			r[gFO[i]] -= mul(fN[i],p[gFO[i]]);												\
 			r[gFN[i]] += mul(fN[i],p[gFN[i]]);												\
 		}																					\
@@ -1465,7 +1522,7 @@ inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
 	r = sum(dot(cds(p),fN));																\
 																							\
 	if(NPMAT) {																				\
-		forEach(fI,i) {																		\
+		forEach(fN,i) {																		\
 			r[gFO[i]] -= dot(fN[i],p[gFO[i]]);												\
 			r[gFN[i]] += dot(fN[i],p[gFN[i]]);												\
 		}																					\

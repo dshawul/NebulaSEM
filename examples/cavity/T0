@@ -1,5 +1,5 @@
 size 1
-uniform 101325
+uniform 300
 top_WALL {
 	type NEUMANN 
 	value 0

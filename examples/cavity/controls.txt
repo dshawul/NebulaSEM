@@ -18,7 +18,7 @@ general
     state                        TRANSIENT
     start_step                   0
     end_step                     1000
-    write_interval               1000
+    write_interval               100
     dt                           0.005
 
 ############################
@@ -43,10 +43,39 @@ general
 ############################
 #  Probe locations
 ############################
-    probe 0 {
-    }
+    probe     0 {}
+    gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       0
+    npy       0
+    npz       0
 }
 
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    3 { U p T }
+}
+
+decomposition
+{
+    n 		3 {2 1 1}
+    type      	XYZ
+}
+
+refinement
+{
+    shape           QUAD
+    direction       0 0 0
+    field           U
+    field_min       0.1
+    field_max       0.9
+    limit           100000
+}
 
 ######################################
 #  PISO options

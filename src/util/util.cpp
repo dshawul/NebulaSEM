@@ -58,11 +58,11 @@ void Util::read_params(istream& is,std::string block) {
 			continue;
 		}
 
-		if(output) cout << str << "\n{\n" << endl;
+		if(output) cout << str << "\n{" << endl;
 		ParamList* params = it->second;
 		while(true) {
 			READ();
-			if(output) cout << "\t" << str << " = ";
+			if(output) cout << str << " = ";
 			params->read(is,str,output);
 			if(output) cout << endl;
 		}

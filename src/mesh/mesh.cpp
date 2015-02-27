@@ -252,6 +252,14 @@ void Mesh::calcGeometry() {
 		_cV[i] = _cV[gFOC[fi]];
 		_cC[i] = _fC[fi];
 	}
+	/*facet ids*/
+	faceID.clear();
+	forEach(gCells,i) {
+		IntVector b;
+		forEach(gCells[i],j)
+			b.push_back(j);
+		faceID.push_back(b);
+	}
 }
 /* 
 * Remove empty boundary
@@ -262,15 +270,6 @@ void Mesh::removeBoundary(IntVector& fs) {
 	Int count;
 	IntVector Idf(gFacets.size(),0);
 	IntVector Idc(gCells.size(),0);
-
-	/*facet ids*/
-	faceID.clear();
-	forEach(gCells,i) {
-		IntVector b;
-		forEach(gCells[i],j)
-			b.push_back(j);
-		faceID.push_back(b);
-	}
 	
 	/*erase facet reference*/
 	forEach(fs,i) {

@@ -176,6 +176,7 @@ namespace Mesh {
     const Int PARABOLIC    = Util::hash_function("PARABOLIC");
 	const Int INVERSE      = Util::hash_function("INVERSE");
 	const Int ROUGHWALL    = Util::hash_function("ROUGHWALL");
+	const Int CALC_NEUMANN = Util::hash_function("CALC_NEUMANN");
 }
 struct BasicBCondition {
 	IntVector* bdry;
@@ -293,30 +294,6 @@ namespace Mesh {
 		forEach(AllBConditions,i)
 			delete AllBConditions[i];
 		AllBConditions.clear();
-	}
-	template <class type>
-	void duplicateBC(std::string src, std::string dest) {
-		BCondition<type>* bc, *bc1;
-		Int src_fIndex = Util::hash_function(src);
-		Int dest_fIndex = Util::hash_function(dest);
-		forEach(AllBConditions,i) {
-			bc = static_cast<BCondition<type>*> (AllBConditions[i]);
-			if(bc->fIndex == src_fIndex) {
-				bc1 = new BCondition<type>(dest);
-				*bc1 = *bc;
-				bc1->fIndex = dest_fIndex;
-				if( bc1->cIndex == DIRICHLET ||
-				    bc1->cIndex == POWER ||
-				    bc1->cIndex == LOG ||
-					bc1->cIndex == PARABOLIC ||
-					bc1->cIndex == INVERSE ||
-					bc1->cIndex == ROUGHWALL
-				) {
-					bc1->cIndex = GHOST;
-				}
-				AllBConditions.push_back(bc1);
-			}
-		}
 	}
 }
 #endif

@@ -375,8 +375,9 @@ void DG::init_geom() {
 	gFO[indf] = index0;										\
 	gFN[indf] = index1;										\
 	if(index1 >= gBCSfield) {								\
-		Scalar d=dot(fC[indf] - cC[index0],unit(fN[indf]));	\
-		cC[index1] = cC[index0] + d * unit(fN[indf]);		\
+		Vector dir = unit(fN[indf]);						\
+		Scalar d = dot(fC[indf] - cC[index0],dir);			\
+		cC[index1] = cC[index0] + d * dir;					\
 	}														\
 	Scalar d;												\
 	if(equal(cC[index0],cC[index1])) d = 0.5;				\
@@ -416,15 +417,6 @@ void DG::init_geom() {
 			}
 			
 #undef ADD
-		}
-	}
-	//adjust boundary cell centre to make it suitable 
-	//for application of Neumann BC
-	forEachS(gCells,ci,gBCS) {
-		Int faceid = gCells[ci][0];
-		for(Int n = 0; n < NPF;n++) {
-			Int k = faceid * NPF + n;
-			cC[gFN[k]] = fC[k] + sqrt(cV[gFN[k]]) * unit(fN[k]);
 		}
 	}
 }
