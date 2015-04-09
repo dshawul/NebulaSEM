@@ -2,7 +2,7 @@
 
 namespace DG {
 	Int Nop[3] = {0, 0, 0};
-	Int NPX, NPY, NPZ, NP, NPMAT, NPF;
+	Int NPX, NPY, NPZ, NP, NPI, NPMAT, NPF;
 	
 	Scalar **psi[3];
 	Scalar **dpsi[3];
@@ -237,10 +237,12 @@ void DG::init_poly() {
 	NPX = Nop[0] + 1;
 	NPY = Nop[1] + 1;
 	NPZ = Nop[2] + 1;
-	NP = NPX * NPY * NPZ;
+	NP  = NPX * NPY * NPZ;
+	NPI = NPX + NPY + NPZ;
 	if(NP > 1) 
-		NPMAT = NP * NP;
-	else NPMAT = 0;
+		NPMAT = NP * NPI;
+	else 
+		NPMAT = 0;
 	if(NPX <= NPY && NPX <= NPZ)
 		NPF = NPY * NPZ;
 	else if(NPY <= NPX && NPY <= NPZ)

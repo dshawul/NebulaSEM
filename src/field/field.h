@@ -64,7 +64,7 @@ namespace Controls {
 
 namespace DG {
     extern Int Nop[3];
-    extern Int NP,NPMAT,NPF;
+    extern Int NP,NPI,NPMAT,NPF;
 };
 namespace Mesh {
 	extern IntVector  probeCells;
@@ -999,6 +999,47 @@ void exchange_ghost(T* P) {
 	comm.recv();
 }
  
+/* ********************************
+ *  Tenosor-Product approach
+ * ********************************/
+#define TensorProduct_(Q,P,tr,$) {											\
+	for(Int ci = 0;ci < gBCS;ci++) {										\
+		forEachLgl(ii,jj,kk) {												\
+			Int ind1 = INDEX3(ii,jj,kk);									\
+			T val(Scalar(0));												\
+																			\
+			forEachLglX(i) {												\
+				Int ind2 = INDEX3(i,jj,kk);									\
+				Int indexm = ci * NPMAT + 									\
+					(tr ? INDEX_TX(ii,jj,kk,i) : INDEX_X(ii,jj,kk,i));		\
+				val += Q[ci * NP + ind2] * P.adg[indexm];					\
+			}																\
+			forEachLglY(j) {												\
+				if(j != jj) {												\
+					Int ind2 = INDEX3(ii,j,kk);								\
+					Int indexm = ci * NPMAT + 								\
+					(tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));		\
+					val += Q[ci * NP + ind2] * P.adg[indexm];				\
+				}															\
+			}																\
+			forEachLglZ(k) {												\
+				if(k != kk) {												\
+					Int ind2 = INDEX3(ii,jj,k);								\
+					Int indexm = ci * NPMAT + 								\
+					(tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));		\
+					val += Q[ci * NP + ind2] * P.adg[indexm];				\
+				}															\
+			}																\
+																			\
+			r[ci * NP + ind1] $ val;										\
+		}																	\
+	}																		\
+}
+
+#define TensorProduct(Q,P)  TensorProduct_(Q,P,false,-=)
+#define TensorProductT(Q,P) TensorProduct_(Q,P,true,-=)
+#define TensorProductM(Q,P) TensorProduct_(Q,P,false,+=)
+
 /* *******************************
  * matrix - vector product p * q
  * *******************************/
@@ -1015,15 +1056,7 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const 
 	r = q * p.ap;
 	
 	if(NPMAT) {
-		for(Int i = 0;i < gBCS;i++) {
-			for(Int j = 0;j < NP;j++) {
-				T val(Scalar(0));
-				for(Int k = 0;k < NP;k++)
-					val += q[i * NP + k] * 
-						p.adg[i * NPMAT + j * NP + k];
-				r[i * NP + j] -= val;
-			}
-		}
+		TensorProduct(q,p);
 	}
 	
 	forEach(gFN,f) {
@@ -1059,15 +1092,7 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const
 	r = q * p.ap;
 	
 	if(NPMAT) {
-		for(Int i = 0;i < gBCS;i++) {
-			for(Int j = 0;j < NP;j++) {
-				T val(Scalar(0));
-				for(Int k = 0;k < NP;k++)
-					val += q[i * NP + k] * 
-						p.adg[i * NPMAT + k * NP + j];
-				r[i * NP + j] -= val;
-			}
-		}
+		TensorProductT(q,p);
 	}
 	
 	forEach(gFN,f) {
@@ -1095,31 +1120,24 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
 	MeshField<T,CELL> r;
+	MeshField<T,CELL>& q = (*p.cF);
 	Int c1,c2;
-	ASYNC_COMM<T> comm(&(*p.cF)[0]);
+	ASYNC_COMM<T> comm(&q[0]);
 	
 	if(sync) comm.send();
 	
 	r = p.Su;
 	
 	if(NPMAT) {
-		for(Int i = 0;i < gBCS;i++) {
-			for(Int j = 0;j < NP;j++) {
-				T val(Scalar(0));
-				for(Int k = 0;k < NP;k++)
-					val += (*p.cF)[i * NP + k] * 
-						p.adg[i * NPMAT + j * NP + k];
-				r[i * NP + j] += val;
-			}
-		}
+		TensorProductM(q,p);
 	}
 	
 	forEach(gFN,f) {
 		c2 = gFN[f];
 		if(c2 >= gBCSfield) continue;
 		c1 = gFO[f];
-		r[c1] += (*p.cF)[c2] * p.an[1][f];
-		r[c2] += (*p.cF)[c1] * p.an[0][f];
+		r[c1] += q[c2] * p.an[1][f];
+		r[c2] += q[c1] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
@@ -1128,7 +1146,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 		c2 = gFN[f];
 		if(c2 < gBCSfield) continue;
 		c1 = gFO[f];
-		r[c1] += (*p.cF)[c2] * p.an[1][f];
+		r[c1] += q[c2] * p.an[1][f];
 	}
 	
 	return r;
@@ -1571,12 +1589,11 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 				Int ind1 = INDEX3(ii,jj,kk);
 				Int index = INDEX4(ci,ii,jj,kk);
 				Vector Jr = dot(flux_cell[index],Jinv[index]) * cV[index];
-				
+
 #define DIVD(im,jm,km) {									\
 	Int ind2 = INDEX3(im,jm,km);							\
 	DPSI(im,jm,km);											\
 	Scalar val = -dot(dpsi_j,Jr);							\
-	Int indexm = ci * NPMAT + ind2 * NP + ind1;				\
 	if(ind1 == ind2) {										\
 		m.ap[index] = -val;									\
 		m.adg[indexm] = 0;									\
@@ -1584,11 +1601,24 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		m.adg[indexm] = val;								\
 	}														\
 }
-				forEachLglX(i) DIVD(i,jj,kk);
-				forEachLglY(j) if(j != jj) DIVD(ii,j,kk);
-				forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);
+				forEachLglX(i) {
+					Int indexm = ci * NPMAT + INDEX_TX(ii,jj,kk,i);
+					DIVD(i,jj,kk);
+				}
+				forEachLglY(j) {
+					if(j != jj) {
+						Int indexm = ci * NPMAT + INDEX_TY(ii,jj,kk,j);
+						DIVD(ii,j,kk);
+					}
+				}
+				forEachLglZ(k) {
+					if(k != kk) {
+						Int indexm = ci * NPMAT + INDEX_TZ(ii,jj,kk,k);
+						DIVD(ii,jj,k);
+					}
+				}
 #undef DIVD
-				
+
 			}
 		}
 	}

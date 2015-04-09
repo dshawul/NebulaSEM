@@ -75,16 +75,33 @@ void SolveT(const MeshMatrix<type>& M) {
 	/****************************
 	 *  Forward/backward GS sweeps
 	 ****************************/
-#define Sweep_(X,B,ii) {							\
-	Cell& c = gCells[ii];							\
-	for(Int j = 0;j < NP;j++) {						\
-		Int i = ii * NP + j;						\
-		type ncF = B[i];							\
+#define Sweep_(X,B,ci) {							\
+	Cell& c = gCells[ci];							\
+	forEachLgl(ii,jj,kk) {							\
+		Int ind1 = INDEX3(ii,jj,kk);				\
+		Int vi = ci * NP + ind1;					\
+		type ncF = B[vi];							\
 		if(NPMAT) {									\
 			type val(Scalar(0));					\
-			for(Int k = 0;k < NP;k++)				\
-				val += X[ii * NP + k] * 			\
-				   M.adg[ii * NPMAT + j * NP + k];	\
+			forEachLglX(i) {												\
+				Int ind2 = INDEX3(i,jj,kk);									\
+				Int indexm = ci * NPMAT + INDEX_X(ii,jj,kk,i);				\
+				val += X[ci * NP + ind2] * M.adg[indexm];					\
+			}																\
+			forEachLglY(j) {												\
+				if(j != jj) {												\
+					Int ind2 = INDEX3(ii,j,kk);								\
+					Int indexm = ci * NPMAT + INDEX_Y(ii,jj,kk,j);			\
+					val += X[ci * NP + ind2] * M.adg[indexm];				\
+				}															\
+			}																\
+			forEachLglZ(k) {												\
+				if(k != kk) {												\
+					Int ind2 = INDEX3(ii,jj,k);								\
+					Int indexm = ci * NPMAT + INDEX_Z(ii,jj,kk,k);			\
+					val += X[ci * NP + ind2] * M.adg[indexm];				\
+				}															\
+			}																\
 			ncF += val;								\
 		}											\
 		forEach(c,j) {								\
@@ -93,77 +110,96 @@ void SolveT(const MeshMatrix<type>& M) {
 				Int k = faceid * NPF + n;			\
 				Int c1 = gFO[k];					\
 				Int c2 = gFN[k];					\
-				if(i == c1)							\
+				if(vi == c1)						\
 					ncF += X[c2] * M.an[1][k];		\
-				else if(i == c2)					\
+				else if(vi == c2)					\
 					ncF += X[c1] * M.an[0][k];		\
 			}										\
 		}											\
-		ncF *= iD[i];								\
-		X[i] = X[i] * (1 - Controls::SOR_omega) +	\
+		ncF *= iD[vi];								\
+		X[vi] = X[vi] * (1 - Controls::SOR_omega) +	\
 			ncF * (Controls::SOR_omega);			\
 	}												\
 }
 #define ForwardSweep(X,B) {							\
 	ASYNC_COMM<type> comm(&X[0]);					\
 	comm.send();									\
-	for(Int ii = 0;ii < gBCSI;ii++)					\
-		Sweep_(X,B,ii);								\
+	for(Int ci = 0;ci < gBCSI;ci++)					\
+		Sweep_(X,B,ci);								\
 	comm.recv();									\
-	for(Int ii = gBCSI;ii < gBCS;ii++)				\
-		Sweep_(X,B,ii);								\
+	for(Int ci = gBCSI;ci < gBCS;ci++)				\
+		Sweep_(X,B,ci);								\
 }
 	/***********************************
 	 *  Forward/backward substitution
 	 ***********************************/
-#define Substitute_(X,B,ii,forw,tr) {				\
-	Cell& c = gCells[ii];							\
-	for(Int j = 0;j < NP;j++) {						\
-		Int i = ii * NP + j;						\
-		type ncF = B[i];							\
+#define Substitute_(X,B,ci,forw,tr) {				\
+	Cell& c = gCells[ci];							\
+	forEachLgl(ii,jj,kk) {							\
+		Int ind1 = INDEX3(ii,jj,kk);				\
+		Int vi = ci * NP + ind1;					\
+		type ncF = B[vi];							\
 		if(NPMAT) {									\
 			type val(Scalar(0));					\
-			for(Int k = 0;k < NP;k++) {				\
-				if((forw && (k < j)) ||				\
-				  (!forw && (j < k))) {				\
-				  	Int ind;						\
-				  	if(tr) ind = k * NP + j;		\
-				  	else   ind = j * NP + k;		\
-					val += X[ii * NP + k] * 		\
-				   		M.adg[ii * NPMAT + ind];	\
-				}									\
-			}										\
+			forEachLglX(i) {														\
+				Int ind2 = INDEX3(i,jj,kk);											\
+				if((forw && (ind2 < ind1)) ||	(!forw && (ind1 < ind2))) { 		\
+					Int indexm = ci * NPMAT + 										\
+						(tr ? INDEX_TX(ii,jj,kk,i) : INDEX_X(ii,jj,kk,i));			\
+					val += X[ci * NP + ind2] * M.adg[indexm];						\
+				}																	\
+			}																		\
+			forEachLglY(j) {														\
+				if(j != jj) {														\
+					Int ind2 = INDEX3(ii,j,kk);										\
+					if((forw && (ind2 < ind1)) ||	(!forw && (ind1 < ind2))) { 	\
+						Int indexm = ci * NPMAT + 									\
+						(tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));			\
+						val += X[ci * NP + ind2] * M.adg[indexm];					\
+					}																\
+				}																	\
+			}																		\
+			forEachLglZ(k) {														\
+				if(k != kk) {														\
+					Int ind2 = INDEX3(ii,jj,k);										\
+					if((forw && (ind2 < ind1)) ||	(!forw && (ind1 < ind2))) { 	\
+						Int indexm = ci * NPMAT + 									\
+						(tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));			\
+						val += X[ci * NP + ind2] * M.adg[indexm];					\
+					}																\
+				}																	\
+			}																		\
 			ncF += val;								\
 		}											\
-		forEach(c,ci) {								\
-			Int faceid = c[ci];						\
+		forEach(c,j) {								\
+			Int faceid = c[j];						\
  			for(Int n = 0; n < NPF;n++) {			\
 				Int k = faceid * NPF + n;			\
 				Int c1 = gFO[k];					\
 				Int c2 = gFN[k];					\
-				if(i == c1) {						\
+				if(vi == c1) {						\
 					if((forw && (c2 < c1)) ||		\
 					  (!forw && (c1 < c2)))	{		\
 					ncF += X[c2] * M.an[1 - tr][k];	\
 					}								\
-				} else if(i == c2) {				\
+				} else if(vi == c2) {				\
 					if((forw && (c2 > c1)) ||		\
 					  (!forw && (c1 > c2)))			\
 					ncF += X[c1] * M.an[0 + tr][k];	\
 				}									\
 			}										\
 		}											\
-		ncF *= iD[i];								\
-		X[i] = ncF;									\
+		ncF *= iD[vi];								\
+		X[vi] = ncF;								\
 	}												\
 }
 #define ForwardSub(X,B,TR) {						\
-	for(Int ii = 0;ii < gBCS;ii++)					\
-		Substitute_(X,B,ii,true,TR);				\
+	for(Int ci = 0;ci < gBCS;ci++)					\
+		Substitute_(X,B,ci,true,TR);				\
 }
 #define BackwardSub(X,B,TR) {						\
-	for(int ii = gBCS;ii >= 0;ii--)					\
-		Substitute_(X,B,ii,false,TR);				\
+	for(int ci = gBCS;ci >= 0;ci--)					\
+		Substitute_(X,B,ci,false,TR);				\
 }
 #define DiagSub(X,B) {								\
 	for(Int i = 0;i < gBCSfield;i++)				\
@@ -245,28 +281,49 @@ void SolveT(const MeshMatrix<type>& M) {
 				D *=  (2.0 / Controls::SOR_omega - 1.0);	
 			} else if(Controls::Preconditioner == Controls::DILU) {
 				/*D-ILU(0) pre-conditioner*/
-				for(Int ii = 0;ii < gBCS;ii++) {
-					Cell& c = gCells[ii];
-					for(Int j = 0;j < NP;j++) {	
-						Int i = ii * NP + j;
+				for(Int ci = 0;ci < gBCS;ci++) {
+					Cell& c = gCells[ci];
+					forEachLgl(ii,jj,kk) {
+						Int ind1 = INDEX3(ii,jj,kk);
+						Int vi = ci * NP + ind1;
+						
 						if(NPMAT) {
 							Scalar val = 0.0;
-							for(Int k = 0;k < NP;k++)
-								val += M.adg[ii * NPMAT + j * NP + k] *
-								       M.adg[ii * NPMAT + k * NP + j] *
-								       iD[ii * NP + k];
-							D[i] -= val;
+							forEachLglX(i) {
+								Int ind2 = INDEX3(i,jj,kk);
+								val += iD[ci * NP + ind2] * 
+									   M.adg[ci * NPMAT + INDEX_X(ii,jj,kk,i)] *
+									   M.adg[ci * NPMAT + INDEX_TX(ii,jj,kk,i)];
+							}
+							forEachLglY(j) {
+								if(j != jj) {
+									Int ind2 = INDEX3(ii,j,kk);
+									val += iD[ci * NP + ind2] * 
+										   M.adg[ci * NPMAT + INDEX_Y(ii,jj,kk,j)] *
+										   M.adg[ci * NPMAT + INDEX_TY(ii,jj,kk,j)];
+								}
+							}
+							forEachLglZ(k) {
+								if(k != kk) {
+									Int ind2 = INDEX3(ii,jj,k);
+									val += iD[ci * NP + ind2] * 
+										   M.adg[ci * NPMAT + INDEX_Z(ii,jj,kk,k)] *
+										   M.adg[ci * NPMAT + INDEX_TZ(ii,jj,kk,k)];
+								}
+							}
+							D[vi] -= val;
 						}	
-						forEach(c,ci) {								
-							Int faceid = c[ci];
+						
+						forEach(c,j) {								
+							Int faceid = c[j];
 							for(Int n = 0; n < NPF;n++) {
 								Int k = faceid * NPF + n;							
 								Int c1 = gFO[k];						
 								Int c2 = gFN[k];						
-								if(i == c1) {
+								if(vi == c1) {
 									if(c2 > c1) D[c2] -= 
 									(M.an[0][k] * M.an[1][k] * iD[c1]);	
-								} else if(i == c2) {
+								} else if(vi == c2) {
 									if(c1 > c2) D[c1] -= 
 									(M.an[0][k] * M.an[1][k] * iD[c2]);		
 								}		

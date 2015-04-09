@@ -26,6 +26,24 @@
 	
 #define INDEX3(i_,j_,k_) \
 	((i_) * NPY * NPZ + (j_) * NPZ + (k_))
+
+#define INDEX_X(i_,j_,k_,m_) \
+	(INDEX3(i_,j_,k_) * NPI + (m_))
+									
+#define INDEX_Y(i_,j_,k_,m_) \
+	(INDEX3(i_,j_,k_) * NPI + (m_) + NPX)
+									
+#define INDEX_Z(i_,j_,k_,m_) \
+	(INDEX3(i_,j_,k_) * NPI + (m_) + NPX + NPY)
+																		
+#define INDEX_TX(i_,j_,k_,m_) \
+	(INDEX3(m_,j_,k_) * NPI + (i_))
+									
+#define INDEX_TY(i_,j_,k_,m_) \
+	(INDEX3(i_,m_,k_) * NPI + (j_) + NPX)
+									
+#define INDEX_TZ(i_,j_,k_,m_) \
+	(INDEX3(i_,j_,m_) * NPI + (k_) + NPX + NPY)
 	
 #define DPSI(i,j,k)															\
 	Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
