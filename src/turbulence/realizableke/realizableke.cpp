@@ -7,7 +7,7 @@ References:
 */
 REALIZABLE_KE_Model::REALIZABLE_KE_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
 	KX_Model(tU,tF,trho,tnu,"e"),
-	CmuF(0.09),
+	CmuF(Scalar(0.09)),
 	A0(4.04)
 {
 	SigmaK = 1.0;

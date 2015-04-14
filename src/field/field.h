@@ -667,7 +667,7 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 			forEach(R,i) R[i] = min(1.0,R[i]);
 			MeshField<T,E> val = value;
 			val += MeshField<T,E>(perterb / 2) * 
-					(MeshField<Scalar,E>(1.0) + cos(R * Constants::PI));
+					(MeshField<Scalar,E>(Scalar(1.0)) + cos(R * Constants::PI));
 			*this = val;
 		} else if(str == "gaussian") {
 			Vector center,radius;
@@ -684,7 +684,7 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 			is >> p0 >> scale >> expon;
 			ScalarCellField gz = dot(cC,VectorCellField(Controls::gravity));
 			*this = MeshField<T,E>(p0) * 
-				pow(MeshField<Scalar,E>(1.0) + scale * gz, expon);
+				pow(MeshField<Scalar,E>(Scalar(1.0)) + scale * gz, expon);
 		} else
 			*this = value;
 	} else {
