@@ -171,24 +171,26 @@ void SolveT(const MeshMatrix<type>& M) {
 			}																		\
 			ncF += val;								\
 		}											\
-		forEach(c,j) {								\
-			Int faceid = c[j];						\
- 			for(Int n = 0; n < NPF;n++) {			\
-				Int k = faceid * NPF + n;			\
-				Int c1 = gFO[k];					\
-				Int c2 = gFN[k];					\
-				if(vi == c1) {						\
-					if((forw && (c2 < c1)) ||		\
-					  (!forw && (c1 < c2)))	{		\
-					ncF += X[c2] * M.an[1 - tr][k];	\
-					}								\
-				} else if(vi == c2) {				\
-					if((forw && (c2 > c1)) ||		\
-					  (!forw && (c1 > c2)))			\
-					ncF += X[c1] * M.an[0 + tr][k];	\
-				}									\
-			}										\
-		}											\
+		if(isBoundary(ii,jj,kk)) {						\
+			forEach(c,j) {								\
+				Int faceid = c[j];						\
+	 			for(Int n = 0; n < NPF;n++) {			\
+					Int k = faceid * NPF + n;			\
+					Int c1 = gFO[k];					\
+					Int c2 = gFN[k];					\
+					if(vi == c1) {						\
+						if((forw && (c2 < c1)) ||		\
+						  (!forw && (c1 < c2)))	{		\
+						ncF += X[c2] * M.an[1 - tr][k];	\
+						}								\
+					} else if(vi == c2) {				\
+						if((forw && (c2 > c1)) ||		\
+						  (!forw && (c1 > c2)))			\
+						ncF += X[c1] * M.an[0 + tr][k];	\
+					}									\
+				}										\
+			}											\
+		}												\
 		ncF *= iD[vi];								\
 		X[vi] = ncF;								\
 	}												\
@@ -286,26 +288,27 @@ void SolveT(const MeshMatrix<type>& M) {
 					forEachLgl(ii,jj,kk) {
 						Int ind1 = INDEX3(ii,jj,kk);
 						Int vi = ci * NP + ind1;
-						
 						if(NPMAT) {
 							Scalar val = 0.0;
 							forEachLglX(i) {
 								Int ind2 = INDEX3(i,jj,kk);
-								val += iD[ci * NP + ind2] * 
-									   M.adg[ci * NPMAT + INDEX_X(ii,jj,kk,i)] *
-									   M.adg[ci * NPMAT + INDEX_TX(ii,jj,kk,i)];
+								if(ind1 > ind2) {
+									val += iD[ci * NP + ind2] * 
+										   M.adg[ci * NPMAT + INDEX_X(ii,jj,kk,i)] *
+										   M.adg[ci * NPMAT + INDEX_TX(ii,jj,kk,i)];
+								}
 							}
 							forEachLglY(j) {
-								if(j != jj) {
-									Int ind2 = INDEX3(ii,j,kk);
+								Int ind2 = INDEX3(ii,j,kk);
+								if(j != jj && ind1 > ind2) {
 									val += iD[ci * NP + ind2] * 
 										   M.adg[ci * NPMAT + INDEX_Y(ii,jj,kk,j)] *
 										   M.adg[ci * NPMAT + INDEX_TY(ii,jj,kk,j)];
 								}
 							}
 							forEachLglZ(k) {
-								if(k != kk) {
-									Int ind2 = INDEX3(ii,jj,k);
+								Int ind2 = INDEX3(ii,jj,k);
+								if(k != kk && ind1 > ind2) {
 									val += iD[ci * NP + ind2] * 
 										   M.adg[ci * NPMAT + INDEX_Z(ii,jj,kk,k)] *
 										   M.adg[ci * NPMAT + INDEX_TZ(ii,jj,kk,k)];
@@ -313,21 +316,22 @@ void SolveT(const MeshMatrix<type>& M) {
 							}
 							D[vi] -= val;
 						}	
-						
-						forEach(c,j) {								
-							Int faceid = c[j];
-							for(Int n = 0; n < NPF;n++) {
-								Int k = faceid * NPF + n;							
-								Int c1 = gFO[k];						
-								Int c2 = gFN[k];						
-								if(vi == c1) {
-									if(c2 > c1) D[c2] -= 
-									(M.an[0][k] * M.an[1][k] * iD[c1]);	
-								} else if(vi == c2) {
-									if(c1 > c2) D[c1] -= 
-									(M.an[0][k] * M.an[1][k] * iD[c2]);		
-								}		
-							}								
+						if(isBoundary(ii,jj,kk)) {
+							forEach(c,j) {								
+								Int faceid = c[j];
+								for(Int n = 0; n < NPF;n++) {
+									Int k = faceid * NPF + n;							
+									Int c1 = gFO[k];						
+									Int c2 = gFN[k];						
+									if(vi == c1) {
+										if(c2 > c1) D[c2] -= 
+										(M.an[0][k] * M.an[1][k] * iD[c1]);	
+									} else if(vi == c2) {
+										if(c1 > c2) D[c1] -= 
+										(M.an[0][k] * M.an[1][k] * iD[c2]);		
+									}		
+								}								
+							}
 						}
 					}			
 				}

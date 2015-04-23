@@ -21,6 +21,11 @@
 #define forEachLglZ(k_)									\
 			for(Int k_ = 0;k_ < NPZ;k_++)
 									
+#define isBoundary(i_,j_,k_)							\
+	(i_ == 0 || i_ == NPX - 1 ||						\
+	 j_ == 0 || j_ == NPY - 1 ||						\
+	 k_ == 0 || k_ == NPZ - 1)
+																
 #define INDEX4(c_,i_,j_,k_) \
 	((c_) * NPX * NPY * NPZ + (i_) * NPY * NPZ + (j_) * NPZ + (k_))
 	
