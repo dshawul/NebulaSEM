@@ -321,7 +321,20 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 			}
 		}
 	}
-
+	/***************************
+	 * Expand cLoc
+	 ***************************/
+	for(ID = 0;ID < total;ID++) {
+		const Int block = DG::NP;
+		IntVector& cF = cLoc[ID];
+		cF.resize(cF.size() * block);
+		for(int i = cF.size() - 1;i >= 0;i -= block) {
+			Int ii = i / block;
+			Int C = cF[ii] * block;
+			for(Int j = 0; j < block;j++)
+				cF[i - j] = C + block - 1 - j; 
+		}
+	}
 	/***************************
 	 * write mesh/index/fields
 	 ***************************/

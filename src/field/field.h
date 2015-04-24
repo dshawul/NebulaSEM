@@ -949,6 +949,7 @@ private:
 	T* P;
 	Int rcount;
 	std::vector<MP::REQUEST> request;
+	MeshField<T,CELL> recvbuf;
 public:
 	ASYNC_COMM(T* p) : P(p)
 	{
@@ -964,7 +965,7 @@ public:
 		forEach(gInterMesh,i) {
 			interBoundary& b = gInterMesh[i];
 			IntVector& f = *(b.f);
-			Int buf_size = b.f->size() * NPF;
+			Int buf_size = f.size() * NPF;
 			
 			//--fill send buffer
 			forEach(f,j) {
@@ -979,13 +980,30 @@ public:
 			MP::isend(&sendbuf[b.buffer_index * NPF],buf_size,
 				b.to,MP::FIELD_BLK,&request[rcount]);
 			rcount++;
-			MP::irecieve(&P[gFN[f[0]]],buf_size,
+			MP::irecieve(&recvbuf[b.buffer_index * NPF],buf_size,
 				b.to,MP::FIELD_BLK,&request[rcount]);
 			rcount++;
 		}
 	}
 	void recv() {
+		using namespace Mesh;
+		using namespace DG;
+		
  		MP::waitall(rcount,&request[0]);
+		
+		//--copy from buffer to ghost cells
+		forEach(gInterMesh,i) {
+			interBoundary& b = gInterMesh[i];
+			IntVector& f = *(b.f);
+
+			forEach(f,j) {
+				Int faceid = f[j];
+				for(Int n = 0; n < NPF;n++) {
+					Int k = faceid * NPF + n;
+					P[gFN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];	
+				}															
+			}
+		}
 	}
 };
 
