@@ -134,8 +134,6 @@ void SolveT(const MeshMatrix<type>& M) {
 	 *  Forward/backward substitution
 	 ***********************************/
 #define Substitute_(X,B,ci,forw,tr) {				\
-	Cell& c = gCells[ci];							\
-	forEachLgl(ii,jj,kk) {							\
 		Int ind1 = INDEX3(ii,jj,kk);				\
 		Int vi = ci * NP + ind1;					\
 		type ncF = B[vi];							\
@@ -193,15 +191,20 @@ void SolveT(const MeshMatrix<type>& M) {
 		}												\
 		ncF *= iD[vi];								\
 		X[vi] = ncF;								\
-	}												\
 }
 #define ForwardSub(X,B,TR) {						\
-	for(Int ci = 0;ci < gBCS;ci++)					\
-		Substitute_(X,B,ci,true,TR);				\
+	for(Int ci = 0;ci < gBCS;ci++)	{				\
+		Cell& c = gCells[ci];						\
+		forEachLgl(ii,jj,kk)						\
+			Substitute_(X,B,ci,true,TR);			\
+	}												\
 }
 #define BackwardSub(X,B,TR) {						\
-	for(int ci = gBCS;ci >= 0;ci--)					\
-		Substitute_(X,B,ci,false,TR);				\
+	for(int ci = gBCS;ci >= 0;ci--)	{				\
+		Cell& c = gCells[ci];						\
+		forEachLglR(ii,jj,kk)						\
+			Substitute_(X,B,ci,false,TR);			\
+	}												\
 }
 #define DiagSub(X,B) {								\
 	for(Int i = 0;i < gBCSfield;i++)				\

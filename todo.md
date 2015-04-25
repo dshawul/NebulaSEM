@@ -1,7 +1,7 @@
 # To do
 
 - [ ] Fix artificial viscosity problem
-- [ ] Fix pre-conditioner bug
+- [X] Fix pre-conditioner bug
 - [x] Parallel DG 
 - [x] Fix parallel VTK bug
 - [ ] Cyclic boundary in parallel mode

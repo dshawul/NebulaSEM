@@ -5,6 +5,10 @@
 			for(Int i_ = 0;i_ < NPX;i_++)				\
 				for(Int j_ = 0;j_ < NPY;j_++)			\
 					for(Int k_ = 0;k_ < NPZ;k_++)
+#define forEachLglR(i_,j_,k_) 							\
+			for(int i_ = NPX - 1;i_ >= 0;i_--)			\
+				for(int j_ = NPY - 1;j_ >= 0;j_--)		\
+					for(int k_ = NPZ - 1;k_ >= 0;k_--)
 #define forEachLglXY(i_,j_) 							\
 			for(Int i_ = 0;i_ < NPX;i_++)				\
 				for(Int j_ = 0;j_ < NPY;j_++)
