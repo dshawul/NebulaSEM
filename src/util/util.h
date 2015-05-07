@@ -150,7 +150,7 @@ namespace Util {
 			return false;
 		}
 	};
-	extern void read_params(std::istream&,std::string = "");
+	extern void read_params(std::istream&, bool print, std::string block = "");
 
 	/*parameters list*/
 	struct ParamList {
@@ -201,7 +201,7 @@ namespace Util {
 #undef readp
 		}
 		void read(std::istream& is) {
-			read_params(is,name);
+			read_params(is,false,name);
 		}
 	};
 	/*end*/

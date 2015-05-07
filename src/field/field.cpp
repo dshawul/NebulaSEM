@@ -45,7 +45,11 @@ namespace Controls {
  * Load mesh
  */
 bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
+	if(MP::printOn)
+		MP::printH("Reading mesh:\n");
 	if(readMesh(step,first)) {
+		MP::printH("\t%d vertices\n\t%d facets\n\t%d cells\n",
+			gVertices.size(),gFacets.size(),gCells.size());
 		/*initialize mesh*/
 		addBoundaryCells();
 		calcGeometry();
@@ -54,7 +58,8 @@ bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
 		if(remove_empty) {
 			Boundaries::iterator it = gBoundaries.find("delete");
 			if(it != gBoundaries.end()) {
-				removeBoundary(gBoundaries["delete"]);
+				IntVector& fs = gBoundaries["delete"];
+				removeBoundary(fs);
 				gBoundaries.erase(it);
 			}
 		}
@@ -70,7 +75,8 @@ bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
 		/*geometric mesh fields*/
 		remove_fields();
 		initGeomMeshFields();
-		cout << "--------------------------------------------\n";
+		if(MP::printOn) 
+			cout << "--------------------------------------------\n";
 		return true;
 	}
 	return false;

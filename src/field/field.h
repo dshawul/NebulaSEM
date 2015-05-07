@@ -734,10 +734,11 @@ void MeshField<T,E>::read(Int step) {
 		return;
 
 	/*start reading*/
-	std::cout << "Reading " << fName 
-		 << step  << std::endl;
-	std::cout.flush();
-
+	if(MP::printOn) {
+		std::cout << "Reading " << fName 
+			 << step  << std::endl;
+		std::cout.flush();
+	}
 	/*internal*/
 	readInternal(is);
 

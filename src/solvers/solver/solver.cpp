@@ -48,6 +48,7 @@ int main(int argc, char* argv[]) {
 
 	/*message passing object*/
 	MP mp(argc, argv);
+	MP::printOn = (MP::host_id == 0);
 	if(!strcmp(argv[1],"-h")) {
 		std::cout << "Usage:\n"
 				  << "  ./solver <inputfile>\n"
@@ -124,12 +125,15 @@ public:
 		n_deferred = Controls::n_deferred;
 		i = starti;
 		idf = 0;
+		if(MP::printOn)
+			cout << "--------------------------------------------\n";
 		Mesh::read_fields(step);
 		Mesh::getProbeCells(Mesh::probeCells);
 		forEachCellField (initTimeSeries());
-		MP::printOn = (MP::host_id == 0);
-		if(MP::printOn)
+		if(MP::printOn) {
+			cout << "--------------------------------------------\n";
 			MP::printH("Starting iterations.\n");
+		}
 	}
 	bool start() {
 		return (i == starti);
@@ -256,7 +260,7 @@ void piso(istream& input) {
 	turb->enroll();
 
 	/*read parameters*/
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 
 	/*temperature*/
 	if(buoyancy != NONE)
@@ -398,7 +402,7 @@ void euler(istream& input) {
 	ScalarCellField rho("rho",WRITE);
 
 	/*read parameters*/
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 		
 	/*Read fields*/
 	Iteration it;
@@ -435,7 +439,7 @@ void euler(istream& input) {
 		{
 			ScalarCellMatrix M;
 			M = convection(T, Fc, F, rho, t_UR);
-			Solve(M == lapf(T,mu * iPr));
+			Solve(M/* == lapf(T,mu * iPr)*/);
 		}
 		/*calculate p*/
 		p = p_factor * pow(rho * T, p_gamma);
@@ -448,7 +452,7 @@ void euler(istream& input) {
 			/*solve*/
 			VectorCellMatrix M;
 			M = convection(U, Fc, F, rho, velocity_UR);
-			Solve(M == -gradf(p) + srcf(Sc) + lapf(U,mu));
+			Solve(M == -gradf(p) + srcf(Sc)/* + lapf(U,mu)*/);
 		}
 		/*courant number*/
 		if(Controls::state != Controls::STEADY)
@@ -477,7 +481,7 @@ void convection(istream& input) {
 	ScalarCellField T("T", READWRITE);
 
 	/*read parameters*/
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 	
 	/*Time loop*/
 	Iteration it;
@@ -511,7 +515,7 @@ void diffusion(istream& input) {
 	ScalarCellField T("T", READWRITE);
 
 	/*read parameters*/
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 
 	/*Time loop*/
 	ScalarFacetField mu = rho * DT;
@@ -545,7 +549,7 @@ void transport(istream& input) {
 	ScalarCellField T("T", READWRITE);
 
 	/*read parameters*/
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 
 	/*Time loop*/
 	Iteration it;
@@ -589,7 +593,7 @@ void potential(istream& input) {
 	ScalarCellField p("p", READ);
 
 	/*read parameters*/
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 
 	/*set internal field to zero*/
 	for (Int i = 0; i < Mesh::gBCSfield; i++) {
@@ -631,7 +635,7 @@ void walldist(istream& input) {
 	/*walldist options*/
 	Util::ParamList params("walldist");
 	params.enroll("n_ORTHO", &n_ORTHO);
-	Util::read_params(input);
+	Util::read_params(input,MP::printOn);
 
 	/*solve*/
 	Mesh::calc_walldist(Iteration::get_start(), n_ORTHO);

@@ -45,22 +45,15 @@ bool Mesh::readMesh(Int step,bool first) {
 			return false;
 	}
 	/*read*/
-	cout << "--------------------"<<str<<"------------------------\n";
 	clear();
-	cout << "Reading mesh :" << endl;
 	is >> hex;
 	is >> gVertices;
-	cout << " \t" << gVertices.size() << " vertices" << endl;
 	is >> gFacets;
-	cout << " \t" << gFacets.size() << " facets" << endl;
 	is >> gCells;
-	cout << " \t" << gCells.size() << " cells" << endl;
-	cout << "Boundaries :" << endl;
 	while(Util::nextc(is)) {
 		IntVector index;
 		string str;
 		is >> str;
-		cout << " \t" << str << endl;
 		is >> index;
 
 		IntVector& gB = gBoundaries[str];
@@ -98,8 +91,6 @@ void Mesh::MeshObject::write(ostream& os) {
 }
 /*add boundary cells*/
 void Mesh::addBoundaryCells() {
-	cout << "Adding boundary cells. " << endl;
-	
 	using namespace Constants;
 	
 	/*neighbor and owner cells of face*/
@@ -178,8 +169,6 @@ void Mesh::addBoundaryCells() {
 	}
 }
 void Mesh::calcGeometry() {
-	cout << "Calculating geometric fields. " << endl;
-	
 	Int i;
 	/*allocate*/
 	_fC.assign(gFacets.size(),Vector(0));
@@ -265,8 +254,6 @@ void Mesh::calcGeometry() {
 * Remove empty boundary
 */
 void Mesh::removeBoundary(IntVector& fs) {
-	cout << "Removing faces: " << fs.size() << endl;
-
 	Int count;
 	IntVector Idf(gFacets.size(),0);
 	IntVector Idc(gCells.size(),0);
@@ -352,6 +339,4 @@ void Mesh::removeBoundary(IntVector& fs) {
 		forEach(gB,i)
 			gB[i] = Idf[gB[i]];
 	}
-
-	cout << "Total faces: " << gFacets.size() << endl;
 }

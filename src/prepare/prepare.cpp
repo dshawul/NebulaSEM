@@ -1006,6 +1006,7 @@ void Prepare::refineMesh(IntVector& rCells,const RefineParams& rparams,IntVector
 	erase_indices(gCells,rCells);
 	erase_indices(cellMap,rCells);
 	gBCS = gCells.size();
+	gBCSfield = gBCS * DG::NP;
 	
 	/*******************************************************
 	 * Break edge of faces that are not set for refinement 

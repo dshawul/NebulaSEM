@@ -16,7 +16,7 @@ Post/Pre processing jobs such as
 int main(int argc,char* argv[]) {
 	/*message passing object*/
 	MP mp(argc,argv);
-	
+	MP::printOn = (MP::host_id == 0);
 	/*cmd line*/
 	int work = 0;
 	Int start_index = 0;

@@ -25,10 +25,9 @@ int Util::nextc(std::istream& is) {
 	is.putback(c);
 	return c;
 }
-void Util::read_params(istream& is,std::string block) {
+void Util::read_params(istream& is, bool output, std::string block) {
 	string str;
 	char c;
-	bool output = block.empty();
 
 #define READ() {				\
 	c = Util::nextc(is);		\
@@ -66,7 +65,7 @@ void Util::read_params(istream& is,std::string block) {
 			params->read(is,str,output);
 			if(output) cout << endl;
 		}
-		if(output) cout << "}\n" << endl;
+		if(output) cout << "}\n";
 		if(!block.empty())
 			break;
 	}
