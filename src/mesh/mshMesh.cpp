@@ -1,5 +1,4 @@
 #include "mshMesh.h"
-#include <sstream>
 
 using namespace std;
 

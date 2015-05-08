@@ -2,10 +2,32 @@
 #define __UTIL_H
 
 #include "tensor.h"
-#include <map>
+
+#include <cstring>
+#include <fstream>
+#include <sstream>
 #include <vector>
+#include <list>
+#include <map>
 #include <algorithm>
 #include <cstdarg>
+
+/*iterators*/
+#define forEach(field,i)								\
+	for(register Int i = 0;i < (field).size();i++)
+
+#define forEachRev(field,i)								\
+	for(register Int i = (field).size();i-- > 0;)
+
+#define forEachS(field,i,strt)							\
+	for(register Int i = strt;i < (field).size();i++)
+
+#define forEachSRev(field,i,strt)						\
+	for(register Int i = (field).size();i-- > strt;)
+
+#define forEachIt(cont,field,it)						\
+	for(cont::iterator it = (field).begin();			\
+		it != (field).end();++it)
 
 /*vector IO*/
 template <class T>
@@ -47,7 +69,7 @@ bool equal(std::vector<T>& v1,std::vector<T>& v2) {
 	return true;
 }
 	
-/*erase indices from vector -- assumes indices are sorted*/
+/*erase indices from vector -- assumes indices are already sorted*/
 template<typename T>
 void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete) {
 	if(indicesToDelete.size() == 0)

@@ -1,5 +1,5 @@
-#include <sstream>
 #include "mesh.h"
+
 using namespace std;
 
 /*global mesh*/

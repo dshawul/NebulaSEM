@@ -1,5 +1,4 @@
 #include "hexMesh.h"
-#include <cmath>
 
 using namespace Mesh;
 

@@ -2,7 +2,7 @@
 #define __MP_H
 
 #include "mpi.h"
-#include "tensor.h"
+#include "my_types.h"
 
 #if defined __DOUBLE
 #	define MPI_SCALAR  MPI_DOUBLE
@@ -41,17 +41,17 @@ public:
 	/*send and recieve messages*/
 	template <class type>
 	static void recieve(type* buffer,int size,int source,int message_id) {
-		const int count = (size * sizeof(type) / sizeof(Scalar));
+		const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
 		MPI_Recv(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 	}
 	template <class type>
 	static void send(type* buffer,int size,int source,int message_id) {
-		const int count = (size * sizeof(type) / sizeof(Scalar));
+		const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
 		MPI_Send(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD);
 	}
 	template <class type>
 	static void allreduce(type* sendbuf,type* recvbuf,int size, Int op) {
-		const int count = (size * sizeof(type) / sizeof(Scalar));
+		const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
 		MPI_Op mpi_op;
 		switch(op) {
 			case OP_MAX: mpi_op = MPI_MAX; break;
@@ -63,12 +63,12 @@ public:
 	}
 	template <class type>
 	static void irecieve(type* buffer,int size,int source,int message_id,void* request) {
-		const int count = (size * sizeof(type) / sizeof(Scalar));
+		const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
 		MPI_Irecv(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
 	}
 	template <class type>
 	static void isend(type* buffer,int size,int source,int message_id,void* request) {
-		const int count = (size * sizeof(type) / sizeof(Scalar));
+		const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
 		MPI_Isend(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
 	}
 	static void waitall(int count,void* request) {

@@ -1,4 +1,3 @@
-#include <sstream>
 #include "prepare.h"
 #include "system.h"
 #include "metis.h"

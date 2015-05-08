@@ -1,26 +1,10 @@
 #ifndef __TENSOR_H
 #define __TENSOR_H
 
-#ifdef _MSC_VER
-#    pragma warning (disable: 4996)
-#endif
-
-#include <fstream>
 #include <iostream>
 #include <cmath>
 
-#define __DOUBLE
-
-#ifdef _MSC_VER
-#	define FORCEINLINE __forceinline
-#else
-#	define FORCEINLINE __inline
-#endif
-
-/*******************
- * Int is unsigned
- ******************/
-typedef unsigned int  Int;
+#include "my_types.h"
 
 /**************************
  * scalars
@@ -512,24 +496,6 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 
   return result;
 }
-
-/*iterator loops*/
-#define forEach(field,i)								\
-	for(register Int i = 0;i < (field).size();i++)
-
-#define forEachRev(field,i)								\
-	for(register Int i = (field).size();i-- > 0;)
-
-#define forEachS(field,i,strt)							\
-	for(register Int i = strt;i < (field).size();i++)
-
-#define forEachSRev(field,i,strt)						\
-	for(register Int i = (field).size();i-- > strt;)
-
-#define forEachIt(cont,field,it)						\
-	for(cont::iterator it = (field).begin();			\
-		it != (field).end();++it)
-
 /*
  * end
  */

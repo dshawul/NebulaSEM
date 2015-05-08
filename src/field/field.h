@@ -1,8 +1,6 @@
 #ifndef __FIELD_H
 #define __FIELD_H
 
-#include <list>
-#include <sstream>
 #include "mesh.h"
 #include "mp.h"
 
@@ -10,7 +8,6 @@
  *                              Control parameters
  *******************************************************************************/
 namespace Controls {
-
 	enum Scheme{
 		CDS,UDS,HYBRID,BLENDED,LUD,CDSS,MUSCL,QUICK,
 		VANLEER,VANALBADA,MINMOD,SUPERBEE,SWEBY,QUICKL,UMIST,
