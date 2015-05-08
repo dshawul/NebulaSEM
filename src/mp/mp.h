@@ -36,7 +36,7 @@ public:
 	static void recieve(int,int);
 	static void printH(const char* format,...);
 	static void print(const char* format,...);
-	static bool hasElapsed(const int);
+	static bool hasElapsed(const Int);
 
 	/*send and recieve messages*/
 	template <class type>

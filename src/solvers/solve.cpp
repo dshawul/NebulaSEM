@@ -46,27 +46,6 @@ void SolveT(const MeshMatrix<type>& M) {
 	std::vector<bool> sent_end(gInterMesh.size(),false);
 
 	/****************************
-	 * Identify solver type
-	 ***************************/
-	if(MP::printOn) {
-		if(M.flags & M.SYMMETRIC)
-			MP::printH("SYMM-");
-		else
-			MP::printH("ASYM-");
-		if(Controls::Solver == Controls::JACOBI)
-			MP::print("JAC :");
-		else if(Controls::Solver == Controls::SOR)
-			MP::print("SOR :");
-		else {
-			switch(Controls::Preconditioner) {
-			case Controls::NOPR: MP::print("NONE-PCG :"); break;
-			case Controls::DIAG: MP::print("DIAG-PCG :"); break;
-			case Controls::SSOR: MP::print("SSOR-PCG :"); break;
-			case Controls::DILU: MP::print("DILU-PCG :"); break;
-			}
-		}
-	}
-	/****************************
 	 * Jacobi sweep
 	 ***************************/
 #define JacobiSweep() {								\
@@ -517,11 +496,29 @@ PROBE:
 		 * end
 		 ********/
 	}
-
-	/*solver info*/
-	if(MP::printOn)
+	/****************************
+	 * Iteration info
+	 ***************************/
+	if(MP::printOn) {
+		if(M.flags & M.SYMMETRIC)
+			MP::printH("SYMM-");
+		else
+			MP::printH("ASYM-");
+		if(Controls::Solver == Controls::JACOBI)
+			MP::print("JAC :");
+		else if(Controls::Solver == Controls::SOR)
+			MP::print("SOR :");
+		else {
+			switch(Controls::Preconditioner) {
+			case Controls::NOPR: MP::print("NONE-PCG :"); break;
+			case Controls::DIAG: MP::print("DIAG-PCG :"); break;
+			case Controls::SSOR: MP::print("SSOR-PCG :"); break;
+			case Controls::DILU: MP::print("DILU-PCG :"); break;
+			}
+		}
 		MP::print("Iterations %d Initial Residual "
 		"%.5e Final Residual %.5e\n",iterations,ires,res);
+	}
 }
 template<class type>
 void SolveTexplicit(const MeshMatrix<type>& M) {

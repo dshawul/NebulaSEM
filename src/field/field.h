@@ -1007,17 +1007,6 @@ public:
 		}
 	}
 };
-
-/*************************************
- * Exchange ghost cell information
- *************************************/
-template <class T> 
-void exchange_ghost(T* P) {
-	ASYNC_COMM<T> comm(P);
-	comm.send();
-	comm.recv();
-}
- 
 /* ********************************
  *  Tenosor-Product approach
  * ********************************/

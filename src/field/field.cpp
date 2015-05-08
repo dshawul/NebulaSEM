@@ -45,10 +45,12 @@ namespace Controls {
  * Load mesh
  */
 bool Mesh::LoadMesh(Int step,bool first, bool remove_empty) {
-	if(MP::printOn)
+	if(MP::printOn && first) {
+		cout << "--------------------------------------------\n";
 		MP::printH("Reading mesh:\n");
+	}
 	if(readMesh(step,first)) {
-		MP::printH("\t%d vertices\n\t%d facets\n\t%d cells\n",
+		MP::printH("\t%d vertices\t%d facets\t%d cells\n",
 			gVertices.size(),gFacets.size(),gCells.size());
 		/*initialize mesh*/
 		addBoundaryCells();
@@ -119,6 +121,11 @@ void Mesh::initGeomMeshFields() {
 		DG::expand(fI);
 		DG::init_basis();
 	}
+	/*Start communicating cV and cC*/
+	ASYNC_COMM<Scalar> commv(&cV[0]);
+	ASYNC_COMM<Vector> commc(&cC[0]);
+	commv.send();
+	commc.send();
 	/*Ghost face marker*/
 	IntVector isGhostFace;
 	isGhostFace.assign(gFacets.size(),0);
@@ -148,9 +155,9 @@ void Mesh::initGeomMeshFields() {
 					        dot(cC[c2] - cC[c1],fN[k]);
 		}
 	}
-	/*exchange ghost cell volume and center*/
-	exchange_ghost(&cV[0]);
-	exchange_ghost(&cC[0]);
+	/*finish comm*/
+	commv.recv();
+	commc.recv();
 	/*Construct wall distance field*/
 	{
 		yWall.deallocate(false);

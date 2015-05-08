@@ -18,8 +18,11 @@ MP::MP(int argc,char* argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &host_id);
 	MPI_Get_processor_name(host_name, &name_len);
 	_start_time = System::get_time();
-	printf("Process [%d/%d] on %s : pid %d\n",
-		host_id,n_hosts,host_name,System::get_pid());
+	if(host_id == 0) {
+		printf("--------------------------------------------\n");
+		printf("%d processes started with master on %s pid %d\n",
+			n_hosts,host_name,System::get_pid());
+	}
 	fflush(stdout);
 }
 
@@ -74,11 +77,13 @@ void MP::print(const char* format,...) {
 /*cleanup*/
 void MP::cleanup () {
 	Terminated = true;
-	printf("%d [%d] Exiting application\n", 
-		System::get_time() - MP::_start_time, MP::host_id);
+	if(host_id == 0) {
+		printf("%d [%d] Exiting application run with %d processes\n", 
+			System::get_time() - _start_time, host_id, n_hosts);
+	}
 }
 /*delay*/
-bool MP::hasElapsed(const int delta) {
+bool MP::hasElapsed(const Int delta) {
 	static Int prev_time = 0;
 	Int current_time;
 	current_time = System::get_time();

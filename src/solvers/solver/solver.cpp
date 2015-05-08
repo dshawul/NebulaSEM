@@ -439,7 +439,7 @@ void euler(istream& input) {
 		{
 			ScalarCellMatrix M;
 			M = convection(T, Fc, F, rho, t_UR);
-			Solve(M/* == lapf(T,mu * iPr)*/);
+			Solve(M == lapf(T,mu * iPr));
 		}
 		/*calculate p*/
 		p = p_factor * pow(rho * T, p_gamma);
@@ -452,7 +452,7 @@ void euler(istream& input) {
 			/*solve*/
 			VectorCellMatrix M;
 			M = convection(U, Fc, F, rho, velocity_UR);
-			Solve(M == -gradf(p) + srcf(Sc)/* + lapf(U,mu)*/);
+			Solve(M == -gradf(p) + srcf(Sc) + lapf(U,mu));
 		}
 		/*courant number*/
 		if(Controls::state != Controls::STEADY)

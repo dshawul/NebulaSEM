@@ -108,6 +108,8 @@ int main(int argc,char* argv[]) {
 	atexit(MP::cleanup);
 
 	/*do work*/
+	if(MP::printOn)
+		cout << "--------------------------------------------\n";
 	if(work == 1) {
 		cout << "Merging decomposed domain.\n";
 		Prepare::merge(&n[0],fields,start_index);
