@@ -23,10 +23,10 @@ void KW_Model::enroll() {
 }
 void KW_Model::solve() {
 	ScalarCellMatrix M;
-	ScalarFacetField mu;
+	ScalarCellField mu;
 
 	/*turbulent dissipation*/
-	mu = cds(eddy_mu) / SigmaX + rho * nu;
+	mu = eddy_mu / SigmaX + rho * nu;
 	M = transport(x, rho * U, F, mu, rho, x_UR,
 				(C1x * Pk * x / k),
 				-(C2x * rho * x));
@@ -35,7 +35,7 @@ void KW_Model::solve() {
 	x = max(x,Constants::MachineEpsilon);
 
 	/*turbulent kinetic energy*/
-	mu = cds(eddy_mu) / SigmaK + rho * nu;
+	mu = eddy_mu / SigmaK + rho * nu;
 	M = transport(k, rho * U, F, mu, rho, k_UR,
 					Pk,
 					-(Cmu * rho * x));

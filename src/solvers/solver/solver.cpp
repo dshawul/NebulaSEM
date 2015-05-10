@@ -304,13 +304,13 @@ void piso(istream& input) {
 			}
 			/*momentum prediction*/
 			{
-				ScalarFacetField mu = cds(eddy_mu) + rho * nu;
+				ScalarCellField mu = eddy_mu + rho * nu;
 				M = transport(U, rho * U, F, mu, rho, velocity_UR, Sc, Scalar(0));
 				Solve(M == gP);
 			}
 			/*energy predicition*/
 			if (buoyancy != NONE) {
-				ScalarFacetField mu = cds(eddy_mu) / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
+				ScalarCellField mu = eddy_mu / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
 				ScalarCellMatrix Mt = transport(T, rho * U, F, mu, rho, t_UR);
 				Solve(Mt);
 				T = max(T, Constants::MachineEpsilon);
@@ -424,11 +424,12 @@ void euler(istream& input) {
 	rho.write(0);
 	
 	/*Time loop*/
-	ScalarCellField mu = rho * viscosity;
+	ScalarCellField mu;
 	for (; !it.end(); it.next()) {
 		/*fluxes*/
 		Fc = rho * U;
 		F = flx(Fc);
+		mu = rho * viscosity;
 		/*rho-equation*/
 		{
 			ScalarCellMatrix M;
@@ -438,8 +439,8 @@ void euler(istream& input) {
 		/*T-equation*/
 		{
 			ScalarCellMatrix M;
-			M = convection(T, Fc, F, rho, t_UR);
-			Solve(M == lapf(T,mu * iPr));
+			M = transport(T, Fc, F, mu * iPr, rho, t_UR);
+			Solve(M);
 		}
 		/*calculate p*/
 		p = p_factor * pow(rho * T, p_gamma);
@@ -451,8 +452,8 @@ void euler(istream& input) {
 				Sc += rho * VectorCellField(Controls::gravity);
 			/*solve*/
 			VectorCellMatrix M;
-			M = convection(U, Fc, F, rho, velocity_UR);
-			Solve(M == -gradf(p) + srcf(Sc) + lapf(U,mu));
+			M = transport(U, Fc, F, mu, rho, velocity_UR, Sc, Scalar(0));
+			Solve(M == -gradf(p));
 		}
 		/*courant number*/
 		if(Controls::state != Controls::STEADY)
@@ -518,7 +519,7 @@ void diffusion(istream& input) {
 	Util::read_params(input,MP::printOn);
 
 	/*Time loop*/
-	ScalarFacetField mu = rho * DT;
+	ScalarCellField mu = rho * DT;
 	for (Iteration it; !it.end(); it.next()) {
 		ScalarCellMatrix M;
 		M = diffusion(T, mu, rho, t_UR);
@@ -553,7 +554,8 @@ void transport(istream& input) {
 
 	/*Time loop*/
 	Iteration it;
-	ScalarFacetField F = flx(rho * U), mu = rho * DT;
+	ScalarFacetField F = flx(rho * U);
+	ScalarCellField mu = rho * DT;
 	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
 		M = transport(T, rho * U, F, mu, rho, t_UR);
@@ -607,7 +609,7 @@ void potential(istream& input) {
 	for (Iteration it; it.start(); it.next()) {
 		/*solve potential equation*/
 		ScalarCellField divU = divf(U);
-		ScalarFacetField one = Scalar(1);
+		ScalarCellField one = Scalar(1);
 		for (Int k = 0; k <= n_ORTHO; k++)
 			Solve(lap(p, one) == divU);
 
@@ -644,7 +646,7 @@ void Mesh::calc_walldist(Int step, Int n_ORTHO) {
 	ScalarCellField& phi = yWall;
 	/*poisson equation*/
 	{
-		ScalarFacetField one = Scalar(1);
+		ScalarCellField one = Scalar(1);
 		for (Int k = 0; k <= n_ORTHO; k++)
 			Solve(lap(phi, one) == -cV);
 	}

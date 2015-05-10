@@ -1575,7 +1575,7 @@ DIV(Vector,Tensor);
 /* Implicit */
 template<class type>
 MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
-					const ScalarFacetField& flux,const ScalarFacetField& mu) {
+					const ScalarFacetField& flux,const ScalarCellField& muc) {
 	using namespace Controls;
 	using namespace Mesh;
 	using namespace DG;
@@ -1645,6 +1645,7 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		else if(convection_scheme == HYBRID) {
 			Scalar D;
 			Vector dv;
+			ScalarFacetField mu = cds(muc);
 			forEach(gFacets,faceid) {
 				for(Int n = 0; n < NPF;n++) {
 					Int k = faceid * NPF + n;
@@ -1785,11 +1786,16 @@ MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,en
 
 /*Implicit*/
 template<class type>
-MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarFacetField& mu) {
+MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc) {
+	/*No implicit laplacian for DG*/
+	if(DG::NPMAT) 
+		return lapf(cF,muc);
+	/*Finite volume*/
 	using namespace Controls;
 	using namespace Mesh;
 	MeshMatrix<type> m;
 	VectorFacetField K;
+	ScalarFacetField mu = cds(muc);
 	Vector dv;
 	Int c1,c2;
 	Scalar D = 0;
@@ -1837,11 +1843,6 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarFacetField& mu) {
 	}
 	/*end*/
 	return m;
-}
-
-template<class type>
-inline MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& mu) {
-	return lap(cF,cds(mu));
 }
 
 /* *******************************
@@ -1919,14 +1920,14 @@ void addTemporal(MeshMatrix<type>& M,const ScalarCellField& rho,Scalar cF_UR) {
  *************************************************/
 template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
-		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
+		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR) {
 	MeshMatrix<type> M = -lap(cF,mu);
 	addTemporal(M,rho,cF_UR);
 	return M;
 }
 template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
-		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR, 
+		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR, 
 		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
 	MeshMatrix<type> M = -lap(cF,mu) - src(cF,Su,Sp);
 	addTemporal(M,rho,cF_UR);
@@ -1949,14 +1950,14 @@ MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
 }
 template<class type>
 MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
-		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR) {
+		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR) {
 	MeshMatrix<type> M = div(cF,Fc,F,mu) - lap(cF,mu);
 	addTemporal(M,rho,cF_UR);
 	return M;
 }
 template<class type>
 MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
-		const ScalarFacetField& mu,const ScalarCellField& rho,Scalar cF_UR, 
+		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR, 
 		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
 	MeshMatrix<type> M = div(cF,Fc,F,mu) - lap(cF,mu) - src(cF,Su,Sp);
 	addTemporal(M,rho,cF_UR);
