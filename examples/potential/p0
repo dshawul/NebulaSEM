@@ -1,6 +1,14 @@
 size 1
 uniform 0
-inlet NEUMANN 0
-outlet DIRICHLET 0
-top SYMMETRY
-WALLS SYMMETRY
+inlet {
+	type NEUMANN
+}
+outlet {
+	type DIRICHLET
+}
+top {
+	type SYMMETRY
+}
+WALLS {
+	type SYMMETRY
+}

@@ -3,23 +3,23 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       potential
+    solver                       piso
     mesh                         grid
-
 ######################################
 #  Fluid properties specific to solver
 ######################################
     rho                          1
     viscosity                    1e-5
+	
 #############################
 #  Time increment
 #############################
 
-    state                        STEADY
+    state                        TRANSIENT
     start_step                   0
-    end_step                     500
-    write_interval               100
-    dt                           0.01
+    end_step                     1000
+    write_interval               1000
+    dt                           0.005
 
 ############################
 #  Discretization schemes
@@ -43,30 +43,51 @@ general
 ############################
 #  Probe locations
 ############################
-    probe 2 {
-      0.1 0 0
-      0.2 0 0
-    }
+    gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       0
+    npy       0
+    npz       0
+}
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    4 { U p k e }
 }
 
+decomposition
+{
+    n 		3 {2 1 1}
+    type      	XYZ
+}
+
+refinement
+{
+    shape           QUAD
+    direction       0 0 0
+    field           U
+    field_min       0.1
+    field_max       0.9
+    limit           100000
+}
 
 ######################################
 #  PISO options
 ######################################
 piso
 {
-    turbulence_model             KE
+    turbulence_model             NONE
     velocity_UR                  0.7
     pressure_UR                  0.3
-    n_PISO                       1
+    n_PISO                       2
     n_ORTHO                      0
+    buoyancy                     BOUSSINESQ_THETA1
 }
-diffusion
-{
-    DT                           1
-    t_UR                         0.7
-    n_DEFERRED                   0
-}
+
 turbulence
 {
     k_UR                         0.5

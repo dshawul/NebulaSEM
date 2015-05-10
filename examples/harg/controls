@@ -3,29 +3,29 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       convection
+    solver                       piso
     mesh                         grid
 
 ######################################
 #  Fluid properties specific to solver
 ######################################
     rho                          1
-    viscosity                    0.1
+    viscosity                    1e-5
 #############################
 #  Time increment
 #############################
 
-    state                        TRANSIENT
+    state                        STEADY
     start_step                   0
-    end_step                     1
-    write_interval               1
-    dt                           0.1
+    end_step                     1000
+    write_interval               1000
+    dt                           0.005
 
 ############################
 #  Discretization schemes
 ############################
 
-    convection_scheme            UDS
+    convection_scheme            HYBRID
     nonortho_scheme              OVER_RELAXED
     implicit_factor              1
     blend_factor                 0.2
@@ -35,19 +35,51 @@ general
 ############################
 
     method                       PCG
-    preconditioner               DILU
+    preconditioner               SOR
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
+    ghost_exchange               BLOCKED
     parallel_method              BLOCKED
 
 ############################
 #  Probe locations
 ############################
-    probe 0 {
+    probe 2 {
+      0.1 0 0
+      0.2 0 0
     }
+    gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       0
+    npy       0
+    npz       0
+}
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    4 { U p k e }
 }
 
+decomposition
+{
+    n 		3 {2 1 1}
+    type      	XYZ
+}
+
+refinement
+{
+    shape           QUAD
+    direction       0 0 0
+    field           U
+    field_min       0.1
+    field_max       0.9
+    limit           100000
+}
 
 ######################################
 #  PISO options
@@ -55,28 +87,16 @@ general
 piso
 {
     turbulence_model             KE
-    velocity_UR                  1
-    pressure_UR                  1
-    k_UR                         1
-    x_UR                         1
+    velocity_UR                  0.7
+    pressure_UR                  0.3
     n_PISO                       1
     n_ORTHO                      0
 }
-diffusion
-{
-    DT                           1
-    t_UR                         0.7
-}
-convection
-{
-    t_UR                         0.7
-}transport
-{
-    DT                           0.1
-    t_UR                         1
-}
+
 turbulence
 {
-    k_UR                         0.5
-    x_UR                         0.5
+    mixing_length                500
+    k_UR                         0.7
+    x_UR                         0.7
+    SigmaE                       1.1673
 }

@@ -3,23 +3,23 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       piso
+    solver                       potential
     mesh                         grid
 
 ######################################
 #  Fluid properties specific to solver
 ######################################
     rho                          1
-    viscosity                    1.4e-5
+    viscosity                    1e-5
 #############################
 #  Time increment
 #############################
 
     state                        STEADY
     start_step                   0
-    end_step                     1000
-    write_interval               200
-    dt                           1e-5
+    end_step                     500
+    write_interval               100
+    dt                           0.01
 
 ############################
 #  Discretization schemes
@@ -35,7 +35,7 @@ general
 ############################
 
     method                       PCG
-    tolerance                    1e-6
+    tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
     parallel_method              BLOCKED
@@ -47,8 +47,37 @@ general
       0.1 0 0
       0.2 0 0
     }
+gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       0
+    npy       0
+    npz       0
+}
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    2 { U p }
 }
 
+decomposition
+{
+    n 		3 {2 1 1}
+    type      	XYZ
+}
+
+refinement
+{
+    shape           QUAD
+    direction       0 0 0
+    field           U
+    field_min       0.1
+    field_max       0.9
+    limit           100000
+}
 
 ######################################
 #  PISO options
@@ -56,12 +85,17 @@ general
 piso
 {
     turbulence_model             KE
-    velocity_UR                  0.5
+    velocity_UR                  0.7
     pressure_UR                  0.3
     n_PISO                       1
     n_ORTHO                      0
 }
-
+diffusion
+{
+    DT                           1
+    t_UR                         0.7
+    n_DEFERRED                   0
+}
 turbulence
 {
     k_UR                         0.5

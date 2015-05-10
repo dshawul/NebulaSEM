@@ -10,7 +10,7 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1
-    viscosity                    1e-1
+    viscosity                    1e-4
 #############################
 #  Time increment
 #############################
@@ -18,8 +18,8 @@ general
     state                        STEADY
     start_step                   0
     end_step                     2000
-    write_interval               200
-    dt                           0.001
+    write_interval               1000
+    dt                           1e-5
 
 ############################
 #  Discretization schemes
@@ -47,15 +47,44 @@ general
       0.1 0 0
       0.2 0 0
     }
+    gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       0
+    npy       0
+    npz       0
+}
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    4 { U p k e }
 }
 
+decomposition
+{
+    n 		3 {2 1 1}
+    type      	XYZ
+}
+
+refinement
+{
+    shape           QUAD
+    direction       0 0 0
+    field           U
+    field_min       0.1
+    field_max       0.9
+    limit           100000
+}
 
 ######################################
 #  PISO options
 ######################################
 piso
 {
-    turbulence_model             MIXING_LENGTH
+    turbulence_model             KE
     velocity_UR                  0.7
     pressure_UR                  0.3
     n_PISO                       1
@@ -64,7 +93,6 @@ piso
 
 turbulence
 {
-    mixing_length                5
-    k_UR                         0.5
-    x_UR                         0.5
+    k_UR                         0.7
+    x_UR                         0.7
 }
