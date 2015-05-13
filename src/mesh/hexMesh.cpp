@@ -256,30 +256,55 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	mo.nf = mo.f.size();
 	/*boundaries*/
 	for(k = 0;k < nz; k += (nz - 1)) {
+		Patch p;
+		p.from = mo.f.size();
 		for(i = 0;i < nx - 1;i++) {
 			for(j = 0;j < ny - 1;j++) {
 				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
 				FI[I3(i,j,k)] = mo.f.size() - 1;
 			}
 		}
+		p.to = mo.f.size();
+		mo.patches.push_back(p);
 	}
 	for(j = 0;j < ny;j += (ny - 1)) {
+		Patch p;
+		p.from = mo.f.size();
 		for(i = 0;i < nx - 1;i++) {
 			for(k = 0;k < nz - 1;k++) {
 				ADD(m,m + ny * nz,m + ny * nz + 1,m + 1);
 				FI[I2(i,j,k)] = mo.f.size() - 1;
 			}
 		}
+		p.to = mo.f.size();
+		mo.patches.push_back(p);
 	}
 	for(i = 0;i < nx; i += (nx - 1)) {
+		Patch p;
+		p.from = mo.f.size();
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
 				ADD(m,m + nz,m + nz + 1,m + 1);
 				FI[I1(i,j,k)] = mo.f.size() - 1;
 			}
 		}
+		p.to = mo.f.size();
+		mo.patches.push_back(p);
 	}
-	
+	/*compute normals of patches*/
+#define NORMAL(i,j,k,l,p) { 					\
+	p.N = ((vp[j] - vp[i]) ^ (vp[k] - vp[i]));	\
+	p.N /= mag(p.N);							\
+	p.C = (vp[i] + vp[j] + vp[k] + vp[l]) / 4;	\
+}
+NORMAL(0,1,2,3,mo.patches[0]);
+NORMAL(4,5,6,7,mo.patches[1]);
+NORMAL(0,1,5,4,mo.patches[2]);
+NORMAL(3,2,6,7,mo.patches[3]);
+NORMAL(0,3,7,4,mo.patches[4]);
+NORMAL(1,2,6,5,mo.patches[5]);
+#undef NORMAL
+
 	/*end*/
 #undef ADD
 
@@ -398,6 +423,11 @@ void remove_duplicate(Mesh::MeshObject& p) {
 			if(dup[i] >= 0) p.f.push_back(ft[i]);
 		}
 	}
+	//adjust bstart
+	forEach(p.patches,i) {
+		p.patches[i].from = dup[p.patches[i].from];
+		p.patches[i].to = dup[p.patches[i].to];
+	}
 	/*cells*/
 	sz = p.c.size();
 	for(i = 0;i < sz;i++) {
@@ -461,7 +491,28 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		s2 = m2.f.size();
 		s3 = b.fb.size();
 		m1.f.insert(m1.f.end(),m2.f.begin(),m2.f.begin() + s1);
-
+		
+		//insert patch
+		forEach(m2.patches,i) {
+			m2.patches[i].from += s0;
+			m2.patches[i].to += s0;
+		}
+		Int npatch = m1.patches.size();
+		forEach(m2.patches,i) {
+			Patch& p = m2.patches[i];
+			bool skip = false;
+			if(p.from < s0) skip = true;
+			for(Int j = 0;j < npatch;j++) {
+				if(equal(p.C,m1.patches[j].C)) {
+					skip = true;
+					break;
+				}
+			}
+			if(!skip)
+				m1.patches.push_back(p);
+		}
+		
+		//insert faces
 		IntVector index0(s3,0),index1(s2 - s1,0);
 		Int count = 0;
 		b.fb.reserve(s3 + s2 - s1);
@@ -494,7 +545,8 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 			}
 		}
 		b.fb.resize(count);
-
+        
+		//adjust face ids in cells
 		forEach(m1.c,i) {
 			Cell& ct = m1.c[i];
 			forEach(ct,j) {

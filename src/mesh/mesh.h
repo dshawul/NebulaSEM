@@ -30,6 +30,16 @@ namespace Mesh {
 		Int to;
 		Int buffer_index;
 	};
+	struct Patch {
+		Int from;
+		Int to;
+		Vector N;
+		Vector C;
+		Patch() {
+			from = 0;
+			to = 0;
+		}
+	};
 	struct MeshObject {
 		/*vertices , facets and cells */
 		Vertices v;
@@ -46,6 +56,8 @@ namespace Mesh {
 		Int      nf;
 		Int      nc;
 		Int      nci;
+		/*Start of boundary patches*/
+		std::vector<Patch> patches;
 		/*funcs*/
 		void write(std::ostream& os);
 		void clear() {
@@ -55,6 +67,7 @@ namespace Mesh {
 			bdry.clear();
 			fo.clear();
 			fn.clear();
+			patches.clear();
 			interMesh.clear();
 		}
 	};

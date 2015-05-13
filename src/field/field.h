@@ -1922,6 +1922,7 @@ template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR) {
 	MeshMatrix<type> M = -lap(cF,mu);
+	M.cF = &cF;
 	addTemporal(M,rho,cF_UR);
 	return M;
 }
@@ -1930,6 +1931,7 @@ MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR, 
 		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
 	MeshMatrix<type> M = -lap(cF,mu) - src(cF,Su,Sp);
+	M.cF = &cF;
 	addTemporal(M,rho,cF_UR);
 	return M;
 }

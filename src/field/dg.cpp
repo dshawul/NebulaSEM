@@ -302,8 +302,7 @@ void DG::init_geom() {
 		Vertex v,vd[12],vf[6];
 		Scalar rx,ry,rz;
 		
-#define ADDV(w,mm,ev,vd) {								\
-	Scalar m = (mm + 1) / 2;							\
+#define ADDV(w,m,ev,vd) {								\
 	vd[w] = (1 - m) * ev[w][0] + (m) * ev[w][1];		\
 }
 
@@ -326,9 +325,9 @@ void DG::init_geom() {
 }
 
 #define ADD() {                                     	\
-	rx = xgl[0][i];										\
-	ry = xgl[1][j];										\
-	rz = xgl[2][k];										\
+	rx = (xgl[0][i] + 1) / 2;							\
+	ry = (xgl[1][j] + 1) / 2;							\
+	rz = (xgl[2][k] + 1) / 2;							\
 	ADDV(0 ,rx,ev,vd);									\
 	ADDV(1 ,rx,ev,vd);									\
 	ADDV(2 ,rx,ev,vd);									\
