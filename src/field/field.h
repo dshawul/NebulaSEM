@@ -715,6 +715,7 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
 		}
 		slope /= sz;
 		/*set to neumann*/
+		bc->cname = "NEUMANN";
 		bc->cIndex = NEUMANN;
 		bc->value = slope;
 	}
@@ -1426,7 +1427,7 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 	
 	forEach(fF,i) {
 		Facet& f = gFacets[i];
-		if(gFN[i] < gBCS) {
+		if(gFN[i] < gBCSfield) {
 			forEach(f,j) {
 				Scalar dist = 1.f / magSq(gVertices[f[j]] - fC[i]);
 				vF[f[j]] += (fF[i] * dist);

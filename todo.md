@@ -1,7 +1,7 @@
 # To do
 
 - [ ] Fix artificial viscosity problem
-- [X] Fix pre-conditioner bug
+- [x] Fix pre-conditioner bug
 - [x] Parallel DG 
 - [x] Fix parallel VTK bug
 - [ ] Cyclic boundary in parallel mode
@@ -12,3 +12,4 @@
 
 - [ ] Implement elliptic DG operator
 - [ ] Fix CUDA implementation of solver
+- [ ] Add CG

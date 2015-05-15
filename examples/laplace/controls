@@ -52,7 +52,7 @@ general
 #  DG polynomial order
 ############################
     npx       3
-    npy       1
+    npy       0
     npz       3
 }
 

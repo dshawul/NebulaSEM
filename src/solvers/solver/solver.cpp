@@ -426,16 +426,18 @@ void euler(istream& input) {
 	/*Time loop*/
 	ScalarCellField mu;
 	for (; !it.end(); it.next()) {
-		/*fluxes*/
-		Fc = rho * U;
-		F = flx(Fc);
-		mu = rho * viscosity;
 		/*rho-equation*/
 		{
 			ScalarCellMatrix M;
 			M = convection(rho, U, flx(U), Scalar(1), pressure_UR);
 			Solve(M);
 		}
+		/*fluxes*/
+		Fc = rho * U;
+		F = flx(Fc);
+		/*artificial viscosity*/
+		if(diffusion) mu = rho * viscosity;
+		else mu = Scalar(0);
 		/*T-equation*/
 		{
 			ScalarCellMatrix M;
