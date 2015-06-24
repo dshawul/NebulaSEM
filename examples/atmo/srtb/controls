@@ -48,13 +48,13 @@ general
 #  Probe locations
 ############################
     probe     0 {}
-    gravity   0 -9.81 0
+    gravity   0 0 -9.81
 ############################
 #  DG polynomial order
 ############################
     npx       4
-    npy       4
-    npz       0
+    npy       0
+    npz       4
 }
 
 ############################
