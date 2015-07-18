@@ -448,7 +448,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 Merge mesh m2 onto m1 (internal) and b (boundary) meshes
 */
 void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
-	Int i,j,found,s0,s1,s2,s3;
+	Int found,s0,s1,s2,s3;
 
     //vertices
 	{
@@ -459,9 +459,9 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		m1.v.insert(m1.v.end(),m2.v.begin(),m2.v.begin() + s1);
 
 		IntVector locv(s2 - s1,MAXNUM);
-		for(i = s1;i < s2;i++) {
+		for(Int i = s1;i < s2;i++) {
 			found = 0;
-			for(j = 0;j < s3;j++) {
+			for(Int j = 0;j < s3;j++) {
 				if(equal(m2.v[i],b.vb[j])) {
 					locv[i - s1] += j;
 					found = 1;
@@ -516,9 +516,9 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		IntVector index0(s3,0),index1(s2 - s1,0);
 		Int count = 0;
 		b.fb.reserve(s3 + s2 - s1);
-		for(j = 0;j < s3;j++) {
+		for(Int j = 0;j < s3;j++) {
 			found = 0;
-			for(i = s1;i < s2;i++) {
+			for(Int i = s1;i < s2;i++) {
 				if(!index1[i - s1] && equal(m2.f[i],b.fb[j])) {
 
 					m1.f.push_back(b.fb[j]);
@@ -535,7 +535,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 				count++;
 			}
 		}
-		for(i = s1;i < s2;i++) {
+		for(Int i = s1;i < s2;i++) {
 			if(!index1[i - s1]) {
 				index1[i - s1] = MAXNUM + count;
 
