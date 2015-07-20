@@ -206,6 +206,10 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	using Constants::MAX_INT;
 	Int i,j,ID,count,total = n[0] * n[1] * n[2];
 	
+	/*no decomposition*/
+	if(total == 1)
+		return 1;
+	
 	/*Read mesh*/
 	LoadMesh(step,true,false);
 
