@@ -1,0 +1,15 @@
+language: cpp
+compiler:
+  - gcc
+script:
+  - make
+  - ./test.sh 2 2 1
+install:
+  - sudo apt-get install -y libopenmpi1.5-dev openmpi1.5-bin
+  - ./install_metis.sh
+notifications:
+  email:
+    recipients:
+      - dshawul@gmail.com
+    on_success: [never]
+    on_failure: [always]

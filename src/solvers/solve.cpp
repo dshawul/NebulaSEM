@@ -522,12 +522,12 @@ PROBE:
 }
 template<class type>
 void SolveTexplicit(const MeshMatrix<type>& M) {
+	*M.cF = M.Su / M.ap;
 	if(MP::printOn) {
 		MP::printH("DIAG-DIAG:");
 		MP::print("Iterations %d Initial Residual "
 		"%.5e Final Residual %.5e\n",1,0.0,0.0);
 	}
-	*M.cF = M.Su / M.ap;
 }
 /***************************
  * Explicit instantiations

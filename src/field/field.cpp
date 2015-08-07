@@ -287,7 +287,7 @@ void Mesh::enroll(Util::ParamList& params) {
 	op = new Option(&time_scheme,2,"EULER","SECOND_ORDER");
 	params.enroll("time_scheme",op);
 	params.enroll("runge_kutta",&runge_kutta);
-	op = new Option(&Solver,3,"JACOBI","SOR","PCG");
+	op = new Option(&Solver,3,"JAC","SOR","PCG");
 	params.enroll("method",op);
 	op = new Option(&Preconditioner,4,"NONE","DIAG","SSOR","DILU");
 	params.enroll("preconditioner",op);
