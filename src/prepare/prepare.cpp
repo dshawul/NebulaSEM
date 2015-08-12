@@ -341,6 +341,9 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 	/***************************
 	 * write mesh/index/fields
 	 ***************************/
+	char wdir[512]; 
+	System::pwd(wdir,512);
+	
 	for(ID = 0;ID < total;ID++) {
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
@@ -350,6 +353,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 		stringstream path;
 		path << gMeshName << ID;
 
+		System::cd(wdir);
 		System::mkdir(path.str());
 		if(!System::cd(path.str()))    
 			return 1;
@@ -418,10 +422,6 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 				}
 			}
 		}
-		
-		/*go back*/
-		if(!System::cd("..")) 
-			return 1;
 	}
 
 	/*delete*/

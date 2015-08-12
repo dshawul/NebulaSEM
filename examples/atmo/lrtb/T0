@@ -1,6 +1,6 @@
 size 1
 #uniform 300
-elliptic 300 2    5000 3000 500   2000 2000 10000
+elliptic 300 2    5000 500 3000   2000 10000 2000
 top {
 	type NEUMANN
 }

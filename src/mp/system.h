@@ -45,6 +45,13 @@ namespace System {
 		return !::rmdir(path.c_str());
 #endif
 	}
+	inline int pwd(char* path, int len) {
+#ifdef _MSC_VER
+		return ::GetCurrentDirectory(len,(LPTSTR)path);
+#else
+		return !::getcwd(path, len);
+#endif
+	}
 	/*time*/
 	inline int get_time() {
 #ifdef _MSC_VER
