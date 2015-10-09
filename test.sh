@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #set case file
-case=examples/atmo/lrtb 
+case=examples/atmo/srtb 
 grid=bubble
 
 #prepare directory

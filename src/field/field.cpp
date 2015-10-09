@@ -39,7 +39,7 @@ namespace Controls {
 	Int save_average = 0;
 	Int print_time = 0;
 	CommMethod parallel_method = BLOCKED;
-	Vector gravity = Vector(0,-9.860616,0);
+	Vector gravity = Vector(0,0,-9.860616);
 }
 /*
  * Load mesh
