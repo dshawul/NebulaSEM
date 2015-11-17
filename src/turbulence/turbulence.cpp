@@ -16,7 +16,7 @@ void Turbulence_Model::RegisterTable(Util::ParamList& params) {
 }
 
 Turbulence_Model* Turbulence_Model::Select(VectorCellField& U,ScalarFacetField& F,
-					Scalar& rho,Scalar& viscosity) {
+					ScalarCellField& rho,Scalar& viscosity) {
 	/*turbulence model*/
 	enum TurbModel {
 		NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES

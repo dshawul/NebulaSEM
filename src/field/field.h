@@ -17,7 +17,7 @@ namespace Controls {
 		NONE,MINIMUM, ORTHOGONAL, OVER_RELAXED
 	};
 	enum TimeScheme {
-		EULER, SECOND_ORDER
+		BDF1, BDF2, BDF3, BDF4, BDF5, BDF6
 	};
 	enum Solvers {
 		JACOBI, SOR, PCG
@@ -363,14 +363,21 @@ public:
 	}
 	/*Store previous values*/
 	MeshField* tstore;
+	Int nstore;
+	Int nstored;
 	void initStore() {
-		tstore = new MeshField[2];
+		nstore = Controls::time_scheme - Controls::BDF1 + 1;
+		tstore = new MeshField[nstore];
 		access = ACCESS(int(access) | STOREPREV);
-		updateStore();
+		for(int i = 0;i < nstore;i++)
+			tstore[i] = *this;
+		nstored = 0;
 	}
 	void updateStore() {
-		tstore[1] = tstore[0];
+		for(int i = 0;i < nstore - 1;i++)
+			tstore[nstore - i - 1] = tstore[nstore - i - 2];
 		tstore[0] = *this;
+		nstored++;
 	}
 	/*Time history*/
 	static std::vector<std::ofstream*> tseries;
@@ -420,6 +427,7 @@ public:
 					count++;
 				}
 			}
+			//update store
 			if(pf->access & STOREPREV) {
 				pf->updateStore();
 			}
@@ -794,13 +802,13 @@ void MeshField<T,E>::write(Int step) {
 /*********************************************************************************
  *                      matrix class defined on mesh                             
  *********************************************************************************/
-template <class type> 
+template <class T1, class T2 = Scalar, class T3 = T1> 
 struct MeshMatrix {
-	MeshField<type,CELL>*   cF;
-	MeshField<type,CELL>    Su;
-	MeshField<Scalar,CELL>  ap;
-	MeshField<Scalar,FACET> an[2];
-	MeshField<Scalar,CELLMAT> adg;
+	MeshField<T1,CELL>*   cF;
+	MeshField<T2,CELL>    ap;
+	MeshField<T2,FACET>   an[2];
+	MeshField<T2,CELLMAT> adg;
+	MeshField<T3,CELL>    Su;
 	Int flags;
 	enum FLAG {
 		SYMMETRIC = 1, DIAGONAL = 2
@@ -819,23 +827,23 @@ struct MeshMatrix {
 		Su = p.Su;
 		adg = p.adg;
 	}
-	MeshMatrix(MeshField<type,CELL>* pcF) {
+	MeshMatrix(MeshField<T1,CELL>* pcF) {
 		cF = pcF;
 		flags = (SYMMETRIC | DIAGONAL);
-		ap = Scalar(0);
-		an[0] = Scalar(0);
-		an[1] = Scalar(0);
-		Su = type(0);
-		adg = Scalar(0);
+		ap = T2(0);
+		an[0] = T2(0);
+		an[1] = T2(0);
+		Su = T3(0);
+		adg = T2(0);
 	}
-	MeshMatrix(const MeshField<type,CELL>& p) {
+	MeshMatrix(const MeshField<T1,CELL>& p) {
 		cF = 0;
 		flags = (SYMMETRIC | DIAGONAL);
-		ap = Scalar(0);
-		an[0] = Scalar(0);
-		an[1] = Scalar(0);
+		ap = T2(0);
+		an[0] = T2(0);
+		an[1] = T2(0);
 		Su = p;
-		adg = Scalar(0);
+		adg = T2(0);
 	}
     /*operators*/
 	MeshMatrix operator - () {
@@ -909,7 +917,7 @@ struct MeshMatrix {
 		Su += (*cF) * ap * (1 - UR);
 	}
 	/*Fix*/
-	void Fix(Int c,type value) {
+	void Fix(Int c,T1 value) {
 		/*diagonal fix*/
 		ap[c] = 10e30;
 		Su[c] = value * 10e30;
@@ -1011,33 +1019,29 @@ public:
 #define TensorProduct_(Q,P,tr,$) {											\
 	for(Int ci = 0;ci < gBCS;ci++) {										\
 		forEachLgl(ii,jj,kk) {												\
-			Int ind1 = INDEX3(ii,jj,kk);									\
-			T val(Scalar(0));												\
+			Int index1 = INDEX4(ci,ii,jj,kk);								\
+			T3 val(Scalar(0));												\
 																			\
 			forEachLglX(i) {												\
-				Int ind2 = INDEX3(i,jj,kk);									\
+				Int index2 = INDEX4(ci,i,jj,kk);							\
 				Int indexm = ci * NPMAT + 									\
 					(tr ? INDEX_TX(ii,jj,kk,i) : INDEX_X(ii,jj,kk,i));		\
-				val += Q[ci * NP + ind2] * P.adg[indexm];					\
+				val += Q[index2] * P.adg[indexm];							\
 			}																\
-			forEachLglY(j) {												\
-				if(j != jj) {												\
-					Int ind2 = INDEX3(ii,j,kk);								\
-					Int indexm = ci * NPMAT + 								\
-					(tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));		\
-					val += Q[ci * NP + ind2] * P.adg[indexm];				\
-				}															\
+			forEachLglY(j) if(j != jj) {									\
+				Int index2 = INDEX4(ci,ii,j,kk);							\
+				Int indexm = ci * NPMAT + 									\
+				(tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));			\
+				val += Q[index2] * P.adg[indexm];							\
 			}																\
-			forEachLglZ(k) {												\
-				if(k != kk) {												\
-					Int ind2 = INDEX3(ii,jj,k);								\
-					Int indexm = ci * NPMAT + 								\
-					(tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));		\
-					val += Q[ci * NP + ind2] * P.adg[indexm];				\
-				}															\
+			forEachLglZ(k) if(k != kk) {									\
+				Int index2 = INDEX4(ci,ii,jj,k);							\
+				Int indexm = ci * NPMAT + 									\
+				(tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));			\
+				val += Q[index2] * P.adg[indexm];							\
 			}																\
 																			\
-			r[ci * NP + ind1] $ val;										\
+			r[index1] $ val;												\
 		}																	\
 	}																		\
 }
@@ -1049,13 +1053,13 @@ public:
 /* *******************************
  * matrix - vector product p * q
  * *******************************/
-template <class T> 
-MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const bool sync = false) {
+template <class T1, class T2, class T3> 
+MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
-	MeshField<T,CELL> r;
+	MeshField<T3,CELL> r;
 	Int c1,c2;
-	ASYNC_COMM<T> comm(&q[0]);
+	ASYNC_COMM<T1> comm(&q[0]);
 	
 	if(sync) comm.send();
 	
@@ -1085,13 +1089,13 @@ MeshField<T,CELL> mul (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const 
 	return r;
 }
 /*matrix transopose - vector product pT * q */
-template <class T> 
-MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const bool sync = false) {
+template <class T1, class T2, class T3> 
+MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
-	MeshField<T,CELL> r;
+	MeshField<T3,CELL> r;
 	Int c1,c2;
-	ASYNC_COMM<T> comm(&q[0]);
+	ASYNC_COMM<T1> comm(&q[0]);
 	
 	if(sync) comm.send();
 	
@@ -1121,14 +1125,14 @@ MeshField<T,CELL> mult (const MeshMatrix<T>& p,const MeshField<T,CELL>& q, const
 	return r;
 }
 /* calculate RHS sum */
-template <class T> 
-MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
+template <class T1, class T2, class T3> 
+MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
 	using namespace Mesh;
 	using namespace DG;
-	MeshField<T,CELL> r;
-	MeshField<T,CELL>& q = (*p.cF);
+	MeshField<T3,CELL> r;
+	MeshField<T1,CELL>& q = (*p.cF);
 	Int c1,c2;
-	ASYNC_COMM<T> comm(&q[0]);
+	ASYNC_COMM<T1> comm(&q[0]);
 	
 	if(sync) comm.send();
 	
@@ -1161,12 +1165,12 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
 /* ***************************************
  * Implicit boundary conditions
  * ***************************************/
- template <class T> 
- void applyImplicitBCs(const MeshMatrix<T>& M) {
+template <class T1, class T2, class T3> 
+ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
 	 using namespace Mesh;
-	 MeshField<T,CELL>& cF = *M.cF;
+	 MeshField<T1,CELL>& cF = *M.cF;
 	 BasicBCondition* bbc;
-	 BCondition<T>* bc;
+	 BCondition<T1>* bc;
 
 	 /*boundary conditions*/
 	 forEach(AllBConditions,i) {
@@ -1175,7 +1179,7 @@ MeshField<T,CELL> getRHS(const MeshMatrix<T>& p, const bool sync = false) {
  			if(bbc->cIndex == GHOST) 
  				continue;
 
-			 bc = static_cast<BCondition<T>*> (bbc);
+			 bc = static_cast<BCondition<T1>*> (bbc);
 			 Int sz = bc->bdry->size();
 			 if(sz == 0) continue;
 
@@ -1365,7 +1369,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
  * Fill boundary from internal values
  * **************************************/
 template<class T>
-const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF) {
+const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false) {
 	using namespace Mesh;
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
@@ -1373,6 +1377,11 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF) {
 			Int k = faceid * DG::NPF + n;
 			cF[gFN[k]] = cF[gFO[k]];
 		}
+	}
+	if(gInterMesh.size()) {
+		ASYNC_COMM<T> comm(&cF[0]);
+		comm.send();
+		comm.recv();
 	}
 	return cF;
 }
@@ -1404,12 +1413,12 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
 	return fF;
 }
 /*upwind*/
-template<class type>
-MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const ScalarFacetField& flux) {
+template<class type,class T3>
+MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
 	using namespace Mesh;
 	MeshField<type,FACET> fF;
 	forEach(fF,i) {
-		if(flux[i] >= 0) fF[i] = cF[gFO[i]];
+		if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[gFO[i]];
 		else fF[i] = cF[gFN[i]];
 	}
 	return fF;
@@ -1454,9 +1463,9 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
  * *******************************/
 
 /*Implicit*/
-template<class type>
-MeshMatrix<type> src(MeshField<type,CELL>& cF,const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
-	MeshMatrix<type> m;
+template <class T1, class T2, class T3> 
+MeshMatrix<T1,T2,T3> src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2,CELL>& Sp) {
+	MeshMatrix<T1,T2,T3> m;
 	m.cF = &cF;
 	m.flags |= (m.SYMMETRIC | m.DIAGONAL);
 	m.ap = -(Sp * Mesh::cV);
@@ -1483,8 +1492,10 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
 /*Explicit*/
 #define GRADD(im,jm,km) {							\
 	Int index1 = INDEX4(ci,im,jm,km);				\
-	DPSI(im,jm,km);									\
-	r[index] += mul(dot(dpsi_j,Jin),p[index1]);		\
+	Vector dpsi_ij;									\
+	DPSI(dpsi_ij,im,jm,km);							\
+	dpsi_ij = dot(dpsi_ij,Jin);						\
+	r[index1] -= mul(dpsi_ij,p[index]);				\
 }
 	
 #define GRAD(T1,T2)																			\
@@ -1496,10 +1507,6 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 	r = sum(mul(fN,cds(p)));																\
 																							\
 	if(NPMAT) {																				\
-		forEach(fN,i) {																		\
-			r[gFO[i]] -= mul(fN[i],p[gFO[i]]);												\
-			r[gFN[i]] += mul(fN[i],p[gFN[i]]);												\
-		}																					\
 		for(Int ci = 0; ci < gBCS;ci++) {													\
 			forEachLgl(ii,jj,kk) {															\
 				Int index = INDEX4(ci,ii,jj,kk);											\
@@ -1523,112 +1530,20 @@ GRAD(Tensor,Vector);
 
 #define gradi(x) (gradf(x)  / Mesh::cV)
 
-/* ***************************************************
- * Divergence field operation
- * ***************************************************/ 
-
-/* Explicit */
-#define DIVD(im,jm,km) {							\
-	Int index1 = INDEX4(ci,im,jm,km);				\
-	DPSI(im,jm,km);									\
-	r[index] += dot(dot(dpsi_j,Jin),p[index1]);		\
-}
-
-#define DIV(T1,T2)																			\
-inline MeshField<T1,FACET> flx(const MeshField<T2,CELL>& p) {								\
-	return dot(cds(p),Mesh::fN);															\
-}																							\
-inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
-	using namespace Mesh;																	\
-	using namespace DG;																		\
-	MeshField<T1,CELL> r;																	\
-																							\
-	r = sum(dot(cds(p),fN));																\
-																							\
-	if(NPMAT) {																				\
-		forEach(fN,i) {																		\
-			r[gFO[i]] -= dot(fN[i],p[gFO[i]]);												\
-			r[gFN[i]] += dot(fN[i],p[gFN[i]]);												\
-		}																					\
-		for(Int ci = 0; ci < gBCS;ci++) {													\
-			forEachLgl(ii,jj,kk) {															\
-				Int index = INDEX4(ci,ii,jj,kk);											\
-				Tensor Jin = Jinv[index] * cV[index];										\
-				forEachLglX(i) DIVD(i,jj,kk);												\
-				forEachLglY(j) if(j != jj) DIVD(ii,j,kk);									\
-				forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);									\
-			}																				\
-		}																					\
-	}																						\
-																							\
-	fillBCs(r);																				\
-																							\
-	return r;																				\
-}
-
-DIV(Scalar,Vector);
-DIV(Vector,Tensor);
-#undef DIV
-#undef DIVD
-	
-#define divi(x)  (divf(x)   / Mesh::cV)
-
-/* Implicit */
-template<class type>
-MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
-					const ScalarFacetField& flux,const ScalarCellField& muc) {
+ /***********************************************
+ * Numerical flux computation
+ ************************************************/ 
+template<class T1, class T2, class T3, class T4>
+void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
 	using namespace Controls;
 	using namespace Mesh;
 	using namespace DG;
-	MeshMatrix<type> m;
-	Scalar F,G;
-	m.cF = &cF;
-	m.flags = 0;
-	m.Su = type(0);
-	m.ap = Scalar(0);
-	m.adg = Scalar(0);
-
-	/*compute differentiation matrix - volume integral*/
-	if(NPMAT) {
-		for(Int ci = 0; ci < gBCS;ci++) {
-			forEachLgl(ii,jj,kk) {
-				Int ind1 = INDEX3(ii,jj,kk);
-				Int index = INDEX4(ci,ii,jj,kk);
-				Vector Jr = dot(flux_cell[index],Jinv[index]) * cV[index];
-
-#define DIVD(im,jm,km) {									\
-	Int ind2 = INDEX3(im,jm,km);							\
-	DPSI(im,jm,km);											\
-	Scalar val = -dot(dpsi_j,Jr);							\
-	if(ind1 == ind2) {										\
-		m.ap[index] = -val;									\
-		m.adg[indexm] = 0;									\
-	} else {												\
-		m.adg[indexm] = val;								\
-	}														\
-}
-				forEachLglX(i) {
-					Int indexm = ci * NPMAT + INDEX_TX(ii,jj,kk,i);
-					DIVD(i,jj,kk);
-				}
-				forEachLglY(j) {
-					if(j != jj) {
-						Int indexm = ci * NPMAT + INDEX_TY(ii,jj,kk,j);
-						DIVD(ii,j,kk);
-					}
-				}
-				forEachLglZ(k) {
-					if(k != kk) {
-						Int indexm = ci * NPMAT + INDEX_TZ(ii,jj,kk,k);
-						DIVD(ii,jj,k);
-					}
-				}
-#undef DIVD
-
-			}
-		}
-	}
-	/*Implicit convection schemes*/
+		
+	/*compute surface integral*/
+	MeshField<T1,CELL>& cF = *m.cF;
+	T4 F;
+	Scalar G;
+	
 	bool isImplicit = (
 		convection_scheme == CDS ||
 		convection_scheme == UDS ||
@@ -1643,23 +1558,23 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 			gamma = Scalar(0);
 		else if(convection_scheme == BLENDED) 
 			gamma = Scalar(blend_factor);
-		else if(convection_scheme == HYBRID) {
-			Scalar D;
+		else if(convection_scheme == HYBRID && muc) {
+			T4 D;
 			Vector dv;
-			ScalarFacetField mu = cds(muc);
+			MeshField<T4,FACET> mu = cds(*muc);
 			forEach(gFacets,faceid) {
 				for(Int n = 0; n < NPF;n++) {
 					Int k = faceid * NPF + n;
-					/*calc D - uncorrected */
+					//calc D - uncorrected
 					dv = cC[gFN[k]] - cC[gFO[k]];
 					D = (mag(fN[k]) / mag(dv)) * mu[k];
-					/*compare F and D */
+					//compare F and D
 					F = flux[k];
-					if(F < 0) {
-						if(-F * fI[k] > D) gamma[k] = 0;
+					if(dot(F,T4(1)) < 0) {
+						if(dot(F * fI[k] + D,T4(1)) >= 0) gamma[k] = 0;
 						else gamma[k] = 1;
 					} else {
-						if(F * (1 - fI[k]) > D) gamma[k] = 0;
+						if(dot(F * (1 - fI[k]) - D,T4(1)) > 0) gamma[k] = 0;
 						else gamma[k] = 1;
 					}
 				}
@@ -1668,8 +1583,8 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		forEach(flux,i) {
 			F = flux[i];
 			G = gamma[i];
-			m.an[0][i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,0)));
-			m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,0)));
+			m.an[0][i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,T4(0))));
+			m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
 			m.ap[gFO[i]] += m.an[0][i];
 			m.ap[gFN[i]] += m.an[1][i];
 		}
@@ -1677,13 +1592,13 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 	} else {
 		forEach(flux,i) {
 			F = flux[i];
-			m.an[0][i] = -max( F,0);
-			m.an[1][i] = -max(-F,0);
+			m.an[0][i] = -max( F,T4(0));
+			m.an[1][i] = -max(-F,T4(0));
 			m.ap[gFO[i]] += m.an[0][i];
 			m.ap[gFN[i]] += m.an[1][i];
 		}
 
-		MeshField<type,FACET> corr;
+		MeshField<T1,FACET> corr;
 		if(convection_scheme == CDSS) {
 			corr = cds(cF) - uds(cF,flux);
 		} else if(convection_scheme == LUD) {
@@ -1711,13 +1626,13 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 				r = (phiDC / phiCU) * (fi / (1 - fi))
 			*/
 			/*calculate r*/
-			MeshField<type,FACET> q,r,phiDC,phiCU;
+			MeshField<T1,FACET> q,r,phiDC,phiCU;
 			ScalarFacetField uFI;
 			{
-				ScalarFacetField nflux = Scalar(0)-flux;
+				MeshField<T4,FACET> nflux = T4(0)-flux;
 				phiDC = uds(cF,nflux) - uds(cF,flux);
 				forEach(phiDC,i) {
-					if(flux[i] >= 0) G = fI[i];
+					if(dot(flux[i],T4(1)) >= 0) G = fI[i];
 					else G = 1 - fI[i];
 					uFI[i] = G;
 				}
@@ -1733,8 +1648,8 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 			}
 			r = (phiCU / phiDC) * (uFI / (1 - uFI));
 			forEach(phiDC,i) {
-				if(equal(phiDC[i] * (1 - uFI[i]),type(0)))
-					r[i] = type(0);
+				if(equal(phiDC[i] * (1 - uFI[i]),T1(0)))
+					r[i] = T1(0);
 			}
 			/*TVD schemes*/
 			if(convection_scheme == VANLEER) {
@@ -1742,23 +1657,23 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 			} else if(convection_scheme == VANALBADA) {
 				q = (r+r*r) / (1+r*r);
 			} else if(convection_scheme == MINMOD) {
-				q = max(type(0),min(r,type(1)));
+				q = max(T1(0),min(r,T1(1)));
 			} else if(convection_scheme == SUPERBEE) {
-				q = max(min(r,type(2)),min(2*r,type(1)));
-				q = max(q,type(0));
+				q = max(min(r,T1(2)),min(2*r,T1(1)));
+				q = max(q,T1(0));
 			} else if(convection_scheme == SWEBY) {
 				Scalar beta = 2;
-				q = max(min(r,type(beta)),min(beta*r,type(1)));
-				q = max(q,type(0));
+				q = max(min(r,T1(beta)),min(beta*r,T1(1)));
+				q = max(q,T1(0));
 			} else if(convection_scheme == QUICKL) {
 				q = min(2*r,(3+r)/4);
-				q = min(q,type(2));
-				q = max(q,type(0));
+				q = min(q,T1(2));
+				q = max(q,T1(0));
 			} else if(convection_scheme == UMIST) {
 				q = min(2*r,(3+r)/4);
 				q = min(q,(1+3*r)/4);
-				q = min(q,type(2));
-				q = max(q,type(0));
+				q = min(q,T1(2));
+				q = max(q,T1(0));
 			} else if(convection_scheme == QUICK) {
 				q = (3+r)/4;
 			} else if(convection_scheme == DDS) {
@@ -1771,6 +1686,164 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 		}
 		m.Su = sum(flux * corr);
 	}
+}
+
+/* Implicit */
+template<class T1, class T2>
+MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_cell,
+					const MeshField<T2,FACET>& flux) {
+	using namespace Mesh;
+	using namespace DG;
+	MeshMatrix<T1,T2,T2> m;
+	m.cF = &cF;
+	m.flags = 0;
+	m.Su = T1(0);
+	m.ap = Scalar(0);
+	m.adg = Scalar(0);
+
+	/*compute volume integral*/
+	if(NPMAT) {
+		for(Int ci = 0; ci < gBCS;ci++) {
+			forEachLgl(ii,jj,kk) {
+				Int index = INDEX4(ci,ii,jj,kk);
+				Tensor Jr = Jinv[index];
+				T1 F = flux_cell[index] * cV[index];
+
+#define GRADD(im,jm,km) {									\
+	Int index2 = INDEX4(ci,im,jm,km);						\
+	Vector dpsi_ij;											\
+	DPSI(dpsi_ij,im,jm,km);									\
+	T2 val = -dot(dpsi_ij,Jr) * F;							\
+	if(index == index2) {										\
+		m.ap[index] = -val;									\
+		m.adg[indexm] = 0;									\
+	} else {												\
+		m.adg[indexm] = val;								\
+	}														\
+}
+				forEachLglX(i) {
+					Int indexm = ci * NPMAT + INDEX_TX(ii,jj,kk,i);
+					GRADD(i,jj,kk);
+				}
+				forEachLglY(j) if(j != jj) {
+					Int indexm = ci * NPMAT + INDEX_TY(ii,jj,kk,j);
+					GRADD(ii,j,kk);
+				}
+				forEachLglZ(k) if(k != kk) {
+					Int indexm = ci * NPMAT + INDEX_TZ(ii,jj,kk,k);
+					GRADD(ii,jj,k);
+				}
+#undef GRADD
+
+			}
+		}
+	}
+	/*compute surface integral*/
+	numericalFlux(m,flux);
+	
+	return m;
+}
+/* ***************************************************
+ * Divergence field operation
+ * ***************************************************/ 
+
+/* Explicit */
+#define DIVD(im,jm,km) {							\
+	Int index1 = INDEX4(ci,im,jm,km);				\
+	Vector dpsi_ij;									\
+	DPSI(dpsi_ij,im,jm,km);							\
+	dpsi_ij = dot(dpsi_ij,Jin);						\
+	r[index1] -= dot(dpsi_ij,p[index]);				\
+}
+
+#define DIV(T1,T2)																			\
+inline MeshField<T1,FACET> flx(const MeshField<T2,CELL>& p) {								\
+	return dot(cds(p),Mesh::fN);															\
+}																							\
+inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {								\
+	using namespace Mesh;																	\
+	using namespace DG;																		\
+	MeshField<T1,CELL> r;																	\
+																							\
+	r = sum(dot(cds(p),fN));																\
+																							\
+	if(NPMAT) {																				\
+		for(Int ci = 0; ci < gBCS;ci++) {													\
+			forEachLgl(ii,jj,kk) {															\
+				Int index = INDEX4(ci,ii,jj,kk);											\
+				Tensor Jin = Jinv[index] * cV[index];										\
+				forEachLglX(i) DIVD(i,jj,kk);												\
+				forEachLglY(j) if(j != jj) DIVD(ii,j,kk);									\
+				forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);									\
+			}																				\
+		}																					\
+	}																						\
+																							\
+	fillBCs(r);																				\
+																							\
+	return r;																				\
+}
+
+DIV(Scalar,Vector);
+DIV(Vector,Tensor);
+#undef DIV
+#undef DIVD
+	
+#define divi(x)  (divf(x)   / Mesh::cV)
+
+/* Implicit */
+template<class type>
+MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
+					const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
+						
+	using namespace Mesh;
+	using namespace DG;
+	MeshMatrix<type> m;
+	m.cF = &cF;
+	m.flags = 0;
+	m.Su = type(0);
+	m.ap = Scalar(0);
+	m.adg = Scalar(0);
+
+	/*compute volume integral*/
+	if(NPMAT) {
+		for(Int ci = 0; ci < gBCS;ci++) {
+			forEachLgl(ii,jj,kk) {
+				Int index = INDEX4(ci,ii,jj,kk);
+				Vector Jr = dot(flux_cell[index],Jinv[index]) * cV[index];
+
+#define DIVD(im,jm,km) {									\
+	Int index2 = INDEX4(ci,im,jm,km);						\
+	Vector dpsi_ij;											\
+	DPSI(dpsi_ij,im,jm,km);									\
+	Scalar val = -dot(dpsi_ij,Jr);							\
+	if(index == index2) {									\
+		m.ap[index] = -val;									\
+		m.adg[indexm] = 0;									\
+	} else {												\
+		m.adg[indexm] = val;								\
+	}														\
+}
+				forEachLglX(i) {
+					Int indexm = ci * NPMAT + INDEX_TX(ii,jj,kk,i);
+					DIVD(i,jj,kk);
+				}
+				forEachLglY(j) if(j != jj) {
+					Int indexm = ci * NPMAT + INDEX_TY(ii,jj,kk,j);
+					DIVD(ii,j,kk);
+				}
+				forEachLglZ(k) if(k != kk) {
+					Int indexm = ci * NPMAT + INDEX_TZ(ii,jj,kk,k);
+					DIVD(ii,jj,k);
+				}
+#undef DIVD
+
+			}
+		}
+	}
+	/*compute surface integral*/
+	numericalFlux(m,flux,muc);
+	
 	return m;
 }
 
@@ -1783,64 +1856,159 @@ template<class type, ENTITY entity>
 MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
 	return divf(mu * gradi(cF));
 }
+
 #define lapi(x,y) (lapf(x,y)  / Mesh::cV)
 
 /*Implicit*/
 template<class type>
 MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc) {
-	/*No implicit laplacian for DG*/
-	if(DG::NPMAT) 
-		return lapf(cF,muc);
-	/*Finite volume*/
+
 	using namespace Controls;
 	using namespace Mesh;
+	using namespace DG;
+	
 	MeshMatrix<type> m;
-	VectorFacetField K;
-	ScalarFacetField mu = cds(muc);
-	Vector dv;
-	Int c1,c2;
-	Scalar D = 0;
-	/*clear*/
 	m.cF = &cF;
-	m.flags |= m.SYMMETRIC;
+	m.flags = m.SYMMETRIC;
 	m.Su = type(0);
 	m.ap = Scalar(0);
 	m.adg = Scalar(0);
-	forEach(mu,i) {
-		c1 = gFO[i];
-		c2 = gFN[i];
-		dv = cC[c2] - cC[c1];
-		/*diffusivity coefficient*/
-		if(nonortho_scheme == NONE) {
-			D = mag(fN[i]) / mag(dv);
-		} else {
-			if(nonortho_scheme == OVER_RELAXED) {
-				D = ((fN[i] & fN[i]) / (fN[i] & dv));
-			} else if(nonortho_scheme == MINIMUM) {
-				D = ((fN[i] & dv) / (dv & dv));
-			} else if(nonortho_scheme == ORTHOGONAL) {
-				D = sqrt((fN[i] & fN[i]) / (dv & dv));
+	
+	if(NPMAT) {
+		
+		/*compute volume integral*/
+		for(Int ci = 0; ci < gBCS;ci++) {
+			forEachLgl(ii,jj,kk) {
+				Int index = INDEX4(ci,ii,jj,kk);
+				Tensor Jin = Jinv[index];	
+
+#define H(in,jn,kn) {								\
+	Int index2 = INDEX4(ci,in,jn,kn);				\
+    Vector dpsi_jk;									\
+	DPSI(dpsi_jk,in,jn,kn);							\
+	dpsi_jk = dot(dpsi_jk,Jin);						\
+	Scalar val = -dot(dpsi_ik,dpsi_jk);				\
+	if(index1 == index2) {							\
+		m.ap[index1] += -val;						\
+	} else {										\
+		m.adg[indexm]  += val;						\
+		m.adg[indexmt] += val;						\
+	}												\
+}
+
+#define LAPD(im,jm,km) {									\
+	Int index1 = INDEX4(ci,im,jm,km);						\
+	Vector dpsi_ik,dp1;										\
+	DPSI(dpsi_ik,im,jm,km);									\
+	dpsi_ik = dot(dpsi_ik,Jin) * cV[index] * muc[index];	\
+	forEachLglX(i2) if(i2 >= im) {							\
+		Int indexm  = ci * NPMAT + INDEX_TX(im,jm,km,i2);	\
+		Int indexmt = ci * NPMAT + INDEX_X(im,jm,km,i2);	\
+		H(i2,jm,km);										\
+	}														\
+	forEachLglY(j2) if(j2 > jm) {							\
+		Int indexm  = ci * NPMAT + INDEX_TY(im,jm,km,j2);	\
+		Int indexmt = ci * NPMAT + INDEX_Y(im,jm,km,j2);	\
+		H(im,j2,km);										\
+	}														\
+	forEachLglZ(k2) if(k2 > km) {							\
+		Int indexm  = ci * NPMAT + INDEX_TZ(im,jm,km,k2);	\
+		Int indexmt = ci * NPMAT + INDEX_Z(im,jm,km,k2);	\
+		H(im,jm,k2);										\
+	}														\
+}
+				forEachLglX(i) LAPD(i,jj,kk);
+				forEachLglY(j) if(j != jj) LAPD(ii,j,kk);
+				forEachLglZ(k) if(k != kk) LAPD(ii,jj,k);
+#undef H
+#undef LAPD
+
 			}
-			K[i] = fN[i] - D * dv;
 		}
-		/*coefficients*/
-		m.an[0][i] = D * mu[i];
-		m.an[1][i] = D * mu[i];
-		m.ap[c1]  += m.an[0][i];
-		m.ap[c2]  += m.an[1][i];
-	}
-	/*non-orthogonality handled through deferred correction*/
-	if(nonortho_scheme != NONE) {
-		MeshField<type,FACET> r = dot(cds(gradi(cF)),K);
-		type res;
+
+		/* compute fluxes -- explicitly*/
+		m.Su = muc * sum(dot(cds(gradi(cF)),fN));
+
+		/* symmetrizing term */
+		{
+			//compute grad(psi)
+			VectorCellField grad_psi = Vector(0);
+
+			for(Int ci = 0; ci < gBCS;ci++) {
+				forEachLglBound(ii,jj,kk) {
+					Int index = INDEX4(ci,ii,jj,kk);
+					Tensor Jin = Jinv[index];
+
+#define PSID(im,jm,km) {					\
+	Int index1 = INDEX4(ci,im,jm,km);		\
+	Vector dpsi_ij;							\
+	DPSI(dpsi_ij,im,jm,km);					\
+	dpsi_ij = dot(dpsi_ij,Jin);				\
+	grad_psi[index1] -= dpsi_ij;			\
+}
+					forEachLglX(i) PSID(i,jj,kk);
+					forEachLglY(j) if(j != jj) PSID(ii,j,kk);
+					forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
+				}
+			}
+			fillBCs(grad_psi);
+			
+			//jump
+			ScalarFacetField pF = dot(cds(grad_psi),fN);
+			MeshField<type,FACET> Su = type(0);
+			forEach(fN,i) {
+				Int co = gFO[i];
+				Int cn = gFN[i];
+				Su[i] += (cF[co] - cF[cn]) * pF[i];
+			}
+			m.Su += muc * sum(Su);
+		}
+
+	} else {
+
+		/*Finite volume*/
+		VectorFacetField K;
+		ScalarFacetField mu = cds(muc);
+		Vector dv;
+		Int c1,c2;
+		Scalar D = 0;
+
 		forEach(mu,i) {
 			c1 = gFO[i];
 			c2 = gFN[i];
-			res = m.an[0][i] * (cF[c2] - cF[c1]);
-			if(mag(r[i]) > Scalar(0.5) * mag(res)) 
-				r[i] = Scalar(0.5) * res;
+			dv = cC[c2] - cC[c1];
+			/*diffusivity coefficient*/
+			if(nonortho_scheme == NONE) {
+				D = mag(fN[i]) / mag(dv);
+			} else {
+				if(nonortho_scheme == OVER_RELAXED) {
+					D = ((fN[i] & fN[i]) / (fN[i] & dv));
+				} else if(nonortho_scheme == MINIMUM) {
+					D = ((fN[i] & dv) / (dv & dv));
+				} else if(nonortho_scheme == ORTHOGONAL) {
+					D = sqrt((fN[i] & fN[i]) / (dv & dv));
+				}
+				K[i] = fN[i] - D * dv;
+			}
+			/*coefficients*/
+			m.an[0][i] = D * mu[i];
+			m.an[1][i] = D * mu[i];
+			m.ap[c1]  += m.an[0][i];
+			m.ap[c2]  += m.an[1][i];
 		}
-		m.Su = sum(r);
+		/*non-orthogonality handled through deferred correction*/
+		if(nonortho_scheme != NONE) {
+			MeshField<type,FACET> r = dot(cds(gradi(cF)),K);
+			type res;
+			forEach(mu,i) {
+				c1 = gFO[i];
+				c2 = gFN[i];
+				res = m.an[0][i] * (cF[c2] - cF[c1]);
+				if(mag(r[i]) > Scalar(0.5) * mag(res)) 
+					r[i] = Scalar(0.5) * res;
+			}
+			m.Su = sum(r);
+		}
 	}
 	/*end*/
 	return m;
@@ -1849,71 +2017,109 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc) {
 /* *******************************
  * Temporal derivative
  * *******************************/
+#define PREV(k) (rho ? (cF.tstore[k] * rho->tstore[k]) : cF.tstore[k])
+
 template<class type>
-MeshMatrix<type> ddt(MeshField<type,CELL>& cF,const ScalarCellField& rho) {
+MeshMatrix<type> ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
 	MeshMatrix<type> m;
 	m.cF = &cF;
 	m.flags |= (m.SYMMETRIC | m.DIAGONAL);
-	//ddt schemes
-	if(Controls::time_scheme == Controls::EULER || !(cF.access & STOREPREV)) {
-		if(Controls::time_scheme != Controls::EULER) cF.initStore();
-		m.ap = (Mesh::cV * rho) / -Controls::dt;
-		m.Su = cF * m.ap;
-	} else if(Controls::time_scheme == Controls::SECOND_ORDER) {
-		m.ap = (1.5 * Mesh::cV * rho) / -Controls::dt;
-		m.Su = ((4.0 * cF - cF.tstore[1]) / 3.0) * m.ap;
+	
+	//BDF methods
+	if(Controls::time_scheme == Controls::BDF1) {
+		m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+		m.Su = (PREV(0)) * m.ap;
+	} else if(Controls::time_scheme == Controls::BDF2) {
+		m.ap = (-3.0 / (2.0 * Controls::dt)) * Mesh::cV;
+		m.Su = ((4.0 * PREV(0) - PREV(1)) / 3.0) * m.ap;
+	} else if(Controls::time_scheme == Controls::BDF3) {
+		m.ap = (-11.0 / (6.0 * Controls::dt)) * Mesh::cV;
+		m.Su = ((18.0 * PREV(0) - 9.0 * PREV(1) + 2.0 * PREV(2)) / 11.0) * m.ap;
+	} else if(Controls::time_scheme == Controls::BDF4) {
+		m.ap = (-25.0 / (12.0 * Controls::dt)) * Mesh::cV;
+		m.Su = ((48.0 * PREV(0) - 36.0 * PREV(1) + 16.0 * PREV(2) - 3.0 * PREV(3)) / 25.0) * m.ap;
+	} else if(Controls::time_scheme == Controls::BDF5) {
+		m.ap = (-137.0 / (60.0 * Controls::dt)) * Mesh::cV;
+		m.Su = ((300.0 * PREV(0) - 300.0 * PREV(1) + 200.0 * PREV(2) - 75.0 * PREV(3) + 12.0 * PREV(4)) / 137.0) * m.ap;
+	} else if(Controls::time_scheme == Controls::BDF6) {
+		m.ap = (-147.0 / (60.0 * Controls::dt)) * Mesh::cV;
+		m.Su = ((360.0 * PREV(0) - 450.0 * PREV(1) + 400.0 * PREV(2) - 225.0 * PREV(3) + 72.0 * PREV(4) - 10.0 * PREV(5)) / 147.0) * m.ap;
 	}
+	if(rho) m.ap *= (*rho);
+	
 	//others
 	m.adg = Scalar(0);
 	m.an[0] = Scalar(0);
 	m.an[1] = Scalar(0);
+	
 	return m;
 }
 template<class type>
-MeshMatrix<type> ddt2(MeshField<type,CELL>& cF,const ScalarCellField& rho) {
+MeshMatrix<type> ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
 	MeshMatrix<type> m;
 	m.cF = &cF;
 	m.flags |= (m.SYMMETRIC | m.DIAGONAL);
-	if(!(cF.access & STOREPREV)) cF.initStore();
-	//diagonal mass matrix
-	m.ap = (Mesh::cV * rho) / -(Controls::dt * Controls::dt);
-	m.Su = (2.0 * cF - cF.tstore[1]) * m.ap;
+
+	//BDF method
+	if(Controls::time_scheme == Controls::BDF2) {
+		m.ap = (-1.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
+		m.Su = (2.0 * PREV(0) - PREV(1)) * m.ap;
+	} else if(Controls::time_scheme == Controls::BDF3) {
+		m.ap = (-2.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
+		m.Su = ((5.0 * PREV(0) - 4.0 * PREV(1) + PREV(2)) / 2.0) * m.ap;
+	}
+	if(rho) m.ap *= (*rho);
+
 	//others
 	m.adg = Scalar(0);
 	m.an[0] = Scalar(0);
 	m.an[1] = Scalar(0);
+	
 	return m;
 }	
-template<class type>
-void addTemporal(MeshMatrix<type>& M,const ScalarCellField& rho,Scalar cF_UR) {
+
+#undef PREV
+
+template<int order, class type>
+void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
 	using namespace Controls;
 	if(state == STEADY)
 		M.Relax(cF_UR);
 	else {
+		//store previous values
+		if(!(M.cF->access & STOREPREV)) 
+			M.cF->initStore();
+		
+		//Multistage Runge-Kutta for linearized (constant jacobian)
 		if(!equal(implicit_factor,1)) {
-			MeshField<type,CELL> k1 = M.Su - mul(M, *M.cF);
+			MeshField<type,CELL> k1 = M.Su - mul(M, M.cF->tstore[0]);
 			if(runge_kutta == 1) {
 				M = M * (implicit_factor) + k1  * (1 - implicit_factor);
 			} else {
-				ScalarCellField mdt = Controls::dt / (rho * Mesh::cV);
+				ScalarCellField mdt = Controls::dt / (Mesh::cV);
 				if (runge_kutta == 2) {
-					MeshField<type, CELL> k2 = M.Su - mul(M, *M.cF + k1 * mdt);
+					MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt);
 					M = M * (implicit_factor) + ((k2 + k1) / 2) * (1 - implicit_factor);
 				} else if (runge_kutta == 3) {
-					MeshField<type, CELL> k2 = M.Su - mul(M, *M.cF + k1 * mdt / 2);
-					MeshField<type, CELL> k3 = M.Su - mul(M, *M.cF + (2 * k2 - k1) * mdt);
+					MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
+					MeshField<type, CELL> k3 = k1 - mul(M, (2 * k2 - k1) * mdt);
 					M = M * (implicit_factor) + ((k3 + 4 * k2 + k1) / 6) * (1 - implicit_factor);
 				} else if (runge_kutta == 4) {
-					MeshField<type, CELL> k2 = M.Su - mul(M, *M.cF + k1 * mdt / 2);
-					MeshField<type, CELL> k3 = M.Su - mul(M, *M.cF + k2 * mdt / 2);
-					MeshField<type, CELL> k4 = M.Su - mul(M, *M.cF + k3 * mdt);
+					MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
+					MeshField<type, CELL> k3 = k1 - mul(M, k2 * mdt / 2);
+					MeshField<type, CELL> k4 = k1 - mul(M, k3 * mdt);
 					M = M * (implicit_factor) + ((k4 + 2 * k3 + 2 * k2 + k1) / 6) * (1 - implicit_factor);
 				}
 			}
 			if(equal(implicit_factor,0))
 				M.flags = (M.SYMMETRIC | M.DIAGONAL);
 		}
-		M += ddt(*M.cF,rho);
+		
+		//first or second derivative
+		if(order == 1)
+			M += ddt(*M.cF,rho);
+		else
+			M += ddt2(*M.cF,rho);
 	}
 }
 /* ************************************************
@@ -1921,49 +2127,49 @@ void addTemporal(MeshMatrix<type>& M,const ScalarCellField& rho,Scalar cF_UR) {
  *************************************************/
 template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
-		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR) {
+		const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
 	MeshMatrix<type> M = -lap(cF,mu);
 	M.cF = &cF;
-	addTemporal(M,rho,cF_UR);
+	addTemporal<1>(M,cF_UR,rho);
 	return M;
 }
 template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
-		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR, 
-		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
+		const ScalarCellField& mu, Scalar cF_UR, 
+		const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
 	MeshMatrix<type> M = -lap(cF,mu) - src(cF,Su,Sp);
 	M.cF = &cF;
-	addTemporal(M,rho,cF_UR);
+	addTemporal<1>(M,cF_UR,rho);
 	return M;
 }
 template<class type>
 MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
-        const ScalarFacetField& F,const ScalarCellField& rho,Scalar cF_UR) {
-	MeshMatrix<type> M = div(cF,Fc,F,Scalar(0));
-	addTemporal(M,rho,cF_UR);
+        const ScalarFacetField& F, Scalar cF_UR, ScalarCellField* rho = 0) {
+	MeshMatrix<type> M = div(cF,Fc,F);
+	addTemporal<1>(M,cF_UR,rho);
 	return M;
 }
 template<class type>
 MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
-        const ScalarFacetField& F, const ScalarCellField& rho,Scalar cF_UR, 
-		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
-	MeshMatrix<type> M = div(cF,Fc,F,Scalar(0)) - src(cF,Su,Sp);
-	addTemporal(M,rho,cF_UR);
+        const ScalarFacetField& F, Scalar cF_UR, 
+		const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
+	MeshMatrix<type> M = div(cF,Fc,F) - src(cF,Su,Sp);
+	addTemporal<1>(M,cF_UR,rho);
 	return M;
 }
 template<class type>
 MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
-		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR) {
-	MeshMatrix<type> M = div(cF,Fc,F,mu) - lap(cF,mu);
-	addTemporal(M,rho,cF_UR);
+		const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
+	MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu);
+	addTemporal<1>(M,cF_UR,rho);
 	return M;
 }
 template<class type>
 MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
-		const ScalarCellField& mu,const ScalarCellField& rho,Scalar cF_UR, 
-		const MeshField<type,CELL>& Su,const ScalarCellField& Sp) {
-	MeshMatrix<type> M = div(cF,Fc,F,mu) - lap(cF,mu) - src(cF,Su,Sp);
-	addTemporal(M,rho,cF_UR);
+		const ScalarCellField& mu, Scalar cF_UR, 
+		const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
+	MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu) - src(cF,Su,Sp);
+	addTemporal<1>(M,cF_UR,rho);
 	return M;
 }
 /* ********************

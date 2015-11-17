@@ -71,6 +71,9 @@ FORCEINLINE Scalar max(const Scalar& p,const Scalar& q) {
 FORCEINLINE Scalar min(const Scalar& p,const Scalar& q) { 
 	return (p <= q) ? p : q; 
 }
+FORCEINLINE Scalar dot(const Scalar& p, const Scalar& q) {
+	return p * q;
+}
 /*********************************
  * loop unroller for tensors
  *********************************/

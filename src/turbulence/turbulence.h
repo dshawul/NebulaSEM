@@ -49,13 +49,13 @@ struct Turbulence_Model {
 
 	VectorCellField& U;
 	ScalarFacetField& F;
-	Scalar& rho;
+	ScalarCellField& rho;
 	Scalar& nu;
 
 	Util::ParamList params;
 	bool writeStress;
 	/*constructor*/
-	Turbulence_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+	Turbulence_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
 		U(tU),
 		F(tF),
 		rho(trho),
@@ -96,7 +96,7 @@ struct Turbulence_Model {
 	static bool needWallDist() { return bneedWallDist;}
 	static void RegisterTable(Util::ParamList& params);
 	static Turbulence_Model* Select(VectorCellField& U,ScalarFacetField& F,
-		Scalar& rho,Scalar& nu);
+		ScalarCellField& rho,Scalar& nu);
 };
 /**
  * Eddy viscosity models based on Boussinesq's assumption
@@ -114,7 +114,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
 	WallModel wallModel;
 	
 	/*constructor*/
-	EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+	EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
 		Turbulence_Model(tU,tF,trho,tnu),
 		eddy_mu("emu",READWRITE),
 		modelType(SMAGORNSKY),
@@ -224,7 +224,7 @@ struct KX_Model : public EddyViscosity_Model {
 	ScalarCellField Pk;       
 
 	/*constructor*/
-	KX_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu,const char* xname) :
+	KX_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu,const char* xname) :
 		EddyViscosity_Model(tU,tF,trho,tnu),
 		k_UR(0.7),
 		x_UR(0.7),
@@ -273,7 +273,7 @@ struct KX_Model : public EddyViscosity_Model {
 		/* calculate eddy viscosity*/
 		Scalar yp = (ustar * y) / nu;
 		Scalar up = low.getUp(ustar,nu,yp);                                      	
-		eddy_mu[c1] = (rho * nu) * (yp / up - 1);
+		eddy_mu[c1] = (rho[c1] * nu) * (yp / up - 1);
 
 		/* turbulence generation and dissipation */
 		if(wallModel == LAUNDER) {

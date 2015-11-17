@@ -27,7 +27,7 @@ Description:
 	    lm = min(Cs * Delta, kappa * y_wall)
 \endverbatim
 */
-MixingLength_Model::MixingLength_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+MixingLength_Model::MixingLength_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
 	EddyViscosity_Model(tU,tF,trho,tnu),
 	mixingLength(0),
 	C(0.55),
@@ -67,7 +67,7 @@ void MixingLength_Model::applyWallFunction(Int f,LawOfWall& low) {
 	/* calculate eddy viscosity*/
 	Scalar yp = (ustar * y) / nu;
 	Scalar up = low.getUp(ustar,nu,yp);                                      	
-	eddy_mu[c1] = (rho * nu) * (yp / up - 1);
+	eddy_mu[c1] = (rho[c1] * nu) * (yp / up - 1);
 }
 
 

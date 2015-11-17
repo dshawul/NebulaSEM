@@ -23,17 +23,17 @@ Scalar getResidual(const MeshField<type,entity>& r,
 	return sqrt(sdiv(mag(res[0]), mag(res[1])));
 }
 
-template<class type>
-void SolveT(const MeshMatrix<type>& M) {
+template<class T1, class T2, class T3>
+void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 	using namespace Mesh;
 	using namespace DG;
-	MeshField<type,CELL> r,p,AP;
-	MeshField<type,CELL> r1(false),p1(false),AP1(false);   
-	MeshField<type,CELL>& cF = *M.cF;
-	MeshField<type,CELL>& buffer = AP;
-	ScalarCellField D = M.ap,iD = (1.0 / M.ap);
+	MeshField<T3,CELL> r,p,AP;
+	MeshField<T3,CELL> r1(false),p1(false),AP1(false);   
+	MeshField<T1,CELL>& cF = *M.cF;
+	MeshField<T3,CELL>& buffer = AP;
+	MeshField<T2,CELL> D = M.ap,iD = (T2(1) / M.ap);
 	Scalar res,ires;
-	type alpha,beta,o_rr = type(0),oo_rr;
+	T1 alpha,beta,o_rr = T1(0),oo_rr;
 	Int iterations = 0;
 	bool converged = false;
 
@@ -57,29 +57,24 @@ void SolveT(const MeshMatrix<type>& M) {
 #define Sweep_(X,B,ci) {							\
 	Cell& c = gCells[ci];							\
 	forEachLgl(ii,jj,kk) {							\
-		Int ind1 = INDEX3(ii,jj,kk);				\
-		Int vi = ci * NP + ind1;					\
-		type ncF = B[vi];							\
+		Int index1 = INDEX4(ci,ii,jj,kk);			\
+		T3 ncF = B[index1];							\
 		if(NPMAT) {									\
-			type val(Scalar(0));					\
+			T3 val(Scalar(0));						\
 			forEachLglX(i) {												\
-				Int ind2 = INDEX3(i,jj,kk);									\
+				Int index2 = INDEX4(ci,i,jj,kk);							\
 				Int indexm = ci * NPMAT + INDEX_X(ii,jj,kk,i);				\
-				val += X[ci * NP + ind2] * M.adg[indexm];					\
+				val += X[index2] * M.adg[indexm];							\
 			}																\
-			forEachLglY(j) {												\
-				if(j != jj) {												\
-					Int ind2 = INDEX3(ii,j,kk);								\
-					Int indexm = ci * NPMAT + INDEX_Y(ii,jj,kk,j);			\
-					val += X[ci * NP + ind2] * M.adg[indexm];				\
-				}															\
+			forEachLglY(j) if(j != jj) {									\
+				Int index2 = INDEX4(ci,ii,j,kk);							\
+				Int indexm = ci * NPMAT + INDEX_Y(ii,jj,kk,j);				\
+				val += X[index2] * M.adg[indexm];							\
 			}																\
-			forEachLglZ(k) {												\
-				if(k != kk) {												\
-					Int ind2 = INDEX3(ii,jj,k);								\
-					Int indexm = ci * NPMAT + INDEX_Z(ii,jj,kk,k);			\
-					val += X[ci * NP + ind2] * M.adg[indexm];				\
-				}															\
+			forEachLglZ(k) if(k != kk) {									\
+				Int index2 = INDEX4(ci,ii,jj,k);							\
+				Int indexm = ci * NPMAT + INDEX_Z(ii,jj,kk,k);				\
+				val += X[index2] * M.adg[indexm];							\
 			}																\
 			ncF += val;								\
 		}											\
@@ -89,19 +84,19 @@ void SolveT(const MeshMatrix<type>& M) {
 				Int k = faceid * NPF + n;			\
 				Int c1 = gFO[k];					\
 				Int c2 = gFN[k];					\
-				if(vi == c1)						\
+				if(index1 == c1)					\
 					ncF += X[c2] * M.an[1][k];		\
-				else if(vi == c2)					\
+				else if(index1 == c2)				\
 					ncF += X[c1] * M.an[0][k];		\
 			}										\
 		}											\
-		ncF *= iD[vi];								\
-		X[vi] = X[vi] * (1 - Controls::SOR_omega) +	\
-			ncF * (Controls::SOR_omega);			\
-	}												\
+		ncF *= iD[index1];									\
+		X[index1] = X[index1] * (1 - Controls::SOR_omega) +	\
+			ncF * (Controls::SOR_omega);					\
+	}														\
 }
 #define ForwardSweep(X,B) {							\
-	ASYNC_COMM<type> comm(&X[0]);					\
+	ASYNC_COMM<T1> comm(&X[0]);						\
 	comm.send();									\
 	for(Int ci = 0;ci < gBCSI;ci++)					\
 		Sweep_(X,B,ci);								\
@@ -113,41 +108,36 @@ void SolveT(const MeshMatrix<type>& M) {
 	 *  Forward/backward substitution
 	 ***********************************/
 #define Substitute_(X,B,ci,forw,tr) {				\
-		Int ind1 = INDEX3(ii,jj,kk);				\
-		Int vi = ci * NP + ind1;					\
-		type ncF = B[vi];							\
+		Int index1 = INDEX4(ci,ii,jj,kk);			\
+		T3 ncF = B[index1];							\
 		if(NPMAT) {									\
-			type val(Scalar(0));					\
+			T3 val(Scalar(0));						\
 			forEachLglX(i) {														\
-				Int ind2 = INDEX3(i,jj,kk);											\
-				if((forw && (ind2 < ind1)) ||	(!forw && (ind1 < ind2))) { 		\
+				Int index2 = INDEX4(ci,i,jj,kk);									\
+				if((forw && (index2 < index1)) ||	(!forw && (index1 < index2))) { \
 					Int indexm = ci * NPMAT + 										\
 						(tr ? INDEX_TX(ii,jj,kk,i) : INDEX_X(ii,jj,kk,i));			\
-					val += X[ci * NP + ind2] * M.adg[indexm];						\
+					val += X[index2] * M.adg[indexm];								\
 				}																	\
 			}																		\
-			forEachLglY(j) {														\
-				if(j != jj) {														\
-					Int ind2 = INDEX3(ii,j,kk);										\
-					if((forw && (ind2 < ind1)) ||	(!forw && (ind1 < ind2))) { 	\
-						Int indexm = ci * NPMAT + 									\
-						(tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));			\
-						val += X[ci * NP + ind2] * M.adg[indexm];					\
-					}																\
+			forEachLglY(j) if(j != jj) {											\
+				Int index2 = INDEX4(ci,ii,j,kk);									\
+				if((forw && (index2 < index1)) ||	(!forw && (index1 < index2))) { \
+					Int indexm = ci * NPMAT + 										\
+					(tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));				\
+					val += X[index2] * M.adg[indexm];								\
 				}																	\
 			}																		\
-			forEachLglZ(k) {														\
-				if(k != kk) {														\
-					Int ind2 = INDEX3(ii,jj,k);										\
-					if((forw && (ind2 < ind1)) ||	(!forw && (ind1 < ind2))) { 	\
-						Int indexm = ci * NPMAT + 									\
-						(tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));			\
-						val += X[ci * NP + ind2] * M.adg[indexm];					\
-					}																\
+			forEachLglZ(k) if(k != kk) {											\
+				Int index2 = INDEX4(ci,ii,jj,k);									\
+				if((forw && (index2 < index1)) ||	(!forw && (index1 < index2))) { \
+					Int indexm = ci * NPMAT + 										\
+					(tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));				\
+					val += X[index2] * M.adg[indexm];								\
 				}																	\
 			}																		\
-			ncF += val;								\
-		}											\
+			ncF += val;									\
+		}												\
 		if(isBoundary(ii,jj,kk)) {						\
 			forEach(c,j) {								\
 				Int faceid = c[j];						\
@@ -155,12 +145,12 @@ void SolveT(const MeshMatrix<type>& M) {
 					Int k = faceid * NPF + n;			\
 					Int c1 = gFO[k];					\
 					Int c2 = gFN[k];					\
-					if(vi == c1) {						\
+					if(index1 == c1) {					\
 						if((forw && (c2 < c1)) ||		\
 						  (!forw && (c1 < c2)))	{		\
 						ncF += X[c2] * M.an[1 - tr][k];	\
 						}								\
-					} else if(vi == c2) {				\
+					} else if(index1 == c2) {			\
 						if((forw && (c2 > c1)) ||		\
 						  (!forw && (c1 > c2)))			\
 						ncF += X[c1] * M.an[0 + tr][k];	\
@@ -168,8 +158,8 @@ void SolveT(const MeshMatrix<type>& M) {
 				}										\
 			}											\
 		}												\
-		ncF *= iD[vi];								\
-		X[vi] = ncF;								\
+		ncF *= iD[index1];								\
+		X[index1] = ncF;								\
 }
 #define ForwardSub(X,B,TR) {						\
 	for(Int ci = 0;ci < gBCS;ci++)	{				\
@@ -216,7 +206,7 @@ void SolveT(const MeshMatrix<type>& M) {
 		Y[i] = I[i] + X[i] * alpha_;				\
 }
 #define Tdot(X,Y,sum) {								\
-	sum = type(0);									\
+	sum = T3(0);									\
 	for(Int i = 0;i < gBCSfield;i++)				\
 		sum += X[i] * Y[i];							\
 }
@@ -234,14 +224,14 @@ void SolveT(const MeshMatrix<type>& M) {
 #define CALC_RESID() {								\
 	r = M.Su - mul(M,cF);							\
 	forEachS(r,k,gBCSfield)							\
-		r[k] = type(0);								\
+		r[k] = T3(0);								\
 	precondition(r,AP);								\
 	forEachS(AP,k,gBCSfield)						\
-		AP[k] = type(0);							\
+		AP[k] = T3(0);								\
 	res = getResidual(AP,cF,sync);					\
 	if(Controls::Solver == Controls::PCG) {			\
 		Tdot(r,AP,o_rr);							\
-		REDUCE(type,o_rr);							\
+		REDUCE(T1,o_rr);							\
 		p = AP;										\
 		if(!(M.flags & M.SYMMETRIC)) {				\
 			r1 = r;									\
@@ -268,35 +258,34 @@ void SolveT(const MeshMatrix<type>& M) {
 				for(Int ci = 0;ci < gBCS;ci++) {
 					Cell& c = gCells[ci];
 					forEachLgl(ii,jj,kk) {
-						Int ind1 = INDEX3(ii,jj,kk);
-						Int vi = ci * NP + ind1;
+						Int index1 = INDEX4(ci,ii,jj,kk);
 						if(NPMAT) {
-							Scalar val = 0.0;
+							T2 val = T2(0);
 							forEachLglX(i) {
-								Int ind2 = INDEX3(i,jj,kk);
-								if(ind1 > ind2) {
-									val += iD[ci * NP + ind2] * 
+								Int index2 = INDEX4(ci,i,jj,kk);
+								if(index1 > index2) {
+									val += iD[index2] * 
 										   M.adg[ci * NPMAT + INDEX_X(ii,jj,kk,i)] *
 										   M.adg[ci * NPMAT + INDEX_TX(ii,jj,kk,i)];
 								}
 							}
-							forEachLglY(j) {
-								Int ind2 = INDEX3(ii,j,kk);
-								if(j != jj && ind1 > ind2) {
-									val += iD[ci * NP + ind2] * 
+							forEachLglY(j) if(j != jj) {
+								Int index2 = INDEX4(ci,ii,j,kk);
+								if(index1 > index2) {
+									val += iD[index2] * 
 										   M.adg[ci * NPMAT + INDEX_Y(ii,jj,kk,j)] *
 										   M.adg[ci * NPMAT + INDEX_TY(ii,jj,kk,j)];
 								}
 							}
-							forEachLglZ(k) {
-								Int ind2 = INDEX3(ii,jj,k);
-								if(k != kk && ind1 > ind2) {
-									val += iD[ci * NP + ind2] * 
+							forEachLglZ(k) if(k != kk) {
+								Int index2 = INDEX4(ci,ii,jj,k);
+								if(index1 > index2) {
+									val += iD[index2] * 
 										   M.adg[ci * NPMAT + INDEX_Z(ii,jj,kk,k)] *
 										   M.adg[ci * NPMAT + INDEX_TZ(ii,jj,kk,k)];
 								}
 							}
-							D[vi] -= val;
+							D[index1] -= val;
 						}	
 						if(isBoundary(ii,jj,kk)) {
 							forEach(c,j) {								
@@ -305,10 +294,10 @@ void SolveT(const MeshMatrix<type>& M) {
 									Int k = faceid * NPF + n;							
 									Int c1 = gFO[k];						
 									Int c2 = gFN[k];						
-									if(vi == c1) {
+									if(index1 == c1) {
 										if(c2 > c1) D[c2] -= 
 										(M.an[0][k] * M.an[1][k] * iD[c1]);	
-									} else if(vi == c2) {
+									} else if(index1 == c2) {
 										if(c1 > c2) D[c1] -= 
 										(M.an[0][k] * M.an[1][k] * iD[c2]);		
 									}		
@@ -317,7 +306,7 @@ void SolveT(const MeshMatrix<type>& M) {
 						}
 					}			
 				}
-				iD = (1.0 / D);
+				iD = (T2(1) / D);
 			}
 			/*end*/
 		}
@@ -374,14 +363,14 @@ void SolveT(const MeshMatrix<type>& M) {
 			/*conjugate gradient*/
 			AP = mul(M,p,sync);
 			Tdot(p,AP,oo_rr);
-			REDUCE(type,oo_rr);
+			REDUCE(T1,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
 			Taxpy(cF,cF,p,alpha);
 			Taxpy(r,r,AP,-alpha);
 			precondition(r,AP);
 			oo_rr = o_rr;
 			Tdot(r,AP,o_rr);
-			REDUCE(type,o_rr);
+			REDUCE(T1,o_rr);
 			beta = sdiv(o_rr , oo_rr);
 			Taxpy(p,AP,p,beta);
 			/*end*/
@@ -390,7 +379,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			AP = mul(M,p,sync);
 			AP1 = mult(M,p1,sync);
 			Tdot(p1,AP,oo_rr);
-			REDUCE(type,oo_rr);
+			REDUCE(T1,oo_rr);
 			alpha = sdiv(o_rr , oo_rr);
 			Taxpy(cF,cF,p,alpha);
 			Taxpy(r,r,AP,-alpha);
@@ -399,7 +388,7 @@ void SolveT(const MeshMatrix<type>& M) {
 			preconditionT(r1,AP1);
 			oo_rr = o_rr;
 			Tdot(r1,AP,o_rr);
-			REDUCE(type,o_rr);
+			REDUCE(T1,o_rr);
 			beta = sdiv(o_rr , oo_rr);
 			Taxpy(p,AP,p,beta);
 			Taxpy(p1,AP1,p1,beta);
@@ -520,8 +509,8 @@ PROBE:
 		"%.5e Final Residual %.5e\n",iterations,ires,res);
 	}
 }
-template<class type>
-void SolveTexplicit(const MeshMatrix<type>& M) {
+template<class T1,class T2,class T3>
+void SolveTexplicit(const MeshMatrix<T1,T2,T3>& M) {
 	*M.cF = M.Su / M.ap;
 	if(MP::printOn) {
 		MP::printH("DIAG-DIAG:");

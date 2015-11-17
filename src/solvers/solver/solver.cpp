@@ -39,6 +39,8 @@ void potential(istream&);
 void transport(istream&);
 void walldist(istream&);
 void euler(istream&);
+void wave(istream&);
+void hydrostatic(istream&);
 /**
  \verbatim
  Main application entry point for different solvers.
@@ -92,6 +94,10 @@ int main(int argc, char* argv[]) {
 		potential(input);
 	} else if (!Util::compare(sname, "walldist")) {
 		walldist(input);
+	} else if (!Util::compare(sname, "wave")) {
+		wave(input);
+	} else if (!Util::compare(sname, "hydrostatic")) {
+		wave(input);
 	}
 	
 #ifdef _DEBUG
@@ -223,7 +229,7 @@ public:
 */
 void piso(istream& input) {
 	/*Solver specific parameters*/
-	Scalar& rho = GENERAL::density;
+	ScalarCellField rho = GENERAL::density;
 	Scalar& nu = GENERAL::viscosity;
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar pressure_UR = Scalar(0.5);
@@ -305,13 +311,13 @@ void piso(istream& input) {
 			/*momentum prediction*/
 			{
 				ScalarCellField mu = eddy_mu + rho * nu;
-				M = transport(U, rho * U, F, mu, rho, velocity_UR, Sc, Scalar(0));
+				M = transport(U, rho * U, F, mu, velocity_UR, Sc, Scalar(0));
 				Solve(M == gP);
 			}
 			/*energy predicition*/
 			if (buoyancy != NONE) {
 				ScalarCellField mu = eddy_mu / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
-				ScalarCellMatrix Mt = transport(T, rho * U, F, mu, rho, t_UR);
+				ScalarCellMatrix Mt = transport(T, rho * U, F, mu, t_UR);
 				Solve(Mt);
 				T = max(T, Constants::MachineEpsilon);
 			}
@@ -407,7 +413,7 @@ void euler(istream& input) {
 	/*Read fields*/
 	Iteration it;
 	ScalarFacetField F;
-	VectorCellField Fc;
+	ScalarCellField mu;
 
 	/*gas constants*/
 	Scalar p_factor, p_gamma, R, psi, iPr;
@@ -424,37 +430,35 @@ void euler(istream& input) {
 	rho.write(0);
 	
 	/*Time loop*/
-	ScalarCellField mu;
 	for (; !it.end(); it.next()) {
+		/*fluxes*/
+		F = flx(rho * U);
 		/*rho-equation*/
 		{
 			ScalarCellMatrix M;
-			M = convection(rho, U, flx(U), Scalar(1), pressure_UR);
+			M = convection(rho, U, flx(U), pressure_UR);
 			Solve(M);
 		}
-		/*fluxes*/
-		Fc = rho * U;
-		F = flx(Fc);
 		/*artificial viscosity*/
 		if(diffusion) mu = rho * viscosity;
 		else mu = Scalar(0);
 		/*T-equation*/
 		{
-			ScalarCellMatrix M;
-			M = transport(T, Fc, F, mu * iPr, rho, t_UR);
+			ScalarCellMatrix M,Mt;
+			M = transport(T, rho * U, F, mu * iPr, t_UR, &rho);
 			Solve(M);
 		}
 		/*calculate p*/
 		p = p_factor * pow(rho * T, p_gamma);
 		/*U-equation*/
-		{	
+		{
 			VectorCellField Sc = Vector(0);
 			/*buoyancy*/
 			if(buoyancy)
 				Sc += rho * VectorCellField(Controls::gravity);
 			/*solve*/
-			VectorCellMatrix M;
-			M = transport(U, Fc, F, mu, rho, velocity_UR, Sc, Scalar(0));
+			VectorCellMatrix M,Mt;
+			M = transport(U, rho * U, F, mu, velocity_UR, Sc, Scalar(0), &rho);
 			Solve(M == -gradf(p));
 		}
 		/*courant number*/
@@ -473,7 +477,6 @@ void euler(istream& input) {
  */
 void convection(istream& input) {
 	/*Solver specific parameters*/
-	Scalar& rho = GENERAL::density;
 	Scalar t_UR = Scalar(1);
 
 	/*transport*/
@@ -488,11 +491,10 @@ void convection(istream& input) {
 	
 	/*Time loop*/
 	Iteration it;
-	VectorCellField Fc = rho * U;
-	ScalarFacetField F = flx(Fc);
+	ScalarFacetField F = flx(U);
 	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = convection(T, Fc, F, rho, t_UR);
+		M = convection(T, U, F, t_UR);
 		Solve(M);
 	}
 }
@@ -506,7 +508,6 @@ void convection(istream& input) {
 */
 void diffusion(istream& input) {
 	/*Solver specific parameters*/
-	Scalar& rho = GENERAL::density;
 	Scalar DT = Scalar(1);
 	Scalar t_UR = Scalar(1);
 
@@ -521,10 +522,10 @@ void diffusion(istream& input) {
 	Util::read_params(input,MP::printOn);
 
 	/*Time loop*/
-	ScalarCellField mu = rho * DT;
+	ScalarCellField mu = DT;
 	for (Iteration it; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = diffusion(T, mu, rho, t_UR);
+		M = diffusion(T, mu, t_UR);
 		Solve(M);
 	}
 }
@@ -539,7 +540,6 @@ void diffusion(istream& input) {
  */
 void transport(istream& input) {
 	/*Solver specific parameters*/
-	Scalar& rho = GENERAL::density;
 	Scalar DT = Scalar(1.0e-4);
 	Scalar t_UR = Scalar(1);
 
@@ -556,11 +556,43 @@ void transport(istream& input) {
 
 	/*Time loop*/
 	Iteration it;
-	ScalarFacetField F = flx(rho * U);
-	ScalarCellField mu = rho * DT;
+	ScalarFacetField F = flx(U);
+	ScalarCellField mu = DT;
 	for (; !it.end(); it.next()) {
 		ScalarCellMatrix M;
-		M = transport(T, rho * U, F, mu, rho, t_UR);
+		M = transport(T, U, F, mu, t_UR);
+		Solve(M);
+	}
+}
+/**
+ \verbatim
+ Wave equation solver
+ ~~~~~~~~~~~~~~~~~~~~
+ Solver for pdes of hyperbolic wave equation type:
+       d2T/dt2 = c^2 * lap(T)
+ \endverbatim
+*/
+void wave(istream& input) {
+	/*Solver specific parameters*/
+	Scalar C2 = Scalar(1);
+	Scalar t_UR = Scalar(1);
+
+	/*diffusion*/
+	Util::ParamList params("wave");
+	params.enroll("C2", &C2);
+	params.enroll("t_UR", &t_UR);
+
+	ScalarCellField T("T", READWRITE);
+
+	/*read parameters*/
+	Util::read_params(input,MP::printOn);
+
+	/*Time loop*/
+	ScalarCellField mu = C2;
+	for (Iteration it; !it.end(); it.next()) {
+		ScalarCellMatrix M = -lap(T,mu);
+		M.cF = &T;
+		addTemporal<2>(M,t_UR);
 		Solve(M);
 	}
 }

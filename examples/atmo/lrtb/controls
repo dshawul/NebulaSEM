@@ -10,7 +10,7 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1.177
-    viscosity                    2
+    viscosity                    1.5
 	
 #############################
 #  Time increment
@@ -19,8 +19,8 @@ general
     state                        TRANSIENT
     start_step                   0
     end_step                     100000
-    write_interval               10000
-    dt                           0.1
+    write_interval               2500
+    dt                           0.01
     n_deferred                   0
 
 ############################
@@ -29,7 +29,9 @@ general
 
     convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-    implicit_factor              1
+	time_scheme                  BDF1
+	runge_kutta                  1
+    implicit_factor              0
     blend_factor                 0
     parallel_method              BLOCKED
     print_time                   1000
@@ -48,7 +50,7 @@ general
 #  Probe locations
 ############################
     probe     0 {}
-    gravity   0 0 -9.81
+    gravity   0 0 -9.80606
 ############################
 #  DG polynomial order
 ############################
@@ -67,7 +69,7 @@ prepare
 
 decomposition
 {
-    n 		3 {2 1 1}
+    n 		3 {1 1 1}
     type      	XYZ
 }
 

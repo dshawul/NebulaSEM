@@ -3,7 +3,7 @@
 References:
     http://www.cfd-online.com/Wiki/Wilcox%27s_k-omega_model
 */
-KW_Model::KW_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+KW_Model::KW_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
 	KX_Model(tU,tF,trho,tnu,"w")
 {
 	Cmu = 0.09;
@@ -27,18 +27,18 @@ void KW_Model::solve() {
 
 	/*turbulent dissipation*/
 	mu = eddy_mu / SigmaX + rho * nu;
-	M = transport(x, rho * U, F, mu, rho, x_UR,
+	M = transport(x, U, F, mu, x_UR,
 				(C1x * Pk * x / k),
-				-(C2x * rho * x));
+				-(C2x * rho * x), &rho);
 	FixNearWallValues(M);
 	Solve(M);
 	x = max(x,Constants::MachineEpsilon);
 
 	/*turbulent kinetic energy*/
 	mu = eddy_mu / SigmaK + rho * nu;
-	M = transport(k, rho * U, F, mu, rho, k_UR,
+	M = transport(k, U, F, mu, k_UR,
 					Pk,
-					-(Cmu * rho * x));
+					-(Cmu * rho * x), &rho);
 	if(wallModel == STANDARD)
 		FixNearWallValues(M);
 	Solve(M);

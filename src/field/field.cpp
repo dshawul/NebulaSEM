@@ -21,7 +21,7 @@ namespace Controls {
 	Scheme convection_scheme = HYBRID;
 	Int TVDbruner = 0;
 	NonOrthoScheme nonortho_scheme = OVER_RELAXED;
-	TimeScheme time_scheme = EULER;
+	TimeScheme time_scheme = BDF1;
 	Scalar implicit_factor = 1;
 	Int runge_kutta = 1;
 	Scalar blend_factor = Scalar(0.2);
@@ -284,7 +284,7 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("tvd_bruner",op);
 	op = new Option(&nonortho_scheme,4,"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED");
 	params.enroll("nonortho_scheme",op);
-	op = new Option(&time_scheme,2,"EULER","SECOND_ORDER");
+	op = new Option(&time_scheme,6,"BDF1","BDF2","BDF3","BDF4","BDF5","BDF6");
 	params.enroll("time_scheme",op);
 	params.enroll("runge_kutta",&runge_kutta);
 	op = new Option(&Solver,3,"JAC","SOR","PCG");

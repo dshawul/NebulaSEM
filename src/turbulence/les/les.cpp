@@ -3,7 +3,7 @@
 References:
     http://www.cfd-online.com/Wiki/Smagorinsky-Lilly_model
 */
-LES_Model::LES_Model(VectorCellField& tU,ScalarFacetField& tF,Scalar& trho,Scalar& tnu) :
+LES_Model::LES_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
 	MixingLength_Model(tU,tF,trho,tnu),
 	Cs(0.11)
 {

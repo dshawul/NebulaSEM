@@ -8,7 +8,7 @@ struct LES_Model : public MixingLength_Model {
 	Scalar Cs;
 
 	/*constructor*/
-	LES_Model(VectorCellField&,ScalarFacetField&,Scalar&,Scalar&);
+	LES_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,Scalar&);
 
 	/*others*/
 	virtual void enroll();

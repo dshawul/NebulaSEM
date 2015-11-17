@@ -1,14 +1,21 @@
 #ifndef __DG_H
 #define __DG_H
 
-#define forEachLgl(i_,j_,k_) 							\
-			for(Int i_ = 0;i_ < NPX;i_++)				\
-				for(Int j_ = 0;j_ < NPY;j_++)			\
+#define forEachLgl(i_,j_,k_) 								\
+			for(Int i_ = 0;i_ < NPX;i_++)					\
+				for(Int j_ = 0;j_ < NPY;j_++)				\
 					for(Int k_ = 0;k_ < NPZ;k_++)
-#define forEachLglR(i_,j_,k_) 							\
-			for(Int i_ = NPX;i_-- > 0;)					\
-				for(Int j_ = NPY;j_-- > 0;)				\
+					
+#define forEachLglR(i_,j_,k_) 								\
+			for(Int i_ = NPX;i_-- > 0;)						\
+				for(Int j_ = NPY;j_-- > 0;)					\
 					for(Int k_ = NPZ;k_-- > 0;)
+
+#define forEachLglBound(i_,j_,k_) 							\
+			for(Int i_ = NPX - 1;i_-=(NPX - 1) > 0;)		\
+				for(Int j_ = NPY - 1;j_-=(NPY - 1) > 0;)	\
+					for(Int k_ = NPZ - 1;k_-=(NPZ - 1) > 0;)
+												
 #define forEachLglXY(i_,j_) 							\
 			for(Int i_ = 0;i_ < NPX;i_++)				\
 				for(Int j_ = 0;j_ < NPY;j_++)
@@ -24,7 +31,7 @@
 			for(Int j_ = 0;j_ < NPY;j_++)
 #define forEachLglZ(k_)									\
 			for(Int k_ = 0;k_ < NPZ;k_++)
-									
+																							
 #define isBoundary(i_,j_,k_)							\
 	(i_ == 0 || i_ == NPX - 1 ||						\
 	 j_ == 0 || j_ == NPY - 1 ||						\
@@ -54,11 +61,12 @@
 #define INDEX_TZ(i_,j_,k_,m_) \
 	(INDEX3(i_,j_,m_) * NPI + (k_) + NPX + NPY)
 	
-#define DPSI(i,j,k)															\
-	Scalar dpsi_j_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
-	Scalar dpsi_j_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
-	Scalar dpsi_j_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
-	Vector dpsi_j = Vector(dpsi_j_0,dpsi_j_1,dpsi_j_2);
+#define DPSI(dij,i,j,k)	{													\
+	Scalar dpsi_ij_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];	\
+	Scalar dpsi_ij_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];	\
+	Scalar dpsi_ij_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];	\
+	dij = Vector(dpsi_ij_0,dpsi_ij_1,dpsi_ij_2);							\
+}
 			
 namespace DG {
 	extern Scalar **psi[3];

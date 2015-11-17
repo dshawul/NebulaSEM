@@ -457,8 +457,9 @@ void DG::init_basis() {
 #define JACD(im,jm,km) {									\
 	Int index = INDEX4(ci,im,jm,km);						\
 	Vector& C = cC[index];									\
-	DPSI(im,jm,km);											\
-	Ji += mul(dpsi_j,C);									\
+	Vector dpsi_ij;											\
+	DPSI(dpsi_ij,im,jm,km);									\
+	Ji += mul(dpsi_ij,C);									\
 }
 			forEachLglX(i) JACD(i,jj,kk);
 			forEachLglY(j) if(j != jj) JACD(ii,j,kk);
