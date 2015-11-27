@@ -241,6 +241,7 @@ int main(int argc,char* argv[]) {
 		IntVector& b = Bdrys[i].index;
 		Vector N = (keys[b[1]] - keys[b[0]]) ^ (keys[b[2]] - keys[b[0]]);
 		N /= mag(N);
+		/*/
 		forEach(gMesh.patches,j) {
 			Patch& p = gMesh.patches[j];
 			Vector H = (p.C - keys[b[0]]);
@@ -252,6 +253,25 @@ int main(int argc,char* argv[]) {
 					list.push_back(k);
 			}
 		}
+		/*/
+		forEachS(gFacets,j,gMesh.nf) {
+			Facet& f = gFacets[j];
+			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) 
+				^ (gVertices[f[2]] - gVertices[f[0]]));
+			N1 /= mag(N1);
+			Vector H = (gVertices[f[0]] - keys[b[0]]);
+			Scalar d = mag(N ^ N1);
+			Scalar d2 = sqrt(mag(N & H));
+			if(d <= 10e-4 && d2 <= 10e-4) {
+				// Vector C(0);
+				// forEach(f,m)
+				// 	C += gVertices[f[m]];
+				// C /= Scalar(f.size());
+				// if(Bdrys[i].pnpoly(keys,C))
+					list.push_back(j);
+			}
+		}
+		//*/
 		if(!list.empty()) {
 			IntVector& gB = gBoundaries[Bdrys[i].name.c_str()];
 			IntVector::iterator it = find(gB.begin(),gB.end(),list[0]);

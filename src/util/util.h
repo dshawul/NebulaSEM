@@ -16,13 +16,13 @@
 #define forEach(field,i)								\
 	for(register Int i = 0;i < (field).size();i++)
 
-#define forEachRev(field,i)								\
+#define forEachR(field,i)								\
 	for(register Int i = (field).size();i-- > 0;)
 
 #define forEachS(field,i,strt)							\
 	for(register Int i = strt;i < (field).size();i++)
 
-#define forEachSRev(field,i,strt)						\
+#define forEachSR(field,i,strt)							\
 	for(register Int i = (field).size();i-- > strt;)
 
 #define forEachIt(cont,field,it)						\

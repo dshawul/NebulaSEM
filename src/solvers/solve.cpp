@@ -108,7 +108,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 	 *  Forward/backward substitution
 	 ***********************************/
 #define Substitute_(X,B,ci,forw,tr) {				\
-		Int index1 = INDEX4(ci,ii,jj,kk);			\
+		const Int index1 = INDEX4(ci,ii,jj,kk);		\
 		T3 ncF = B[index1];							\
 		if(NPMAT) {									\
 			T3 val(Scalar(0));						\
@@ -169,7 +169,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 	}												\
 }
 #define BackwardSub(X,B,TR) {						\
-	for(int ci = gBCS;ci >= 0;ci--)	{				\
+	for(Int ci = gBCS;ci-- > 0;)	{				\
 		Cell& c = gCells[ci];						\
 		forEachLglR(ii,jj,kk)						\
 			Substitute_(X,B,ci,false,TR);			\

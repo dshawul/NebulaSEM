@@ -61,7 +61,7 @@ namespace Controls {
 
 namespace DG {
     extern Int Nop[3];
-    extern Int NP,NPI,NPMAT,NPF;
+    extern Int NP, NPI, NPMAT, NPF;
 };
 namespace Mesh {
 	extern IntVector  probeCells;
@@ -597,6 +597,7 @@ namespace Mesh {
 	extern VectorFacetField  fN;
 	extern ScalarCellField   cV;
 	extern ScalarFacetField  fI;
+	extern ScalarFacetField  fD;
 	extern ScalarCellField   yWall;
 	extern IntVector         gFO;
 	extern IntVector         gFN; 
@@ -1176,7 +1177,7 @@ template <class T1, class T2, class T3>
 	 forEach(AllBConditions,i) {
 		 bbc = AllBConditions[i];
 		 if(bbc->fIndex == cF.fIndex) {
- 			if(bbc->cIndex == GHOST) 
+ 			 if(bbc->cIndex == GHOST)
  				continue;
 
 			 bc = static_cast<BCondition<T1>*> (bbc);
@@ -1190,7 +1191,7 @@ template <class T1, class T2, class T3>
 				 	 
 					 Int c1 = gFO[k];
 					 Int c2 = gFN[k];
-					 /*break connection with boundary cell*/
+					 /*break connection with boundary cells*/
 					 if(bc->cIndex == NEUMANN || bc->cIndex == SYMMETRY ||
 					    bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
 						 M.ap[c1] -= M.an[1][k];
@@ -1229,13 +1230,12 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 		   zmax = Scalar(0),
 		   zR = Scalar(0);
 	Vector C(0);
-	
 	/*update ghost cells*/
 	bool sync = (update_ghost && gInterMesh.size());
 	ASYNC_COMM<T> comm(&cF[0]);
 	
 	if(sync) comm.send();
-
+	
 	/*boundary conditions*/
 	forEach(AllBConditions,i) {
 		bbc = AllBConditions[i];
@@ -1248,7 +1248,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 			if(sz == 0) continue;
 			if(!bc->fixed.size())
 				bc->fixed.resize(sz * DG::NPF);
-
+			
 			if(update_fixed) {
 				if(bc->cIndex == DIRICHLET || 
 					bc->cIndex == POWER || 
@@ -1296,7 +1296,6 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 				Int faceid = (*bc->bdry)[j];
 				for(Int n = 0; n < DG::NPF;n++) {
 				 	Int k = faceid * DG::NPF + n;
-
 					Int c1 = gFO[k];
 					Int c2 = gFN[k];
 					if(bc->cIndex == NEUMANN) {
@@ -1369,7 +1368,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
  * Fill boundary from internal values
  * **************************************/
 template<class T>
-const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false) {
+const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
 	using namespace Mesh;
 	forEachS(gCells,i,gBCS) {
 		Int faceid = gCells[i][0];
@@ -1378,6 +1377,31 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
 			cF[gFN[k]] = cF[gFO[k]];
 		}
 	}
+	
+
+	//special: set neumann bcs to dirchlet for grad(i)
+    if(bind) {
+		forEach(AllBConditions,i) {
+			BasicBCondition* bbc = AllBConditions[i];
+			if(bbc->fIndex == bind) {
+				BCondition<T>* bc = static_cast<BCondition<T>*> (bbc);
+				Int sz = bc->bdry->size();
+				for(Int j = 0;j < sz;j++) {
+					Int faceid = (*bc->bdry)[j];
+					for(Int n = 0; n < DG::NPF;n++) {
+					 	Int k = faceid * DG::NPF + n;
+						Int c2 = gFN[k];
+						if(bc->cIndex == NEUMANN) {
+							cF[c2] = bc->value;
+						} else if(bc->cIndex == SYMMETRY) {
+							cF[c2] = T(0);
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	if(gInterMesh.size()) {
 		ASYNC_COMM<T> comm(&cF[0]);
 		comm.send();
@@ -1497,7 +1521,7 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
 	dpsi_ij = dot(dpsi_ij,Jin);						\
 	r[index1] -= mul(dpsi_ij,p[index]);				\
 }
-	
+
 #define GRAD(T1,T2)																			\
 inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 	using namespace Mesh;																	\
@@ -1518,7 +1542,7 @@ inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {								\
 		}																					\
 	}																						\
 																							\
-	fillBCs(r);																				\
+	fillBCs(r,false,p.fIndex);																\
 																							\
 	return r;																				\
 }
@@ -1558,21 +1582,19 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
 			gamma = Scalar(0);
 		else if(convection_scheme == BLENDED) 
 			gamma = Scalar(blend_factor);
-		else if(convection_scheme == HYBRID && muc) {
-			T4 D;
-			Vector dv;
+		else if(!muc)
+			gamma = Scalar(1);
+		else if(convection_scheme == HYBRID) {
 			MeshField<T4,FACET> mu = cds(*muc);
 			forEach(gFacets,faceid) {
 				for(Int n = 0; n < NPF;n++) {
 					Int k = faceid * NPF + n;
-					//calc D - uncorrected
-					dv = cC[gFN[k]] - cC[gFO[k]];
-					D = (mag(fN[k]) / mag(dv)) * mu[k];
 					//compare F and D
+					T4 D = fD[k] * mu[k];
 					F = flux[k];
 					if(dot(F,T4(1)) < 0) {
-						if(dot(F * fI[k] + D,T4(1)) >= 0) gamma[k] = 0;
-						else gamma[k] = 1;
+						if(dot(F * fI[k] + D,T4(1)) >= 0) gamma[k] = 1;
+						else gamma[k] = 0;
 					} else {
 						if(dot(F * (1 - fI[k]) - D,T4(1)) > 0) gamma[k] = 0;
 						else gamma[k] = 1;
@@ -1714,7 +1736,7 @@ MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_
 	Vector dpsi_ij;											\
 	DPSI(dpsi_ij,im,jm,km);									\
 	T2 val = -dot(dpsi_ij,Jr) * F;							\
-	if(index == index2) {										\
+	if(index == index2) {									\
 		m.ap[index] = -val;									\
 		m.adg[indexm] = 0;									\
 	} else {												\
@@ -1847,9 +1869,11 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
 	return m;
 }
 
-/* *********************************************
- * Laplacian field operation
- * ********************************************/
+/* ***********************************************************
+ * Laplacian field operation 
+ *    It computes div( mu * grad(p) ), hence it is not really
+ *    the laplacian operation for a nonconstant mu
+ * ***********************************************************/
 
 /*Explicit*/
 template<class type, ENTITY entity>
@@ -1861,7 +1885,7 @@ MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,en
 
 /*Implicit*/
 template<class type>
-MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc) {
+MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
 
 	using namespace Controls;
 	using namespace Mesh;
@@ -1874,13 +1898,32 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc) {
 	m.ap = Scalar(0);
 	m.adg = Scalar(0);
 	
+	/* diffusion or penalty term */
+	{
+		ScalarFacetField mu = cds(muc);
+		forEach(fN,i) {
+			Int c1 = gFO[i];
+			Int c2 = gFN[i];
+			/*coefficients*/
+			if(penalty || !NPMAT) {
+				m.an[0][i] = fD[i] * mu[i];
+				m.an[1][i] = fD[i] * mu[i];
+			} else{
+				m.an[0][i] = mu[i];
+				m.an[1][i] = mu[i];
+			}
+			m.ap[c1]  += m.an[0][i];
+			m.ap[c2]  += m.an[1][i];
+		}
+	}
+	
 	if(NPMAT) {
 		
 		/*compute volume integral*/
 		for(Int ci = 0; ci < gBCS;ci++) {
 			forEachLgl(ii,jj,kk) {
 				Int index = INDEX4(ci,ii,jj,kk);
-				Tensor Jin = Jinv[index];	
+				Tensor Jin = Jinv[index];
 
 #define H(in,jn,kn) {								\
 	Int index2 = INDEX4(ci,in,jn,kn);				\
@@ -1926,90 +1969,34 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc) {
 			}
 		}
 
-		/* compute fluxes -- explicitly*/
-		m.Su = muc * sum(dot(cds(gradi(cF)),fN));
-
-		/* symmetrizing term */
+		/* compute explicit term */
 		{
-			//compute grad(psi)
-			VectorCellField grad_psi = Vector(0);
-
-			for(Int ci = 0; ci < gBCS;ci++) {
-				forEachLglBound(ii,jj,kk) {
-					Int index = INDEX4(ci,ii,jj,kk);
-					Tensor Jin = Jinv[index];
-
-#define PSID(im,jm,km) {					\
-	Int index1 = INDEX4(ci,im,jm,km);		\
-	Vector dpsi_ij;							\
-	DPSI(dpsi_ij,im,jm,km);					\
-	dpsi_ij = dot(dpsi_ij,Jin);				\
-	grad_psi[index1] -= dpsi_ij;			\
-}
-					forEachLglX(i) PSID(i,jj,kk);
-					forEachLglY(j) if(j != jj) PSID(ii,j,kk);
-					forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
-				}
-			}
-			fillBCs(grad_psi);
-			
-			//jump
-			ScalarFacetField pF = dot(cds(grad_psi),fN);
-			MeshField<type,FACET> Su = type(0);
-			forEach(fN,i) {
-				Int co = gFO[i];
-				Int cn = gFN[i];
-				Su[i] += (cF[co] - cF[cn]) * pF[i];
-			}
-			m.Su += muc * sum(Su);
+			m.Su += sum(dot(cds(muc * gradi(cF)),fN));
 		}
-
+		
 	} else {
-
-		/*Finite volume*/
-		VectorFacetField K;
-		ScalarFacetField mu = cds(muc);
-		Vector dv;
-		Int c1,c2;
-		Scalar D = 0;
-
-		forEach(mu,i) {
-			c1 = gFO[i];
-			c2 = gFN[i];
-			dv = cC[c2] - cC[c1];
-			/*diffusivity coefficient*/
-			if(nonortho_scheme == NONE) {
-				D = mag(fN[i]) / mag(dv);
-			} else {
-				if(nonortho_scheme == OVER_RELAXED) {
-					D = ((fN[i] & fN[i]) / (fN[i] & dv));
-				} else if(nonortho_scheme == MINIMUM) {
-					D = ((fN[i] & dv) / (dv & dv));
-				} else if(nonortho_scheme == ORTHOGONAL) {
-					D = sqrt((fN[i] & fN[i]) / (dv & dv));
-				}
-				K[i] = fN[i] - D * dv;
-			}
-			/*coefficients*/
-			m.an[0][i] = D * mu[i];
-			m.an[1][i] = D * mu[i];
-			m.ap[c1]  += m.an[0][i];
-			m.ap[c2]  += m.an[1][i];
-		}
-		/*non-orthogonality handled through deferred correction*/
+		/*non-orthogonality*/
 		if(nonortho_scheme != NONE) {
-			MeshField<type,FACET> r = dot(cds(gradi(cF)),K);
-			type res;
-			forEach(mu,i) {
-				c1 = gFO[i];
-				c2 = gFN[i];
-				res = m.an[0][i] * (cF[c2] - cF[c1]);
+			VectorFacetField K;
+			forEach(fN,i) {
+				Int c1 = gFO[i];
+				Int c2 = gFN[i];
+				Vector dv = cC[c2] - cC[c1];
+				K[i] = fN[i] - fD[i] * dv;
+			}
+			
+			MeshField<type,FACET> r = dot(cds(muc * gradi(cF)),K);
+			forEach(r,i) {
+				Int c1 = gFO[i];
+				Int c2 = gFN[i];
+				type res = m.an[0][i] * (cF[c2] - cF[c1]);
 				if(mag(r[i]) > Scalar(0.5) * mag(res)) 
 					r[i] = Scalar(0.5) * res;
 			}
 			m.Su = sum(r);
 		}
 	}
+
 	/*end*/
 	return m;
 }
@@ -2092,7 +2079,7 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
 		
 		//Multistage Runge-Kutta for linearized (constant jacobian)
 		if(!equal(implicit_factor,1)) {
-			MeshField<type,CELL> k1 = M.Su - mul(M, M.cF->tstore[0]);
+			MeshField<type,CELL> k1 = M.Su - mul(M,  M.cF->tstore[0]);
 			if(runge_kutta == 1) {
 				M = M * (implicit_factor) + k1  * (1 - implicit_factor);
 			} else {
@@ -2112,7 +2099,7 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
 				}
 			}
 			if(equal(implicit_factor,0))
-				M.flags = (M.SYMMETRIC | M.DIAGONAL);
+				M.flags |= (M.SYMMETRIC | M.DIAGONAL);
 		}
 		
 		//first or second derivative
@@ -2128,7 +2115,7 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
 template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 		const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
-	MeshMatrix<type> M = -lap(cF,mu);
+	MeshMatrix<type> M = -lap(cF,mu,true);
 	M.cF = &cF;
 	addTemporal<1>(M,cF_UR,rho);
 	return M;
@@ -2137,7 +2124,7 @@ template<class type>
 MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
 		const ScalarCellField& mu, Scalar cF_UR, 
 		const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
-	MeshMatrix<type> M = -lap(cF,mu) - src(cF,Su,Sp);
+	MeshMatrix<type> M = -lap(cF,mu,true) - src(cF,Su,Sp);
 	M.cF = &cF;
 	addTemporal<1>(M,cF_UR,rho);
 	return M;

@@ -9,6 +9,7 @@ namespace Mesh {
 	VectorFacetField  fN(false);
 	ScalarCellField   cV(false);
 	ScalarFacetField  fI(false);
+	ScalarFacetField  fD(false);
 	ScalarCellField   yWall(false);
 	IntVector         gFO;
 	IntVector         gFN;
@@ -104,6 +105,8 @@ void Mesh::initGeomMeshFields() {
 	cV.allocate();
 	fI.deallocate(false);
 	fI.allocate();
+	fD.deallocate(false);
+	fD.allocate();
 	/*expand*/
 	forEach(_cC,i) {
 		cC[i] = _cC[i];
@@ -158,6 +161,57 @@ void Mesh::initGeomMeshFields() {
 	/*finish comm*/
 	commv.recv();
 	commc.recv();
+	/*construct diffusivity factor*/
+	if(DG::NPMAT) {
+		using namespace DG;
+		
+		//penalty
+		Scalar k = (NPX > NPY) ? NPX : 
+				  ((NPY > NPZ) ? NPY : NPZ);
+		Scalar num = (k + 1) * (k + 3) / 3;
+		
+		fD = cds(cV);
+		forEach(fN,i)
+			fD[i] = num * mag(fN[i]) / (fD[i]);
+		
+		//diffusivity
+		VectorCellField grad_psi = Vector(0);
+
+		for(Int ci = 0; ci < gBCS; ci++) {
+			forEachLglBound(ii,jj,kk) {
+				Int index = INDEX4(ci,ii,jj,kk);
+				
+#define PSID(im,jm,km) {					\
+	Int index1 = INDEX4(ci,im,jm,km);		\
+	Vector dpsi_ij;							\
+	DPSIR(dpsi_ij,im,jm,km);				\
+	dpsi_ij = dot(dpsi_ij,Jinv[index1]);	\
+	grad_psi[index] += dpsi_ij;				\
+}
+				forEachLglX(i) PSID(i,jj,kk);
+				forEachLglY(j) if(j != jj) PSID(ii,j,kk);
+				forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
+			}
+		}
+
+		fD += dot(cds(grad_psi),fN);
+			
+	} else {
+		using namespace Controls;
+		
+		forEach(fD,i) {
+			Int c1 = gFO[i];
+			Int c2 = gFN[i];
+			Vector dv = cC[c2] - cC[c1];
+			if(nonortho_scheme == OVER_RELAXED) {
+				fD[i] = ((fN[i] & fN[i]) / (fN[i] & dv));
+			} else if(nonortho_scheme == MINIMUM) {
+				fD[i] = ((fN[i] & dv) / (dv & dv));
+			} else {
+				fD[i] = sqrt((fN[i] & fN[i]) / (dv & dv));
+			}
+		}
+	}
 	/*Construct wall distance field*/
 	{
 		yWall.deallocate(false);

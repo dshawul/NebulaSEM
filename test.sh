@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #set case file
-case=examples/potential/ 
-grid=potential
+case=examples/harg/ 
+grid=harg
 
 #run solver
 function run() {

@@ -2,7 +2,9 @@
 
 namespace DG {
 	Int Nop[3] = {0, 0, 0};
-	Int NPX, NPY, NPZ, NP, NPI, NPMAT, NPF;
+	Int NPX, NPY, NPZ;
+	Int NP, NPI, NPMAT, NPF;
+	Scalar Penalty;
 	
 	Scalar **psi[3];
 	Scalar **dpsi[3];

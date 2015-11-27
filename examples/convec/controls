@@ -43,7 +43,7 @@ general
 ############################
 #  Probe locations
 ############################
-    gravity   0 0 0
+    gravity   0 -9.81 0
 ############################
 #  DG polynomial order
 ############################
@@ -56,12 +56,12 @@ general
 ############################
 prepare
 {
-    fields    4 { U p k e }
+    fields    5 { U p T k e }
 }
 
 decomposition
 {
-    n 		3 {2 1 1}
+    n 		3 {1 1 1}
     type      	XYZ
 }
 

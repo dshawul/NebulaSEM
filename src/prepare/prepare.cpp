@@ -873,7 +873,7 @@ void Prepare::refineMesh(IntVector& rCells,const RefineParams& rparams,IntVector
 			/*merge cells*/
 			IntVector erasei;
 			erasei.assign(newc.size(),0);
-			forEachRev(mergec,j) {
+			forEachR(mergec,j) {
 				IntVector& cm = mergec[j];
 				forEach(cm,k)
 					erasei[cm[k]] = 1;

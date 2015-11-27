@@ -40,7 +40,6 @@ void transport(istream&);
 void walldist(istream&);
 void euler(istream&);
 void wave(istream&);
-void hydrostatic(istream&);
 /**
  \verbatim
  Main application entry point for different solvers.
@@ -96,8 +95,6 @@ int main(int argc, char* argv[]) {
 		walldist(input);
 	} else if (!Util::compare(sname, "wave")) {
 		wave(input);
-	} else if (!Util::compare(sname, "hydrostatic")) {
-		wave(input);
 	}
 	
 #ifdef _DEBUG
@@ -148,7 +145,7 @@ public:
 		if(i > endi)
 			return true;
 		/*iteration number*/
-		if(MP::printOn) {
+		if(MP::printOn && idf == 0) {
 			if(Controls::state == Controls::STEADY)
 				MP::printH("Step %d\n",i);
 			else
@@ -274,13 +271,16 @@ void piso(istream& input) {
 
 	/*wall distance*/
 	if (turb->needWallDist())
-		Mesh::calc_walldist(Iteration::get_start());
+		Mesh::calc_walldist(Iteration::get_start(), 2);
 
 	/*Time loop*/
 	Iteration it;
 	ScalarCellField po = p;
 	VectorCellField gP = -gradf(p);
-	F = flx(rho * U);
+	VectorCellField Fc;
+	
+	Fc = rho * U;
+	F = flx(Fc);
 
 	for (; !it.end(); it.next()) {
 		/*
@@ -311,13 +311,13 @@ void piso(istream& input) {
 			/*momentum prediction*/
 			{
 				ScalarCellField mu = eddy_mu + rho * nu;
-				M = transport(U, rho * U, F, mu, velocity_UR, Sc, Scalar(0));
+				M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0));
 				Solve(M == gP);
 			}
 			/*energy predicition*/
 			if (buoyancy != NONE) {
 				ScalarCellField mu = eddy_mu / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
-				ScalarCellMatrix Mt = transport(T, rho * U, F, mu, t_UR);
+				ScalarCellMatrix Mt = transport(T, Fc, F, mu, t_UR);
 				Solve(Mt);
 				T = max(T, Constants::MachineEpsilon);
 			}
@@ -328,29 +328,29 @@ void piso(istream& input) {
 		 */
 		ScalarCellField api = fillBCs(1.0 / M.ap);
 		ScalarCellField rmu = rho * api * Mesh::cV;
-
+		
 		/*PISO loop*/
 		for (Int j = 0; j < n_PISO; j++) {
 			/* Ua = H(U) / ap*/
 			U = getRHS(M) * api;
 			applyExplicitBCs(U, true);
-
+			
 			/*solve pressure poisson equation to satisfy continuity*/
 			{
 				ScalarCellField rhs = divf(rho * U);
 				for (Int k = 0; k <= n_ORTHO; k++)
 					Solve(lap(p, rmu) += rhs);
 			}
-
+			
 			/*explicit velocity correction : add pressure contribution*/
 			gP = -gradf(p);
 			U -= gP * api;
 			applyExplicitBCs(U, true);
 		}
-
 		/*update fluctuations*/
 		applyExplicitBCs(U, true, true);
-		F = flx(rho * U);
+		Fc = rho * U;
+		F = flx(Fc);
 
 		/*solve turbulence transport equations*/
 		turb->solve();
@@ -457,7 +457,7 @@ void euler(istream& input) {
 			if(buoyancy)
 				Sc += rho * VectorCellField(Controls::gravity);
 			/*solve*/
-			VectorCellMatrix M,Mt;
+			VectorCellMatrix M;
 			M = transport(U, rho * U, F, mu, velocity_UR, Sc, Scalar(0), &rho);
 			Solve(M == -gradf(p));
 		}
@@ -645,7 +645,7 @@ void potential(istream& input) {
 		ScalarCellField divU = divf(U);
 		ScalarCellField one = Scalar(1);
 		for (Int k = 0; k <= n_ORTHO; k++)
-			Solve(lap(p, one) == divU);
+			Solve(lap(p, one, true) == divU);
 
 		/*correct velocity*/
 		U -= gradi(p);
@@ -682,7 +682,7 @@ void Mesh::calc_walldist(Int step, Int n_ORTHO) {
 	{
 		ScalarCellField one = Scalar(1);
 		for (Int k = 0; k <= n_ORTHO; k++)
-			Solve(lap(phi, one) == -cV);
+			Solve(lap(phi, one, true) == -cV);
 	}
 	/*wall distance*/
 	{

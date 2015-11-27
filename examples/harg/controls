@@ -35,7 +35,7 @@ general
 ############################
 
     method                       PCG
-    preconditioner               SOR
+    preconditioner               SSOR
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
@@ -67,7 +67,7 @@ prepare
 
 decomposition
 {
-    n 		3 {2 1 1}
+    n 		3 {1 1 1}
     type      	XYZ
 }
 
