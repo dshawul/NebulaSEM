@@ -425,8 +425,9 @@ void remove_duplicate(Mesh::MeshObject& p) {
 	}
 	//adjust bstart
 	forEach(p.patches,i) {
-		p.patches[i].from = dup[p.patches[i].from];
-		p.patches[i].to = dup[p.patches[i].to];
+		Patch& pi = p.patches[i];
+		pi.from = dup[pi.from];
+		pi.to = dup[pi.to];
 	}
 	/*cells*/
 	sz = p.c.size();
@@ -492,26 +493,6 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		s3 = b.fb.size();
 		m1.f.insert(m1.f.end(),m2.f.begin(),m2.f.begin() + s1);
 		
-		//insert patch
-		forEach(m2.patches,i) {
-			m2.patches[i].from += s0;
-			m2.patches[i].to += s0;
-		}
-		Int npatch = m1.patches.size();
-		forEach(m2.patches,i) {
-			Patch& p = m2.patches[i];
-			bool skip = false;
-			if(p.from < s0) skip = true;
-			for(Int j = 0;j < npatch;j++) {
-				if(equal(p.C,m1.patches[j].C)) {
-					skip = true;
-					break;
-				}
-			}
-			if(!skip)
-				m1.patches.push_back(p);
-		}
-		
 		//insert faces
 		IntVector index0(s3,0),index1(s2 - s1,0);
 		Int count = 0;
@@ -546,6 +527,41 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		}
 		b.fb.resize(count);
         
+		//insert patch
+		forEach(m2.patches,i) {
+			m2.patches[i].from += s0 + s3;
+			m2.patches[i].to += s0 + s3;
+		}
+		forEach(m1.patches,i) {
+			m1.patches[i].from += s1;
+			m1.patches[i].to += s1;
+		}
+		Int npatch = m1.patches.size();
+		forEach(m2.patches,i) {
+			Patch& p = m2.patches[i];
+			bool skip = false;
+			Int j = 0;
+			for(;j < npatch;j++) {
+				if(equal(p.C,m1.patches[j].C)) {
+					skip = true;
+					break;
+				}
+			}
+			if(!skip)
+				m1.patches.push_back(p);
+			else {
+				Int s4 = m1.patches[j].to - m1.patches[j].from;
+				for(Int k = 0;k < j;k++) {
+					m1.patches[k].from += s4;
+					m1.patches[k].to += s4;
+				}
+				for(Int k = i;k < m2.patches.size();k++) {
+					m2.patches[k].from -= s4;
+					m2.patches[k].to -= s4;
+				}
+				m1.patches.erase(m1.patches.begin() + j);
+			}
+		}
 		//adjust face ids in cells
 		forEach(m1.c,i) {
 			Cell& ct = m1.c[i];

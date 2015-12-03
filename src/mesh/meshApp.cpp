@@ -241,7 +241,7 @@ int main(int argc,char* argv[]) {
 		IntVector& b = Bdrys[i].index;
 		Vector N = (keys[b[1]] - keys[b[0]]) ^ (keys[b[2]] - keys[b[0]]);
 		N /= mag(N);
-		/*/
+		//*/
 		forEach(gMesh.patches,j) {
 			Patch& p = gMesh.patches[j];
 			Vector H = (p.C - keys[b[0]]);

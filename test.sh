@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #set case file
-case=examples/harg/ 
-grid=harg
+case=examples/atmo/srtb/ 
+grid=bubble
 
 #run solver
 function run() {

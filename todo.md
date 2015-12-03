@@ -1,6 +1,6 @@
 # To do
 
-- [ ] Fix artificial viscosity problem
+- [x] Fix artificial viscosity problem
 - [x] Fix pre-conditioner bug
 - [x] Parallel DG 
 - [x] Fix parallel VTK bug
@@ -10,6 +10,6 @@
 
 ## Long term
 
-- [ ] Implement elliptic DG operator
+- [x] Implement elliptic DG operator
 - [ ] Fix CUDA implementation of solver
 - [ ] Add CG
