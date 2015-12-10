@@ -31,10 +31,13 @@ void Mesh::clear() {
 	probePoints.clear();
 }
 /*read mesh*/
-bool Mesh::readMesh(Int step,bool first) {
+bool Mesh::readMesh(Int step,bool first, bool coarse) {
 	/*open file*/
 	stringstream path;
-	path << gMeshName << "_" << step;
+	if(coarse) 
+		path << gMeshName;
+	else
+		path << gMeshName << "_" << step;
 	string str = path.str();
 	ifstream is(str.c_str());
 	if(is.fail()) {

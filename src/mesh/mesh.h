@@ -96,7 +96,7 @@ namespace Mesh {
 	void addBoundaryCells();
 	void calcGeometry();
 	void removeBoundary(IntVector&);
-	bool readMesh(Int = 0,bool = true);
+	bool readMesh(Int = 0,bool = true,bool = false);
 	void enroll(Util::ParamList& params);
 }
 /*

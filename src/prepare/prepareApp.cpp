@@ -53,9 +53,8 @@ int main(int argc,char* argv[]) {
 	ifstream input(argv[1]);
 
     /*read mesh & fields*/
-    RefineParams ref_params;
     Int decomptype = 3;
-	vector<string> fields;
+	vector<string>& fields = BaseField::fieldNames;
 	vector<Int> n;
 	vector<Scalar> axis(4);
 	axis[0] = 1;
@@ -87,15 +86,8 @@ int main(int argc,char* argv[]) {
 	}
 	{
 		Util::ParamList params("refinement");
-		Util::Option* op;
-		op = new Util::Option(&ref_params.shape, 2,"QUAD","TRI");
-		params.enroll("shape",op);
-		params.enroll("direction",&ref_params.dir);
-		params.enroll("field",&ref_params.field);
-		params.enroll("field_max",&ref_params.field_max);
-		params.enroll("field_min",&ref_params.field_min);
-		params.enroll("limit",&ref_params.limit);
-		params.read(input); 
+		Controls::enrollRefine(params);
+		params.read(input);
 	}
 
 	/*switch directory*/
@@ -121,7 +113,7 @@ int main(int argc,char* argv[]) {
 		Prepare::probe(fields,start_index);
 	} else if(work == 4) {
 		cout << "Refining grid.\n";
-		Prepare::refineMesh(fields,ref_params,start_index);
+		Prepare::refineMesh(fields,Controls::refine_params,start_index);
 	} else {
 		cout << "Decomposing domain.\n";
 		Prepare::decompose(fields,&n[0],&axis[0],decomptype,start_index);

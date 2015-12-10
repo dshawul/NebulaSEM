@@ -64,6 +64,7 @@ struct Turbulence_Model {
 		writeStress(false)
 	{
 	}
+	virtual ~Turbulence_Model() {};
 	/*overridable functions*/
 	virtual void enroll() {
 		using namespace Util;

@@ -6,7 +6,7 @@
 - [x] Fix parallel VTK bug
 - [ ] Cyclic boundary in parallel mode
 - [ ] Rotate cyclic patch values for vector fields
-- [ ] AMR with dynamic decomposition of grids
+- [X] AMR with dynamic decomposition of grids
 
 ## Long term
 

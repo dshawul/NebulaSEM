@@ -52,6 +52,7 @@ namespace Controls {
 	extern Int write_interval;
 	extern Int start_step;
 	extern Int end_step;
+	extern Int amr_step;
 	extern Int n_deferred;
 	extern Int save_average;
 	extern Int print_time;
@@ -72,11 +73,69 @@ enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
 };
 
+/*AMR parameters*/
+struct RefineParams {
+	Int shape;
+	Vector dir;
+	std::string field;
+	Scalar field_max;
+	Scalar field_min;
+	Int limit;
+	RefineParams() {
+		shape = 0;
+		dir = Scalar(0);
+		field = "U";
+		field_max = 0.9;
+		field_min = 0.1;
+		limit = 100000;
+	}
+};
+
+namespace Controls {
+	extern RefineParams refine_params;
+	void enrollRefine(Util::ParamList& params);
+}
+
+namespace Prepare {
+	void refineMesh(const RefineParams& rparams, Int step);
+	void refineMesh(IntVector&,const RefineParams&,IntVector&);
+	void createFields(std::vector<std::string>& fields,Int step);
+	Int  readFields(std::vector<std::string>& fields,Int step);
+}
 /* *****************************************************************************
  *                    Field variables defined on mesh                          
  * *****************************************************************************/
+class BaseField {	
+public:
+	std::string  fName;
+public:
+	virtual void deallocate(bool) = 0;
+	virtual void refineField(Int,IntVector&) = 0;
+	virtual void unrefineField(Int,IntVector&) = 0;
+	virtual void writeInternal(std::ostream&,IntVector*) = 0;
+	virtual void readInternal(std::istream&,IntVector*) = 0;
+	virtual void writeBoundary(std::ostream&) = 0;
+	virtual void norm(BaseField*) = 0;
+	virtual ~BaseField() {};
+	
+	static std::list<BaseField*> allFields;
+	static std::vector<std::string> fieldNames;
+	static void destroyFields() {
+		forEachIt(std::list<BaseField*>, allFields, it)
+			(*it)->deallocate(false);
+		allFields.clear();
+	}
+	static BaseField* findField(const std::string& name) {
+		forEachIt(std::list<BaseField*>, allFields, it) {
+			if(!Util::compare((*it)->fName,name)) 
+				return (*it);
+		}
+		return 0;
+	}
+};
+
 template <class type,ENTITY entity> 
-class MeshField {
+class MeshField : public BaseField {
 private:
 	type*        P;
 	int          allocated;
@@ -84,7 +143,6 @@ private:
 public:
 	ACCESS       access;
 	Int          fIndex;
-	std::string  fName;
 
 	/*common*/
 	static const Int TYPE_SIZE = sizeof(type) / sizeof(Scalar);
@@ -94,7 +152,8 @@ public:
 
     /*constructors*/
 	MeshField(const char* str = "", ACCESS a = NO,bool recycle = true) : 
-				P(0),allocated(0),access(a),fName(str) {
+				P(0),allocated(0),access(a) {
+		fName = str;
 		construct(str,a,recycle);
 	}
 	MeshField(const MeshField& p) : allocated(0) {
@@ -147,8 +206,10 @@ public:
 				delete[] P;
 				P = 0;
 			}
-			if(fIndex)
+			if(fIndex) {
 				fields_.remove(this);
+				allFields.remove(this);
+			}
 			n_alloc--;
 		}
 	}
@@ -158,8 +219,10 @@ public:
 		if(Mesh::gCells.size())
 			allocate(recycle);
 		fIndex = Util::hash_function(str);
-		if(fIndex)
+		if(fIndex) {
 			fields_.push_back(this);
+			allFields.push_back(this);
+		}
 	}
 	/*d'tor re-cycles memory */
 	~MeshField() {
@@ -169,9 +232,11 @@ public:
 
 	/*static functions*/
 	void calc_neumann(BCondition<type>*);
-	void readInternal(std::istream&);
+	void readInternal(std::istream&,IntVector*);
+	void writeInternal(std::ostream&,IntVector*);
+	void writeBoundary(std::ostream&);
 	void read(Int step);
-	void write(Int step);
+	void write(Int step, IntVector* = 0);
 
 	/*accessors*/
 	Int size() const {
@@ -270,6 +335,9 @@ public:
 	AddOperators(MeshField)
 	AddScalarOperators(MeshField)
 	/*friend ops*/
+	void norm(BaseField* pnorm) {
+		*((MeshField<Scalar,entity>*)pnorm) = mag(*this);
+	}
 	friend MeshField<Scalar,entity> mag(const MeshField& p) {
 		MeshField<Scalar,entity> r;
 		forEach(r,i)
@@ -307,6 +375,7 @@ public:
 		}
 	} 
 	static void removeAll() {
+		allFields.clear();
 		fields_.clear();
 		forEachIt(typename std::list<type*>,mem_,it)
 			delete (*it);
@@ -432,6 +501,34 @@ public:
 				pf->updateStore();
 			}
 		}
+	}
+	/*refine/unrefine field*/
+	void refineField(Int step,IntVector& cMap) {
+		if(access & WRITE)
+			write(step,&cMap);
+	}
+	void unrefineField(Int step,IntVector& cMap) {
+		MeshField f = type(0);
+		IntVector count;
+		Int csize = 0;
+		count.assign(f.size(),0);
+		for(Int i = 0;i < Mesh::gBCSfield;i++) {
+			Int ci = cMap[i];
+			f[ci] += P[i];
+			count[ci]++;
+			if(ci > csize) csize = ci;
+		}
+		for(Int i = 0;i <= csize;i++)
+			P[i] = f[i] / count[i];
+		
+		/*write*/
+		IntVector mp;
+		mp.resize(csize+1);
+		forEach(mp,i)
+			mp[i] = i;
+		
+		if(access & WRITE)
+			write(step,&mp);
 	}
 	/*IO*/
 	friend std::ostream& operator << (std::ostream& os, const MeshField& p) {
@@ -602,7 +699,7 @@ namespace Mesh {
 	extern IntVector         gFO;
 	extern IntVector         gFN; 
 	
-	bool   LoadMesh(Int = 0,bool = true, bool = true);
+	bool   LoadMesh(Int = 0,bool = true, bool = true, bool = false);
 	void   initGeomMeshFields();
 	void   calc_walldist(Int,Int = 1);
 	void   write_fields(Int);
@@ -650,13 +747,14 @@ void Mesh::duplicateBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& d
  *  Input - output operations
  * **********************************************/
 template <class T,ENTITY E> 
-void MeshField<T,E>::readInternal(std::istream& is) {
+void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
 	using namespace Mesh;
 	/*size*/
 	char c;
 	int size;
 	std::string str;
 	is >> str >> size;
+
 	/*internal field*/
 	if((c = Util::nextc(is)) && isalpha(c)) {
 		T value = T(0);
@@ -668,36 +766,44 @@ void MeshField<T,E>::readInternal(std::istream& is) {
 			Vector center,radius;
 			T perterb;
 			is >> value >> perterb >> center >> radius;
-			VectorCellField cB = center;
-			ScalarCellField R = mag((cC - cB) / radius);
-			forEach(R,i) R[i] = min(1.0,R[i]);
-			MeshField<T,E> val = value;
-			val += MeshField<T,E>(perterb / 2) * 
-					(MeshField<Scalar,E>(Scalar(1.0)) + cos(R * Constants::PI));
-			*this = val;
+			for(Int i = 0;i < gBCSfield;i++) {
+				Scalar R = mag((cC[i] - center) / radius);
+				R = min(1.0,R);
+				T val = value;
+				val += (perterb / 2) * (Scalar(1.0) + cos(R * Constants::PI));
+				(*this)[i] = val;
+			}
 		} else if(str == "gaussian") {
 			Vector center,radius;
 			T perterb;
 			is >> value >> perterb >> center >> radius;
-			VectorCellField cB = center;
-			ScalarCellField R = mag((cC - cB) / radius);
-			MeshField<T,E> val = value;
-			val += MeshField<T,E>(perterb) *  exp(-R*R);
-			*this = val;
+			for(Int i = 0;i < gBCSfield;i++) {
+				Scalar R = mag((cC[i] - center) / radius);
+				T val = value;
+				val += perterb *  exp(-R*R);
+				(*this)[i] = val;
+			}
 		} else if(str == "hydrostatic") {
 			T p0;
 			Scalar scale, expon;
 			is >> p0 >> scale >> expon;
-			ScalarCellField gz = dot(cC,VectorCellField(Controls::gravity));
-			*this = MeshField<T,E>(p0) * 
-				pow(MeshField<Scalar,E>(Scalar(1.0)) + scale * gz, expon);
+			for(Int i = 0;i < gBCSfield;i++) {
+				Scalar gz = dot(cC[i],Controls::gravity);
+				(*this)[i] = (p0) * pow(Scalar(1.0) + scale * gz, expon);
+			}
 		} else
 			*this = value;
 	} else {
+		T temp;
 		char symbol;
 		is >> size >> symbol;
-		for(int i = 0;i < size;i++)
-			is >> (*this)[i];
+		for(int i = 0;i < size;i++) {
+			is >> temp;
+			if(cMap) 
+				(*this)[(*cMap)[i]] = temp;
+			else 
+				(*this)[i] = temp;
+		}
 		is >> symbol;
 	}
 }
@@ -747,7 +853,7 @@ void MeshField<T,E>::read(Int step) {
 		std::cout.flush();
 	}
 	/*internal*/
-	readInternal(is);
+	readInternal(is,0);
 
 	/*boundary*/
 	char c;
@@ -763,26 +869,32 @@ void MeshField<T,E>::read(Int step) {
 	applyExplicitBCs(*this,true,true);
 }
 template <class T,ENTITY E> 
-void MeshField<T,E>::write(Int step) {
+void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
 	using namespace Mesh;
-
-	/*open*/
-	std::stringstream path;
-	path << fName << step;
-	std::ofstream of(path.str().c_str());
+	
 	/*size*/
-	of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
+	os << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
 
 	/*internal field*/
-	Int size = (SIZE == gCells.size() * DG::NP) ? 
-	             gBCSfield : 
-	             SIZE;
-	of << size << std::endl;
-	of << "{" << std::endl;
-	for(Int i = 0;i < size;i++)
-		of << (*this)[i] << std::endl;
-	of << "}" << std::endl;
-
+	Int size;
+	if(cMap)
+		size = cMap->size();
+	else
+		size = (SIZE == gCells.size() * DG::NP) ? gBCSfield : SIZE;
+	os << size << std::endl;
+	os << "{" << std::endl;
+	for(Int i = 0;i < size;i++) {
+		if(cMap)
+			os << (*this)[(*cMap)[i]] << std::endl;
+		else
+			os << (*this)[i] << std::endl;
+	}
+	os << "}" << std::endl;
+}
+template <class T,ENTITY E> 
+void MeshField<T,E>::writeBoundary(std::ostream& os) {
+	using namespace Mesh;
+	
 	/*boundary field*/
 	BasicBCondition* bbc;
 	BCondition<T>* bc;
@@ -790,9 +902,20 @@ void MeshField<T,E>::write(Int step) {
 		bbc = AllBConditions[i];
 		if(bbc->fIndex == this->fIndex) {
 			bc = static_cast<BCondition<T>*> (bbc);
-			of << *bc << std::endl;
+			os << *bc << std::endl;
 		}
 	}
+}
+template <class T,ENTITY E> 
+void MeshField<T,E>::write(Int step, IntVector* cMap) {
+	/*open*/
+	std::stringstream path;
+	path << fName << step;
+	std::ofstream of(path.str().c_str());
+
+	/*write*/
+	writeInternal(of,cMap);
+	writeBoundary(of);
 }
 
 /* ********************
