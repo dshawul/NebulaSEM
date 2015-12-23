@@ -274,7 +274,7 @@ void DG::init_geom() {
 				vp1[i + 0] = gVertices[f1[i]];
 			forEach(f2,i)
 				vp1[i + 4] = gVertices[f2[i]];	
-			Int id = faceID[ci][0];
+			Int id = gFaceID[ci][0];
 			if(id == 2) {
 				Int order[8] = {0,1,5,4,3,2,6,7};
 				for(Int i = 0;i < 8;i++) 
@@ -368,7 +368,7 @@ void DG::init_geom() {
 	for(Int ci = 0; ci < gBCS;ci++) {
 		Cell& c = gCells[ci];
 		forEach(c,mm) {
-			Int face = faceID[ci][mm];
+			Int face = gFaceID[ci][mm];
 			Int fi = c[mm];
 			Int cj = gFNC[fi];
 			if(cj == ci) 

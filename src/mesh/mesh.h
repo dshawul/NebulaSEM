@@ -4,8 +4,12 @@
 #include "tensor.h"
 #include "util.h"
 
-/*Index by ID instead of pointers */
+/*Index by integer ID instead of pointers */
 typedef std::vector<Int>      IntVector;
+typedef std::vector<int>      SintVector;
+typedef std::vector<Scalar>   ScalarVector;
+typedef std::vector<Vector>   VectorVector;
+typedef std::vector<bool>     BoolVector;
 
 /*our basic building blocks */
 enum ENTITY {
@@ -22,6 +26,22 @@ typedef std::vector<Facet>    Facets;
 typedef std::vector<Cell>     Cells; 
 typedef std::map<std::string,IntVector> Boundaries;
 
+/*AMR parameters*/
+struct RefineParams {
+	Vector dir;
+	std::string field;
+	Scalar field_max;
+	Scalar field_min;
+	Int limit;
+	RefineParams() {
+		dir = Scalar(0);
+		field = "U";
+		field_max = 0.9;
+		field_min = 0.1;
+		limit = 100000;
+	}
+};
+
 /*global mesh*/
 namespace Mesh {
 	struct interBoundary {
@@ -30,6 +50,7 @@ namespace Mesh {
 		Int to;
 		Int buffer_index;
 	};
+		
 	struct Patch {
 		Int from;
 		Int to;
@@ -40,64 +61,83 @@ namespace Mesh {
 			to = 0;
 		}
 	};
+	
+	typedef std::vector<interBoundary> InterBoundVector;
+	typedef std::vector<Patch> PatchVector;
+	
 	struct MeshObject {
 		/*vertices , facets and cells */
-		Vertices v;
-		Facets   f;
-		Cells    c;
+		Vertices mVertices;
+		Facets   mFacets;
+		Cells    mCells;
 		/*other info*/
 		std::string name;
-		Boundaries  bdry;
-		IntVector   fo;
-		IntVector   fn;
-		std::vector<interBoundary> interMesh;
+		Boundaries  mBoundaries;
+		IntVector   mFOC;
+		IntVector   mFNC;
 		/*start of boundary cells,facets & vertices*/
 		Int      nv;
 		Int      nf;
-		Int      nc;
-		Int      nci;
+		Int      mBCS;
+		Int      mBCSI;
 		/*Start of boundary patches*/
-		std::vector<Patch> patches;
-		/*funcs*/
-		void write(std::ostream& os);
-		void clear() {
-			v.clear();
-			f.clear();
-			c.clear();
-			bdry.clear();
-			fo.clear();
-			fn.clear();
-			patches.clear();
-			interMesh.clear();
-		}
+		PatchVector      mPatches;
+		InterBoundVector mInterMesh;
+		/*original face orientation*/
+		Cells    mFaceID;
+		/*geometric data*/
+		VectorVector mFC;
+		VectorVector mCC;
+		VectorVector mFN;
+		ScalarVector mCV;
+		BoolVector   mReversed;
+		
+		/*functions*/
+		void clear();
+		void writeMesh(std::ostream& os);
+		bool readMesh(Int = 0,bool = true,bool = false);
+		void addBoundaryCells();
+		void calcGeometry();
+		void removeBoundary(IntVector&);
+		
+		void straightEdges(const Facet&, Facet&, Facet&);
+		bool straightFaces(const Facet&,const Facet&);
+		bool mergeFacets(const Facet&,const Facet&, Facet&);
+		void addVerticesToEdge(const int, Facet&, const Facet&);
+		void calcFaceCenter(const Facet&,Vector&);
+		void calcCellCenter(const Cell&, Vector&);
+		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,const Int);
+		void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
+		void refineMesh(IntVector&, IntVector&);
 	};
-
-	extern std::vector<Vector> _fC;
-	extern std::vector<Vector> _cC;
-	extern std::vector<Vector> _fN;
-	extern std::vector<Scalar> _cV;
-	extern std::vector<bool>   _reversed;
-
-	extern  MeshObject       gMesh;
-	extern  std::string&     gMeshName;
-	extern  Vertices&		 gVertices;
-	extern  Facets&			 gFacets;
-	extern  Cells&			 gCells;
-	extern  Boundaries&      gBoundaries;
-	extern  IntVector&       gFOC;
-	extern  IntVector&       gFNC;
-	extern  Int&             gBCS;
-	extern  Int&             gBCSI;
-	extern  std::vector<interBoundary>& gInterMesh;
+	
+	//Global mesh object with its members
+	extern  MeshObject        gMesh;
+	extern  std::string&      gMeshName;
+	extern  Vertices&		  gVertices;
+	extern  Facets&			  gFacets;
+	extern  Cells&			  gCells;
+	extern  Boundaries&       gBoundaries;
+	extern  IntVector&        gFOC;
+	extern  IntVector&        gFNC;
+	extern  Int&              gBCS;
+	extern  Int&              gBCSI;
+	extern  Cells&            gFaceID;
+	extern  InterBoundVector& gInterMesh;
+	extern  VectorVector&     gfC;
+	extern  VectorVector&     gcC;
+	extern  VectorVector&     gfN;
+	extern  ScalarVector&     gcV;
+	
+	//probe points
 	extern  Vertices         probePoints;
-	extern  Cells            faceID;
 	
 	void clear();
-	void addBoundaryCells();
-	void calcGeometry();
-	void removeBoundary(IntVector&);
-	bool readMesh(Int = 0,bool = true,bool = false);
 	void enroll(Util::ParamList& params);
+}
+namespace Controls {
+	extern RefineParams refine_params;
+	void enrollRefine(Util::ParamList& params);
 }
 /*
  * Model for flow close to the wall (Law of the wall).

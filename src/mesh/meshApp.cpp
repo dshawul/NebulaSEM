@@ -70,9 +70,9 @@ int main(int argc,char* argv[]) {
 		if(Import) str = i_file_name;
 		else str = "grid";
 		Mesh::gMeshName = str;
-		Mesh::readMesh();
-		Mesh::addBoundaryCells();
-		Mesh::calcGeometry();
+		Mesh::gMesh.readMesh();
+		Mesh::gMesh.addBoundaryCells();
+		Mesh::gMesh.calcGeometry();
 
 		output << hex;
 		writeMshMesh(output,gMesh);
@@ -89,7 +89,7 @@ int main(int argc,char* argv[]) {
 		readMshMesh(input,gMesh);
 		input >> dec;
 
-		gMesh.write(cout);
+		gMesh.writeMesh(cout);
 		return 0;
 	}
 
@@ -242,8 +242,8 @@ int main(int argc,char* argv[]) {
 		Vector N = (keys[b[1]] - keys[b[0]]) ^ (keys[b[2]] - keys[b[0]]);
 		N /= mag(N);
 		//*/
-		forEach(gMesh.patches,j) {
-			Patch& p = gMesh.patches[j];
+		forEach(gMesh.mPatches,j) {
+			Patch& p = gMesh.mPatches[j];
 			Vector H = (p.C - keys[b[0]]);
 			Scalar d1 = mag(N ^ p.N);
 			Scalar d2 = sqrt(mag(N & H));
@@ -298,6 +298,6 @@ int main(int argc,char* argv[]) {
 		}
 	}
 	/*write it*/
-	gMesh.write(cout);
+	gMesh.writeMesh(cout);
 	return 0;
 }

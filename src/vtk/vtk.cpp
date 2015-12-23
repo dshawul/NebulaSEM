@@ -48,7 +48,7 @@ void Vtk::write_vtk(Int step) {
 	if(DG::NPMAT <= 1) {
 		/*vertices*/
 		{
-			of << "POINTS " << gVertices.size() << " float" << endl;
+			of << "POINTS " << gVertices.size() << " double" << endl;
 			of.precision(12);
 			forEach(gVertices,i)
 				of << gVertices[i] << endl;
@@ -110,7 +110,7 @@ void Vtk::write_vtk(Int step) {
 		using namespace DG;
 		/*vertices*/
 		{
-			of << "POINTS " << gBCSfield << " float" << endl;
+			of << "POINTS " << gBCSfield << " double" << endl;
 			of.precision(12);
 			for(i = 0;i < gBCSfield;i++)
 				of << cC[i] << endl;

@@ -69,39 +69,15 @@ namespace Mesh {
 	extern Int  gBCSfield; 
 	extern Int  gBCSIfield;
 };
+namespace Prepare {
+	void refineMesh(Int step);
+	void createFields(std::vector<std::string>& fields,Int step);
+	Int  readFields(std::vector<std::string>& fields,Int step);
+}
 enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
 };
 
-/*AMR parameters*/
-struct RefineParams {
-	Int shape;
-	Vector dir;
-	std::string field;
-	Scalar field_max;
-	Scalar field_min;
-	Int limit;
-	RefineParams() {
-		shape = 0;
-		dir = Scalar(0);
-		field = "U";
-		field_max = 0.9;
-		field_min = 0.1;
-		limit = 100000;
-	}
-};
-
-namespace Controls {
-	extern RefineParams refine_params;
-	void enrollRefine(Util::ParamList& params);
-}
-
-namespace Prepare {
-	void refineMesh(const RefineParams& rparams, Int step);
-	void refineMesh(IntVector&,const RefineParams&,IntVector&);
-	void createFields(std::vector<std::string>& fields,Int step);
-	Int  readFields(std::vector<std::string>& fields,Int step);
-}
 /* *****************************************************************************
  *                    Field variables defined on mesh                          
  * *****************************************************************************/

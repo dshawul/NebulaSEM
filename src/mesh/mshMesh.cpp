@@ -29,7 +29,7 @@ void readMshMesh(std::istream& is,Mesh::MeshObject& mo) {
 				Vertex v;
 				for(int i = findex;i <= lindex;i++) {
 					is >> v;
-					mo.v.push_back(v);
+					mo.mVertices.push_back(v);
 				}
 				is >> symbol >> symbol;
 			} else {
@@ -49,7 +49,7 @@ void readMshMesh(std::istream& is,Mesh::MeshObject& mo) {
 				is >> symbol;
 			}
 			if(zone == 0) {
-				mo.c.resize(lindex);
+				mo.mCells.resize(lindex);
 			}
 			break;
 		case 0x13:
@@ -63,7 +63,7 @@ void readMshMesh(std::istream& is,Mesh::MeshObject& mo) {
 			if(zone != 0) {
 				std::stringstream name;
 				name << "zone" << zone;
-				IntVector& gB = mo.bdry[name.str().c_str()];
+				IntVector& gB = mo.mBoundaries[name.str().c_str()];
 
 				Facet f;
 				int n,c0,c1,k;
@@ -74,19 +74,19 @@ void readMshMesh(std::istream& is,Mesh::MeshObject& mo) {
 						is >> k;
 						f.push_back(k - node_start);
 					}
-					mo.f.push_back(f);
+					mo.mFacets.push_back(f);
 					gB.push_back(i - facet_start);
 
 					is >> c0 >> c1;
 					if(c0 == 0) {
-						mo.fo.push_back(Constants::MAX_INT);
+						mo.mFOC.push_back(Constants::MAX_INT);
 					} else {
-						mo.fo.push_back(c0 - 1);
+						mo.mFOC.push_back(c0 - 1);
 					}
 					if(c1 == 0) {
-						mo.fn.push_back(Constants::MAX_INT);
+						mo.mFNC.push_back(Constants::MAX_INT);
 					} else {
-                        mo.fn.push_back(c1 - 1);
+                        mo.mFNC.push_back(c1 - 1);
 					}
 				}
 				is >> symbol >> symbol;
@@ -122,21 +122,21 @@ void readMshMesh(std::istream& is,Mesh::MeshObject& mo) {
 	for(map<int,string>::iterator it = bnames.begin();it != bnames.end();++it) {
 		std::stringstream name;
 		name << "zone" << dec << it->first;
-		Boundaries::iterator it1 = mo.bdry.find(name.str().c_str());
-		if(it1 != mo.bdry.end()) {
-			mo.bdry[it->second] = it1->second; 
-			mo.bdry.erase(it1);
+		Boundaries::iterator it1 = mo.mBoundaries.find(name.str().c_str());
+		if(it1 != mo.mBoundaries.end()) {
+			mo.mBoundaries[it->second] = it1->second; 
+			mo.mBoundaries.erase(it1);
 		}
 	}
 	/*add cells*/
 	Int co,cn;
-	forEach(mo.f,i) {
-		co = mo.fo[i];
-		cn = mo.fn[i];
+	forEach(mo.mFacets,i) {
+		co = mo.mFOC[i];
+		cn = mo.mFNC[i];
 		if(co != Constants::MAX_INT)
-			mo.c[co].push_back(i);
+			mo.mCells[co].push_back(i);
 		if(cn != Constants::MAX_INT)
-			mo.c[cn].push_back(i);
+			mo.mCells[cn].push_back(i);
 	}
 }
 void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
@@ -146,23 +146,23 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 
 	//vertices
 	os << "(0 \"Vertices:\")" << endl;
-	os << "(10 (0 1 " << mo.v.size() << " 0 3))" << endl << endl;
-	os << "(10 (1 1 " << mo.v.size() << " 1 3)" << endl;
+	os << "(10 (0 1 " << mo.mVertices.size() << " 0 3))" << endl << endl;
+	os << "(10 (1 1 " << mo.mVertices.size() << " 1 3)" << endl;
 	os << "(" << endl;
 	os.precision(10);
-	forEach(mo.v,i)
-		os << scientific << mo.v[i] << endl;
+	forEach(mo.mVertices,i)
+		os << scientific << mo.mVertices[i] << endl;
 	os << "))" << endl << endl;
 
 	//facets
 	os << "(0 \"Facets:\")" << endl;
-	os << "(13 (0 1 " << mo.f.size() << " 0 0))" << endl << endl;
+	os << "(13 (0 1 " << mo.mFacets.size() << " 0 0))" << endl << endl;
 
 	Int zone = 1;
 	Int start = 1;
 
 	//internal
-	Int nInternal = mo.f.size() - (mo.c.size() - mo.nc);
+	Int nInternal = mo.mFacets.size() - (mo.mCells.size() - mo.mBCS);
 	os << "(0 \"Internal faces:\")" << endl;
 	os << "(39 (" << dec << zone << hex << " interior " << "interior-1" 
 	   << ")())" << endl;
@@ -171,22 +171,22 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 	zone++;
 	start += nInternal;
 	os << "(" << endl;
-	forEach(mo.f,f) {
-		if(mo.fn[f] >= mo.nc)
+	forEach(mo.mFacets,f) {
+		if(mo.mFNC[f] >= mo.mBCS)
 			continue;
-		Facet& mf = mo.f[f];
+		Facet& mf = mo.mFacets[f];
 		os << mf.size() << " ";
 		forEach(mf,j)
 			os << mf[j] + 1 << " ";
-		if(Mesh::_reversed[f])
-			os << mo.fo[f] + 1 << " " << mo.fn[f] + 1 << endl;
+		if(mo.mReversed[f])
+			os << mo.mFOC[f] + 1 << " " << mo.mFNC[f] + 1 << endl;
 		else
-			os << mo.fn[f] + 1 << " " << mo.fo[f] + 1 << endl;  
+			os << mo.mFNC[f] + 1 << " " << mo.mFOC[f] + 1 << endl;  
 	}
 	os << "))" << endl << endl;
 
 	//boundary
-	forEachIt(Boundaries,mo.bdry,it) {
+	forEachIt(Boundaries,mo.mBoundaries,it) {
 		const IntVector& fvec = it->second; 
 		os << "(0 \"" << it->first << "\")" << endl;
 
@@ -206,23 +206,23 @@ void writeMshMesh(std::ostream& os,Mesh::MeshObject& mo) {
 		os << "(" << endl;
 		forEach(fvec,i) {
 			Int f = fvec[i];
-			Facet& mf = mo.f[f];
+			Facet& mf = mo.mFacets[f];
 			os << mf.size() << " ";
 			forEach(mf,j)
 				os << mf[j] + 1 << " ";
-			if(Mesh::_reversed[f])
-				os << mo.fo[f] + 1 << " 0" << endl;
+			if(mo.mReversed[f])
+				os << mo.mFOC[f] + 1 << " 0" << endl;
 			else
-				os << "0 " << mo.fo[f] + 1 << endl;
+				os << "0 " << mo.mFOC[f] + 1 << endl;
 		}
 		os << "))" << endl << endl;
 	}
 
 	//cells
 	os << "(0 \"Cells:\")" << endl;
-	os << "(12 (0 1 " << mo.nc << " 0 0))" << endl;
-	os << "(12 (1 1 " << mo.nc << " 1 0)(" << endl;
-	for(Int i = 0;i < mo.nc;i++)
+	os << "(12 (0 1 " << mo.mBCS << " 0 0))" << endl;
+	os << "(12 (1 1 " << mo.mBCS << " 1 0)(" << endl;
+	for(Int i = 0;i < mo.mBCS;i++)
 		os << "4 ";
 	os << endl << ")())" << endl;
 }

@@ -69,7 +69,6 @@ decomposition
 
 refinement
 {
-    shape           QUAD
     direction       0 0 0
     field           U
     field_min       0.1

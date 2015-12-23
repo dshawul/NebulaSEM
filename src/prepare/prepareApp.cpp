@@ -113,7 +113,7 @@ int main(int argc,char* argv[]) {
 		Prepare::probe(fields,start_index);
 	} else if(work == 4) {
 		cout << "Refining grid.\n";
-		Prepare::refineMesh(fields,Controls::refine_params,start_index);
+		Prepare::refineMesh(start_index);
 	} else {
 		cout << "Decomposing domain.\n";
 		Prepare::decompose(fields,&n[0],&axis[0],decomptype,start_index);

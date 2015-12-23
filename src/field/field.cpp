@@ -46,7 +46,6 @@ namespace Controls {
 	Int print_time = 0;
 	CommMethod parallel_method = BLOCKED;
 	Vector gravity = Vector(0,0,-9.860616);
-	RefineParams refine_params;
 }
 /*find the last grid loaded*/
 static int findLastRefinedGrid(Int step_) {
@@ -65,28 +64,28 @@ static int findLastRefinedGrid(Int step_) {
 /*
  * Load mesh
  */
-bool Mesh::LoadMesh(Int step_,bool first, bool remove_empty, bool coarse) {
+bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty, bool coarse) {
 	/*load refined mesh*/
 	int step = step_;
 	if(first && !coarse)
 		step = findLastRefinedGrid(step_);
 	
 	/*load mesh*/
-	if(readMesh(step,first,coarse)) {
-		if(MP::host_id == 0)
+	if(gMesh.readMesh(step,first,coarse)) {
+		if(MP::printOn)
 			cout << "--------------------------------------------\n";
 		MP::printH("\t%d vertices\t%d facets\t%d cells\n",
 			gVertices.size(),gFacets.size(),gCells.size());
 		/*initialize mesh*/
-		addBoundaryCells();
-		calcGeometry();
+		gMesh.addBoundaryCells();
+		gMesh.calcGeometry();
 		DG::init_poly();
 		/* remove empty faces*/
 		if(remove_empty) {
 			Boundaries::iterator it = gBoundaries.find("delete");
 			if(it != gBoundaries.end()) {
 				IntVector& fs = gBoundaries["delete"];
-				removeBoundary(fs);
+				gMesh.removeBoundary(fs);
 				gBoundaries.erase(it);
 			}
 		}
@@ -102,7 +101,7 @@ bool Mesh::LoadMesh(Int step_,bool first, bool remove_empty, bool coarse) {
 		/*geometric mesh fields*/
 		remove_fields();
 		initGeomMeshFields();
-		if(MP::host_id == 0) 
+		if(MP::printOn) 
 			cout << "--------------------------------------------\n";
 		return true;
 	}
@@ -132,13 +131,13 @@ void Mesh::initGeomMeshFields() {
 	fD.deallocate(false);
 	fD.allocate();
 	/*expand*/
-	forEach(_cC,i) {
-		cC[i] = _cC[i];
-		cV[i] = _cV[i];
+	forEach(gcC,i) {
+		cC[i] = gcC[i];
+		cV[i] = gcV[i];
 	}
-	forEach(_fC,i) {
-		fC[i] = _fC[i];
-		fN[i] = _fN[i];
+	forEach(gfC,i) {
+		fC[i] = gfC[i];
+		fN[i] = gfN[i];
 	}
 	if(DG::NPMAT) {
 		DG::expand(cC);
@@ -382,44 +381,40 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("npy",&DG::Nop[1]);
 	params.enroll("npz",&DG::Nop[2]);
 }
-void Controls::enrollRefine(Util::ParamList& params) {
-	Util::Option* op;
-	op = new Util::Option(&refine_params.shape, 2,"QUAD","TRI");
-	params.enroll("shape",op);
-	params.enroll("direction",&refine_params.dir);
-	params.enroll("field",&refine_params.field);
-	params.enroll("field_max",&refine_params.field_max);
-	params.enroll("field_min",&refine_params.field_min);
-	params.enroll("limit",&refine_params.limit);
-}
 /*
 * Adaptive mesh refinement
 */
-void Prepare::refineMesh(const RefineParams& rparams, Int step) {
+void Prepare::refineMesh(Int step) {
 	using namespace Mesh;
+	using namespace Controls;
 	
-	/*create fields*/
-	Prepare::createFields(BaseField::fieldNames,step);
-	Prepare::readFields(BaseField::fieldNames,step);
-	
-	/*Unrefine fields and mesh*/
+	// /*Refine starting from the coarsest mesh*/
+	// {
+	// 	/*create fields*/
+	// 	Prepare::createFields(BaseField::fieldNames,step);
+	// 	Prepare::readFields(BaseField::fieldNames,step);
+	//
+	// 	/*unrefine field*/
+	// 	IntVector cellMap;
+	// 	stringstream path;
+	// 	int stepn = findLastRefinedGrid(step);
+	// 	path << "cellMap" << "_" << stepn;
+	// 	ifstream is(path.str().c_str());
+	// 	if(!is.fail()) {
+	// 		is >> hex;
+	// 		is >> cellMap;
+	// 		is >> dec;
+	//
+	// 		forEachIt(std::list<BaseField*>, BaseField::allFields, it)
+	// 			(*it)->unrefineField(step,cellMap);
+	// 	}
+	//
+	// 	/*load coarse mesh*/
+	// 	LoadMesh(step,true,false,true);
+	// }
 	{
-		IntVector cellMap;
-		stringstream path;
-		int stepn = findLastRefinedGrid(step);
-		path << "cellMap" << "_" << stepn;
-		ifstream is(path.str().c_str());
-		if(!is.fail()) {
-			is >> hex;
-			is >> cellMap;
-			is >> dec;
-
-			forEachIt(std::list<BaseField*>, BaseField::allFields, it)
-				(*it)->unrefineField(step,cellMap);
-		}
-		
-		/*load coarse mesh*/
-		LoadMesh(step,true,false,true);
+		/*Load mesh*/
+		LoadMesh(step,true,false,false);
 	}
 	
 	/*create fields*/
@@ -431,9 +426,11 @@ void Prepare::refineMesh(const RefineParams& rparams, Int step) {
 	{
 		/*find quantity of interest*/
 		ScalarCellField qoi;
-		BaseField* bf = BaseField::findField(rparams.field);
+		BaseField* bf = BaseField::findField(refine_params.field);
 		if(bf) bf->norm(&qoi);
-		// qoi = mag(gradi(qoi));
+		fillBCs(qoi);
+		applyExplicitBCs(qoi,false,false);
+		qoi = mag(gradf(qoi));
 	
 		/*max and min*/
 		Scalar maxq = 0,minq = 10e30;
@@ -445,19 +442,18 @@ void Prepare::refineMesh(const RefineParams& rparams, Int step) {
 		qoi /= maxq;
 		maxq = 1;
 		minq = minq / maxq;
-	
+		
 		/*get cells to refine*/
 		gCells.erase(gCells.begin() + gBCS,gCells.end());
 		for(Int i = 0;i < gBCS;i++) {
-			if(qoi[i] >= rparams.field_max)
+			if(i ==0 && qoi[i] >= refine_params.field_max)
 				rCells.push_back(i);
 		}
 	}
-	
 	/*refine mesh and fields*/
 	{
 		IntVector cellMap;
-		refineMesh(rCells,rparams,cellMap);
+		Mesh::gMesh.refineMesh(rCells,cellMap);
 		forEachIt(std::list<BaseField*>, BaseField::allFields, it)
 			(*it)->refineField(step,cellMap); 
 
@@ -476,400 +472,12 @@ void Prepare::refineMesh(const RefineParams& rparams, Int step) {
 			stringstream path;
 			path << gMeshName << "_" << step;
 			ofstream os(path.str().c_str());
-			gMesh.write(os);
+			gMesh.writeMesh(os);
 		}
 	}
 	
 	/*destroy*/ 
 	BaseField::destroyFields();
-}
-
-void Prepare::refineMesh(IntVector& rCells,const RefineParams& rparams,IntVector& cellMap) {
-	using namespace Mesh;
-			
-	/*build refine flags array*/
-	IntVector refineC,refineF,
-			  rFacets,rsFacets;
-	cellMap.assign(gBCS,0);
-	forEach(cellMap,i)
-		cellMap[i] = i;
-	refineC.assign(gBCS,0);
-	refineF.assign(gFacets.size(),0);
-	forEach(rCells,i) {
-		Int ci = rCells[i];
-		refineC[ci] = 1;
-		Cell& c = gCells[ci];
-		forEach(c,j)
-			refineF[c[j]] = 1;
-	}
-	
-	/*choose faces to refine*/
-	bool refine3D = equal(Scalar(0.0),mag(rparams.dir));
-	forEach(refineF,i) {
-		if(refineF[i]) {
-			Vector eu = unit(fN[i]);
-			if(refine3D || 
-				equal(rparams.dir,eu) || 
-				equal(rparams.dir,-eu))
-				rFacets.push_back(i);
-			else
-				refineF[i] = 0;
-		}
-	}
-	
-	/***************************
-	 * Refine facets
-	 ***************************/
-	Int nj;
-	IntVector startF;
-	startF.assign(gFacets.size(),0);
-	Int ivBegin = gVertices.size();
-	forEach(rFacets,i) {
-		Int fi = rFacets[i];
-		Facet f = gFacets[fi];
-		startF[fi] = gFacets.size();
-		Vector C = fC[fi];
-		gVertices.push_back(C);
-		Int fci = gVertices.size() - 1;
-		
-		/*quadrilaterals*/
-		if(rparams.shape == 0) {
-			/*add vertices*/
-			IntVector midpts;
-			Vector v1,v2;
-			forEach(f,j) {
-				v1 = gVertices[f[j]];
-				nj = j + 1;
-				if(nj == f.size())
-					nj = 0;
-				v2 = gVertices[f[nj]];
-				Vector Ce = (v1 + v2) / 2.0;
-			
-				//duplicate
-				Int k = ivBegin;
-				for(; k < gVertices.size();k++) {
-					if(equal(Ce,gVertices[k])) {
-						midpts.push_back(k);
-						break;
-					}
-				}
-				if(k == gVertices.size()) {
-					gVertices.push_back(Ce);
-					midpts.push_back(k);
-				}
-			}
-		
-			/*add facets*/
-			Int k1,k2;
-			forEach(f,j) {
-				k1 = midpts[j];
-				if(j == 0)
-					nj = f.size() - 1;
-				else
-					nj = j - 1;
-				k2 = midpts[nj];
-				/*quad face*/
-				Facet fn;
-				fn.push_back(f[j]);
-				fn.push_back(k2);
-				fn.push_back(fci);
-				fn.push_back(k1);
-				gFacets.push_back(fn);
-			}
-		/*triangles*/
-		} else {
-			/*add facets*/
-			Int k1,k2;
-			forEach(f,j) {
-				k1 = f[j];
-				nj = j + 1;
-				if(nj == f.size())
-					nj = 0;
-				k2 = f[nj];
-				/*quad face*/
-				Facet fn;
-				fn.push_back(k1);
-				fn.push_back(fci);
-				fn.push_back(k2);
-				gFacets.push_back(fn);
-			}
-		}
-	}
-	/*************************
-	 * Refine cells
-	 *************************/
-	forEach(rCells,i) {
-		Int ci = rCells[i];
-		Cell c = gCells[ci];
-		Vector C = cC[ci];
-		gVertices.push_back(C);
-		Int cci = gVertices.size() - 1;
-		Int ifBegin = gFacets.size();
-		Cells newc;
-		
-		forEach(c,j) {
-			Int fi = c[j];
-			
-			/*cell is refined but face is not?*/
-			IntVector list;
-			if(!refineF[fi]) {
-				list.push_back(fi);
-			} else {
-				forEach(gFacets[fi],k)
-					list.push_back(startF[fi] + k);
-			}
-
-			/*refine cells*/
-			forEach(list,k) {
-				Int fni = list[k];
-				Facet f = gFacets[fni];
-			
-				Cell cn;
-				cn.push_back(fni);
-
-				Int v1i,v2i,nj;
-				forEach(f,l) {
-					v1i = f[l];
-					nj = l + 1;
-					if(nj == f.size())
-						nj = 0;
-					v2i = f[nj];
-					//triangular face
-					Facet fn;
-					fn.push_back(v1i);
-					fn.push_back(v2i);
-					fn.push_back(cci);
-					//duplicate
-					Int k = ifBegin;
-					for(; k < gFacets.size();k++) {
-						if(equal(fn,gFacets[k])) {
-							cn.push_back(k);
-							break;
-						}
-					}
-					if(k == gFacets.size()) {
-						gFacets.push_back(fn);
-						cn.push_back(k);
-					}
-				}
-				newc.push_back(cn);
-			}
-		}
-		/*merge cells*/
-		if(rparams.shape == 0) {
-			/*cells on same face*/
-			IntVector ownerf;
-			forEach(c,j) {
-				Int fi = c[j];
-				forEach(gFacets[fi],k)
-					ownerf.push_back(fi);
-			}
-			/*find cells to merge with a shared face*/
-			Cells mergec;
-			forEach(newc,j) {
-				Int o1 = ownerf[j];
-				Cell& c1 = newc[j];
-				IntVector mg;
-				forEachS(newc,k,j+1) {
-					Int o2 = ownerf[k];
-					Cell& c2 = newc[k];
-					if(o1 == o2) continue;
-					forEach(c1,m) {
-						Int f1 = c1[m];
-						forEach(c2,n) {
-							Int f2 = c2[n];
-							if(f1 == f2) {
-								mg.push_back(k);
-								c1.erase(c1.begin() + m);
-								c2.erase(c2.begin() + n);
-								rsFacets.push_back(f1);
-								goto END;
-							}
-						}
-					}
-					END:;					
-				}
-				mergec.push_back(mg);
-			}
-			/*merge cells*/
-			IntVector erasei;
-			erasei.assign(newc.size(),0);
-			forEachR(mergec,j) {
-				IntVector& cm = mergec[j];
-				forEach(cm,k)
-					erasei[cm[k]] = 1;
-				if(cm.size()) {
-					Cell& c1 = newc[j];
-					Cell& c2 = newc[cm[0]];
-					c1.insert(c1.end(),c2.begin(),c2.end());
-				}
-			}
-			/*erase cells*/
-			IntVector erasec;
-			forEach(erasei,j) {
-				if(erasei[j])
-					erasec.push_back(j);
-			}
-			erase_indices(newc,erasec);
-			/*two cells should share only one face*/
-			forEach(newc,j) {
-				Cell& c1 = newc[j];
-				forEachS(newc,k,j+1) {
-					Cell& c2 = newc[k];
-					//find shared faces
-					IntVector shared1,shared2;
-					forEach(c1,m) {
-						Int f1 = c1[m];
-						forEach(c2,n) {
-							Int f2 = c2[n];
-							if(f1 == f2) {
-								shared1.push_back(m);
-								shared2.push_back(n);
-							}
-						}
-					}
-					//two faces shared between two cells
-					if(shared1.size() == 2) {
-						Int fi1 = c1[shared1[0]];
-						Int fi2 = c1[shared1[1]];
-						Facet& f1 = gFacets[fi1];
-						Facet& f2 = gFacets[fi2];
-						erase_indices(c1,shared1);
-						erase_indices(c2,shared2);
-						rsFacets.push_back(fi1);
-						rsFacets.push_back(fi2);
-						//add new face by merging two faces
-						Facet f;
-						if(f1[0] == f2[0]) {
-							f.push_back(f1[1]);
-							f.push_back(f1[0]);
-							f.push_back(f2[1]);
-							f.push_back(f2[2]);
-						} else if(f1[0] == f2[1]) {
-							f.push_back(f1[1]);
-							f.push_back(f1[0]);
-							f.push_back(f2[0]);
-							f.push_back(f2[2]);
-						} else if(f1[1] == f2[1]) {
-							f.push_back(f1[0]);
-							f.push_back(f1[1]);
-							f.push_back(f2[0]);
-							f.push_back(f2[2]);
-						} else if(f1[1] == f2[0]) {
-							f.push_back(f1[0]);
-							f.push_back(f1[1]);
-							f.push_back(f2[1]);
-							f.push_back(f2[2]);
-						}
-						gFacets.push_back(f);
-						Int fi = gFacets.size() - 1;
-						c1.push_back(fi);
-						c2.push_back(fi);
-					}
-				}
-			}
-		}
-		/*add cells*/
-		gCells.insert(gCells.end(),newc.begin(),newc.end());
-		forEach(newc,j)
-			cellMap.push_back(ci);
-	}
-	/*************************************
-	 *  Remove refined facets and cells
-	 *************************************/
-	/*add additional facets to remove*/
-	refineF.resize(gFacets.size(),0);
-	forEach(rsFacets,i) {
-		Int fi = rsFacets[i];
-		if(!refineF[fi]) {
-			refineF[fi] = Constants::MAX_INT - 1;
-			rFacets.push_back(fi);
-		}
-	}
-	/*adjust facet indexes in cells and boundaries*/
-	Int count = 0;
-	forEach(refineF,i) {
-		if(refineF[i] == 0) refineF[i] = count++;
-		else if(refineF[i] == Constants::MAX_INT - 1);
-		else refineF[i] = Constants::MAX_INT;
-	}
-	/*erase old facets and add the new ones*/
-#define ERASEADD() {									\
-	IntVector newF,eraseF;								\
-	forEach(c,j) {										\
-		Int fi = c[j];									\
-		if(refineF[fi] == Constants::MAX_INT) {			\
-			eraseF.push_back(j);						\
-			forEach(gFacets[fi],k) {					\
-				Int fni = startF[fi] + k;				\
-				fni = refineF[fni];						\
-				newF.push_back(fni);					\
-			}											\
-		}												\
-		c[j] = refineF[fi];								\
-	}													\
-	erase_indices(c,eraseF);							\
-	c.insert(c.end(),newF.begin(),newF.end());			\
-}
-	forEach(gCells,i) {
-		Cell& c = gCells[i];
-		ERASEADD();
-	}
-	forEachIt(Boundaries,gBoundaries,it) {
-		IntVector& c = it->second;
-		ERASEADD();
-	}
-#undef ERASEADD
-
-	/*erase facets*/
-	sort(rFacets.begin(),rFacets.end());
-	erase_indices(gFacets,rFacets);
-	
-	/*erase cells*/
-	sort(rCells.begin(),rCells.end());
-	erase_indices(gCells,rCells);
-	erase_indices(cellMap,rCells);
-	gBCS = gCells.size();
-	gBCSfield = gBCS * DG::NP;
-	
-	/*******************************************************
-	 * Break edge of faces that are not set for refinement 
-	 * but should be due to neighboring refined faces 
-	 *******************************************************/
-	if(rparams.shape == 0) {
-		forEach(gFacets,i) {
-			Facet& f = gFacets[i];
-			IntVector addf;
-			Vector v1,v2;
-			addf.assign(f.size(),Constants::MAX_INT);
-			forEach(f,j) {
-				v1 = gVertices[f[j]];
-				nj = j + 1;
-				if(nj == f.size())
-					nj = 0;
-				v2 = gVertices[f[nj]];
-				Vector Ce = (v1 + v2) / 2.0;
-		
-				//duplicate
-				Int k = ivBegin;
-				for(; k < gVertices.size();k++) {
-					if(equal(Ce,gVertices[k])) {
-						addf[j] = k;
-						break;
-					}
-				}
-			}
-			if(addf.size()) {
-				Facet nf;
-				forEach(f,j) {
-					nf.push_back(f[j]);
-					if(addf[j] != Constants::MAX_INT)
-						nf.push_back(addf[j]);
-				}
-				f = nf;
-			}
-		}
-	}
 }
 /**
 create fields

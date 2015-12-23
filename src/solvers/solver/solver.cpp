@@ -174,7 +174,7 @@ public:
 		
 		/*set output printing*/
 		MP::printOn = (MP::host_id == 0 && 
-			(MP::hasElapsed(Controls::print_time) || i == endi - 1)); 
+			(MP::hasElapsed(Controls::print_time) || i == Controls::end_step - 1)); 
 		
 		/*update time series*/
 		forEachCellField(updateTimeSeries(i));
@@ -219,7 +219,7 @@ public:
 	void next() {
 		i += Controls::amr_step;
 		if(i < endi) {
-			Prepare::refineMesh(Controls::refine_params,i);
+			Prepare::refineMesh(i);
 			Mesh::LoadMesh(i);
 		}
 	}
@@ -271,7 +271,6 @@ public:
 */
 void piso(istream& input) {
 	/*Solver specific parameters*/
-	ScalarCellField rho = GENERAL::density;
 	Scalar& nu = GENERAL::viscosity;
 	Scalar velocity_UR = Scalar(0.8);
 	Scalar pressure_UR = Scalar(0.5);
@@ -298,10 +297,10 @@ void piso(istream& input) {
 	
 	Turbulence_Model::RegisterTable(params);
 	params.read(input);
-
+	
 	/*AMR iteration*/
 	for (AmrIteration ait; !ait.end(); ait.next()) {
-		
+		ScalarCellField rho = GENERAL::density;
 		VectorCellField U("U", READWRITE);
 		ScalarCellField p("p", READWRITE);
 		ScalarCellField T(false);

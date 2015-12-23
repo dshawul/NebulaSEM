@@ -169,20 +169,20 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(i = 1;i < nx - 1;i++) {
 			for(k = 1;k < nz - 1;k++) {
 				ADD();
-				mo.v.push_back(v);
-				VI[I0(i,j,k)] = mo.v.size() - 1;
+				mo.mVertices.push_back(v);
+				VI[I0(i,j,k)] = mo.mVertices.size() - 1;
 			}
 		}
 	}
-	mo.nv = mo.v.size();
+	mo.nv = mo.mVertices.size();
 
 	/*boundaries*/
 	for(i = 0;i < nx; i += (nx - 1)) {
 		for(j = 0;j < ny;j++) {
 			for(k = 0;k < nz;k++) {
 				ADD();
-				mo.v.push_back(v);
-				VI[I0(i,j,k)] = mo.v.size() - 1;
+				mo.mVertices.push_back(v);
+				VI[I0(i,j,k)] = mo.mVertices.size() - 1;
 			}
 		}
 	}
@@ -190,8 +190,8 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(i = 1;i < nx - 1;i++) {
 			for(k = 0;k < nz;k++) {
 				ADD();
-				mo.v.push_back(v);
-				VI[I0(i,j,k)] = mo.v.size() - 1;
+				mo.mVertices.push_back(v);
+				VI[I0(i,j,k)] = mo.mVertices.size() - 1;
 			}
 		}
 	}
@@ -199,8 +199,8 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(i = 1;i < nx - 1;i++) {
 			for(j = 1;j < ny - 1;j++) {
 				ADD();
-				mo.v.push_back(v);
-				VI[I0(i,j,k)] = mo.v.size() - 1;
+				mo.mVertices.push_back(v);
+				VI[I0(i,j,k)] = mo.mVertices.size() - 1;
 			}
 		}
 	}
@@ -225,7 +225,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 	f.push_back(VI[a2]);							\
 	f.push_back(VI[a3]);							\
 	f.push_back(VI[a4]);							\
-	mo.f.push_back(f);								\
+	mo.mFacets.push_back(f);						\
 };
 
 	/*interior*/
@@ -233,7 +233,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 1;k < nz - 1;k++) {
 				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
-				FI[I3(i,j,k)] = mo.f.size() - 1;
+				FI[I3(i,j,k)] = mo.mFacets.size() - 1;
 			}
 		}
 	}
@@ -241,7 +241,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(j = 1;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
 				ADD(m,m + ny * nz,m + ny * nz + 1,m + 1);
-				FI[I2(i,j,k)] = mo.f.size() - 1;
+				FI[I2(i,j,k)] = mo.mFacets.size() - 1;
 			}
 		}
 	}
@@ -249,60 +249,60 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
 				ADD(m,m + nz,m + nz + 1,m + 1);
-				FI[I1(i,j,k)] = mo.f.size() - 1;
+				FI[I1(i,j,k)] = mo.mFacets.size() - 1;
 			}
 		}
 	}
-	mo.nf = mo.f.size();
+	mo.nf = mo.mFacets.size();
 	/*boundaries*/
 	for(k = 0;k < nz; k += (nz - 1)) {
 		Patch p;
-		p.from = mo.f.size();
+		p.from = mo.mFacets.size();
 		for(i = 0;i < nx - 1;i++) {
 			for(j = 0;j < ny - 1;j++) {
 				ADD(m, m + ny * nz,m + ny * nz + nz, m + nz);
-				FI[I3(i,j,k)] = mo.f.size() - 1;
+				FI[I3(i,j,k)] = mo.mFacets.size() - 1;
 			}
 		}
-		p.to = mo.f.size();
-		mo.patches.push_back(p);
+		p.to = mo.mFacets.size();
+		mo.mPatches.push_back(p);
 	}
 	for(j = 0;j < ny;j += (ny - 1)) {
 		Patch p;
-		p.from = mo.f.size();
+		p.from = mo.mFacets.size();
 		for(i = 0;i < nx - 1;i++) {
 			for(k = 0;k < nz - 1;k++) {
 				ADD(m,m + ny * nz,m + ny * nz + 1,m + 1);
-				FI[I2(i,j,k)] = mo.f.size() - 1;
+				FI[I2(i,j,k)] = mo.mFacets.size() - 1;
 			}
 		}
-		p.to = mo.f.size();
-		mo.patches.push_back(p);
+		p.to = mo.mFacets.size();
+		mo.mPatches.push_back(p);
 	}
 	for(i = 0;i < nx; i += (nx - 1)) {
 		Patch p;
-		p.from = mo.f.size();
+		p.from = mo.mFacets.size();
 		for(j = 0;j < ny - 1;j++) {
 			for(k = 0;k < nz - 1;k++) {
 				ADD(m,m + nz,m + nz + 1,m + 1);
-				FI[I1(i,j,k)] = mo.f.size() - 1;
+				FI[I1(i,j,k)] = mo.mFacets.size() - 1;
 			}
 		}
-		p.to = mo.f.size();
-		mo.patches.push_back(p);
+		p.to = mo.mFacets.size();
+		mo.mPatches.push_back(p);
 	}
-	/*compute normals of patches*/
+	/*compute normals of mPatches*/
 #define NORMAL(i,j,k,l,p) { 					\
 	p.N = ((vp[j] - vp[i]) ^ (vp[k] - vp[i]));	\
 	p.N /= mag(p.N);							\
 	p.C = (vp[i] + vp[j] + vp[k] + vp[l]) / 4;	\
 }
-NORMAL(0,1,2,3,mo.patches[0]);
-NORMAL(4,5,6,7,mo.patches[1]);
-NORMAL(0,1,5,4,mo.patches[2]);
-NORMAL(3,2,6,7,mo.patches[3]);
-NORMAL(0,3,7,4,mo.patches[4]);
-NORMAL(1,2,6,5,mo.patches[5]);
+NORMAL(0,1,2,3,mo.mPatches[0]);
+NORMAL(4,5,6,7,mo.mPatches[1]);
+NORMAL(0,1,5,4,mo.mPatches[2]);
+NORMAL(3,2,6,7,mo.mPatches[3]);
+NORMAL(0,3,7,4,mo.mPatches[4]);
+NORMAL(1,2,6,5,mo.mPatches[5]);
 #undef NORMAL
 
 	/*end*/
@@ -325,11 +325,11 @@ NORMAL(1,2,6,5,mo.patches[5]);
 				c.push_back(FI[m]);
 				c.push_back(FI[m + (ny - 1) * (nz - 1)]);
 
-				mo.c.push_back(c);
+				mo.mCells.push_back(c);
 			}
 		}
 	}
-	mo.nc = mo.c.size();
+	mo.mBCS = mo.mCells.size();
 #undef I0
 #undef I1
 #undef I2
@@ -352,31 +352,31 @@ NORMAL(1,2,6,5,mo.patches[5]);
 /**
 Remove duplicate vertices,faces and cells
 */
-void remove_duplicate(Mesh::MeshObject& p) {
+void remove_duplicate(Mesh::MeshObject& mo) {
 	Int i,j,sz,corr;
 	int count;
 	/*vertices*/
-	sz = p.v.size();
+	sz = mo.mVertices.size();
 	corr = 0;
 	std::vector<int> dup(sz,0);
 	for(i = 0;i < sz;i++) {
 		for(j = sz - 1;j >= i + 1;j--) {
-			if(equal(p.v[i],p.v[j])) {
+			if(equal(mo.mVertices[i],mo.mVertices[j])) {
 				dup[i] = -int(j);
-				if(i < p.nv) corr++;
+				if(i < mo.nv) corr++;
 				break;
 			}
 		}
 	}
-	p.nv -= corr;
+	mo.nv -= corr;
 	//remove duplicate vertices
 	{
-		Vertices vt(p.v.begin(), p.v.end());
-		p.v.clear();
+		Vertices vt(mo.mVertices.begin(), mo.mVertices.end());
+		mo.mVertices.clear();
 		count = 0;
 		for(i = 0;i < sz;i++) {
 			if(!dup[i]) {
-				p.v.push_back(vt[i]);
+				mo.mVertices.push_back(vt[i]);
 			    dup[i] = count++;
 			}
 		}
@@ -386,9 +386,9 @@ void remove_duplicate(Mesh::MeshObject& p) {
 		}
 	}
 	/*faces*/
-	sz = p.f.size();
+	sz = mo.mFacets.size();
 	for(i = 0;i < sz;i++) {
-		Facet& f = p.f[i];
+		Facet& f = mo.mFacets[i];
 		forEach(f,j)
 			f[j] = dup[f[j]];
 	}
@@ -397,7 +397,7 @@ void remove_duplicate(Mesh::MeshObject& p) {
 	count = 0;
 	corr = 0;
 	for(i = 0;i < sz;i++) {
-		Facet& f = p.f[i];
+		Facet& f = mo.mFacets[i];
 		forEach(f,j) {
 			forEachS(f,k,j+1) {
 				if(f[j] == f[k]) {
@@ -408,31 +408,31 @@ void remove_duplicate(Mesh::MeshObject& p) {
 		}
 		if(f.size() < 3) {
 			dup[i] = -1;
-			if(i < p.nf) corr++;
+			if(i < mo.nf) corr++;
 		} else {
 			dup[i] = count;
 			count++;
 		}
 	}
-	p.nf -= corr;
+	mo.nf -= corr;
 	//remove deformed faces
 	{
-		Facets ft(p.f.begin(), p.f.end());
-		p.f.clear();
+		Facets ft(mo.mFacets.begin(), mo.mFacets.end());
+		mo.mFacets.clear();
 		for(i = 0;i < sz;i++) {
-			if(dup[i] >= 0) p.f.push_back(ft[i]);
+			if(dup[i] >= 0) mo.mFacets.push_back(ft[i]);
 		}
 	}
 	//adjust bstart
-	forEach(p.patches,i) {
-		Patch& pi = p.patches[i];
+	forEach(mo.mPatches,i) {
+		Patch& pi = mo.mPatches[i];
 		pi.from = dup[pi.from];
 		pi.to = dup[pi.to];
 	}
 	/*cells*/
-	sz = p.c.size();
+	sz = mo.mCells.size();
 	for(i = 0;i < sz;i++) {
-		Cell& c = p.c[i];
+		Cell& c = mo.mCells[i];
 		forEach(c,j) {
 			if(dup[c[j]] < 0) {
 				c.erase(c.begin() + j);
@@ -453,29 +453,29 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 
     //vertices
 	{
-		s0 = m1.v.size();
+		s0 = m1.mVertices.size();
 		s1 = m2.nv;
-		s2 = m2.v.size();
+		s2 = m2.mVertices.size();
 		s3 = b.vb.size();
-		m1.v.insert(m1.v.end(),m2.v.begin(),m2.v.begin() + s1);
+		m1.mVertices.insert(m1.mVertices.end(),m2.mVertices.begin(),m2.mVertices.begin() + s1);
 
 		IntVector locv(s2 - s1,MAXNUM);
 		for(Int i = s1;i < s2;i++) {
 			found = 0;
 			for(Int j = 0;j < s3;j++) {
-				if(equal(m2.v[i],b.vb[j])) {
+				if(equal(m2.mVertices[i],b.vb[j])) {
 					locv[i - s1] += j;
 					found = 1;
 					break;
 				}
 			}
 			if(!found) {
-				b.vb.push_back(m2.v[i]);
+				b.vb.push_back(m2.mVertices[i]);
 				locv[i - s1] += b.vb.size() - 1;
 			}
 		}
-		forEach(m2.f,i) {
-			Facet& ft = m2.f[i];
+		forEach(m2.mFacets,i) {
+			Facet& ft = m2.mFacets[i];
 			forEach(ft,j) {
 				if(ft[j] >= s1) {
 					ft[j] = locv[ft[j] - s1];
@@ -487,11 +487,11 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 	}
 	//faces
 	{
-		s0 = m1.f.size();
+		s0 = m1.mFacets.size();
 		s1 = m2.nf;
-		s2 = m2.f.size();
+		s2 = m2.mFacets.size();
 		s3 = b.fb.size();
-		m1.f.insert(m1.f.end(),m2.f.begin(),m2.f.begin() + s1);
+		m1.mFacets.insert(m1.mFacets.end(),m2.mFacets.begin(),m2.mFacets.begin() + s1);
 		
 		//insert faces
 		IntVector index0(s3,0),index1(s2 - s1,0);
@@ -500,11 +500,11 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 		for(Int j = 0;j < s3;j++) {
 			found = 0;
 			for(Int i = s1;i < s2;i++) {
-				if(!index1[i - s1] && equal(m2.f[i],b.fb[j])) {
+				if(!index1[i - s1] && equal(m2.mFacets[i],b.fb[j])) {
 
-					m1.f.push_back(b.fb[j]);
-					index0[j]      = m1.f.size() - 1;
-					index1[i - s1] = m1.f.size() - 1;
+					m1.mFacets.push_back(b.fb[j]);
+					index0[j]      = m1.mFacets.size() - 1;
+					index1[i - s1] = m1.mFacets.size() - 1;
 
 					found = 1;
 					break;
@@ -520,59 +520,59 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 			if(!index1[i - s1]) {
 				index1[i - s1] = MAXNUM + count;
 
-				if(count >= s3) b.fb.push_back(m2.f[i]);
-				else b.fb[count] = m2.f[i];
+				if(count >= s3) b.fb.push_back(m2.mFacets[i]);
+				else b.fb[count] = m2.mFacets[i];
 				count++;
 			}
 		}
 		b.fb.resize(count);
         
 		//insert patch
-		forEach(m2.patches,i) {
-			m2.patches[i].from += s0 + s3;
-			m2.patches[i].to += s0 + s3;
+		forEach(m2.mPatches,i) {
+			m2.mPatches[i].from += s0 + s3;
+			m2.mPatches[i].to += s0 + s3;
 		}
-		forEach(m1.patches,i) {
-			m1.patches[i].from += s1;
-			m1.patches[i].to += s1;
+		forEach(m1.mPatches,i) {
+			m1.mPatches[i].from += s1;
+			m1.mPatches[i].to += s1;
 		}
-		Int npatch = m1.patches.size();
-		forEach(m2.patches,i) {
-			Patch& p = m2.patches[i];
+		Int npatch = m1.mPatches.size();
+		forEach(m2.mPatches,i) {
+			Patch& p = m2.mPatches[i];
 			bool skip = false;
 			Int j = 0;
 			for(;j < npatch;j++) {
-				if(equal(p.C,m1.patches[j].C)) {
+				if(equal(p.C,m1.mPatches[j].C)) {
 					skip = true;
 					break;
 				}
 			}
 			if(!skip)
-				m1.patches.push_back(p);
+				m1.mPatches.push_back(p);
 			else {
-				Int s4 = m1.patches[j].to - m1.patches[j].from;
+				Int s4 = m1.mPatches[j].to - m1.mPatches[j].from;
 				for(Int k = 0;k < j;k++) {
-					m1.patches[k].from += s4;
-					m1.patches[k].to += s4;
+					m1.mPatches[k].from += s4;
+					m1.mPatches[k].to += s4;
 				}
-				for(Int k = i;k < m2.patches.size();k++) {
-					m2.patches[k].from -= s4;
-					m2.patches[k].to -= s4;
+				for(Int k = i;k < m2.mPatches.size();k++) {
+					m2.mPatches[k].from -= s4;
+					m2.mPatches[k].to -= s4;
 				}
-				m1.patches.erase(m1.patches.begin() + j);
+				m1.mPatches.erase(m1.mPatches.begin() + j);
 			}
 		}
 		//adjust face ids in cells
-		forEach(m1.c,i) {
-			Cell& ct = m1.c[i];
+		forEach(m1.mCells,i) {
+			Cell& ct = m1.mCells[i];
 			forEach(ct,j) {
 				if(ct[j] >= MAXNUM) {
 					ct[j] = index0[ct[j] - MAXNUM];
 				}
 			}
 		}
-		forEach(m2.c,i) {
-			Cell& ct = m2.c[i];
+		forEach(m2.mCells,i) {
+			Cell& ct = m2.mCells[i];
 			forEach(ct,j) {
 				if(ct[j] >= s1) {
 					ct[j] = index1[ct[j] - s1];
@@ -584,21 +584,21 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 	}
 	//cells
 	{
-		m1.c.insert(m1.c.end(),m2.c.begin(),m2.c.end());
+		m1.mCells.insert(m1.mCells.end(),m2.mCells.begin(),m2.mCells.end());
 	}
 }
 /**
 Merge boundary and internals
 */
 void merge(Mesh::MeshObject& m,MergeObject& b) {
-	m.nv = m.v.size();
-	m.nf = m.f.size();
-	m.nc = m.c.size();
+	m.nv = m.mVertices.size();
+	m.nf = m.mFacets.size();
+	m.mBCS = m.mCells.size();
 
-	m.v.insert(m.v.end(),b.vb.begin(),b.vb.end());
-	m.f.insert(m.f.end(),b.fb.begin(),b.fb.end());
-	forEach(m.f,i) {
-		Facet& ft = m.f[i];
+	m.mVertices.insert(m.mVertices.end(),b.vb.begin(),b.vb.end());
+	m.mFacets.insert(m.mFacets.end(),b.fb.begin(),b.fb.end());
+	forEach(m.mFacets,i) {
+		Facet& ft = m.mFacets[i];
 		forEach(ft,j) {
 			if(ft[j] >= MAXNUM) {
 				ft[j] -= MAXNUM;
@@ -606,8 +606,8 @@ void merge(Mesh::MeshObject& m,MergeObject& b) {
 			}
 		}
 	}
-	forEach(m.c,i) {
-		Cell& ct = m.c[i];
+	forEach(m.mCells,i) {
+		Cell& ct = m.mCells[i];
 		forEach(ct,j) {
 			if(ct[j] >= MAXNUM) {
 				ct[j] -= MAXNUM;

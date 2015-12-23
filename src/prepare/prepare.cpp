@@ -29,7 +29,7 @@ void Prepare::decomposeXYZ(Int* n,Scalar* nq,IntVector& blockIndex) {
 		
 	/*assign block indices to cells*/
 	for(i = 0;i < gBCS;i++) {
-		C = rotate(_cC[i],axis,theta);
+		C = rotate(gcC[i],axis,theta);
 		C = (C - minV) / delta;
 		ID = Int(C[0]) * n[1] * n[2] + 
 			 Int(C[1]) * n[2] + 
@@ -145,7 +145,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 		pmesh = &meshes[ID];
 		pvLoc = &vLoc[ID];
 		pfLoc = &fLoc[ID];
-		pmesh->c.push_back(c);
+		pmesh->mCells.push_back(c);
 		cLoc[ID].push_back(i);
 		
 		/* mark vertices and facets */
@@ -167,7 +167,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 		count = 0;
 		forEach(gVertices,i) {
 			if((*pvLoc)[i]) {
-				pmesh->v.push_back(gVertices[i]);
+				pmesh->mVertices.push_back(gVertices[i]);
 				(*pvLoc)[i] = count++;
 			} else
 				(*pvLoc)[i] = Constants::MAX_INT;
@@ -176,7 +176,7 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 		count = 0;
 		forEach(gFacets,i) {
 			if((*pfLoc)[i]) {
-				pmesh->f.push_back(gFacets[i]);
+				pmesh->mFacets.push_back(gFacets[i]);
 				(*pfLoc)[i] = count++;
 			} else
 				(*pfLoc)[i] = Constants::MAX_INT;
@@ -188,14 +188,14 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 		pvLoc = &vLoc[ID];
 		pfLoc = &fLoc[ID];
 
-		forEach(pmesh->f,i) {
-			Facet& f = pmesh->f[i];
+		forEach(pmesh->mFacets,i) {
+			Facet& f = pmesh->mFacets[i];
 			forEach(f,j)
 				f[j] = (*pvLoc)[f[j]];
 		}
 
-		forEach(pmesh->c,i) {
-			Cell& c = pmesh->c[i];
+		forEach(pmesh->mCells,i) {
+			Cell& c = pmesh->mCells[i];
 			forEach(c,j)
 				c[j] = (*pfLoc)[c[j]];
 		}
@@ -250,12 +250,12 @@ int Prepare::decompose(vector<string>& fields,Int* n,Scalar* nq,int type, Int st
 		/*v,f & c*/
 		ofstream of(gMeshName.c_str());
 		of << hex;
-		of << pmesh->v << endl;
-		of << pmesh->f << endl;
-		of << pmesh->c << endl;
+		of << pmesh->mVertices << endl;
+		of << pmesh->mFacets << endl;
+		of << pmesh->mCells << endl;
 
 		/*bcs*/
-		forEachIt(Boundaries,gMesh.bdry,it) {
+		forEachIt(Boundaries,gMesh.mBoundaries,it) {
 			IntVector b;	
 			Int f;
 			forEach(it->second,j) {
@@ -382,13 +382,6 @@ int Prepare::convertVTK(vector<string>& fields,Int start_index) {
 	}
 
 	return 0;
-}
-/**
-Refine mesh
-*/
-void Prepare::refineMesh(vector<string>& fields,const RefineParams& rparams, Int step) {
-	LoadMesh(step,true,false);
-	refineMesh(rparams,step);
 }
 /**
 Probe values at specified locations
