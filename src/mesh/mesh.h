@@ -62,8 +62,28 @@ namespace Mesh {
 		}
 	};
 	
+	struct Node {
+		Int id;
+		Int cid;
+		Int nchildren;
+		Node() {
+			id = 0;
+			cid = 0;
+			nchildren = 0;
+		}
+		friend std::ostream& operator << (std::ostream& os, const Node& p) {
+			os << p.id << " " << p.nchildren << " " << p.cid;
+			return os;
+		}
+		friend std::istream& operator >> (std::istream& is, Node& p) {
+			is >> p.id >> p.nchildren >> p.cid;
+			return is;
+		}
+	};
+	
 	typedef std::vector<interBoundary> InterBoundVector;
 	typedef std::vector<Patch> PatchVector;
+	typedef std::vector<Node> NodeVector;
 	
 	struct MeshObject {
 		/*vertices , facets and cells */
@@ -76,8 +96,8 @@ namespace Mesh {
 		IntVector   mFOC;
 		IntVector   mFNC;
 		/*start of boundary cells,facets & vertices*/
-		Int      nv;
-		Int      nf;
+		Int      mNV;
+		Int      mNF;
 		Int      mBCS;
 		Int      mBCSI;
 		/*Start of boundary patches*/
@@ -91,6 +111,8 @@ namespace Mesh {
 		VectorVector mFN;
 		ScalarVector mCV;
 		BoolVector   mReversed;
+		/*AMR tree*/
+		NodeVector   mAmrTree;
 		
 		/*functions*/
 		void clear();
@@ -103,12 +125,15 @@ namespace Mesh {
 		void straightEdges(const Facet&, Facet&, Facet&);
 		bool straightFaces(const Facet&,const Facet&);
 		bool mergeFacets(const Facet&,const Facet&, Facet&);
+		void mergeFacetsCell(const Cell&,const IntVector&,Facet&);
+		void mergeCells(Cell&,Cell&,IntVector&);
 		void addVerticesToEdge(const int, Facet&, const Facet&);
 		void calcFaceCenter(const Facet&,Vector&);
 		void calcCellCenter(const Cell&, Vector&);
+		void initFaceInfo(IntVector&,Cells&,const IntVector&);
 		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,const Int);
 		void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
-		void refineMesh(IntVector&, IntVector&);
+		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&);
 	};
 	
 	//Global mesh object with its members
@@ -124,6 +149,7 @@ namespace Mesh {
 	extern  Int&              gBCSI;
 	extern  Cells&            gFaceID;
 	extern  InterBoundVector& gInterMesh;
+	extern  NodeVector&       gAmrTree;
 	extern  VectorVector&     gfC;
 	extern  VectorVector&     gcC;
 	extern  VectorVector&     gfN;

@@ -69,6 +69,7 @@ int main(int argc,char* argv[]) {
 		ofstream output(e_file_name);
 		if(Import) str = i_file_name;
 		else str = "grid";
+		Mesh::clear();
 		Mesh::gMeshName = str;
 		Mesh::gMesh.readMesh();
 		Mesh::gMesh.addBoundaryCells();
@@ -254,7 +255,7 @@ int main(int argc,char* argv[]) {
 			}
 		}
 		/*/
-		forEachS(gFacets,j,gMesh.nf) {
+		forEachS(gFacets,j,gMesh.mNF) {
 			Facet& f = gFacets[j];
 			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) 
 				^ (gVertices[f[2]] - gVertices[f[0]]));
@@ -292,7 +293,7 @@ int main(int argc,char* argv[]) {
 		}
 	
 		IntVector& gB = gBoundaries[default_name.c_str()];
-		forEachS(gFacets,i,gMesh.nf) {
+		forEachS(gFacets,i,gMesh.mNF) {
 			if(!faceInB[i])
 				gB.push_back(i);
 		}

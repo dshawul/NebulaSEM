@@ -86,8 +86,7 @@ public:
 	std::string  fName;
 public:
 	virtual void deallocate(bool) = 0;
-	virtual void refineField(Int,IntVector&) = 0;
-	virtual void unrefineField(Int,IntVector&) = 0;
+	virtual void refineField(Int,IntVector&,IntVector&) = 0;
 	virtual void writeInternal(std::ostream&,IntVector*) = 0;
 	virtual void readInternal(std::istream&,IntVector*) = 0;
 	virtual void writeBoundary(std::ostream&) = 0;
@@ -479,32 +478,17 @@ public:
 		}
 	}
 	/*refine/unrefine field*/
-	void refineField(Int step,IntVector& cMap) {
-		if(access & WRITE)
-			write(step,&cMap);
-	}
-	void unrefineField(Int step,IntVector& cMap) {
-		MeshField f = type(0);
-		IntVector count;
-		Int csize = 0;
-		count.assign(f.size(),0);
-		for(Int i = 0;i < Mesh::gBCSfield;i++) {
-			Int ci = cMap[i];
-			f[ci] += P[i];
-			count[ci]++;
-			if(ci > csize) csize = ci;
+	void refineField(Int step,IntVector& refineMap,IntVector& coarseMap) {
+		forEach(coarseMap,i) {
+			Int nchildren = coarseMap[i];
+			Int id = coarseMap[i + 1];
+			for(Int j = 1;j < nchildren;j++)
+				P[id] += P[coarseMap[(i + 1) + j]];
+			P[id] /= nchildren;
+			i += nchildren;
 		}
-		for(Int i = 0;i <= csize;i++)
-			P[i] = f[i] / count[i];
-		
-		/*write*/
-		IntVector mp;
-		mp.resize(csize+1);
-		forEach(mp,i)
-			mp[i] = i;
-		
 		if(access & WRITE)
-			write(step,&mp);
+			write(step,&refineMap);
 	}
 	/*IO*/
 	friend std::ostream& operator << (std::ostream& os, const MeshField& p) {
@@ -1344,6 +1328,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 
 			bc = static_cast<BCondition<T>*> (bbc);
 			Int sz = bc->bdry->size();
+			
 			if(sz == 0) continue;
 			if(!bc->fixed.size())
 				bc->fixed.resize(sz * DG::NPF);

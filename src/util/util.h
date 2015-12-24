@@ -29,6 +29,12 @@
 	for(cont::iterator it = (field).begin();			\
 		it != (field).end();++it)
 
+#define copyColl(src,trg)								\
+	std::copy(std::begin(src),std::end(src),std::back_inserter(trg));
+	
+#define eraseValue(field,val)							\
+	(field).erase(std::remove((field).begin(),(field).end(),val),(field).end());
+	
 /*vector IO*/
 template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {

@@ -174,7 +174,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 			}
 		}
 	}
-	mo.nv = mo.mVertices.size();
+	mo.mNV = mo.mVertices.size();
 
 	/*boundaries*/
 	for(i = 0;i < nx; i += (nx - 1)) {
@@ -253,7 +253,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 			}
 		}
 	}
-	mo.nf = mo.mFacets.size();
+	mo.mNF = mo.mFacets.size();
 	/*boundaries*/
 	for(k = 0;k < nz; k += (nz - 1)) {
 		Patch p;
@@ -363,12 +363,12 @@ void remove_duplicate(Mesh::MeshObject& mo) {
 		for(j = sz - 1;j >= i + 1;j--) {
 			if(equal(mo.mVertices[i],mo.mVertices[j])) {
 				dup[i] = -int(j);
-				if(i < mo.nv) corr++;
+				if(i < mo.mNV) corr++;
 				break;
 			}
 		}
 	}
-	mo.nv -= corr;
+	mo.mNV -= corr;
 	//remove duplicate vertices
 	{
 		Vertices vt(mo.mVertices.begin(), mo.mVertices.end());
@@ -408,13 +408,13 @@ void remove_duplicate(Mesh::MeshObject& mo) {
 		}
 		if(f.size() < 3) {
 			dup[i] = -1;
-			if(i < mo.nf) corr++;
+			if(i < mo.mNF) corr++;
 		} else {
 			dup[i] = count;
 			count++;
 		}
 	}
-	mo.nf -= corr;
+	mo.mNF -= corr;
 	//remove deformed faces
 	{
 		Facets ft(mo.mFacets.begin(), mo.mFacets.end());
@@ -454,7 +454,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
     //vertices
 	{
 		s0 = m1.mVertices.size();
-		s1 = m2.nv;
+		s1 = m2.mNV;
 		s2 = m2.mVertices.size();
 		s3 = b.vb.size();
 		m1.mVertices.insert(m1.mVertices.end(),m2.mVertices.begin(),m2.mVertices.begin() + s1);
@@ -488,7 +488,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 	//faces
 	{
 		s0 = m1.mFacets.size();
-		s1 = m2.nf;
+		s1 = m2.mNF;
 		s2 = m2.mFacets.size();
 		s3 = b.fb.size();
 		m1.mFacets.insert(m1.mFacets.end(),m2.mFacets.begin(),m2.mFacets.begin() + s1);
@@ -591,8 +591,8 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
 Merge boundary and internals
 */
 void merge(Mesh::MeshObject& m,MergeObject& b) {
-	m.nv = m.mVertices.size();
-	m.nf = m.mFacets.size();
+	m.mNV = m.mVertices.size();
+	m.mNF = m.mFacets.size();
 	m.mBCS = m.mCells.size();
 
 	m.mVertices.insert(m.mVertices.end(),b.vb.begin(),b.vb.end());
@@ -602,7 +602,7 @@ void merge(Mesh::MeshObject& m,MergeObject& b) {
 		forEach(ft,j) {
 			if(ft[j] >= MAXNUM) {
 				ft[j] -= MAXNUM;
-				ft[j] += m.nv;
+				ft[j] += m.mNV;
 			}
 		}
 	}
@@ -611,7 +611,7 @@ void merge(Mesh::MeshObject& m,MergeObject& b) {
 		forEach(ct,j) {
 			if(ct[j] >= MAXNUM) {
 				ct[j] -= MAXNUM;
-				ct[j] += m.nf;
+				ct[j] += m.mNF;
 			}
 		}
 	}

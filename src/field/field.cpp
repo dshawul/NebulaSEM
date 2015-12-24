@@ -67,10 +67,11 @@ static int findLastRefinedGrid(Int step_) {
 bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty, bool coarse) {
 	/*load refined mesh*/
 	int step = step_;
-	if(first && !coarse)
+	if(!coarse)
 		step = findLastRefinedGrid(step_);
 	
 	/*load mesh*/
+	Mesh::clear();
 	if(gMesh.readMesh(step,first,coarse)) {
 		if(MP::printOn)
 			cout << "--------------------------------------------\n";
@@ -388,41 +389,15 @@ void Prepare::refineMesh(Int step) {
 	using namespace Mesh;
 	using namespace Controls;
 	
-	// /*Refine starting from the coarsest mesh*/
-	// {
-	// 	/*create fields*/
-	// 	Prepare::createFields(BaseField::fieldNames,step);
-	// 	Prepare::readFields(BaseField::fieldNames,step);
-	//
-	// 	/*unrefine field*/
-	// 	IntVector cellMap;
-	// 	stringstream path;
-	// 	int stepn = findLastRefinedGrid(step);
-	// 	path << "cellMap" << "_" << stepn;
-	// 	ifstream is(path.str().c_str());
-	// 	if(!is.fail()) {
-	// 		is >> hex;
-	// 		is >> cellMap;
-	// 		is >> dec;
-	//
-	// 		forEachIt(std::list<BaseField*>, BaseField::allFields, it)
-	// 			(*it)->unrefineField(step,cellMap);
-	// 	}
-	//
-	// 	/*load coarse mesh*/
-	// 	LoadMesh(step,true,false,true);
-	// }
-	{
-		/*Load mesh*/
-		LoadMesh(step,true,false,false);
-	}
+	/*Load mesh*/
+	LoadMesh(step,true,false,false);
 	
 	/*create fields*/
 	Prepare::createFields(BaseField::fieldNames,step);
 	Prepare::readFields(BaseField::fieldNames,step);
 	
-	/*find cells to refine*/
-	IntVector rCells;
+	/*find cells to refine/coarsen*/
+	IntVector rCells,cCells;
 	{
 		/*find quantity of interest*/
 		ScalarCellField qoi;
@@ -441,39 +416,58 @@ void Prepare::refineMesh(Int step) {
 		maxq = max(Constants::MachineEpsilon,maxq);
 		qoi /= maxq;
 		maxq = 1;
-		minq = minq / maxq;
+		minq /= maxq;
 		
 		/*get cells to refine*/
 		gCells.erase(gCells.begin() + gBCS,gCells.end());
+		cCells.assign(gCells.size(),0);
 		for(Int i = 0;i < gBCS;i++) {
-			if(i ==0 && qoi[i] >= refine_params.field_max)
+			if(qoi[i] >= refine_params.field_max)
 				rCells.push_back(i);
+			else if(qoi[i] <= refine_params.field_min)
+				cCells[i] = 1;
 		}
 	}
-	/*refine mesh and fields*/
+	/*Read amr tree*/
 	{
-		IntVector cellMap;
-		Mesh::gMesh.refineMesh(rCells,cellMap);
+		stringstream path;
+		int stepn = findLastRefinedGrid(step);
+		path << "amrTree" << "_" << stepn;
+		ifstream is(path.str().c_str());
+		if(!is.fail()) {
+			is >> hex;
+			is >> gAmrTree;
+			is >> dec;
+		} else {
+			gAmrTree.resize(gCells.size());
+			forEach(gCells,i)
+				gAmrTree[i].id = i;
+		}
+	}
+	
+	/*refine/coarsen mesh and fields*/
+	{
+		IntVector refineMap,coarseMap;
+		gMesh.refineMesh(rCells,cCells,refineMap,coarseMap);
 		forEachIt(std::list<BaseField*>, BaseField::allFields, it)
-			(*it)->refineField(step,cellMap); 
+			(*it)->refineField(step,refineMap,coarseMap); 
+	}
+	/*Write amrTree*/
+	{
+		stringstream path;
+		path << "amrTree" << "_" << step;
+		ofstream os(path.str().c_str());
+		os << hex;
+		os << gAmrTree;
+		os << dec;
+	}
 
-		/*Write cellMap*/
-		{
-			stringstream path;
-			path << "cellMap" << "_" << step;
-			ofstream os(path.str().c_str());
-			os << hex;
-			os << cellMap;
-			os << dec;
-		}
-
-		/*Write mesh*/
-		{
-			stringstream path;
-			path << gMeshName << "_" << step;
-			ofstream os(path.str().c_str());
-			gMesh.writeMesh(os);
-		}
+	/*Write mesh*/
+	{
+		stringstream path;
+		path << gMeshName << "_" << step;
+		ofstream os(path.str().c_str());
+		gMesh.writeMesh(os);
 	}
 	
 	/*destroy*/ 
