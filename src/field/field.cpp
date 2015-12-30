@@ -11,8 +11,8 @@ namespace Mesh {
 	ScalarFacetField  fI(false);
 	ScalarFacetField  fD(false);
 	ScalarCellField   yWall(false);
-	IntVector         gFO;
-	IntVector         gFN;
+	IntVector         FO;
+	IntVector         FN;
 	IntVector  probeCells;
 	Int   		gBCSfield;
 	Int   		gBCSIfield;
@@ -112,8 +112,8 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty, bool coarse) {
  * Initialize geometric mesh fields
  */
 void Mesh::initGeomMeshFields() {
-	gFO = gFOC;
-	gFN = gFNC;
+	FO = gFOC;
+	FN = gFNC;
 	gBCSfield = gBCS * DG::NP;
 	gBCSIfield = gBCSI * DG::NP;
 	/* Allocate fields*/
@@ -132,13 +132,13 @@ void Mesh::initGeomMeshFields() {
 	fD.deallocate(false);
 	fD.allocate();
 	/*expand*/
-	forEach(gcC,i) {
-		cC[i] = gcC[i];
-		cV[i] = gcV[i];
+	forEach(gCC,i) {
+		cC[i] = gCC[i];
+		cV[i] = gCV[i];
 	}
-	forEach(gfC,i) {
-		fC[i] = gfC[i];
-		fN[i] = gfN[i];
+	forEach(gFC,i) {
+		fC[i] = gFC[i];
+		fN[i] = gFN[i];
 	}
 	if(DG::NPMAT) {
 		DG::expand(cC);
@@ -169,8 +169,8 @@ void Mesh::initGeomMeshFields() {
 		Vector v0 = gVertices[gFacets[faceid][0]];
 		for(Int n = 0; n < DG::NPF;n++) {
 			Int k = faceid * DG::NPF + n;
-			Int c1 = gFO[k];
-			Int c2 = gFN[k];
+			Int c1 = FO[k];
+			Int c2 = FN[k];
 			if(c2 >= gBCSfield && !isGhostFace[faceid]) {
 				fI[k] = 0;
 				cV[c2] = cV[c1];
@@ -224,8 +224,8 @@ void Mesh::initGeomMeshFields() {
 		using namespace Controls;
 		
 		forEach(fD,i) {
-			Int c1 = gFO[i];
-			Int c2 = gFN[i];
+			Int c1 = FO[i];
+			Int c2 = FN[i];
 			Vector dv = cC[c2] - cC[c1];
 			if(nonortho_scheme == OVER_RELAXED) {
 				fD[i] = ((fN[i] & fN[i]) / (fN[i] & dv));

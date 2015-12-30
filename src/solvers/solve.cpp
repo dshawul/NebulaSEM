@@ -82,8 +82,8 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 			Int faceid = c[j];						\
  			for(Int n = 0; n < NPF;n++) {			\
 				Int k = faceid * NPF + n;			\
-				Int c1 = gFO[k];					\
-				Int c2 = gFN[k];					\
+				Int c1 = FO[k];					\
+				Int c2 = FN[k];					\
 				if(index1 == c1)					\
 					ncF += X[c2] * M.an[1][k];		\
 				else if(index1 == c2)				\
@@ -143,8 +143,8 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 				Int faceid = c[j];						\
 	 			for(Int n = 0; n < NPF;n++) {			\
 					Int k = faceid * NPF + n;			\
-					Int c1 = gFO[k];					\
-					Int c2 = gFN[k];					\
+					Int c1 = FO[k];						\
+					Int c2 = FN[k];						\
 					if(index1 == c1) {					\
 						if((forw && (c2 < c1)) ||		\
 						  (!forw && (c1 < c2)))	{		\
@@ -292,8 +292,8 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 								Int faceid = c[j];
 								for(Int n = 0; n < NPF;n++) {
 									Int k = faceid * NPF + n;							
-									Int c1 = gFO[k];						
-									Int c2 = gFN[k];						
+									Int c1 = FO[k];						
+									Int c2 = FN[k];						
 									if(index1 == c1) {
 										if(c2 > c1) D[c2] -= 
 										(M.an[0][k] * M.an[1][k] * iD[c1]);	
@@ -333,7 +333,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 					Int offset = j * NPF;
 					for(Int n = 0; n < NPF;n++) {
 						Int k = faceid * NPF + n;
-						buffer[offset + n] = cF[gFO[k]];
+						buffer[offset + n] = cF[FO[k]];
 					}
 				}
 				MP::send(&buffer[0],buf_size,b.to,MP::FIELD);
@@ -431,7 +431,7 @@ PROBE:
 						Int offset = j * NPF;
 						for(Int n = 0; n < NPF;n++) {
 							Int k = faceid * NPF + n;
-							cF[gFN[k]] = buffer[offset + n];
+							cF[FN[k]] = buffer[offset + n];
 						}
 					}
 					
@@ -457,7 +457,7 @@ PROBE:
 						Int offset = j * NPF;
 						for(Int n = 0; n < NPF;n++) {
 							Int k = faceid * NPF + n;
-							buffer[offset + n] = cF[gFO[k]];
+							buffer[offset + n] = cF[FO[k]];
 						}
 					}
 					MP::send(&buffer[0],buf_size,source,message_id);

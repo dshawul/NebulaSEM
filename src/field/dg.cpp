@@ -260,8 +260,8 @@ void DG::init_geom() {
 	using namespace Constants;
 	
 	//compute coordinates of nodes via transfinite interpolation
-	gFO.assign(gFacets.size() * NPF,gCells.size() * NP);
-	gFN.assign(gFacets.size() * NPF,gCells.size() * NP);
+	FO.assign(gFacets.size() * NPF,gCells.size() * NP);
+	FN.assign(gFacets.size() * NPF,gCells.size() * NP);
 	for(Int ci = 0; ci < gBCS;ci++) {
 		Cell& c = gCells[ci];
 		Facet& f1 = gFacets[c[0]];
@@ -375,8 +375,8 @@ void DG::init_geom() {
 				continue;
 			
 #define ADD() {												\
-	gFO[indf] = index0;										\
-	gFN[indf] = index1;										\
+	FO[indf] = index0;										\
+	FN[indf] = index1;										\
 	if(index1 >= gBCSfield) {								\
 		Vector dir = unit(fN[indf]);						\
 		Scalar d = dot(fC[indf] - cC[index0],dir);			\

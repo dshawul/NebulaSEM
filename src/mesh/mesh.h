@@ -150,10 +150,10 @@ namespace Mesh {
 	extern  Cells&            gFaceID;
 	extern  InterBoundVector& gInterMesh;
 	extern  NodeVector&       gAmrTree;
-	extern  VectorVector&     gfC;
-	extern  VectorVector&     gcC;
-	extern  VectorVector&     gfN;
-	extern  ScalarVector&     gcV;
+	extern  VectorVector&     gFC;
+	extern  VectorVector&     gCC;
+	extern  VectorVector&     gFN;
+	extern  ScalarVector&     gCV;
 	
 	//probe points
 	extern  Vertices         probePoints;

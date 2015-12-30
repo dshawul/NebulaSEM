@@ -656,8 +656,8 @@ namespace Mesh {
 	extern ScalarFacetField  fI;
 	extern ScalarFacetField  fD;
 	extern ScalarCellField   yWall;
-	extern IntVector         gFO;
-	extern IntVector         gFN; 
+	extern IntVector         FO;
+	extern IntVector         FN; 
 	
 	bool   LoadMesh(Int = 0,bool = true, bool = true, bool = false);
 	void   initGeomMeshFields();
@@ -780,8 +780,8 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
 			 Int faceid = (*bc->bdry)[j];
 			 for(Int n = 0; n < DG::NPF;n++) {
 			 	 Int k = faceid * DG::NPF + n;
-				 Int c1 = gFO[k];
-				 Int c2 = gFN[k];
+				 Int c1 = FO[k];
+				 Int c2 = FN[k];
 				 if(!equal(cC[c1],cC[c2])) {
  				 	slope += ((*this)[c2] - (*this)[c1]) / 
 					      mag(cC[c2] - cC[c1]);
@@ -1063,7 +1063,7 @@ public:
 				Int faceid = f[j];
 				for(Int n = 0; n < NPF;n++) {
 					Int k = faceid * NPF + n;
-					sendbuf[(b.buffer_index + j) * NPF + n] = P[gFO[k]];	
+					sendbuf[(b.buffer_index + j) * NPF + n] = P[FO[k]];	
 				}															
 			}	
 
@@ -1091,7 +1091,7 @@ public:
 				Int faceid = f[j];
 				for(Int n = 0; n < NPF;n++) {
 					Int k = faceid * NPF + n;
-					P[gFN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];	
+					P[FN[k]] = recvbuf[(b.buffer_index + j) * NPF + n];	
 				}															
 			}
 		}
@@ -1153,20 +1153,20 @@ MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& 
 		TensorProduct(q,p);
 	}
 	
-	forEach(gFN,f) {
-		c2 = gFN[f];
+	forEach(FN,f) {
+		c2 = FN[f];
 		if(c2 >= gBCSfield) continue;
-		c1 = gFO[f];
+		c1 = FO[f];
 		r[c1] -= q[c2] * p.an[1][f];
 		r[c2] -= q[c1] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
 	
-	forEach(gFN,f) {
-		c2 = gFN[f];
+	forEach(FN,f) {
+		c2 = FN[f];
 		if(c2 < gBCSfield) continue;
-		c1 = gFO[f];
+		c1 = FO[f];
 		r[c1] -= q[c2] * p.an[1][f];
 	}
 	
@@ -1189,20 +1189,20 @@ MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>&
 		TensorProductT(q,p);
 	}
 	
-	forEach(gFN,f) {
-		c2 = gFN[f];
+	forEach(FN,f) {
+		c2 = FN[f];
 		if(c2 >= gBCSfield) continue;
-		c1 = gFO[f];
+		c1 = FO[f];
 		r[c2] -= q[c1] * p.an[1][f];
 		r[c1] -= q[c2] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
 	
-	forEach(gFN,f) {
-		c2 = gFN[f];
+	forEach(FN,f) {
+		c2 = FN[f];
 		if(c2 < gBCSfield) continue;
-		c1 = gFO[f];
+		c1 = FO[f];
 		r[c1] -= q[c2] * p.an[0][f];
 	}
 	
@@ -1226,20 +1226,20 @@ MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false
 		TensorProductM(q,p);
 	}
 	
-	forEach(gFN,f) {
-		c2 = gFN[f];
+	forEach(FN,f) {
+		c2 = FN[f];
 		if(c2 >= gBCSfield) continue;
-		c1 = gFO[f];
+		c1 = FO[f];
 		r[c1] += q[c2] * p.an[1][f];
 		r[c2] += q[c1] * p.an[0][f];
 	}
 	
 	if(sync) comm.recv();
 	
-	forEach(gFN,f) {
-		c2 = gFN[f];
+	forEach(FN,f) {
+		c2 = FN[f];
 		if(c2 < gBCSfield) continue;
-		c1 = gFO[f];
+		c1 = FO[f];
 		r[c1] += q[c2] * p.an[1][f];
 	}
 	
@@ -1272,8 +1272,8 @@ template <class T1, class T2, class T3>
 				 for(Int n = 0; n < DG::NPF;n++) {
 				 	 Int k = faceid * DG::NPF + n;
 				 	 
-					 Int c1 = gFO[k];
-					 Int c2 = gFN[k];
+					 Int c1 = FO[k];
+					 Int c2 = FN[k];
 					 /*break connection with boundary cells*/
 					 if(bc->cIndex == NEUMANN || bc->cIndex == SYMMETRY ||
 					    bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
@@ -1380,8 +1380,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 				Int faceid = (*bc->bdry)[j];
 				for(Int n = 0; n < DG::NPF;n++) {
 				 	Int k = faceid * DG::NPF + n;
-					Int c1 = gFO[k];
-					Int c2 = gFN[k];
+					Int c1 = FO[k];
+					Int c2 = FN[k];
 					if(bc->cIndex == NEUMANN) {
 						Vector dv = cC[c2] - cC[c1];
 						cF[c2] = cF[c1] + bc->value * mag(dv);
@@ -1399,8 +1399,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 						else
 							fi = (*bc->bdry)[j - sz/2];
 						Int k1 = fi * DG::NPF + n;
-						Int c11 = gFO[k1];
-				 		Int c22 = gFN[k1];
+						Int c11 = FO[k1];
+				 		Int c22 = FN[k1];
 						if(bc->cIndex == CYCLIC) {
 							cF[c2] = cF[c11];
 							cF[c22] = cF[c1];
@@ -1458,7 +1458,7 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
 		Int faceid = gCells[i][0];
 		for(Int n = 0; n < DG::NPF;n++) {
 			Int k = faceid * DG::NPF + n;
-			cF[gFN[k]] = cF[gFO[k]];
+			cF[FN[k]] = cF[FO[k]];
 		}
 	}
 	
@@ -1474,7 +1474,7 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
 					Int faceid = (*bc->bdry)[j];
 					for(Int n = 0; n < DG::NPF;n++) {
 					 	Int k = faceid * DG::NPF + n;
-						Int c2 = gFN[k];
+						Int c2 = FN[k];
 						if(bc->cIndex == NEUMANN) {
 							cF[c2] = bc->value;
 						} else if(bc->cIndex == SYMMETRY) {
@@ -1502,8 +1502,8 @@ MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
 	MeshField<type,CELL> cF;
 	cF = type(0);
 	forEach(fF,i) {
-		cF[gFO[i]] += fF[i];
-		cF[gFN[i]] -= fF[i];
+		cF[FO[i]] += fF[i];
+		cF[FN[i]] -= fF[i];
 	}
 	return cF;
 }
@@ -1516,7 +1516,7 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
 	using namespace Mesh;
 	MeshField<type,FACET> fF;
 	forEach(fF,i) {
-		fF[i] =  (cF[gFO[i]] * (fI[i])) + (cF[gFN[i]] * (1 - fI[i]));
+		fF[i] =  (cF[FO[i]] * (fI[i])) + (cF[FN[i]] * (1 - fI[i]));
 	}
 	return fF;
 }
@@ -1526,8 +1526,8 @@ MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACE
 	using namespace Mesh;
 	MeshField<type,FACET> fF;
 	forEach(fF,i) {
-		if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[gFO[i]];
-		else fF[i] = cF[gFN[i]];
+		if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[FO[i]];
+		else fF[i] = cF[FN[i]];
 	}
 	return fF;
 }
@@ -1544,7 +1544,7 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 	
 	forEach(fF,i) {
 		Facet& f = gFacets[i];
-		if(gFN[i] < gBCSfield) {
+		if(FN[i] < gBCSfield) {
 			forEach(f,j) {
 				Scalar dist = 1.f / magSq(gVertices[f[j]] - fC[i]);
 				vF[f[j]] += (fF[i] * dist);
@@ -1691,8 +1691,8 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
 			G = gamma[i];
 			m.an[0][i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,T4(0))));
 			m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
-			m.ap[gFO[i]] += m.an[0][i];
-			m.ap[gFN[i]] += m.an[1][i];
+			m.ap[FO[i]] += m.an[0][i];
+			m.ap[FN[i]] += m.an[1][i];
 		}
 	/*deferred correction*/
 	} else {
@@ -1700,8 +1700,8 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
 			F = flux[i];
 			m.an[0][i] = -max( F,T4(0));
 			m.an[1][i] = -max(-F,T4(0));
-			m.ap[gFO[i]] += m.an[0][i];
-			m.ap[gFN[i]] += m.an[1][i];
+			m.ap[FO[i]] += m.an[0][i];
+			m.ap[FN[i]] += m.an[1][i];
 		}
 
 		MeshField<T1,FACET> corr;
@@ -1986,8 +1986,8 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
 	{
 		ScalarFacetField mu = cds(muc);
 		forEach(fN,i) {
-			Int c1 = gFO[i];
-			Int c2 = gFN[i];
+			Int c1 = FO[i];
+			Int c2 = FN[i];
 			/*coefficients*/
 			if(penalty || !NPMAT) {
 				m.an[0][i] = fD[i] * mu[i];
@@ -2063,16 +2063,16 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
 		if(nonortho_scheme != NONE) {
 			VectorFacetField K;
 			forEach(fN,i) {
-				Int c1 = gFO[i];
-				Int c2 = gFN[i];
+				Int c1 = FO[i];
+				Int c2 = FN[i];
 				Vector dv = cC[c2] - cC[c1];
 				K[i] = fN[i] - fD[i] * dv;
 			}
 			
 			MeshField<type,FACET> r = dot(cds(muc * gradi(cF)),K);
 			forEach(r,i) {
-				Int c1 = gFO[i];
-				Int c2 = gFN[i];
+				Int c1 = FO[i];
+				Int c2 = FN[i];
 				type res = m.an[0][i] * (cF[c2] - cF[c1]);
 				if(mag(r[i]) > Scalar(0.5) * mag(res)) 
 					r[i] = Scalar(0.5) * res;

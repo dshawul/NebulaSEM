@@ -29,7 +29,7 @@ void Prepare::decomposeXYZ(Int* n,Scalar* nq,IntVector& blockIndex) {
 		
 	/*assign block indices to cells*/
 	for(i = 0;i < gBCS;i++) {
-		C = rotate(gcC[i],axis,theta);
+		C = rotate(gCC[i],axis,theta);
 		C = (C - minV) / delta;
 		ID = Int(C[0]) * n[1] * n[2] + 
 			 Int(C[1]) * n[2] + 
@@ -436,8 +436,8 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
 }
 		forEach(probes,i) {
 			Int fi = probes[i];
-			Int c1 = gFO[fi];
-			Int c2 = gFN[fi];
+			Int c1 = FO[fi];
+			Int c2 = FN[fi];
 			Vector probeP = probePoints[i];
 			Scalar dir = ((fC[fi] - probeP) & fN[fi]),dist;
 			Int sc;

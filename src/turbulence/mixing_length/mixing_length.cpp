@@ -55,8 +55,8 @@ void MixingLength_Model::calcEddyViscosity(const TensorCellField& gradU) {
 }
 void MixingLength_Model::applyWallFunction(Int f,LawOfWall& low) {
 	using namespace Mesh;
-	Int c1 = gFO[f];
-	Int c2 = gFN[f];
+	Int c1 = FO[f];
+	Int c2 = FN[f];
 
 	/*calc ustar*/
 	Scalar ustar = 0.0;

@@ -178,7 +178,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
 					Int f,c1;
 					forEach(wall_faces,i) {
 						f = wall_faces[i];
-						c1 = gFO[f];
+						c1 = FO[f];
 						M.Fix(c1,(*M.cF)[c1]);
 					}
 				}
@@ -257,8 +257,8 @@ struct KX_Model : public EddyViscosity_Model {
 	/* wall function */
 	virtual void applyWallFunction(Int f,LawOfWall& low) { 
 		using namespace Mesh;
-		Int c1 = gFO[f];
-		Int c2 = gFN[f];
+		Int c1 = FO[f];
+		Int c2 = FN[f];
 
 		/*calc ustar*/
 		Scalar ustar = Scalar(0.0);
