@@ -1,6 +1,5 @@
 #include "mesh.h"
 #include "hexMesh.h"
-#include "mshMesh.h"
 
 using namespace std;
 
@@ -76,7 +75,7 @@ int main(int argc,char* argv[]) {
 		Mesh::gMesh.calcGeometry();
 
 		output << hex;
-		writeMshMesh(output,gMesh);
+		gMesh.writeMshMesh(output);
 		output << dec;
 		return 0;
 	}
@@ -87,7 +86,7 @@ int main(int argc,char* argv[]) {
 	/*import*/
 	if(Import) {
 		input >> hex;
-		readMshMesh(input,gMesh);
+		gMesh.readMshMesh(input);
 		input >> dec;
 
 		gMesh.writeMesh(cout);

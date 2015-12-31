@@ -116,8 +116,10 @@ namespace Mesh {
 		
 		/*functions*/
 		void clear();
-		void writeMesh(std::ostream& os);
+		void writeMesh(std::ostream&);
 		bool readMesh(Int = 0,bool = true,bool = false);
+		void writeMshMesh(std::ostream&);
+		void readMshMesh(std::istream&);
 		void addBoundaryCells();
 		void calcGeometry();
 		void removeBoundary(IntVector&);
