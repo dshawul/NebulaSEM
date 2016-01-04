@@ -70,9 +70,11 @@ namespace Mesh {
 	extern Int  gBCSIfield;
 };
 namespace Prepare {
-	void refineMesh(Int step);
 	void createFields(std::vector<std::string>& fields,Int step);
 	Int  readFields(std::vector<std::string>& fields,Int step);
+	void refineMesh(Int step);
+	int decomposeMesh(Int);
+	int mergeFields(Int);
 }
 enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
@@ -90,6 +92,9 @@ public:
 	virtual void writeInternal(std::ostream&,IntVector*) = 0;
 	virtual void readInternal(std::istream&,IntVector*) = 0;
 	virtual void writeBoundary(std::ostream&) = 0;
+	virtual void readBoundary(std::istream&) = 0;
+	virtual void read(Int step) = 0;
+	virtual void write(Int, IntVector* = 0) = 0;
 	virtual void norm(BaseField*) = 0;
 	virtual ~BaseField() {};
 	
@@ -208,6 +213,7 @@ public:
 	/*static functions*/
 	void calc_neumann(BCondition<type>*);
 	void readInternal(std::istream&,IntVector*);
+	void readBoundary(std::istream&);
 	void writeInternal(std::ostream&,IntVector*);
 	void writeBoundary(std::ostream&);
 	void read(Int step);
@@ -659,7 +665,7 @@ namespace Mesh {
 	extern IntVector         FO;
 	extern IntVector         FN; 
 	
-	bool   LoadMesh(Int = 0,bool = true, bool = true, bool = false);
+	bool   LoadMesh(Int = 0,bool = true, bool = true);
 	void   initGeomMeshFields();
 	void   calc_walldist(Int,Int = 1);
 	void   write_fields(Int);
@@ -671,11 +677,11 @@ namespace Mesh {
 	void   getProbeFaces(IntVector&);
 	void   calc_courant(const VectorCellField& U, Scalar dt);
 	template <class type>
-	void   duplicateBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
+	void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
 }
 
 template <class type>
-void Mesh::duplicateBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
+void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
 	using namespace Mesh;
 	forEach(AllBConditions,i) {
 		BCondition<type> *bc, *bc1;
@@ -702,7 +708,34 @@ void Mesh::duplicateBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& d
 		}
 	}
 }
-
+template <class T,ENTITY E> 
+void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
+	using namespace Mesh;
+	
+	Int h = Util::hash_function(bc->cname);
+	if(h == CALC_NEUMANN) {
+		/*calculate slope*/
+		T slope = T(0);
+		Int sz = bc->bdry->size();
+		for(Int j = 0;j < sz;j++) {
+			 Int faceid = (*bc->bdry)[j];
+			 for(Int n = 0; n < DG::NPF;n++) {
+			 	 Int k = faceid * DG::NPF + n;
+				 Int c1 = FO[k];
+				 Int c2 = FN[k];
+				 if(!equal(cC[c1],cC[c2])) {
+ 				 	slope += ((*this)[c2] - (*this)[c1]) / 
+					      mag(cC[c2] - cC[c1]);
+				}
+			 }
+		}
+		slope /= sz;
+		/*set to neumann*/
+		bc->cname = "NEUMANN";
+		bc->cIndex = NEUMANN;
+		bc->value = slope;
+	}
+}
 /* **********************************************
  *  Input - output operations
  * **********************************************/
@@ -768,31 +801,17 @@ void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
 	}
 }
 template <class T,ENTITY E> 
-void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
+void MeshField<T,E>::readBoundary(std::istream& is) {
 	using namespace Mesh;
-	
-	Int h = Util::hash_function(bc->cname);
-	if(h == CALC_NEUMANN) {
-		/*calculate slope*/
-		T slope = T(0);
-		Int sz = bc->bdry->size();
-		for(Int j = 0;j < sz;j++) {
-			 Int faceid = (*bc->bdry)[j];
-			 for(Int n = 0; n < DG::NPF;n++) {
-			 	 Int k = faceid * DG::NPF + n;
-				 Int c1 = FO[k];
-				 Int c2 = FN[k];
-				 if(!equal(cC[c1],cC[c2])) {
- 				 	slope += ((*this)[c2] - (*this)[c1]) / 
-					      mag(cC[c2] - cC[c1]);
-				}
-			 }
-		}
-		slope /= sz;
-		/*set to neumann*/
-		bc->cname = "NEUMANN";
-		bc->cIndex = NEUMANN;
-		bc->value = slope;
+
+	/*boundary field*/
+	char c;
+	BCondition<T>* bc;
+	while((c = Util::nextc(is)) && isalpha(c)) {
+		bc = new BCondition<T>(this->fName);
+		is >> *bc;
+		this->calc_neumann(bc);
+		AllBConditions.push_back(bc);
 	}
 }
 template <class T,ENTITY E> 
@@ -814,16 +833,7 @@ void MeshField<T,E>::read(Int step) {
 	}
 	/*internal*/
 	readInternal(is,0);
-
-	/*boundary*/
-	char c;
-	BCondition<T>* bc;
-	while((c = Util::nextc(is)) && isalpha(c)) {
-		bc = new BCondition<T>(this->fName);
-		is >> *bc;
-		this->calc_neumann(bc);
-		AllBConditions.push_back(bc);
-	}
+	readBoundary(is);
 
 	/*update BCs*/
 	applyExplicitBCs(*this,true,true);

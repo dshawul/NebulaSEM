@@ -27,7 +27,7 @@ template<class T1, class T2, class T3>
 void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 	using namespace Mesh;
 	using namespace DG;
-	MeshField<T3,CELL> r,p,AP;
+	MeshField<T3,CELL> r,p,AP = T3(0);
 	MeshField<T3,CELL> r1(false),p1(false),AP1(false);   
 	MeshField<T1,CELL>& cF = *M.cF;
 	MeshField<T3,CELL>& buffer = AP;

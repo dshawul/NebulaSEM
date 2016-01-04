@@ -24,10 +24,11 @@ public:
 	typedef MPI_Request REQUEST;
 
 	static int n_hosts,host_id,name_len;
-	static char host_name[512];
+	static char host_name[PATH_MAX + 1];
 	static int _start_time;
 	static bool Terminated;
 	static bool printOn;
+	static char workingDir[PATH_MAX + 1];
 	static void cleanup();
 	static void loop();
 	static void barrier();

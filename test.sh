@@ -1,18 +1,15 @@
 #!/bin/sh
 
 #set case file
-case=examples/transport/wave2d/ 
-grid=simple
+case=examples/cavity/ 
+grid=cavity
 
 #run solver
 function run() {
 	echo "Starting job with " $2 " processors"
 
 	#generate grid
-	../bin/mesh $1 >grid
-
-	#decompose domain
-	../bin/prepare controls
+	../bin/mesh $1 >grid_0
 
 	#solve
 	mpirun --np $2  ../bin/solver controls

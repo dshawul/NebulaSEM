@@ -1,4 +1,6 @@
 #include "field.h"
+#include "system.h"
+#include "metis.h"
 
 using namespace std;
 
@@ -64,15 +66,13 @@ static int findLastRefinedGrid(Int step_) {
 /*
  * Load mesh
  */
-bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty, bool coarse) {
+bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
 	/*load refined mesh*/
-	int step = step_;
-	if(!coarse)
-		step = findLastRefinedGrid(step_);
+	int step = findLastRefinedGrid(step_);
 	
 	/*load mesh*/
 	Mesh::clear();
-	if(gMesh.readMesh(step,first,coarse)) {
+	if(gMesh.readMesh(step,first)) {
 		if(MP::printOn)
 			cout << "--------------------------------------------\n";
 		MP::printH("\t%d vertices\t%d facets\t%d cells\n",
@@ -382,15 +382,66 @@ void Mesh::enroll(Util::ParamList& params) {
 	params.enroll("npy",&DG::Nop[1]);
 	params.enroll("npz",&DG::Nop[2]);
 }
-/*
-* Adaptive mesh refinement
+/**
+create fields
 */
+void Prepare::createFields(vector<string>& fields,Int step) {
+	BaseField::destroyFields();
+
+	/*for each field*/
+	forEach(fields,i) {
+		/*read at time 0*/
+		stringstream path;
+		Int size;
+		path << fields[i] << step;
+		std::string str = path.str(); 
+
+		ifstream is(str.c_str());
+		if(!is.fail()) {
+			/*fields*/
+			is >> str >> size;
+			BaseField* bf;
+			switch(size) {
+				case 1 :  bf = new ScalarCellField(fields[i].c_str(),READWRITE,false); break;
+				case 3 :  bf = new VectorCellField(fields[i].c_str(),READWRITE,false); break;
+				case 6 :  bf = new STensorCellField(fields[i].c_str(),READWRITE,false); break;
+				case 9 :  bf = new TensorCellField(fields[i].c_str(),READWRITE,false); break;
+			}
+			/*end*/
+		}
+	}
+}
+/**
+read fields
+*/
+Int Prepare::readFields(vector<string>& fields,Int step) {
+	Int count = 0;
+	forEach(fields,i) {
+		stringstream fpath;
+		fpath << fields[i] << step;
+		ifstream is(fpath.str().c_str());
+		if(is.fail())
+			continue;
+		count++;
+		break;
+	}
+	if(count)
+		Mesh::read_fields(step);
+	return count;
+}
+/*********************************
+ *
+ * Adaptive mesh refinement
+ *
+ *********************************/
 void Prepare::refineMesh(Int step) {
 	using namespace Mesh;
 	using namespace Controls;
 	
+	std::cout << "Refining grid at step " << step << std::endl;
+	
 	/*Load mesh*/
-	LoadMesh(step,true,false,false);
+	LoadMesh(step,true,false);
 	
 	/*create fields*/
 	Prepare::createFields(BaseField::fieldNames,step);
@@ -473,50 +524,410 @@ void Prepare::refineMesh(Int step) {
 	/*destroy*/ 
 	BaseField::destroyFields();
 }
+
+/*********************************
+ *
+ * Domain Decomposition
+ *
+ *********************************/
+namespace Prepare {
+	
 /**
-create fields
+Decompose by cell ID
 */
-void Prepare::createFields(vector<string>& fields,Int step) {
-	BaseField::destroyFields();
-
-	/*for each field*/
-	forEach(fields,i) {
-		/*read at time 0*/
-		stringstream path;
-		Int size;
-		path << fields[i] << step;
-		std::string str = path.str(); 
-
-		ifstream is(str.c_str());
-		if(!is.fail()) {
-			/*fields*/
-			is >> str >> size;
-			BaseField* bf;
-			switch(size) {
-				case 1 :  bf = new ScalarCellField(fields[i].c_str(),READWRITE,false); break;
-				case 3 :  bf = new VectorCellField(fields[i].c_str(),READWRITE,false); break;
-				case 6 :  bf = new STensorCellField(fields[i].c_str(),READWRITE,false); break;
-				case 9 :  bf = new TensorCellField(fields[i].c_str(),READWRITE,false); break;
-			}
-			/*end*/
+void decomposeIndex(Int total,IntVector& blockIndex) {
+	using namespace Mesh;
+	
+	for(Int i = 0;i < gBCS;i++)
+		blockIndex[i] = (i / (gBCS / total));
+}
+/**
+Decompose in cartesian directions
+*/
+void decomposeXYZ(Int* n,Scalar* nq,IntVector& blockIndex) {
+	using namespace Mesh;
+	
+	Int i,j,ID;
+	Vector maxV(Scalar(-10e30)),minV(Scalar(10e30)),delta;
+	Vector axis(nq[0],nq[1],nq[2]);
+	Scalar theta = nq[3];
+	Vector C;
+	
+	/*max and min points*/
+	forEach(gVertices,i) {
+		C = rotate(gVertices[i],axis,theta);
+		for(j = 0;j < 3;j++) {
+			if(C[j] > maxV[j]) maxV[j] = C[j];
+			if(C[j] < minV[j]) minV[j] = C[j];
 		}
 	}
+    delta = maxV - minV;
+	for(j = 0;j < 3;j++) 
+		delta[j] /= Scalar(n[j]);
+		
+	/*assign block indices to cells*/
+	for(i = 0;i < gBCS;i++) {
+		C = rotate(gCC[i],axis,theta);
+		C = (C - minV) / delta;
+		ID = Int(C[0]) * n[1] * n[2] + 
+			 Int(C[1]) * n[2] + 
+			 Int(C[2]);
+		blockIndex[i] = ID;
+	}
 }
 /**
-open fields
+Decompose using METIS 5.0
 */
-Int Prepare::readFields(vector<string>& fields,Int step) {
+void decomposeMetis(int total,IntVector& blockIndex) {
+	using namespace Mesh;
+	
+	int ncon = 1;
+	int edgeCut = 0;
+	int ncells = gBCS;
+	std::vector<int> xadj,adjncy;
+	std::vector<int> options(METIS_NOPTIONS);
+	
+	/*default options*/
+    METIS_SetDefaultOptions(&options[0]);
+    
+    /*build adjacency*/
+    for(Int i = 0;i < gBCS;i++) {
+    	Cell& c = gCells[i];
+    	xadj.push_back(adjncy.size());
+    	forEach(c,j) {
+    		Int f = c[j];
+			if(i == gFOC[f]) {
+				if(gFNC[f] < gBCS)
+					adjncy.push_back(gFNC[f]);
+			} else {
+				if(gFOC[f] < gBCS)
+					adjncy.push_back(gFOC[f]);
+			}
+		}
+    }
+    xadj.push_back(adjncy.size());
+
+    /*partition*/
+	METIS_PartGraphRecursive (
+		&ncells,
+		&ncon,
+		&xadj[0],
+		&adjncy[0],
+		NULL,
+		NULL,
+		NULL,
+		&total,
+		NULL,
+		NULL,
+		&options[0],
+		&edgeCut,
+		(int*)(&blockIndex[0])
+    );
+}
+
+}
+/**
+Decompose
+*/
+int Prepare::decomposeMesh(Int step) {
+	using namespace Mesh;
+	using namespace Constants;
+	
+	Int total = MP::n_hosts;
+	DecomposeParams& dp = Controls::decompose_params;
+	vector<string>& fields = BaseField::fieldNames;
+	Int i,j,ID,count;
+	
+	/*no decomposition*/
+	if(total == 1)
+		return 1;
+	
+	std::cout << "Decomposing grid at step " << step << std::endl;
+	System::cd(MP::workingDir);
+	
+	/*Read mesh*/
+	LoadMesh(step,true,false);
+
+	/*Read fields*/
+	createFields(fields,step);
+	readFields(fields,step);
+		
+	/**********************
+	 * decompose mesh
+	 **********************/
+	MeshObject* meshes = new MeshObject[total];
+	IntVector* vLoc = new IntVector[total];
+	IntVector* fLoc = new IntVector[total];
+	IntVector* cLoc = new IntVector[total];
+	for(i = 0;i < total;i++) {
+		vLoc[i].assign(gVertices.size(),0);
+		fLoc[i].assign(gFacets.size(),0);
+	}
+
+	/*decompose cells*/
+	MeshObject *pmesh;
+	IntVector *pvLoc,*pfLoc,blockIndex;
+	blockIndex.assign(gBCS,0);
+	
+	/*choose*/
+	decomposeMetis(total,blockIndex);
+	if(dp.type == 0) {
+		IntVector n(3);
+		Int t = dp.n[0] * dp.n[1] * dp.n[2];
+		Scalar v = pow(Scalar(total) / t,Scalar(1)/3);
+		n[0] = Int(v * n[0]);
+		n[1] = Int(v * n[1]);
+		n[2] = Int(v * n[2]);
+		decomposeXYZ(&dp.n[0],&dp.axis[0],blockIndex);
+	} else if(dp.type == 1)
+		decomposeIndex(total,blockIndex);
+	else if(dp.type == 2)
+		decomposeMetis(total,blockIndex);
+	else; //default -- assigns all to processor 0
+	
+	/*add cells*/
+	for(i = 0;i < gBCS;i++) {
+		Cell& c = gCells[i];
+
+		/* add cell */
+		ID = blockIndex[i];
+		pmesh = &meshes[ID];
+		pvLoc = &vLoc[ID];
+		pfLoc = &fLoc[ID];
+		pmesh->mCells.push_back(c);
+		cLoc[ID].push_back(i);
+		
+		/* mark vertices and facets */
+		forEach(c,j) {
+			Facet& f = gFacets[c[j]];
+			(*pfLoc)[c[j]] = 1;
+			forEach(f,k) {
+				(*pvLoc)[f[k]] = 1;	
+			}
+		}
+	}
+	
+	/*add vertices & facets*/
+	for(ID = 0;ID < total;ID++) {
+		pmesh = &meshes[ID];
+		pvLoc = &vLoc[ID];
+		pfLoc = &fLoc[ID];
+
+		count = 0;
+		forEach(gVertices,i) {
+			if((*pvLoc)[i]) {
+				pmesh->mVertices.push_back(gVertices[i]);
+				(*pvLoc)[i] = count++;
+			} else
+				(*pvLoc)[i] = Constants::MAX_INT;
+		}
+
+		count = 0;
+		forEach(gFacets,i) {
+			if((*pfLoc)[i]) {
+				pmesh->mFacets.push_back(gFacets[i]);
+				(*pfLoc)[i] = count++;
+			} else
+				(*pfLoc)[i] = Constants::MAX_INT;
+		}
+	}
+	/*adjust IDs*/
+	for(ID = 0;ID < total;ID++) {
+		pmesh = &meshes[ID];
+		pvLoc = &vLoc[ID];
+		pfLoc = &fLoc[ID];
+
+		forEach(pmesh->mFacets,i) {
+			Facet& f = pmesh->mFacets[i];
+			forEach(f,j)
+				f[j] = (*pvLoc)[f[j]];
+		}
+
+		forEach(pmesh->mCells,i) {
+			Cell& c = pmesh->mCells[i];
+			forEach(c,j)
+				c[j] = (*pfLoc)[c[j]];
+		}
+	}
+	/*inter mesh faces*/
+	IntVector* imesh = new IntVector[total * total];
+	Int co,cn;
+	forEach(gFacets,i) {
+		if(gFNC[i] < gBCS) {
+			co = blockIndex[gFOC[i]];
+			cn = blockIndex[gFNC[i]];
+			if(co != cn) {
+				imesh[co * total + cn].push_back(fLoc[co][i]);
+				imesh[cn * total + co].push_back(fLoc[cn][i]);
+			}
+		}
+	}
+	/***************************
+	 * Expand cLoc
+	 ***************************/
+	for(ID = 0;ID < total;ID++) {
+		const Int block = DG::NP;
+		IntVector& cF = cLoc[ID];
+		cF.resize(cF.size() * block);
+		for(int i = cF.size() - 1;i >= 0;i -= block) {
+			Int ii = i / block;
+			Int C = cF[ii] * block;
+			for(Int j = 0; j < block;j++)
+				cF[i - j] = C + block - 1 - j; 
+		}
+	}
+	/***************************
+	 * write mesh/index/fields
+	 ***************************/
+	for(ID = 0;ID < total;ID++) {
+		pmesh = &meshes[ID];
+		pvLoc = &vLoc[ID];
+		pfLoc = &fLoc[ID];
+		
+		/*create directory and switch to it*/
+		stringstream path;
+		path << gMeshName << ID;
+
+		System::mkdir(path.str());
+		if(!System::cd(path.str()))    
+			return 1;
+
+		/*v,f & c*/
+		stringstream path1;
+		path1 << gMeshName << "_" << step;
+		ofstream of(path1.str().c_str());
+		
+		of << hex;
+		of << pmesh->mVertices << endl;
+		of << pmesh->mFacets << endl;
+		of << pmesh->mCells << endl;
+
+		/*bcs*/
+		forEachIt(Boundaries,gMesh.mBoundaries,it) {
+			IntVector b;	
+			Int f;
+			forEach(it->second,j) {
+				f = (*pfLoc)[it->second[j]];
+				if(f != Constants::MAX_INT)
+					b.push_back(f);
+			}
+			/*write to file*/
+			if(b.size()) {
+				of << it->first << "  ";
+				of << b << endl;
+			}
+		}
+		
+		/*inter mesh boundaries*/
+		for(j = 0;j < total;j++) {
+			IntVector& f = imesh[ID * total + j];
+			if(f.size()) {
+				of << "interMesh_" << ID << "_" << j << " ";
+				of << f << endl;
+			}
+		}
+		
+		of << dec;
+		
+		/*index file*/
+		stringstream path2;
+		path2 << "index_" << step;
+		ofstream of2(path2.str().c_str());
+		of2 << cLoc[ID] << endl;
+		
+		/*fields*/
+		forEach(fields,i) {
+			stringstream path;
+			path << fields[i] << step;
+			string str = path.str();
+			ofstream of3(str.c_str());
+
+			/*fields*/
+			BaseField* pf = BaseField::findField(fields[i]);
+			pf->writeInternal(of3,&cLoc[ID]);
+			pf->writeBoundary(of3);
+
+			/*inter mesh boundaries*/
+			for(j = 0;j < total;j++) {
+				IntVector& f = imesh[ID * total + j];
+				if(f.size()) {
+					of3 << "interMesh_" << ID << "_" << j << " "
+						<< "{\n\ttype GHOST\n}" << endl;
+				}
+			}
+		}
+		
+		System::cd(MP::workingDir);
+	}
+
+	/*destroy*/ 
+	BaseField::destroyFields();
+	
+	/*delete*/
+	delete[] meshes;
+	delete[] imesh;
+	delete[] vLoc;
+	delete[] fLoc;
+	delete[] cLoc;
+	
+	return 0;
+}
+/**
+Reverse decomposition
+*/
+int Prepare::mergeFields(Int step) {
+	using namespace Mesh;
+	using namespace Controls;
+	
+	vector<string>& fields = BaseField::fieldNames;
+	
+	/*indexes*/
+	Int total = MP::n_hosts;
+	IntVector* cLoc = new IntVector[total];
+
+	std::cout << "Merging fields at step " << step << std::endl;
+
+	/*Read mesh*/
+	int stepm = findLastRefinedGrid(step);
+	LoadMesh(stepm,true,false);
+
+	/*Read fields*/
+	createFields(fields,stepm);
+	readFields(fields,stepm);
+	
+	/*read indices*/
+	for(Int ID = 0;ID < total;ID++) {
+		stringstream path;
+		path << gMeshName << ID << "/index_" << stepm;
+		ifstream index(path.str().c_str());
+		cLoc[ID].clear();
+		index >> cLoc[ID];
+	}
+	
+	/*read and merge fields*/
 	Int count = 0;
-	forEach(fields,i) {
-		stringstream fpath;
-		fpath << fields[i] << step;
-		ifstream is(fpath.str().c_str());
-		if(is.fail())
-			continue;
-		count++;
-		break;
+	for(Int ID = 0;ID < total;ID++) {
+		stringstream path;
+		path << gMeshName << ID;
+		forEach(fields,i) {
+			stringstream fpath;
+			fpath << fields[i] << step;
+			string str = path.str() + "/" + fpath.str();
+			ifstream is(str.c_str());
+			if(is.fail())
+				continue;
+			count++;
+			/*read*/
+			BaseField* pf = BaseField::findField(fields[i]);
+			pf->readInternal(is,&cLoc[ID]);
+		}
 	}
 	if(count)
-		Mesh::read_fields(step);
-	return count;
+		write_fields(step);
+
+	/*destroy*/ 
+	BaseField::destroyFields();
+	
+	return 0;
 }
+

@@ -6,7 +6,6 @@
 
 /*Index by integer ID instead of pointers */
 typedef std::vector<Int>      IntVector;
-typedef std::vector<int>      SintVector;
 typedef std::vector<Scalar>   ScalarVector;
 typedef std::vector<Vector>   VectorVector;
 typedef std::vector<bool>     BoolVector;
@@ -39,6 +38,19 @@ struct RefineParams {
 		field_max = 0.9;
 		field_min = 0.1;
 		limit = 100000;
+	}
+};
+
+/*Decomposition parameters*/
+struct DecomposeParams {
+	Int type;
+	IntVector n;
+	ScalarVector axis;
+	DecomposeParams() {
+		type = 2;
+		axis.assign(4,0);
+		axis[0] = 1;
+		n.assign(3,1);
 	}
 };
 
@@ -117,7 +129,7 @@ namespace Mesh {
 		/*functions*/
 		void clear();
 		void writeMesh(std::ostream&);
-		bool readMesh(Int = 0,bool = true,bool = false);
+		bool readMesh(Int = 0,bool = true);
 		void writeMshMesh(std::ostream&);
 		void readMshMesh(std::istream&);
 		void addBoundaryCells();
@@ -165,7 +177,9 @@ namespace Mesh {
 }
 namespace Controls {
 	extern RefineParams refine_params;
+	extern DecomposeParams decompose_params;
 	void enrollRefine(Util::ParamList& params);
+	void enrollDecompose(Util::ParamList& params);
 }
 /*
  * Model for flow close to the wall (Law of the wall).

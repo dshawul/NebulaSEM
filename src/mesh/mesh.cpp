@@ -27,6 +27,7 @@ namespace Mesh {
 }
 namespace Controls {
 	RefineParams refine_params;
+	DecomposeParams decompose_params;
 }
 void Controls::enrollRefine(Util::ParamList& params) {
 	params.enroll("direction",&refine_params.dir);
@@ -34,6 +35,13 @@ void Controls::enrollRefine(Util::ParamList& params) {
 	params.enroll("field_max",&refine_params.field_max);
 	params.enroll("field_min",&refine_params.field_min);
 	params.enroll("limit",&refine_params.limit);
+}
+void Controls::enrollDecompose(Util::ParamList& params) {
+	params.enroll("n",&decompose_params.n);
+	params.enroll("axis",&decompose_params.axis);
+	Util::Option* op = new Util::Option(&decompose_params.type, 4, 
+			"XYZ","CELLID","METIS","NONE");
+	params.enroll("type",op);
 }
 void Mesh::clear() {
 	gMesh.clear();
@@ -52,13 +60,10 @@ void Mesh::MeshObject::clear() {
 	mAmrTree.clear();
 }
 /*read mesh*/
-bool Mesh::MeshObject::readMesh(Int step,bool first, bool coarse) {
+bool Mesh::MeshObject::readMesh(Int step,bool first) {
 	/*open file*/
 	stringstream path;
-	if(coarse) 
-		path << name;
-	else
-		path << name << "_" << step;
+	path << name << "_" << step;
 	string str = path.str();
 	ifstream is(str.c_str());
 	if(is.fail()) {

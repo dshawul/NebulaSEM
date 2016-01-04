@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 	} 
 	ifstream input(argv[1]);
 
-	/*main options*/
+	/*General options*/
 	string sname;
 	{
 		Util::ParamList params("general");
@@ -69,12 +69,17 @@ int main(int argc, char* argv[]) {
 		GENERAL::enroll(params);
 		params.read(input);
 	}
-	
 	/*AMR options*/
 	{
 		Util::ParamList params("refinement");
 		Controls::enrollRefine(params);
 		params.read(input);
+	}
+	/*Decompose options*/
+	{
+		Util::ParamList params("decomposition");
+		Controls::enrollDecompose(params);
+		params.read(input); 
 	}
 	/*Fields*/
 	{
@@ -82,13 +87,7 @@ int main(int argc, char* argv[]) {
 		params.enroll("fields",&BaseField::fieldNames);
 		params.read(input);
 	}
-	/*Mesh*/
-	if (mp.n_hosts > 1) {
-		stringstream s;
-		s << Mesh::gMeshName << mp.host_id;
-		if (!System::cd(s.str()))
-			return 1;
-	}
+	/*cleanup*/
 	atexit(MP::cleanup);
 
 	/*call solver*/
@@ -206,6 +205,18 @@ public:
 		if(!Controls::amr_step)
 			Controls::amr_step = endi;
 		i = starti;
+
+		if (MP::n_hosts > 1) {
+			/*decompose*/
+			if (MP::host_id == 0)
+				Prepare::decomposeMesh(i);
+			/*wait*/
+			MP::barrier();
+			/*change directory*/
+			stringstream s;
+			s << Mesh::gMeshName << MP::host_id;
+			System::cd(s.str());
+		}
 		Mesh::LoadMesh(i);
 	}
 	bool start() {
@@ -219,7 +230,26 @@ public:
 	void next() {
 		i += Controls::amr_step;
 		if(i < endi) {
-			Prepare::refineMesh(i);
+			if (MP::host_id == 0) {
+				if(MP::n_hosts > 1) {
+					System::cd(MP::workingDir);
+					Prepare::mergeFields(i);
+				}
+
+				Prepare::refineMesh(i);
+
+				if(MP::n_hosts > 1) {
+
+					/*decompose mesh*/
+					Prepare::decomposeMesh(i);
+
+					/*change directory*/
+					stringstream s;
+					s << Mesh::gMeshName << MP::host_id;
+					System::cd(s.str());
+				}
+			}
+			MP::barrier();
 			Mesh::LoadMesh(i);
 		}
 	}
@@ -482,7 +512,7 @@ void euler(istream& input) {
 
 		/*calculate rho*/
 		rho = pow(p / p_factor, 1 / p_gamma) / T;
-		Mesh::duplicateBCs<Scalar>(p,rho,psi);
+		Mesh::scaleBCs<Scalar>(p,rho,psi);
 		rho.write(0);
 	
 		/*Time loop*/

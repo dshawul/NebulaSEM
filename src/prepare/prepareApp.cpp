@@ -53,11 +53,7 @@ int main(int argc,char* argv[]) {
 	ifstream input(argv[1]);
 
     /*read mesh & fields*/
-    Int decomptype = 3;
 	vector<string>& fields = BaseField::fieldNames;
-	vector<Int> n;
-	vector<Scalar> axis(4);
-	axis[0] = 1;
 	
 	/*Options*/
 	{
@@ -77,11 +73,7 @@ int main(int argc,char* argv[]) {
 	}
 	{
 		Util::ParamList params("decomposition");
-		params.enroll("n",&n);
-		params.enroll("axis",&axis);
-		Util::Option* op = new Util::Option(&decomptype, 4, 
-				"XYZ","INDEX","METIS","NONE");
-		params.enroll("type",op);
+		Controls::enrollDecompose(params);
 		params.read(input); 
 	}
 	{
@@ -104,7 +96,7 @@ int main(int argc,char* argv[]) {
 		cout << "--------------------------------------------\n";
 	if(work == 1) {
 		cout << "Merging decomposed domain.\n";
-		Prepare::merge(&n[0],fields,start_index);
+		Prepare::mergeFields(start_index);
 	} else if(work == 2) {
 		cout << "Converting result to VTK format.\n";
 		Prepare::convertVTK(fields,start_index);
@@ -116,7 +108,7 @@ int main(int argc,char* argv[]) {
 		Prepare::refineMesh(start_index);
 	} else {
 		cout << "Decomposing domain.\n";
-		Prepare::decompose(fields,&n[0],&axis[0],decomptype,start_index);
+		Prepare::decomposeMesh(start_index);
 	} 
 	return 0;
 }
