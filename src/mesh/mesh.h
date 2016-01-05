@@ -35,8 +35,8 @@ struct RefineParams {
 	RefineParams() {
 		dir = Scalar(0);
 		field = "U";
-		field_max = 0.9;
-		field_min = 0.1;
+		field_max = 0.6;
+		field_min = 0.2;
 		limit = 100000;
 	}
 };
@@ -135,6 +135,7 @@ namespace Mesh {
 		void addBoundaryCells();
 		void calcGeometry();
 		void removeBoundary(IntVector&);
+		void removeUnusedVertices();
 		
 		void straightEdges(const Facet&, Facet&, Facet&);
 		bool straightFaces(const Facet&,const Facet&);
@@ -144,8 +145,8 @@ namespace Mesh {
 		void addVerticesToEdge(const int, Facet&, const Facet&);
 		void calcFaceCenter(const Facet&,Vector&);
 		void calcCellCenter(const Cell&, Vector&);
-		void initFaceInfo(IntVector&,Cells&,const IntVector&);
-		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,const Int);
+		void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&);
+		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&);
 		void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
 		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&);
 	};

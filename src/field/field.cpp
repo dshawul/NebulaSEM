@@ -88,6 +88,7 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
 				IntVector& fs = gBoundaries["delete"];
 				gMesh.removeBoundary(fs);
 				gBoundaries.erase(it);
+				gMesh.removeUnusedVertices();
 			}
 		}
 		/*erase interior and empty boundaries*/
@@ -434,6 +435,36 @@ Int Prepare::readFields(vector<string>& fields,Int step) {
  * Adaptive mesh refinement
  *
  *********************************/
+
+void Prepare::calcQOI(ScalarCellField& qoi) {
+	using namespace Mesh;
+
+	BaseField* bf = BaseField::findField(Controls::refine_params.field);
+	if(bf) bf->norm(&qoi);
+	fillBCs(qoi);
+	applyExplicitBCs(qoi,false,false);
+	qoi = mag(gradf(qoi));
+}
+
+void Prepare::initRefineThreshold() {
+	using namespace Mesh;
+	using namespace Controls;
+	
+	ScalarCellField qoi;
+	calcQOI(qoi);
+	/*max and min*/
+	Scalar maxq = 0;
+	for(Int i = 0;i < gBCS;i++) {
+		if(qoi[i] > maxq) 
+			maxq = qoi[i];
+	}
+	refine_params.field_max *= (maxq / 10);
+	refine_params.field_min *= (maxq / 10);
+	std::cout << "----------------------" << std::endl;
+	std::cout << " Refinement threshold " << Controls::refine_params.field_max << std::endl;
+	std::cout << " Coarsening threshold " << Controls::refine_params.field_min << std::endl;
+	std::cout << "----------------------" << std::endl;
+}
 void Prepare::refineMesh(Int step) {
 	using namespace Mesh;
 	using namespace Controls;
@@ -452,28 +483,14 @@ void Prepare::refineMesh(Int step) {
 	{
 		/*find quantity of interest*/
 		ScalarCellField qoi;
-		BaseField* bf = BaseField::findField(refine_params.field);
-		if(bf) bf->norm(&qoi);
-		fillBCs(qoi);
-		applyExplicitBCs(qoi,false,false);
-		qoi = mag(gradf(qoi));
-	
-		/*max and min*/
-		Scalar maxq = 0,minq = 10e30;
-		for(Int i = 0;i < gBCS;i++) {
-			if(qoi[i] > maxq) maxq = qoi[i];
-			if(qoi[i] < minq) minq = qoi[i];
-		}
-		maxq = max(Constants::MachineEpsilon,maxq);
-		qoi /= maxq;
-		maxq = 1;
-		minq /= maxq;
+		calcQOI(qoi);
 		
 		/*get cells to refine*/
 		gCells.erase(gCells.begin() + gBCS,gCells.end());
 		cCells.assign(gCells.size(),0);
 		for(Int i = 0;i < gBCS;i++) {
-			if(qoi[i] >= refine_params.field_max)
+			if(qoi[i] >= refine_params.field_max 
+				&& gCells.size() <= refine_params.limit)
 				rCells.push_back(i);
 			else if(qoi[i] <= refine_params.field_min)
 				cCells[i] = 1;

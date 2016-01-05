@@ -82,8 +82,8 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 			Int faceid = c[j];						\
  			for(Int n = 0; n < NPF;n++) {			\
 				Int k = faceid * NPF + n;			\
-				Int c1 = FO[k];					\
-				Int c2 = FN[k];					\
+				Int c1 = FO[k];						\
+				Int c2 = FN[k];						\
 				if(index1 == c1)					\
 					ncF += X[c2] * M.an[1][k];		\
 				else if(index1 == c2)				\

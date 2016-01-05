@@ -69,13 +69,7 @@ namespace Mesh {
 	extern Int  gBCSfield; 
 	extern Int  gBCSIfield;
 };
-namespace Prepare {
-	void createFields(std::vector<std::string>& fields,Int step);
-	Int  readFields(std::vector<std::string>& fields,Int step);
-	void refineMesh(Int step);
-	int decomposeMesh(Int);
-	int mergeFields(Int);
-}
+
 enum ACCESS {
 	NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
 };
@@ -678,6 +672,16 @@ namespace Mesh {
 	void   calc_courant(const VectorCellField& U, Scalar dt);
 	template <class type>
 	void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
+}
+
+namespace Prepare {
+	void createFields(std::vector<std::string>& fields,Int step);
+	Int  readFields(std::vector<std::string>& fields,Int step);
+	void refineMesh(Int step);
+	void calcQOI(ScalarCellField&);
+	void initRefineThreshold();
+	int decomposeMesh(Int);
+	int mergeFields(Int);
 }
 
 template <class type>

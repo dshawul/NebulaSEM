@@ -371,11 +371,38 @@ void Mesh::MeshObject::removeBoundary(IntVector& fs) {
 			mB[i] = Idf[mB[i]];
 	}
 }
+/* 
+ * Remove unused vertices 
+ */
+void Mesh::MeshObject::removeUnusedVertices() {
+	IntVector isUsed(mVertices.size(),0);
+	forEach(mFacets,i) {
+		Facet& f = mFacets[i];
+		forEach(f,j)
+			isUsed[f[j]] = 1;
+	}
+	IntVector rVertices;
+	Int cnt = 0;
+	forEach(isUsed,i) {
+		if(!isUsed[i])
+			rVertices.push_back(i);
+		else
+			isUsed[i] = cnt++;
+	}
+	if(rVertices.size()) {
+		forEach(mFacets,i) {
+			Facet& f = mFacets[i];
+			forEach(f,j)
+				f[j] = isUsed[f[j]];
+		}
+		erase_indices(mVertices,rVertices);
+	}
+}
 /***************
 * Refine Mesh
 ****************/
 
-// #define RDEBUG
+#define RDEBUG
 
 void Mesh::MeshObject::straightEdges(const Facet& f, Facet& r, Facet& removed) {	
 	Vector v1,v2,v3;
@@ -484,7 +511,7 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
 	}
 	if(count < 2) 
 		return false;
-
+	
     //merge
 	f.clear();
 	for(Int i = 0;i <= a[0];i++)
@@ -662,7 +689,7 @@ void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
 	cCj = Ct / Vt;
 }
 void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF, 
-				 IntVector& startF, IntVector& endF,const Int ivBegin) {
+				 IntVector& startF, IntVector& endF) {
 					 
 	using namespace Controls;
 	
@@ -677,9 +704,21 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 		startF[fi] = mFacets.size();
 		calcFaceCenter(f,C);
 		
-		/*add vertices*/
-		mVertices.push_back(C);
-		Int fci = mVertices.size() - 1;
+		/*add face center*/
+		Int fci;
+		{
+			Int k = 0;
+			for(; k < mVertices.size();k++) {
+				if(equal(C,mVertices[k])) {
+					fci = k;
+					break;
+				}
+			}
+			if(k == mVertices.size()) {
+				mVertices.push_back(C);
+				fci = mVertices.size() - 1;;
+			}
+		}
 		
 		Facet fr;
 		{
@@ -714,27 +753,19 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 			if(j < fmid) fmid = j;
 			Vector Ce = (v1 + v2) / 2.0;
 
-			//duplicate
-			Int k = 0;//ivBegin;
-			for(; k < mVertices.size();k++) {
-				if(equal(Ce,mVertices[k])) {
-					midpts[j] = k;
-					break;
+			/*add midpoint*/
+			{
+				Int k = 0;
+				for(; k < mVertices.size();k++) {
+					if(equal(Ce,mVertices[k])) {
+						midpts[j] = k;
+						break;
+					}
 				}
-			}
-			// if(k == mVertices.size() && fr.size()) {
-			// 	forEach(fr,i) {
-			// 		Int m = fr[i];
-			// 		if(equal(Ce,mVertices[m])) {
-			// 			midpts[j] = m;
-			// 			k = m;
-			// 			break;
-			// 		}
-			// 	}
-			// }
-			if(k == mVertices.size()) {
-				mVertices.push_back(Ce);
-				midpts[j] = k;
+				if(k == mVertices.size()) {
+					mVertices.push_back(Ce);
+					midpts[j] = k;
+				}
 			}
 		}
 		
@@ -845,6 +876,7 @@ void Mesh::MeshObject::refineCell(Cell& c,IntVector& cr,
 					cn.push_back(k);
 				}
 			}
+			
 			newc.push_back(cn);
 		}
 	}
@@ -1025,11 +1057,10 @@ void Mesh::MeshObject::refineCell(Cell& c,IntVector& cr,
 #endif
 
 }
-void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,const IntVector& rCells) {
+void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,const IntVector& rCells,const Cells& newCells) {
 
 	forEach(rCells,i) {
-		Int ci = rCells[i];
-		Cell& c = mCells[ci];
+		const Cell& c = newCells[rCells[i]];
 		Cell& cr = crefineF[i];
 		forEach(c,j) {
 			Int fj = c[j];
@@ -1166,11 +1197,11 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 			Int nchildren = coarseMap[i];
 			Int ci = coarseMap[i + 1];
 			Cell& c1 = mCells[ci];
-			
+
 #ifdef RDEBUG
-			std::cout << "Coarsening cell " << ci << " cC " << mCC[ci]  << std::endl;
+			std::cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << std::endl;
 #endif
-			
+
 			typedef std::map<Int,IntVector> Pair;
 			Pair sharedMap;
 
@@ -1180,9 +1211,10 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 				Int o1 = (mFOC[f1] == ci) ? mFNC[f1] : mFOC[f1];
 				if(o1 >= mCells.size()) {
 					Vector u = unit(mFN[f1]);
-					Int id = 2000 + int(Scalar(1000.0) * u[2]
-						    + Scalar(100.0) * u[1] + u[0]);
-					o1 = Constants::MAX_INT / 2 + id;
+					o1 = Int(0.75 * Constants::MAX_INT) +
+						 int(Scalar(1000.0) * u[2] +
+							 Scalar(100.0) * u[1] +
+							 Scalar(10.0) * u[0]);
 				}
 				IntVector& val = sharedMap[o1];
 				val.push_back(j);
@@ -1199,14 +1231,14 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 			forEachIt(Pair,sharedMap,it) {
 				IntVector& faces = it->second;
 				if(faces.size() > 1) {
-					
+
 				    Facet nf;
 					mergeFacetsCell(c1,faces,nf);
 
 					//merge into first face
 					Int fi = c1[faces[0]];
 					mFacets[fi] = nf;
-					
+
 					//erase old faces
 					forEachS(faces,j,1)
 						delFacets.push_back(c1[faces[j]]);
@@ -1232,7 +1264,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 
 			sort(allDel.begin(),allDel.end());
 			erase_indices(c1,allDel);
-			
+
 			i += nchildren;
 		}
 		/*renumber children ids*/
@@ -1272,7 +1304,6 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 	/***************************
 	 * Refine facets
 	 ***************************/
-	Int ivBegin = mVertices.size();
 	IntVector startF;
 	IntVector endF;
 	IntVector refineF;
@@ -1289,7 +1320,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 		crefineF.push_back(v);
 	}
 	
-	initFaceInfo(refineF,crefineF,rCells);
+	initFaceInfo(refineF,crefineF,rCells,mCells);
 	
 	/*refine*/
 	forEach(refineF,i) {
@@ -1297,7 +1328,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 			rFacets.push_back(i);
 	}
 	
-	refineFacets(rFacets,refineF,startF,endF,ivBegin);
+	refineFacets(rFacets,refineF,startF,endF);
 	
 	/*************************
 	 * Refine cells
@@ -1308,11 +1339,11 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 	
 	forEach(rCells,i) {
 		Cells newc;
-		Cell cr;
+		Cells ncrefineF;
 
 		Int ci = rCells[i];
 		newc.push_back(mCells[ci]);
-		cr = crefineF[i];
+		ncrefineF.push_back(crefineF[i]);
 
 		const int NR = 1;
 		for(Int m = 0;m < NR;m++) {
@@ -1329,31 +1360,57 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 #endif
 			
 			if(m) {
-				IntVector rfFacets;
-				forEach(newc,j)
-					rfFacets.insert(rfFacets.end(),newc[j].begin(),newc[j].end());
-				std::sort(rfFacets.begin(), rfFacets.end());
-				rfFacets.erase(std::unique(rfFacets.begin(),rfFacets.end()), rfFacets.end());
-				
-				IntVector alRef;
-				forEach(rfFacets,j) {
-					Int fi = rfFacets[j];
-					if(refineF[fi])
-						alRef.push_back(j);
-					else {
-						refineF[fi] = 1;
-						rFacets.push_back(fi);
+				//init
+				{
+					IntVector nrCells;
+					ncrefineF.clear();
+					forEach(newc,j) {
+						IntVector v = newc[j];
+						forEach(v,k) v[k] = 0;
+						ncrefineF.push_back(v);
+						nrCells.push_back(j);
 					}
+	
+					initFaceInfo(refineF,ncrefineF,nrCells,newc);
 				}
-				erase_indices(rfFacets,alRef);
+				//face refininement
+				{
+					IntVector rfFacets;
+					forEach(newc,j)
+						rfFacets.insert(rfFacets.end(),newc[j].begin(),newc[j].end());
+					std::sort(rfFacets.begin(), rfFacets.end());
+					rfFacets.erase(std::unique(rfFacets.begin(),rfFacets.end()), rfFacets.end());
+				
+					IntVector alRef;
+					forEach(rfFacets,j) {
+						Int fi = rfFacets[j];
+						if(refineF[fi]) {
+							rFacets.push_back(fi);
+						} else
+							alRef.push_back(j);
+					}
+					erase_indices(rfFacets,alRef);
+					
+					// IntVector alRef;
+					// forEach(rfFacets,j) {
+					// 	Int fi = rfFacets[j];
+					// 	if(refineF[fi])
+					// 		alRef.push_back(j);
+					// 	else {
+					// 		refineF[fi] = 1;
+					// 		rFacets.push_back(fi);
+					// 	}
+					// }
+					// erase_indices(rfFacets,alRef);
 
-				refineFacets(rfFacets,refineF,startF,endF,ivBegin);
+					refineFacets(rfFacets,refineF,startF,endF);
+				}
 			}
 
 			Cells newcm;
-			forEach(newc,b) {
-				Cell& c = newc[b];
-				if(m) cr.assign(c.size(),1);
+			forEach(newc,j) {
+				Cell& c = newc[j];
+				Cell& cr = ncrefineF[j];
 				
 				Cells newcn;
 				refineCell(c,cr,refineF,startF,endF,newcn,delFacets);
@@ -1361,6 +1418,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 			}
 
 			newc = newcm;
+			if(!newc.size()) exit(0);
 			
 #ifdef RDEBUG
 			if(NR > 1) {
@@ -1476,52 +1534,31 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 	/*******************************************************
 	 * a) Remove unused vertices
 	 * b) Break edges of faces that are not set for refinement 
-	 *    but should be due to neighboring refined faces 
+	 *    but has a neighboring refined face
 	 *******************************************************/
 	{
+		
 		/* remove unused vertices */
-		IntVector isUsed(mVertices.size(),0);
-		forEach(mFacets,i) {
-			Facet& f = mFacets[i];
-			forEach(f,j)
-				isUsed[f[j]] = 1;
-		}
-		IntVector rVertices;
-		Int cnt = 0;
-		forEach(isUsed,i) {
-			if(!isUsed[i])
-				rVertices.push_back(i);
-			else
-				isUsed[i] = cnt++;
-		}
-		if(rVertices.size()) {
-			forEach(mFacets,i) {
-				Facet& f = mFacets[i];
-				forEach(f,j)
-					f[j] = isUsed[f[j]];
-			}
-			erase_indices(mVertices,rVertices);
-		}
+		removeUnusedVertices();
 		
 		/* break edges of faces */
-		bool hasMid = false;
 		forEach(mFacets,i) {
+			bool hasMid = false;
 			Facet& f = mFacets[i];
-			
 			IntVector addf;
-			Vector v1,v2;
+
 			addf.assign(f.size(),Constants::MAX_INT);
+
 			forEach(f,j) {
-				v1 = mVertices[f[j]];
+				Vector& v1 = mVertices[f[j]];
 				Int nj = j + 1;
 				if(nj == f.size())
 					nj = 0;
-				v2 = mVertices[f[nj]];
+				Vector& v2 = mVertices[f[nj]];
 				Vector Ce = (v1 + v2) / 2.0;
-				
+
 				//duplicate
-				Int k = ivBegin;
-				for(; k < mVertices.size();k++) {
+				for(Int k = 0; k < mVertices.size();k++) {
 					if(equal(Ce,mVertices[k])) {
 						hasMid = true;
 						addf[j] = k;
@@ -1539,6 +1576,55 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 				f = nf;
 			}
 		}
+		/* break edges of faces */
+		// forEach(mFacets,i) {
+		// 	bool hasMid = false;
+		// 	Facet& f = mFacets[i];
+		// 	IntVector addf;
+		//
+		// 	addf.assign(3*f.size(),Constants::MAX_INT);
+		//
+		// 	forEach(f,j) {
+		// 		Vector& v1 = mVertices[f[j]];
+		// 		Int nj = j + 1;
+		// 		if(nj == f.size())
+		// 			nj = 0;
+		// 		Vector& v2 = mVertices[f[nj]];
+		// 		Vector Ce = (v1 + v2) / 2.0;
+		// 		Vector Ce1 = (v1 + Ce) / 2.0;
+		// 		Vector Ce2 = (Ce + v2) / 2.0;
+		//
+		// 		//duplicate
+		// 		for(Int k = 0; k < mVertices.size();k++) {
+		// 			if(equal(Ce1,mVertices[k])) {
+		// 				hasMid = true;
+		// 				addf[3*j] = k;
+		// 				break;
+		// 			}
+		// 			if(equal(Ce,mVertices[k])) {
+		// 				hasMid = true;
+		// 				addf[3*j+1] = k;
+		// 				break;
+		// 			}
+		// 			if(equal(Ce2,mVertices[k])) {
+		// 				hasMid = true;
+		// 				addf[3*j+2] = k;
+		// 				break;
+		// 			}
+		// 		}
+		// 	}
+		// 	if(hasMid) {
+		// 		Facet nf;
+		// 		forEach(f,j) {
+		// 			nf.push_back(f[j]);
+		// 			for(Int k = 0;k < 3;k++) {
+		// 				if(addf[3*j + k] != Constants::MAX_INT)
+		// 					nf.push_back(addf[3*j + k]);
+		// 			}
+		// 		}
+		// 		f = nf;
+		// 	}
+		// }
 	}
 	/****************
 	 *   End

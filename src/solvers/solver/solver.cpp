@@ -235,7 +235,10 @@ public:
 					System::cd(MP::workingDir);
 					Prepare::mergeFields(i);
 				}
-
+				
+				if(i == starti + Controls::amr_step)
+					Prepare::initRefineThreshold();
+				
 				Prepare::refineMesh(i);
 
 				if(MP::n_hosts > 1) {
@@ -250,7 +253,7 @@ public:
 				}
 			}
 			MP::barrier();
-			Mesh::LoadMesh(i);
+			Mesh::LoadMesh(i);	
 		}
 	}
 	~AmrIteration() {
