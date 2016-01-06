@@ -387,6 +387,7 @@ Tensor trn(const Tensor& p);
 Scalar det(const Tensor& p);
 Tensor inv(const Tensor& p);
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta); 
+bool pointInSegment(const Vector& v,const Vector& v1,const Vector& v2);
 
 /*constants*/
 namespace Constants {
@@ -397,13 +398,14 @@ namespace Constants {
 	const Scalar PI = Scalar(3.14159265358979323846264);
 	const Scalar E  = Scalar(2.71828182845904523536028);
 	const Scalar MachineEpsilon = (sizeof(Scalar) == 4) ? Scalar(1e-8) : Scalar(1e-15);
+	const Scalar EqualEpsilon = (Constants::MachineEpsilon * pow(10.0,double(sizeof(Scalar))));
 	const Vector I_V = Vector(1,1,1);
 	const Tensor I_T = Tensor(1,1,1);
 	const STensor I_ST = STensor(1,1,1);
 }
 
 FORCEINLINE  bool equal(const Scalar& p,const Scalar& q) { 
-	return mag(p - q) <= (Constants::MachineEpsilon * pow(10.0,double(sizeof(Scalar)))); 
+	return (mag(p - q) <= Constants::EqualEpsilon); 
 }
 FORCEINLINE  bool equal(const Vector& p,const Vector& q) {
 	return (equal(p[0],q[0]) && equal(p[1],q[1]) && equal(p[2],q[2]));

@@ -136,6 +136,7 @@ namespace Mesh {
 		void calcGeometry();
 		void removeBoundary(IntVector&);
 		void removeUnusedVertices();
+		void breakEdges();
 		
 		void straightEdges(const Facet&, Facet&, Facet&);
 		bool straightFaces(const Facet&,const Facet&);
@@ -148,7 +149,7 @@ namespace Mesh {
 		void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&);
 		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&);
 		void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
-		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&);
+		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&, IntVector&);
 	};
 	
 	//Global mesh object with its members

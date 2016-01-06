@@ -150,3 +150,23 @@ Tensor inv(const Tensor& p) {
 	else r /= d;
 	return r;
 }
+bool pointInSegment(const Vector& v,const Vector& v1,const Vector& v2) {
+	Vector p = v - v1;
+	Vector q = v - v2;
+	Scalar e;
+	e = p[YY] * q[ZZ] - p[ZZ] * q[YY];
+	if(!equal(e,Scalar(0))) return false;
+	e = p[ZZ] * q[XX] - p[XX] * q[ZZ];
+	if(!equal(e,Scalar(0))) return false;
+	e = p[XX] * q[YY] - p[YY] * q[XX];
+	if(!equal(e,Scalar(0))) return false;
+	
+	e = dot((v - v2),(v1 - v2));
+	if(e > Scalar(0)) {
+		Scalar e1 = dot((v1 - v2),(v1 - v2));
+		if(e < e1)
+			return true;
+	}
+
+	return false;
+}

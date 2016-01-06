@@ -479,7 +479,7 @@ void Prepare::refineMesh(Int step) {
 	Prepare::readFields(BaseField::fieldNames,step);
 	
 	/*find cells to refine/coarsen*/
-	IntVector rCells,cCells;
+	IntVector rCells,cCells,rLevel;
 	{
 		/*find quantity of interest*/
 		ScalarCellField qoi;
@@ -490,9 +490,16 @@ void Prepare::refineMesh(Int step) {
 		cCells.assign(gCells.size(),0);
 		for(Int i = 0;i < gBCS;i++) {
 			if(qoi[i] >= refine_params.field_max 
-				&& gCells.size() <= refine_params.limit)
+				&& gCells.size() <= refine_params.limit) {
+				Int level = 1;
+				for(;level < 3;level++) {
+					Int factor = (1 << (2 * level));
+					if(qoi[i] < refine_params.field_max * factor)
+						break;
+				}
 				rCells.push_back(i);
-			else if(qoi[i] <= refine_params.field_min)
+				rLevel.push_back(level);
+			} else if(qoi[i] <= refine_params.field_min)
 				cCells[i] = 1;
 		}
 	}
@@ -516,7 +523,7 @@ void Prepare::refineMesh(Int step) {
 	/*refine/coarsen mesh and fields*/
 	{
 		IntVector refineMap,coarseMap;
-		gMesh.refineMesh(rCells,cCells,refineMap,coarseMap);
+		gMesh.refineMesh(rCells,cCells,rLevel,refineMap,coarseMap);
 		forEachIt(std::list<BaseField*>, BaseField::allFields, it)
 			(*it)->refineField(step,refineMap,coarseMap); 
 	}

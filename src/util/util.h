@@ -99,6 +99,17 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
 	data = temp;
 }
 
+/*compare pair with second*/
+template<template <typename> class P = std::less >
+struct compare_pair_second {
+    template<class T1, class T2> bool operator()(
+		const std::pair<T1, T2>& left, 
+		const std::pair<T1, T2>& right
+		) {
+        return P<T2>()(left.second, right.second);
+    }
+};
+
 /*Utililty functions*/
 namespace Util {
 	Int hash_function(std::string s);
