@@ -266,9 +266,9 @@ void Mesh::initGeomMeshFields() {
 Int Mesh::findNearestCell(const Vector& v) {
 	Scalar mindist,dist;
 	Int bi = 0;
-	mindist = mag(v - cC[0]);
+	mindist = magSq(v - cC[0]);
 	for(Int i = 0;i < gBCSfield;i++) {
-		dist = mag(v - cC[i]);
+		dist = magSq(v - cC[i]);
 		if(dist < mindist) {
 			mindist = dist;
 			bi = i;
@@ -279,9 +279,9 @@ Int Mesh::findNearestCell(const Vector& v) {
 Int Mesh::findNearestFace(const Vector& v) {
 	Scalar mindist,dist;
 	Int bi = 0;
-	mindist = mag(v - fC[0]);
+	mindist = magSq(v - fC[0]);
 	forEach(fC,i) {
-		dist = mag(v - fC[i]);
+		dist = magSq(v - fC[i]);
 		if(dist < mindist) {
 			mindist = dist;
 			bi = i;
@@ -440,10 +440,12 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
 	using namespace Mesh;
 
 	BaseField* bf = BaseField::findField(Controls::refine_params.field);
-	if(bf) bf->norm(&qoi);
-	fillBCs(qoi);
-	applyExplicitBCs(qoi,false,false);
-	qoi = mag(gradf(qoi));
+	if(bf) {
+		bf->norm(&qoi);
+		fillBCs(qoi);
+		applyExplicitBCs(qoi,false,false);
+		qoi = mag(gradf(qoi));
+	}
 }
 
 void Prepare::initRefineThreshold() {
@@ -490,7 +492,8 @@ void Prepare::refineMesh(Int step) {
 		cCells.assign(gCells.size(),0);
 		for(Int i = 0;i < gBCS;i++) {
 			if(qoi[i] >= refine_params.field_max 
-				&& gCells.size() <= refine_params.limit) {
+				&& gCells.size() <= refine_params.limit
+				) {
 				Int level = 1;
 				for(;level < 3;level++) {
 					Int factor = (1 << (2 * level));

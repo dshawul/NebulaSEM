@@ -135,8 +135,8 @@ namespace Mesh {
 		void addBoundaryCells();
 		void calcGeometry();
 		void removeBoundary(IntVector&);
-		void removeUnusedVertices();
-		void breakEdges();
+		Int  removeUnusedVertices(Int = 0);
+		void breakEdges(Int);
 		
 		void straightEdges(const Facet&, Facet&, Facet&);
 		bool straightFaces(const Facet&,const Facet&);
@@ -147,7 +147,7 @@ namespace Mesh {
 		void calcFaceCenter(const Facet&,Vector&);
 		void calcCellCenter(const Cell&, Vector&);
 		void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&);
-		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&);
+		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,Int);
 		void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
 		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&, IntVector&);
 	};
@@ -389,5 +389,8 @@ namespace Mesh {
 			delete AllBConditions[i];
 		AllBConditions.clear();
 	}
+	
+	bool pointInLine(const Vector&,const Vector&,const Vector&);
+	bool pointInPolygon(const IntVector&,const IntVector&,const Vector&);
 }
 #endif

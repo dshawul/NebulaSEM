@@ -9,20 +9,6 @@ Boundary information
 struct Bdry {
 	string name;
 	IntVector index;
-	/*point in polygon*/
-	int pnpoly(const Vertices& keys,const Vertex& C) {
-		Vector ki,kj;
-		int i, j, nvert = index.size(), c = 0;
-		for (i = 0, j = nvert-1; i < nvert; j = i++) {
-			ki = keys[index[i]];
-			kj = keys[index[j]];
-			if ( ((ki[1]>C[1]) != (kj[1]>C[1])) &&
-				(C[0] < (kj[0]-ki[0]) * (C[1]-ki[1]) / 
-				(kj[1]-ki[1]) + ki[0]) )
-				c = !c;
-		}
-		return c;
-	}
 };
 
 /**
@@ -31,8 +17,8 @@ Mesh generator application
 int main(int argc,char* argv[]) {
 	using namespace Mesh;
 	using namespace Util;
-	Vertices keys;
-	vector<Bdry> Bdrys;
+	Vertices corners;
+	vector<Bdry> patches;
 	MergeObject bMerge;
 	string str;
 	string default_name;
@@ -95,18 +81,18 @@ int main(int argc,char* argv[]) {
 
 	/*read key points*/
 	if(Util::nextc(input))
-		input >> keys;
+		input >> corners;
 
 	while((c = Util::nextc(input)) != 0) {
 		char symbol;
 		if(isdigit(c)) {
-			/*read indices to keys*/
+			/*read indices to corners*/
 			IntVector index;
 			input >> index;
 
 			Vertices v(index.size(),Vector(0));
 			forEach(v,i)
-				v[i] = keys[index[i]];
+				v[i] = corners[index[i]];
 
 			IntVector n;
 			Int type;
@@ -192,7 +178,7 @@ int main(int argc,char* argv[]) {
 					for(Int i = 0;i < sz;i++) {
 						input >> str >> side >> key;	
 						Edge& e = edges[side];
-						e.v[2] = keys[key];
+						e.v[2] = corners[key];
 						if(!compare(str,"arc")) {
 							e.type = ARC;
 						} else if(!compare(str,"cosine")) {
@@ -209,7 +195,7 @@ int main(int argc,char* argv[]) {
 					b.name = str;
 					while((c = Util::nextc(input)) && isdigit(c)) {
 						input >> b.index;
-						Bdrys.push_back(b);
+						patches.push_back(b);
 					}
 				}
 			}
@@ -227,7 +213,7 @@ int main(int argc,char* argv[]) {
 			} else {
 				while((c = Util::nextc(input)) && isdigit(c)) {
 					input >> b.index;
-					Bdrys.push_back(b);
+					patches.push_back(b);
 				}
 			}
 		}
@@ -236,18 +222,18 @@ int main(int argc,char* argv[]) {
 	merge(gMesh,bMerge);
     
 	/*boundaries*/
-	forEach(Bdrys,i) {
+	forEach(patches,i) {
 		IntVector list;
-		IntVector& b = Bdrys[i].index;
-		Vector N = (keys[b[1]] - keys[b[0]]) ^ (keys[b[2]] - keys[b[0]]);
+		IntVector& b = patches[i].index;
+		Vector N = (corners[b[1]] - corners[b[0]]) ^ (corners[b[2]] - corners[b[0]]);
 		N /= mag(N);
 		//*/
 		forEach(gMesh.mPatches,j) {
 			Patch& p = gMesh.mPatches[j];
-			Vector H = (p.C - keys[b[0]]);
+			Vector H = (p.C - corners[b[0]]);
 			Scalar d1 = mag(N ^ p.N);
 			Scalar d2 = sqrt(mag(N & H));
-			//if(Bdrys[i].pnpoly(keys,p.C))
+			//if(pointInPolygon(corners,b,p.C))
 			if(d1 <= 10e-4 && d2 <= 10e-4) {
 				for(Int k = p.from;k < p.to;k++)
 					list.push_back(k);
@@ -259,7 +245,7 @@ int main(int argc,char* argv[]) {
 			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) 
 				^ (gVertices[f[2]] - gVertices[f[0]]));
 			N1 /= mag(N1);
-			Vector H = (gVertices[f[0]] - keys[b[0]]);
+			Vector H = (gVertices[f[0]] - corners[b[0]]);
 			Scalar d = mag(N ^ N1);
 			Scalar d2 = sqrt(mag(N & H));
 			if(d <= 10e-4 && d2 <= 10e-4) {
@@ -267,13 +253,13 @@ int main(int argc,char* argv[]) {
 				// forEach(f,m)
 				// 	C += gVertices[f[m]];
 				// C /= Scalar(f.size());
-				// if(Bdrys[i].pnpoly(keys,C))
+				// if(pointInPolygon(corners,b,C))
 					list.push_back(j);
 			}
 		}
 		//*/
 		if(!list.empty()) {
-			IntVector& gB = gBoundaries[Bdrys[i].name.c_str()];
+			IntVector& gB = gBoundaries[patches[i].name.c_str()];
 			IntVector::iterator it = find(gB.begin(),gB.end(),list[0]);
 			if(it == gB.end()) {
 				forEach(list,j)

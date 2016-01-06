@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #set case file
-case=examples/cavity/ 
-grid=cavity
+case=examples/transport/wave2d/ 
+grid=simple
 
 #run solver
 function run() {

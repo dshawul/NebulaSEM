@@ -242,10 +242,8 @@ public:
 				Prepare::refineMesh(i);
 
 				if(MP::n_hosts > 1) {
-
 					/*decompose mesh*/
 					Prepare::decomposeMesh(i);
-
 					/*change directory*/
 					stringstream s;
 					s << Mesh::gMeshName << MP::host_id;

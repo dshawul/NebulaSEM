@@ -374,7 +374,10 @@ void Mesh::MeshObject::removeBoundary(IntVector& fs) {
 /* 
  * Remove unused vertices 
  */
-void Mesh::MeshObject::removeUnusedVertices() {
+Int Mesh::MeshObject::removeUnusedVertices(Int ivBegin) {
+	if(!ivBegin) 
+		ivBegin = mVertices.size();
+	
 	IntVector isUsed(mVertices.size(),0);
 	forEach(mFacets,i) {
 		Facet& f = mFacets[i];
@@ -383,10 +386,12 @@ void Mesh::MeshObject::removeUnusedVertices() {
 	}
 	IntVector rVertices;
 	Int cnt = 0;
+	Int ivCount = 0;
 	forEach(isUsed,i) {
-		if(!isUsed[i])
+		if(!isUsed[i]) {
 			rVertices.push_back(i);
-		else
+			if(i < ivBegin) ivCount++;
+		} else
 			isUsed[i] = cnt++;
 	}
 	if(rVertices.size()) {
@@ -397,12 +402,13 @@ void Mesh::MeshObject::removeUnusedVertices() {
 		}
 		erase_indices(mVertices,rVertices);
 	}
+	return ivCount;
 }
 /* 
  * Break edges of faces that are not set for refinement 
  * but has a neighboring refined face
  */
-void Mesh::MeshObject::breakEdges() {
+void Mesh::MeshObject::breakEdges(Int ivBegin) {
 	forEach(mFacets,i) {
 		Facet& f = mFacets[i];
 		Facet nf;
@@ -416,9 +422,9 @@ void Mesh::MeshObject::breakEdges() {
 			Vector& v2 = mVertices[f[nj]];
 			
 			vector< pair<Int,Scalar> > order;
-			for(Int k = 0; k < mVertices.size();k++) {
+			for(Int k = ivBegin; k < mVertices.size();k++) {
 				Vector& v = mVertices[k];
-				if(pointInSegment(v,v1,v2)) {
+				if(pointInLine(v,v1,v2)) {
 					Scalar val = dot((v - v1),(v2 - v1));
 					pair<Int,Scalar> p;
 					p.first = k;
@@ -453,8 +459,8 @@ void Mesh::MeshObject::straightEdges(const Facet& f, Facet& r, Facet& removed) {
 			v3 = mVertices[f[0]];
 		else
 			v3 = mVertices[f[j + 1]];
-		Scalar m = mag((v2 - v1) ^ (v3 - v1));
-		if(!equal(m,Scalar(0))) {
+		
+		if(!Mesh::pointInLine(v2,v1,v3)) {
 			r.push_back(f[j]);
 			v1 = v2;
 		} else
@@ -469,7 +475,7 @@ bool Mesh::MeshObject::straightFaces(const Facet& f1_,const Facet& f2_) {
 		^ (mVertices[f1[2]] - mVertices[f1[0]]));
 	Vector N2 = ((mVertices[f2[1]] - mVertices[f2[0]])
 		^ (mVertices[f2[2]] - mVertices[f2[0]]));
-	Scalar e = mag(N1 ^ N2);
+	Scalar e = mag(unit(N1 ^ N2));
 	if(equal(e,Scalar(0))) {
 		Int count = 0;
 		forEach(f1,i) {
@@ -644,37 +650,37 @@ void Mesh::MeshObject::addVerticesToEdge(const int va, Facet& f, const Facet& fp
 	Vector& v2 = mVertices[va];
 	forEach(fp,i) {
 		Vector& v = mVertices[fp[i]];
-		if(pointInSegment(v,v1,v2))
+		if(pointInLine(v,v1,v2))
 			f.push_back(fp[i]);
 	}
 }
 void Mesh::MeshObject::calcFaceCenter(const Facet& f,Vector& fCj) {
-	{
-		Vector C(0);
-		forEach(f,j)
-			C += mVertices[f[j]];
-		fCj = C / Scalar(f.size());
-	}
-	Vector v1,v2,v3;
 	Vector C(0);
+	forEach(f,j)
+		C += mVertices[f[j]];
+	fCj = C / Scalar(f.size());
+
+
+	Vector Ctot(0);
 	Scalar Ntot = Scalar(0);
 	
-	v1 = fCj;
+	Vector v1 = fCj;
 	forEach(f,j) {
-		v2 = mVertices[f[j]];
+		Vector v2 = mVertices[f[j]];
+		Vector v3;
 		if(j + 1 == f.size())
 			v3 = mVertices[f[0]];
 		else
 			v3 = mVertices[f[j + 1]];
+		
 		Vector Ni = ((v2 - v1) ^ (v3 - v1));
 		Scalar magN = mag(Ni);
 		Vector Ci = magN * ((v1 + v2 + v3) / 3);
 
-
-		C += Ci;
+		Ctot += Ci;
 		Ntot += magN;
 	}
-	fCj = C / Ntot;    /*corrected face centre*/
+	fCj = Ctot / Ntot;    /*corrected face centre*/
 }
 void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
 	
@@ -735,7 +741,7 @@ void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
 	cCj = Ct / Vt;
 }
 void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF, 
-				 IntVector& startF, IntVector& endF) {
+				 IntVector& startF, IntVector& endF, Int ivBegin) {
 					 
 	using namespace Controls;
 	
@@ -751,20 +757,8 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 		calcFaceCenter(f,C);
 		
 		/*add face center*/
-		Int fci;
-		{
-			Int k = 0;
-			for(; k < mVertices.size();k++) {
-				if(equal(C,mVertices[k])) {
-					fci = k;
-					break;
-				}
-			}
-			if(k == mVertices.size()) {
-				mVertices.push_back(C);
-				fci = mVertices.size() - 1;;
-			}
-		}
+		mVertices.push_back(C);
+		Int fci = mVertices.size() - 1;
 		
 		Facet fr;
 		{
@@ -801,13 +795,29 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 
 			/*add midpoint*/
 			{
-				Int k = 0;
-				for(; k < mVertices.size();k++) {
-					if(equal(Ce,mVertices[k])) {
-						midpts[j] = k;
-						break;
+				Int k = Constants::MAX_INT;
+				
+				if(fr.size()) {
+					forEach(fr,i) {
+						Int m = fr[i];
+						if(equal(Ce,mVertices[m])) {
+							midpts[j] = m;
+							k = m;
+							break;
+						}
 					}
 				}
+				
+				if(k == Constants::MAX_INT) {
+					k = ivBegin;
+					for(; k < mVertices.size();k++) {
+						if(equal(Ce,mVertices[k])) {
+							midpts[j] = k;
+							break;
+						}
+					}
+				}
+				
 				if(k == mVertices.size()) {
 					mVertices.push_back(Ce);
 					midpts[j] = k;
@@ -1188,6 +1198,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 								  IntVector& cellMap,IntVector& coarseMap) {
 	using namespace Controls;
 	
+	Int ivBegin = mVertices.size();
 	IntVector delFacets;
 	IntVector delCells;
 	
@@ -1274,11 +1285,10 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 #endif
 
 			IntVector allDel;
-
 			forEachIt(Pair,sharedMap,it) {
 				IntVector& faces = it->second;
 				if(faces.size() > 1) {
-
+					//merge facets of cell
 				    Facet nf;
 					mergeFacetsCell(c1,faces,nf);
 
@@ -1338,6 +1348,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 		sort(delTree.begin(),delTree.end());
 		erase_indices(mAmrTree,delTree);
 	}
+	
 	/*************************
 	*
  	*        REFINEMENT
@@ -1375,7 +1386,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 			rFacets.push_back(i);
 	}
 	
-	refineFacets(rFacets,refineF,startF,endF);
+	refineFacets(rFacets,refineF,startF,endF,ivBegin);
 	
 	/*************************
 	 * Refine cells
@@ -1453,7 +1464,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 					}
 					
 					//refine face
-					refineFacets(rfFacets,refineF,startF,endF);
+					refineFacets(rfFacets,refineF,startF,endF,ivBegin);
 				}
 			}
 
@@ -1591,9 +1602,52 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 	mBCS = mCells.size();
 	
 	/*remove unused vertices*/
-	removeUnusedVertices();
+	Int rem = removeUnusedVertices(ivBegin);
+	ivBegin -= rem;
 	
 	/*break edges of faces*/
-	breakEdges();
+	breakEdges(ivBegin);
+}
+/*
+ * Point in line segment
+ */
+bool Mesh::pointInLine(const Vector& v,const Vector& v1,const Vector& v2) {
+	using namespace Constants;
+	
+	Vector p = v - v1;
+	Vector q = v - v2;
+	Scalar e;
+	e = p[YY] * q[ZZ] - p[ZZ] * q[YY];
+	if(!equal(e,Scalar(0))) return false;
+	e = p[ZZ] * q[XX] - p[XX] * q[ZZ];
+	if(!equal(e,Scalar(0))) return false;
+	e = p[XX] * q[YY] - p[YY] * q[XX];
+	if(!equal(e,Scalar(0))) return false;
+	
+	e = dot((v - v2),(v1 - v2));
+	if(e > Scalar(0)) {
+		Scalar e1 = dot((v1 - v2),(v1 - v2));
+		if(e < e1)
+			return true;
+	}
+
+	return false;
+}
+/*
+ * Point in polygon
+ */
+bool Mesh::pointInPolygon(const IntVector& keys,const IntVector& index,const Vector& C) {
+	Vector ki,kj;
+	bool inpoly = false;
+	int i, j, nvert = index.size();
+	for (i = 0, j = nvert-1; i < nvert; j = i++) {
+		ki = keys[index[i]];
+		kj = keys[index[j]];
+		if ( ((ki[1] > C[1]) != (kj[1] > C[1])) &&
+			(C[0] < (kj[0] - ki[0]) * (C[1] - ki[1]) / 
+			(kj[1] - ki[1]) + ki[0]) )
+			inpoly = !inpoly;
+	}
+	return inpoly;
 }
 

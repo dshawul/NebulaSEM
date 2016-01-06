@@ -387,7 +387,6 @@ Tensor trn(const Tensor& p);
 Scalar det(const Tensor& p);
 Tensor inv(const Tensor& p);
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta); 
-bool pointInSegment(const Vector& v,const Vector& v1,const Vector& v2);
 
 /*constants*/
 namespace Constants {
