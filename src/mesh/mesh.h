@@ -147,9 +147,9 @@ namespace Mesh {
 		void calcFaceCenter(const Facet&,Vector&);
 		void calcCellCenter(const Cell&, Vector&);
 		void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&);
-		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,Int);
+		void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&, IntVector&,Int);
 		void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
-		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&, IntVector&);
+		void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&, IntVector&, IntVector&);
 	};
 	
 	//Global mesh object with its members
@@ -381,16 +381,17 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 	p.low.init();
 	return is;
 }
-/*list of all BCS*/
+
 namespace Mesh {
+	/*list of all BCS*/
 	extern  std::vector<BasicBCondition*> AllBConditions;
 	inline void clearBC() {
 		forEach(AllBConditions,i)
 			delete AllBConditions[i];
 		AllBConditions.clear();
 	}
-	
+	/*point in line/polygon*/
 	bool pointInLine(const Vector&,const Vector&,const Vector&);
-	bool pointInPolygon(const IntVector&,const IntVector&,const Vector&);
+	bool pointInPolygon(const VectorVector&,const IntVector&,const Vector&);
 }
 #endif

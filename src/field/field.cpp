@@ -436,74 +436,107 @@ Int Prepare::readFields(vector<string>& fields,Int step) {
  *
  *********************************/
 
-void Prepare::calcQOI(ScalarCellField& qoi) {
+/**
+Calculate quantity of interest (QOI)
+*/
+void Prepare::calcQOI(VectorCellField& qoi) {
 	using namespace Mesh;
 
 	BaseField* bf = BaseField::findField(Controls::refine_params.field);
 	if(bf) {
-		bf->norm(&qoi);
-		fillBCs(qoi);
-		applyExplicitBCs(qoi,false,false);
-		qoi = mag(gradf(qoi));
+		ScalarCellField norm;
+		bf->norm(&norm);
+		fillBCs(norm);
+		applyExplicitBCs(norm,false,false);
+		qoi = gradf(norm);
+		forEach(qoi,i) {
+			Vector& v = qoi[i];
+			v[0] = mag(v[0]);
+			v[1] = mag(v[1]);
+			v[2] = mag(v[2]);
+		}
 	}
 }
-
+/**
+Init AMR refinement threshold
+*/
 void Prepare::initRefineThreshold() {
 	using namespace Mesh;
 	using namespace Controls;
-	
-	ScalarCellField qoi;
+
+	VectorCellField qoi;
+	ScalarCellField qoim;
 	calcQOI(qoi);
+	qoim = mag(qoi);
 	/*max and min*/
 	Scalar maxq = 0;
 	for(Int i = 0;i < gBCS;i++) {
-		if(qoi[i] > maxq) 
-			maxq = qoi[i];
+		if(qoim[i] > maxq)
+			maxq = qoim[i];
 	}
-	refine_params.field_max *= (maxq / 10);
-	refine_params.field_min *= (maxq / 10);
+	refine_params.field_max *= (maxq);
+	refine_params.field_min *= (maxq);
 	std::cout << "----------------------" << std::endl;
 	std::cout << " Refinement threshold " << Controls::refine_params.field_max << std::endl;
 	std::cout << " Coarsening threshold " << Controls::refine_params.field_min << std::endl;
 	std::cout << "----------------------" << std::endl;
 }
-void Prepare::refineMesh(Int step) {
+/**
+Refine grid
+*/
+void Prepare::refineMesh(Int step,bool init_threshold) {
 	using namespace Mesh;
 	using namespace Controls;
-	
+
 	std::cout << "Refining grid at step " << step << std::endl;
-	
+
 	/*Load mesh*/
 	LoadMesh(step,true,false);
-	
+
 	/*create fields*/
 	Prepare::createFields(BaseField::fieldNames,step);
 	Prepare::readFields(BaseField::fieldNames,step);
 	
+	/*init threshold*/
+	if(init_threshold)
+		Prepare::initRefineThreshold();
+	
 	/*find cells to refine/coarsen*/
-	IntVector rCells,cCells,rLevel;
+	IntVector rCells,cCells,rLevel,rDirs;
 	{
 		/*find quantity of interest*/
-		ScalarCellField qoi;
+		VectorCellField qoi;
 		calcQOI(qoi);
-		
+
 		/*get cells to refine*/
 		gCells.erase(gCells.begin() + gBCS,gCells.end());
 		cCells.assign(gCells.size(),0);
 		for(Int i = 0;i < gBCS;i++) {
-			if(qoi[i] >= refine_params.field_max 
-				&& gCells.size() <= refine_params.limit
-				) {
-				Int level = 1;
-				for(;level < 3;level++) {
-					Int factor = (1 << (2 * level));
-					if(qoi[i] < refine_params.field_max * factor)
-						break;
+			Vector q = qoi[i];
+			Scalar qm = mag(q);
+			RefineParams& rp = refine_params;
+			if(qm >= rp.field_max) {
+				if(gCells.size() <= rp.limit) {
+					Int dir = 0;
+					if(q[0] >= rp.field_max) dir |= 1;
+					if(q[1] >= rp.field_max) dir |= 2;
+					if(q[2] >= rp.field_max) dir |= 4;
+
+					if(dir) {
+						Int level = 1;
+						for(;level < 3;level++) {
+							Int factor = (1 << (2 * level));
+							if(qm < rp.field_max * factor)
+								break;
+						}
+						rCells.push_back(i);
+						rLevel.push_back(level);
+						rDirs.push_back(7);
+					}
 				}
-				rCells.push_back(i);
-				rLevel.push_back(level);
-			} else if(qoi[i] <= refine_params.field_min)
+			} else if(qm <= rp.field_min) {
 				cCells[i] = 1;
+			}
 		}
 	}
 	/*Read amr tree*/
@@ -522,13 +555,13 @@ void Prepare::refineMesh(Int step) {
 				gAmrTree[i].id = i;
 		}
 	}
-	
+
 	/*refine/coarsen mesh and fields*/
 	{
 		IntVector refineMap,coarseMap;
-		gMesh.refineMesh(rCells,cCells,rLevel,refineMap,coarseMap);
+		gMesh.refineMesh(rCells,cCells,rLevel,rDirs,refineMap,coarseMap);
 		forEachIt(std::list<BaseField*>, BaseField::allFields, it)
-			(*it)->refineField(step,refineMap,coarseMap); 
+			(*it)->refineField(step,refineMap,coarseMap);
 	}
 	/*Write amrTree*/
 	{
@@ -547,8 +580,8 @@ void Prepare::refineMesh(Int step) {
 		ofstream os(path.str().c_str());
 		gMesh.writeMesh(os);
 	}
-	
-	/*destroy*/ 
+
+	/*destroy*/
 	BaseField::destroyFields();
 }
 

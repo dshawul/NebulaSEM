@@ -227,37 +227,19 @@ int main(int argc,char* argv[]) {
 		IntVector& b = patches[i].index;
 		Vector N = (corners[b[1]] - corners[b[0]]) ^ (corners[b[2]] - corners[b[0]]);
 		N /= mag(N);
-		//*/
+		
 		forEach(gMesh.mPatches,j) {
 			Patch& p = gMesh.mPatches[j];
 			Vector H = (p.C - corners[b[0]]);
 			Scalar d1 = mag(N ^ p.N);
 			Scalar d2 = sqrt(mag(N & H));
-			//if(pointInPolygon(corners,b,p.C))
+			// if(Mesh::pointInPolygon(corners,b,p.C))
 			if(d1 <= 10e-4 && d2 <= 10e-4) {
 				for(Int k = p.from;k < p.to;k++)
 					list.push_back(k);
 			}
 		}
-		/*/
-		forEachS(gFacets,j,gMesh.mNF) {
-			Facet& f = gFacets[j];
-			Vector N1 = ((gVertices[f[1]] - gVertices[f[0]]) 
-				^ (gVertices[f[2]] - gVertices[f[0]]));
-			N1 /= mag(N1);
-			Vector H = (gVertices[f[0]] - corners[b[0]]);
-			Scalar d = mag(N ^ N1);
-			Scalar d2 = sqrt(mag(N & H));
-			if(d <= 10e-4 && d2 <= 10e-4) {
-				// Vector C(0);
-				// forEach(f,m)
-				// 	C += gVertices[f[m]];
-				// C /= Scalar(f.size());
-				// if(pointInPolygon(corners,b,C))
-					list.push_back(j);
-			}
-		}
-		//*/
+		
 		if(!list.empty()) {
 			IntVector& gB = gBoundaries[patches[i].name.c_str()];
 			IntVector::iterator it = find(gB.begin(),gB.end(),list[0]);

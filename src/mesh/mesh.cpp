@@ -499,6 +499,13 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
 		^ (mVertices[f1_[2]] - mVertices[f1_[0]]));
 	Vector N2 = ((mVertices[f2_[1]] - mVertices[f2_[0]])
 		^ (mVertices[f2_[2]] - mVertices[f2_[0]]));
+	
+	Scalar e = magSq(N1);
+	if(equal(e,Scalar(0))) {
+		N1 = ((mVertices[f1_[2]] - mVertices[f1_[0]])
+			^ (mVertices[f1_[3]] - mVertices[f1_[0]]));
+	}
+	
 	Facet f1 = f1_;
 	Facet f2 = f2_;
 	if(dot(N1,N2) < 0) {
@@ -740,40 +747,42 @@ void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
 
 	cCj = Ct / Vt;
 }
-void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF, 
-				 IntVector& startF, IntVector& endF, Int ivBegin) {
-					 
+
+void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
+				 IntVector& rfDirs, IntVector& startF, IntVector& endF, Int ivBegin) {
+
 	using namespace Controls;
-	
+
 	const bool refine3D = equal(Scalar(0.0),mag(refine_params.dir));
-	
+	const Vector uDir = unit(refine_params.dir);
+
 	forEach(rFacets,i) {
-		
+
 		Int fi = rFacets[i];
+		Int dir = rfDirs[i];
 		Facet f = mFacets[fi];
 		Vector C;
-		
+
 		startF[fi] = mFacets.size();
 		calcFaceCenter(f,C);
-		
+
 		/*add face center*/
 		mVertices.push_back(C);
 		Int fci = mVertices.size() - 1;
-		
+
 		Facet fr;
 		{
 			Facet fs;
 			straightEdges(f,fs,fr);
 			f = fs;
 		}
-		
+
 		IntVector midpts;
 		midpts.resize(f.size(),Constants::MAX_INT);
-		
+
 		Vector v1,v2;
 		Int fmid = Constants::MAX_INT;
-		bool anisotropic = false;
-		
+
 		forEach(f,j) {
 			v1 = mVertices[f[j]];
 			Int nj = j + 1;
@@ -781,22 +790,47 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 				nj = 0;
 			v2 = mVertices[f[nj]];
 
+			/*anisotropic refinement*/
 			if(!refine3D) {
-				Scalar angle = acos(mag(dot(v2 - v1,refine_params.dir)) /
-					          (mag(v2 - v1) * mag(refine_params.dir)));
-				if(angle < Constants::PI/4 || angle >= 3 * Constants::PI/4) {
-					anisotropic = true;
-					continue;
+				Vector uLine = unit(v2 - v1);
+				
+#define RDIR(mDir) {						\
+	Scalar angle = acos(dot(mDir,uLine));	\
+	if(angle < Constants::PI / 4 || 		\
+	   angle >= 3 * Constants::PI / 4)		\
+			continue;						\
+}
+				
+				RDIR(uDir);
+#ifdef RDEBUG
+				if(dir > 7 || dir <= 0) {
+					std::cout << "Wrong refinemet direction " << dir << std::endl;
+					exit(0);
+				}
+#endif
+				if(!(dir & 1)) {
+					const Vector xDir(1,0,0);
+					RDIR(xDir);
+				}
+				if(!(dir & 2)) {
+					const Vector yDir(0,1,0);
+					RDIR(yDir);
+				}
+				if(!(dir & 4)) {
+					const Vector zDir(0,0,1);
+					RDIR(zDir);
 				}
 			}
-			
+
+#undef RDIR
+			/*save first mid-point location*/
 			if(j < fmid) fmid = j;
 			Vector Ce = (v1 + v2) / 2.0;
 
 			/*add midpoint*/
 			{
 				Int k = Constants::MAX_INT;
-				
+
 				if(fr.size()) {
 					forEach(fr,i) {
 						Int m = fr[i];
@@ -807,7 +841,7 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 						}
 					}
 				}
-				
+
 				if(k == Constants::MAX_INT) {
 					k = ivBegin;
 					for(; k < mVertices.size();k++) {
@@ -817,54 +851,73 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
 						}
 					}
 				}
-				
+
 				if(k == mVertices.size()) {
 					mVertices.push_back(Ce);
 					midpts[j] = k;
 				}
 			}
 		}
-		
-		/*Add faces*/
+
+		if(fmid == Constants::MAX_INT) {
+			/*unrefined face*/
+			mFacets.push_back(mFacets[fi]);
+			startF.push_back(0);
+			endF.push_back(0);
+			refineF.push_back(0);
+		} else {
+
 #define ADD(x) {					\
 	if(fr.size())					\
 		addVerticesToEdge(x,fn,fr);	\
 	fn.push_back(x);				\
 }
-		
-		forEachS(f,j,fmid) {
-			Facet fn;
-			fn.push_back(midpts[j]);
-			Int k = j + 1;
-			for(;k < f.size();k++) {
-				ADD(f[k]);
-				Int k1 = midpts[k];
-				if(k1 == Constants::MAX_INT);
-				else { 
-					ADD(k1);
-					break;
-				}
-			}
-			if(k == f.size()) {
-				for(k = 0;k <= fmid;k++)
+		    /*Add faces*/
+			forEachS(f,j,fmid) {
+				Facet fn;
+				fn.push_back(midpts[j]);
+
+				bool skipped = false;
+
+				Int k = j + 1;
+				for(;k < f.size();k++) {
 					ADD(f[k]);
-				ADD(midpts[fmid]);
-				j = f.size();
-			} else {
-				j = k - 1;
+					Int k1 = midpts[k];
+					if(k1 == Constants::MAX_INT)
+						skipped = true;
+					else {
+						ADD(k1);
+						break;
+					}
+				}
+				if(k == f.size()) {
+					for(k = 0;k <= fmid;k++) {
+						ADD(f[k]);
+						Int k1 = midpts[k];
+						if(k1 == Constants::MAX_INT)
+							skipped = true;
+						else {
+							ADD(k1);
+							break;
+						}
+					}
+					j = f.size();
+				} else {
+					j = k - 1;
+				}
+
+				if(!skipped)
+					fn.push_back(fci);
+
+				mFacets.push_back(fn);
+				startF.push_back(0);
+				endF.push_back(0);
+				refineF.push_back(0);
 			}
-			
-			if(!anisotropic)
-				fn.push_back(fci);
-			
-			mFacets.push_back(fn);
-			startF.push_back(0);
-			endF.push_back(0);
-			refineF.push_back(0);
-		}
 
 #undef ADD
-		
+		}
+
 		endF[fi] = mFacets.size();
 	}
 }
@@ -886,7 +939,7 @@ void Mesh::MeshObject::refineCell(Cell& c,IntVector& cr,
 	
 	forEach(c,j) {
 		Int fi = c[j];
-	
+		
 		/*cell is refined but face is not?*/
 		IntVector list;
 		if(cr[j] != 1) {
@@ -1085,7 +1138,7 @@ void Mesh::MeshObject::refineCell(Cell& c,IntVector& cr,
 					//merge into first face
 					Int fi = c1[shared1[0]];
 					mFacets[fi] = nf;
-					
+
 					//remove merged facets
 					forEachS(shared1,p,1)
 						delFacets.push_back(c1[shared1[p]]);
@@ -1106,14 +1159,17 @@ void Mesh::MeshObject::refineCell(Cell& c,IntVector& cr,
 	forEach(newc,i) {
 		Cell& c = newc[i];
 		forEach(c,j) {
-			if(mFacets[c[j]].size() <= 3)
+			if(mFacets[c[j]].size() <= 3) {
+				std::cout << "Cell still has triangular face.\n";
 				exit(0);
+			}
 		}
 	}
 #endif
 
 }
-void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,const IntVector& rCells,const Cells& newCells) {
+void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
+							const IntVector& rCells,const Cells& newCells) {
 
 	forEach(rCells,i) {
 		const Cell& c = newCells[rCells[i]];
@@ -1195,7 +1251,7 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,const Int
 	}
 }
 void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector& rLevel,
-								  IntVector& cellMap,IntVector& coarseMap) {
+								  IntVector& rDirs, IntVector& cellMap,IntVector& coarseMap) {
 	using namespace Controls;
 	
 	Int ivBegin = mVertices.size();
@@ -1380,13 +1436,35 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 	
 	initFaceInfo(refineF,crefineF,rCells,mCells);
 	
-	/*refine*/
+	/*fill refinement face set*/
 	forEach(refineF,i) {
 		if(refineF[i])
 			rFacets.push_back(i);
 	}
 	
-	refineFacets(rFacets,refineF,startF,endF,ivBegin);
+	/*set refine directions and then refine*/
+	{
+		IntVector rfDirs;
+		rfDirs.assign(rFacets.size(),0);
+		{
+			IntVector rft;
+			rft.assign(mFacets.size(),0);
+			forEach(rCells,i) {
+				Cell& c = mCells[rCells[i]];
+				forEach(c,j) {
+					Int fi = c[j];
+					rft[fi] |= rDirs[i];
+				}
+			}
+			Int cnt = 0;
+			forEach(refineF,i) {
+				if(refineF[i])
+					rfDirs[cnt++] = rft[i];
+			}
+		}
+		
+		refineFacets(rFacets,refineF,rfDirs,startF,endF,ivBegin);
+	}
 	
 	/*************************
 	 * Refine cells
@@ -1412,12 +1490,14 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 			}
 		}
 
+		Int crdir = rDirs[i];
 		Int start_index = mCells.size();
 		Int NR = rLevel[i];
+		
 		for(Int m = 0;m < NR;m++) {
 			
 			if(m) {
-				//face refininement
+				//face refinement
 				{
 					IntVector rfFacets;
 					forEach(newc,j)
@@ -1446,7 +1526,7 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 							ncrefineF.push_back(v);
 							nrCells.push_back(j);
 						}
-	
+						
 						initFaceInfo(refineF,ncrefineF,nrCells,newc);
 					}
 					
@@ -1463,8 +1543,12 @@ void Mesh::MeshObject::refineMesh(IntVector& rCells,IntVector& cCells,IntVector&
 						erase_indices(rfFacets,alRef);
 					}
 					
+					//set face refinement directions
+					IntVector rfDirs;
+					rfDirs.assign(rfFacets.size(),crdir);
+					
 					//refine face
-					refineFacets(rfFacets,refineF,startF,endF,ivBegin);
+					refineFacets(rfFacets,refineF,rfDirs,startF,endF,ivBegin);
 				}
 			}
 
@@ -1636,7 +1720,7 @@ bool Mesh::pointInLine(const Vector& v,const Vector& v1,const Vector& v2) {
 /*
  * Point in polygon
  */
-bool Mesh::pointInPolygon(const IntVector& keys,const IntVector& index,const Vector& C) {
+bool Mesh::pointInPolygon(const VectorVector& keys,const IntVector& index,const Vector& C) {
 	Vector ki,kj;
 	bool inpoly = false;
 	int i, j, nvert = index.size();

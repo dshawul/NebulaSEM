@@ -1,15 +1,15 @@
 #!/bin/sh
 
 #set case file
-case=examples/transport/wave2d/ 
-grid=simple
+case=examples/backface/ 
+grid=backface
 
 #run solver
 function run() {
 	echo "Starting job with " $2 " processors"
 
 	#generate grid
-	../bin/mesh $1 >grid_0
+	../bin/mesh $1 >grid
 
 	#solve
 	mpirun --np $2  ../bin/solver controls

@@ -677,8 +677,8 @@ namespace Mesh {
 namespace Prepare {
 	void createFields(std::vector<std::string>& fields,Int step);
 	Int  readFields(std::vector<std::string>& fields,Int step);
-	void refineMesh(Int step);
-	void calcQOI(ScalarCellField&);
+	void refineMesh(Int step, bool = false);
+	void calcQOI(VectorCellField&);
 	void initRefineThreshold();
 	int decomposeMesh(Int);
 	int mergeFields(Int);
@@ -1552,15 +1552,15 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 	using namespace Mesh;
 	MeshField<type,VERTEX> vF;
 	std::vector<Scalar> cnt;
-	
+
 	cnt.assign(vF.size(),Scalar(0));
 	vF = type(0);
-	
+
 	forEach(fF,i) {
 		Facet& f = gFacets[i];
 		if(FN[i] < gBCSfield) {
 			forEach(f,j) {
-				Scalar dist = 1.f / magSq(gVertices[f[j]] - fC[i]);
+				Scalar dist = Scalar(1.0) / magSq(gVertices[f[j]] - fC[i]);
 				vF[f[j]] += (fF[i] * dist);
 				cnt[f[j]] += dist;
 			}
@@ -1571,13 +1571,13 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 			}
 		}
 	}
-	
+
 	forEach(vF,i) {
 		vF[i] /= cnt[i];
-		if(mag(vF[i]) < Constants::MachineEpsilon) 
+		if(mag(vF[i]) < Constants::MachineEpsilon)
 			vF[i] = type(0);
 	}
-	
+
 	return vF;
 }
 /* *******************************

@@ -236,10 +236,8 @@ public:
 					Prepare::mergeFields(i);
 				}
 				
-				if(i == starti + Controls::amr_step)
-					Prepare::initRefineThreshold();
-				
-				Prepare::refineMesh(i);
+				bool init_threshold = (i == starti + Controls::amr_step);
+				Prepare::refineMesh(i, init_threshold);
 
 				if(MP::n_hosts > 1) {
 					/*decompose mesh*/

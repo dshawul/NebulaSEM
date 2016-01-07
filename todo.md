@@ -7,7 +7,7 @@
 - [ ] Cyclic boundary in parallel mode
 - [ ] Rotate cyclic patch values for vector fields
 - [X] AMR with dynamic decomposition of grids
-
+- [ ] Finish anisotropic AMR 
 ## Long term
 
 - [x] Implement elliptic DG operator
