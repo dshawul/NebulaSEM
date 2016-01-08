@@ -13,9 +13,9 @@ typedef unsigned int  Int;
 
 /*force inline*/
 #ifdef _MSC_VER
-#	define FORCEINLINE __forceinline
+#   define FORCEINLINE __forceinline
 #else
-#	define FORCEINLINE __inline
+#   define FORCEINLINE __inline
 #endif
 
 #endif

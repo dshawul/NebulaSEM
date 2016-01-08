@@ -4,43 +4,43 @@ References:
     http://www.cfd-online.com/Wiki/Wilcox%27s_k-omega_model
 */
 KW_Model::KW_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
-	KX_Model(tU,tF,trho,tnu,"w")
+    KX_Model(tU,tF,trho,tnu,"w")
 {
-	Cmu = 0.09;
-	SigmaK = 2;
-	SigmaX = 2;
-	C1x = 5./9;
-	C2x = 3./40;
+    Cmu = 0.09;
+    SigmaK = 2;
+    SigmaX = 2;
+    C1x = 5./9;
+    C2x = 3./40;
 }
 void KW_Model::enroll() {
-	using namespace Util;
-	KX_Model::enroll();
-	params.enroll("Cmu",&Cmu);
-	params.enroll("SigmaK",&SigmaK);
-	params.enroll("SigmaW",&SigmaX);
-	params.enroll("C1w",&C1x);
-	params.enroll("C2w",&C2x);
+    using namespace Util;
+    KX_Model::enroll();
+    params.enroll("Cmu",&Cmu);
+    params.enroll("SigmaK",&SigmaK);
+    params.enroll("SigmaW",&SigmaX);
+    params.enroll("C1w",&C1x);
+    params.enroll("C2w",&C2x);
 }
 void KW_Model::solve() {
-	ScalarCellMatrix M;
-	ScalarCellField mu;
+    ScalarCellMatrix M;
+    ScalarCellField mu;
 
-	/*turbulent dissipation*/
-	mu = eddy_mu / SigmaX + rho * nu;
-	M = transport(x, U, F, mu, x_UR,
-				(C1x * Pk * x / k),
-				-(C2x * rho * x), &rho);
-	FixNearWallValues(M);
-	Solve(M);
-	x = max(x,Constants::MachineEpsilon);
+    /*turbulent dissipation*/
+    mu = eddy_mu / SigmaX + rho * nu;
+    M = transport(x, U, F, mu, x_UR,
+                (C1x * Pk * x / k),
+                -(C2x * rho * x), &rho);
+    FixNearWallValues(M);
+    Solve(M);
+    x = max(x,Constants::MachineEpsilon);
 
-	/*turbulent kinetic energy*/
-	mu = eddy_mu / SigmaK + rho * nu;
-	M = transport(k, U, F, mu, k_UR,
-					Pk,
-					-(Cmu * rho * x), &rho);
-	if(wallModel == STANDARD)
-		FixNearWallValues(M);
-	Solve(M);
-	k = max(k,Constants::MachineEpsilon);
+    /*turbulent kinetic energy*/
+    mu = eddy_mu / SigmaK + rho * nu;
+    M = transport(k, U, F, mu, k_UR,
+                    Pk,
+                    -(Cmu * rho * x), &rho);
+    if(wallModel == STANDARD)
+        FixNearWallValues(M);
+    Solve(M);
+    k = max(k,Constants::MachineEpsilon);
 }

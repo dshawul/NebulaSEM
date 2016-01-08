@@ -6,64 +6,64 @@
 #ifdef _MSC_VER
 #    include <windows.h>
 #    include <process.h>
-#	 include <sys/timeb.h>
+#    include <sys/timeb.h>
 #else
 #    include <unistd.h>
 #    include <sys/stat.h>
-#	 include <sys/time.h>
+#    include <sys/time.h>
 #endif
 
 
 namespace System {
-	/*get processor id*/
-	inline int get_pid() {
+    /*get processor id*/
+    inline int get_pid() {
 #ifdef _MSC_VER
-		return _getpid();
+        return _getpid();
 #else
-		return getpid();
+        return getpid();
 #endif
-	}
-	/*system dependent directory operations*/
-	inline int cd(std::string path) {
+    }
+    /*system dependent directory operations*/
+    inline int cd(std::string path) {
 #ifdef _MSC_VER
-		return ::SetCurrentDirectory((LPCTSTR)path.c_str());
+        return ::SetCurrentDirectory((LPCTSTR)path.c_str());
 #else
-		return !::chdir(path.c_str());
+        return !::chdir(path.c_str());
 #endif
-	}
-	inline int mkdir(std::string path) {
+    }
+    inline int mkdir(std::string path) {
 #ifdef _MSC_VER
-		return ::CreateDirectory((LPCTSTR)path.c_str(),NULL);
+        return ::CreateDirectory((LPCTSTR)path.c_str(),NULL);
 #else
-		return !::mkdir(path.c_str(),S_IRWXU);
+        return !::mkdir(path.c_str(),S_IRWXU);
 #endif
-	}
-	inline int rmdir(std::string path) {
+    }
+    inline int rmdir(std::string path) {
 #ifdef _MSC_VER
-		return ::RemoveDirectory((LPCTSTR)path.c_str());
+        return ::RemoveDirectory((LPCTSTR)path.c_str());
 #else
-		return !::rmdir(path.c_str());
+        return !::rmdir(path.c_str());
 #endif
-	}
-	inline int pwd(char* path, int len) {
+    }
+    inline int pwd(char* path, int len) {
 #ifdef _MSC_VER
-		return ::GetCurrentDirectory(len,(LPTSTR)path);
+        return ::GetCurrentDirectory(len,(LPTSTR)path);
 #else
-		return !::getcwd(path, len);
+        return !::getcwd(path, len);
 #endif
-	}
-	/*time*/
-	inline int get_time() {
+    }
+    /*time*/
+    inline int get_time() {
 #ifdef _MSC_VER
-		timeb tb;
-		ftime(&tb);
-		return int(tb.time * 1000 + tb.millitm);
+        timeb tb;
+        ftime(&tb);
+        return int(tb.time * 1000 + tb.millitm);
 #else
-		timeval tb;
-		gettimeofday(&tb, NULL);
-		return int(tb.tv_sec * 1000 + tb.tv_usec / 1000);
+        timeval tb;
+        gettimeofday(&tb, NULL);
+        return int(tb.tv_sec * 1000 + tb.tv_usec / 1000);
 #endif
-	}
+    }
 }
 
 #endif

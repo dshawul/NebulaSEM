@@ -4,15 +4,15 @@
 #include "mixing_length.h"
 
 struct LES_Model : public MixingLength_Model {
-	/*model coefficients*/
-	Scalar Cs;
+    /*model coefficients*/
+    Scalar Cs;
 
-	/*constructor*/
-	LES_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,Scalar&);
+    /*constructor*/
+    LES_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,Scalar&);
 
-	/*others*/
-	virtual void enroll();
-	virtual void calcLengthScale();
+    /*others*/
+    virtual void enroll();
+    virtual void calcLengthScale();
 };
 
 #endif

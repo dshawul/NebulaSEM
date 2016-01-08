@@ -4,9 +4,9 @@
 #include "field.h"
 
 namespace Vtk {
-	void write_vtk(Int);
-	extern bool write_polyhedral;
-	extern bool write_cell_value;
+    void write_vtk(Int);
+    extern bool write_polyhedral;
+    extern bool write_cell_value;
 }
 
 #endif

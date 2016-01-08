@@ -4,26 +4,26 @@
 #include "mesh.h"
 
 enum {
-	LINEAR, GEOMETRIC, WALL, MIXED
+    LINEAR, GEOMETRIC, WALL, MIXED
 };
 enum {
-	NONE = 0,ARC,COSINE,QUAD
+    NONE = 0,ARC,COSINE,QUAD
 };
 
 struct Edge {
-	int type;
-	Scalar theta;
-	Scalar L;
-	Vector N;
-	Vertex v[8];
-	Edge() {
-		type = NONE;
-	}
+    int type;
+    Scalar theta;
+    Scalar L;
+    Vector N;
+    Vertex v[8];
+    Edge() {
+        type = NONE;
+    }
 };
 
 struct MergeObject {
-	Vertices vb;
-	Facets   fb;
+    Vertices vb;
+    Facets   fb;
 };
 
 void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,Mesh::MeshObject& mo);
