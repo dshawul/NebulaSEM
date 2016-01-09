@@ -531,7 +531,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
                         }
                         rCells.push_back(i);
                         rLevel.push_back(level);
-                        rDirs.push_back(7);
+                        rDirs.push_back(dir);
                     }
                 }
             } else if(qm <= rp.field_min) {

@@ -134,22 +134,24 @@ namespace Mesh {
         void readMshMesh(std::istream&);
         void addBoundaryCells();
         void calcGeometry();
-        void removeBoundary(IntVector&);
+        void removeBoundary(const IntVector&);
         Int  removeUnusedVertices(Int = 0);
         void breakEdges(Int);
         
-        void straightEdges(const Facet&, Facet&, Facet&);
-        bool straightFaces(const Facet&,const Facet&);
+        void straightenEdges(const Facet&, Facet&, Facet&);
+        bool coplanarFaces(const Facet&,const Facet&);
         bool mergeFacets(const Facet&,const Facet&, Facet&);
         void mergeFacetsCell(const Cell&,const IntVector&,Facet&);
-        void mergeCells(Cell&,Cell&,IntVector&);
+        void mergeCells(Cell&,const Cell&,IntVector&);
         void addVerticesToEdge(const int, Facet&, const Facet&);
         void calcFaceCenter(const Facet&,Vector&);
         void calcCellCenter(const Cell&, Vector&);
-        void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&);
-        void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&, IntVector&,Int);
-        void refineCell(Cell&,IntVector& cr, IntVector&, IntVector&, IntVector&, Cells&c,IntVector&);
-        void refineMesh(IntVector&, IntVector&, IntVector&, IntVector&, IntVector&, IntVector&);
+        void calcUnitNormal(const Facet&,Vector&);
+        void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&,Int);
+        void refineFacet(const Facet&, Facets&, Int); 
+        void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,Int);
+        void refineCell(const Cell&, const IntVector&, Int, IntVector&, IntVector&, IntVector&, Cells&, IntVector&);
+        void refineMesh(const IntVector&, const IntVector&, const IntVector&, const IntVector&, IntVector&, IntVector&);
     };
     
     //Global mesh object with its members
