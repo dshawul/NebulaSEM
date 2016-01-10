@@ -473,18 +473,23 @@ bool Mesh::pointInLine(const Vector& v,const Vector& v1,const Vector& v2) {
 /**
 Point in polygon
 */
-bool Mesh::pointInPolygon(const VectorVector& keys,const IntVector& index,const Vector& C) {
-    bool inpoly = false;
-    int i, j, nvert = index.size();
-    for (i = 0, j = nvert-1; i < nvert; j = i++) {
-        const Vector& ki = keys[index[i]];
-        const Vector& kj = keys[index[j]];
-        if ( ((ki[1] > C[1]) != (kj[1] > C[1])) &&
-            (C[0] < (kj[0] - ki[0]) * (C[1] - ki[1]) / 
-            (kj[1] - ki[1]) + ki[0]) )
-            inpoly = !inpoly;
-    }
-    return inpoly;
+bool Mesh::pointInPolygon(const VectorVector& points,const IntVector& f,const Vector& C) {
+   Scalar sum = 0;
+
+   forEach(f,j) {
+      Vector p1 = points[f[j]] - C;
+      Vector p2 = points[f[ (j + 1 == f.size()) ? 0 : (j + 1) ]] - C;
+
+      Scalar mg = mag(p1) * mag(p2);
+      if (equal(mg,Scalar(0)))
+         return true;
+      sum = acos(dot(p1,p2) / mg);
+   }
+   
+   if(equal(sum, 2 * Constants::PI))
+       return true;
+   
+   return false;
 }
 /**
 Calculate unit-normal of face
@@ -959,6 +964,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
     std::cout << "Cell center: " << C << std::endl;
 #endif
     
+    IntVector ownerf;
     forEach(c,j) {
         Int fi = c[j];
         
@@ -966,11 +972,18 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
         IntVector list;
         if(cr[j] != 1) {
             list.push_back(fi);
+            ownerf.push_back(cr[j]);
         } else {
-            for(Int k = startF[fi]; k < endF[fi];k++)
+            for(Int k = startF[fi]; k < endF[fi];k++) {
                 list.push_back(k);
+                ownerf.push_back(fi);
+            }
         }
-
+        
+#ifdef RDEBUG
+            if(j == 0) std::cout << "====================================\n";
+            std::cout << cr[j] << " ( " << startF[fi] << "  " << endF[fi] << " ) " << std::endl;
+#endif
         /*refine cells*/
         forEach(list,k) {
             Int fni = list[k];
@@ -1014,22 +1027,6 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
      *
      * *********************/
     {
-        /*cells on same face*/
-        IntVector ownerf;
-        forEach(c,j) {
-            Int fi = c[j];
-            if(cr[j] != 1) {
-                ownerf.push_back(cr[j]);
-            } else {
-                for(Int k = startF[fi]; k < endF[fi];k++)
-                    ownerf.push_back(fi);
-            }
-#ifdef RDEBUG
-            if(j == 0) std::cout << "====================================\n";
-            std::cout << cr[j] << " ( " << startF[fi] << "  " << endF[fi] << " ) " << std::endl;
-#endif
-        }
-    
         /* Find among new cells on different owner faces,
          * and merge if they have a shared face
          */
@@ -1048,7 +1045,12 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
             forEachS(newc,k,j+1) {
                 Int o2 = ownerf[k];
                 Cell& c2 = newc[k];
-                if(o1 == o2) continue;
+                if(o1 > Constants::MAX_INT / 2 && 
+                   o2 > Constants::MAX_INT / 2) {
+                    if(o1 != o2) continue;
+                } else {
+                    if(o1 == o2) continue;
+                }
             
                 /*Compare faces*/
                 forEach(c1,m) {
@@ -1215,69 +1217,31 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
                     shared.push_back(k);
                 }
             }
-
             if(!straight) {
                 refineF[c[j]] = 1;
                 cr[j] = 1;
             } else {
-                Int id = shared[shared.size() - 1];
+                Facet f;
+                mergeFacetsCell(c,shared,f);
+                Facets newf;
+                refineFacet(f,newf,ivBegin);
+
+                const Int base = Constants::MAX_INT / 2 + c[shared[0]] * 256;
                 forEach(shared,k) {
                     Int v = shared[k];
-                    flag[v] = 1;
-                    cr[v] = id + 2;
-                }
-            }
-        }
+                    Vector fc = mFC[c[v]];
 
-        const Int HALF = Constants::MAX_INT / 2;
-        flag.assign(cr.size(),0);
-        forEach(cr,k) {
-            if(flag[k]) continue;
-
-            Int crk = cr[k];
-            if(crk < 2) continue;
-            Vector C(0);
-            Int cnt = 0;
-            forEach(cr,j) {
-                Int crj = cr[j];
-                if(crj >= HALF)
-                    crj -= HALF;
-                if(crk == crj) {
-                    C += mFC[c[j]];
-                    cnt++;
-                }
-            }
-            C /= cnt;
-            if(cnt <= 2) continue;
-
-            Scalar e = dot(mFC[c[k]] - C, mFC[c[crk - 2]] - C);
-            if(e > Scalar(0))
-                cr[k] += HALF;
-
-            Scalar maxd = -1e30,mind = 1e30;
-            Int ix,in;
-            forEach(cr,j) {
-                Int crj = cr[j];
-                if(crk == crj) {
-                    flag[j] = 1;
-                    Scalar e = dot(mFC[c[j]] - C, mFC[c[crk - 2]] - C);
-                    if(e > Scalar(0)) {
-                        if(e < mind) mind = e;
-                        in = j;
-                    } else {
-                        if(e > maxd) maxd = e;
-                        ix = j;
+                    forEach(newf,m) {
+                        const Facet& nf = newf[m];
+                        if(Mesh::pointInPolygon(mVertices,nf,fc)) {
+                            cr[v] = base + m;
+                            break;
+                        }
                     }
+                    
+                    flag[v] = 1;
                 }
             }
-
-            forEachS(cr,j,k) {
-                Int crj = cr[j];
-                if(crk == crj)
-                    cr[j] = crj + c[j];
-            }
-
-            cr[in] = cr[ix];
         }
     }
 }
