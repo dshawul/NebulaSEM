@@ -148,10 +148,12 @@ namespace Mesh {
         void calcCellCenter(const Cell&, Vector&);
         void calcUnitNormal(const Facet&,Vector&);
         void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&,Int);
-        void refineFacet(const Facet&, Facets&, Int); 
-        void refineFacets(const IntVector&, IntVector&, IntVector&, IntVector&,Int);
-        void refineCell(const Cell&, const IntVector&, Int, IntVector&, IntVector&, IntVector&, Cells&, IntVector&);
-        void refineMesh(const IntVector&, const IntVector&, const IntVector&, const IntVector&, IntVector&, IntVector&);
+        void refineFacet(const Facet&, Facets&, Int, Int); 
+        void refineFacets(const IntVector&, IntVector&, const IntVector&, IntVector&, IntVector&,Int);
+        void refineCell(const Cell&, IntVector&, Int, IntVector&,
+                        IntVector&, IntVector&, Cells&, IntVector&, Int);
+        void refineMesh(const IntVector&, const IntVector&, const IntVector&, 
+                        const IntVector&, IntVector&, IntVector&);
     };
     
     //Global mesh object with its members

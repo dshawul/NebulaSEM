@@ -2,7 +2,11 @@
 
 using namespace std;
 
-/*global mesh*/
+// #define RDEBUG
+
+/**
+References to global mesh
+*/
 namespace Mesh {
     MeshObject        gMesh;
     std::string&      gMeshName = gMesh.name;
@@ -25,10 +29,16 @@ namespace Mesh {
     vector<BasicBCondition*> AllBConditions;
     Vertices         probePoints;
 }
+/**
+Refinement and domain decomposition parameters
+*/
 namespace Controls {
     RefineParams refine_params;
     DecomposeParams decompose_params;
 }
+/**
+Enroll refine parameters
+*/
 void Controls::enrollRefine(Util::ParamList& params) {
     params.enroll("direction",&refine_params.dir);
     params.enroll("field",&refine_params.field);
@@ -36,6 +46,9 @@ void Controls::enrollRefine(Util::ParamList& params) {
     params.enroll("field_min",&refine_params.field_min);
     params.enroll("limit",&refine_params.limit);
 }
+/**
+Enroll domain decomposition parameters
+*/
 void Controls::enrollDecompose(Util::ParamList& params) {
     params.enroll("n",&decompose_params.n);
     params.enroll("axis",&decompose_params.axis);
@@ -43,11 +56,17 @@ void Controls::enrollDecompose(Util::ParamList& params) {
             "XYZ","CELLID","METIS","NONE");
     params.enroll("type",op);
 }
+/**
+Clear mesh
+*/
 void Mesh::clear() {
     gMesh.clear();
     Mesh::clearBC();
     Mesh::probePoints.clear();
 }
+/**
+Clear mesh object
+*/
 void Mesh::MeshObject::clear() {
     mVertices.clear();
     mFacets.clear();
@@ -60,7 +79,7 @@ void Mesh::MeshObject::clear() {
     mAmrTree.clear();
 }
 /**
-Read mesh
+Read mesh at given time step
 */
 bool Mesh::MeshObject::readMesh(Int step,bool first) {
     /*open file*/
@@ -108,7 +127,7 @@ bool Mesh::MeshObject::readMesh(Int step,bool first) {
     return true;
 }
 /**
-Write mesh
+Write mesh to file
 */
 void Mesh::MeshObject::writeMesh(ostream& os) {
     os << hex;
@@ -122,7 +141,7 @@ void Mesh::MeshObject::writeMesh(ostream& os) {
     os << dec;
 }
 /**
-Add boundary cells
+Add boundary cells around mesh
 */
 void Mesh::MeshObject::addBoundaryCells() {
     using namespace Constants;
@@ -287,7 +306,7 @@ void Mesh::MeshObject::calcGeometry() {
     }
 }
 /** 
-Remove empty boundary
+Remove empty boundary (for 2D domain)
 */
 void Mesh::MeshObject::removeBoundary(const IntVector& fs) {
     Int count;
@@ -446,7 +465,7 @@ void Mesh::MeshObject::breakEdges(Int ivBegin) {
     }
 }
 /**
-Point in line segment
+Is point inside line segment ?
 */
 bool Mesh::pointInLine(const Vector& v,const Vector& v1,const Vector& v2) {
     using namespace Constants;
@@ -471,7 +490,7 @@ bool Mesh::pointInLine(const Vector& v,const Vector& v1,const Vector& v2) {
     return false;
 }
 /**
-Point in polygon
+Is point inside convex polygon (face) ?
 */
 bool Mesh::pointInPolygon(const VectorVector& points,const IntVector& f,const Vector& C) {
    Scalar sum = 0;
@@ -483,7 +502,7 @@ bool Mesh::pointInPolygon(const VectorVector& points,const IntVector& f,const Ve
       Scalar mg = mag(p1) * mag(p2);
       if (equal(mg,Scalar(0)))
          return true;
-      sum = acos(dot(p1,p2) / mg);
+      sum += acos(dot(p1,p2) / mg);
    }
    
    if(equal(sum, 2 * Constants::PI))
@@ -795,11 +814,10 @@ void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
 /**
 Refine facet
 */
-void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int ivBegin) {
+void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int ivBegin) {
     using namespace Controls;
     
     const bool refine3D = equal(Scalar(0.0),mag(refine_params.dir));
-    const Vector uDir = unit(refine_params.dir);
     
     /*add face center*/
     Vector C;
@@ -822,20 +840,35 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int ivBegin) {
         const Vector& v2 = mVertices[f[ (j + 1 == f.size()) ? 0 : (j + 1) ]];
 
         /*anisotropic refinement*/
-        if(!refine3D) {
-            Vector uLine = unit(v2 - v1);
-            
 #define RDIR(mDir) {                        \
     Scalar angle = acos(dot(mDir,uLine));   \
     if(angle < Constants::PI / 4 ||         \
        angle >= 3 * Constants::PI / 4)      \
             continue;                       \
 }
-            
+       
+        Vector uLine = unit(v2 - v1);
+        
+        if(!refine3D) {
+            const Vector uDir = unit(refine_params.dir);
             RDIR(uDir);
-
-#undef RDIR
         }
+        
+        if(!(dir & 1)) {
+            const Vector xDir(1,0,0);
+            RDIR(xDir);
+        }
+        if(!(dir & 2)) {
+            const Vector yDir(0,1,0);
+            RDIR(yDir);
+        }
+        if(!(dir & 4)) {
+            const Vector zDir(0,0,1);
+            RDIR(zDir);
+        }
+            
+#undef RDIR
+            
         /*save first mid-point location*/
         if(j < fmid) fmid = j;
         Vector Ce = (v1 + v2) / 2.0;
@@ -875,9 +908,20 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int ivBegin) {
     if(fmid != Constants::MAX_INT) {
 
 #define ADD(x) {                    \
-if(fr.size())                   \
-    addVerticesToEdge(x,fn,fr); \
-fn.push_back(x);                \
+    if(fr.size())                   \
+        addVerticesToEdge(x,fn,fr); \
+    fn.push_back(x);                \
+}
+
+#define TEST() {                    \
+    ADD(f[k]);                      \
+    Int k1 = midpts[k];             \
+    if(k1 == Constants::MAX_INT)    \
+        skipped = true;             \
+    else {                          \
+        ADD(k1);                    \
+        break;                      \
+    }                               \
 }
         /*Add faces*/
         forEachS(f,j,fmid) {
@@ -887,27 +931,11 @@ fn.push_back(x);                \
             bool skipped = false;
 
             Int k = j + 1;
-            for(;k < f.size();k++) {
-                ADD(f[k]);
-                Int k1 = midpts[k];
-                if(k1 == Constants::MAX_INT)
-                    skipped = true;
-                else {
-                    ADD(k1);
-                    break;
-                }
-            }
+            for(;k < f.size();k++)
+                TEST();
             if(k == f.size()) {
-                for(k = 0;k <= fmid;k++) {
-                    ADD(f[k]);
-                    Int k1 = midpts[k];
-                    if(k1 == Constants::MAX_INT)
-                        skipped = true;
-                    else {
-                        ADD(k1);
-                        break;
-                    }
-                }
+                for(k = 0;k <= fmid;k++)
+                    TEST();
                 j = f.size();
             } else {
                 j = k - 1;
@@ -918,25 +946,30 @@ fn.push_back(x);                \
 
             newf.push_back(fn);
         }
-
+        
+#undef TEST
 #undef ADD
+        
+    } else {
+        newf.push_back(f_);
     }
 
 }
 /**
-Refine facets
+Refine list of facets
 */
-void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
+void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF, const IntVector& rfDirs,
                              IntVector& startF, IntVector& endF, Int ivBegin) {
 
     Facets newf;
     forEach(rFacets,i) {
         Int fi = rFacets[i];
+        Int dir = rfDirs[i];
         const Facet& f = mFacets[fi];
         
         startF[fi] = mFacets.size() + newf.size();
         
-        refineFacet(f,newf,ivBegin);
+        refineFacet(f,newf,dir,ivBegin);
         
         endF[fi] = mFacets.size() + newf.size();
     }
@@ -947,48 +980,133 @@ void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF,
     refineF.resize(mFacets.size(),0);
 }
 /**
-Refine cell
+Refine a given cell
 */
-void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
+void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
                 IntVector& refineF,IntVector& startF,IntVector& endF,
-                Cells& newc,IntVector& delFacets
+                Cells& newc,IntVector& delFacets, Int ivBegin
                 ) {
+   /* *************************
+    *
+    * Form new cells (pyramids) 
+    *
+    * *************************/
+    //co-planar faces
+    typedef std::map<Int, std::pair<IntVector,IntVector> > typeMap;
+    typeMap sharedMap;
 
+    IntVector c1;
+    IntVector c1r;
+    
+    c1.reserve(c.size());
+    c1r.reserve(c.size());
+
+    forEach(cr,j) {
+        Int crj = cr[j];
+        if(crj < Constants::MAX_INT / 2) {
+            if(crj != rDir) {
+                IntVector& shared = sharedMap[j].first;
+                shared.push_back(j);
+            } else {
+                c1.push_back(c[j]);
+                c1r.push_back(0);
+            }
+            continue;
+        }
+        crj -= Constants::MAX_INT / 2;
+
+        IntVector& shared = sharedMap[crj].first;
+        shared.push_back(j);
+    }
+
+    forEachIt(typeMap,sharedMap,it) {
+        IntVector& shared = (it->second).first;
+        
+        Facet f;
+        if(shared.size() > 1) {
+            mergeFacetsCell(c,shared,f);
+        } else {
+            f = mFacets[c[shared[0]]];
+        }
+        
+        Facets newf;
+        refineFacet(f,newf,rDir,ivBegin);
+
+        forEach(newf,j) {
+            Int fi = mFacets.size();
+            {
+                mFacets.push_back(newf[j]);
+                startF.push_back(0);
+                endF.push_back(0);
+                refineF.push_back(0);
+            }
+            (it->second).second.push_back(fi);
+            c1.push_back(fi);
+            c1r.push_back(shared[0] + Constants::MAX_INT / 2);
+            delFacets.push_back(fi);
+        }
+        
+#ifdef RDEBUG
+        std::cout << it->first << " = " << it->second.first << " = " << it->second.second <<  std::endl;
+        std::cout << "---\n";
+#endif
+        
+    }
+
+    //refine cell
     Vector C;
     calcCellCenter(c,C);
     mVertices.push_back(C);
     Int cci = mVertices.size() - 1;
-    Int ifBegin1 = mFacets.size();
-    
+    Int ifBegin = mFacets.size();
+
 #ifdef RDEBUG
     std::cout << "Cell center: " << C << std::endl;
 #endif
-    
+
     IntVector ownerf;
-    forEach(c,j) {
-        Int fi = c[j];
-        
+    forEach(c1,j) {
+        Int fi = c1[j];
+        Int crj = c1r[j];
+
         /*cell is refined but face is not?*/
         IntVector list;
-        if(cr[j] != 1) {
+        if(crj) {
             list.push_back(fi);
-            ownerf.push_back(cr[j]);
+            ownerf.push_back(crj);
         } else {
             for(Int k = startF[fi]; k < endF[fi];k++) {
                 list.push_back(k);
                 ownerf.push_back(fi);
             }
         }
-        
+
 #ifdef RDEBUG
-            if(j == 0) std::cout << "====================================\n";
-            std::cout << cr[j] << " ( " << startF[fi] << "  " << endF[fi] << " ) " << std::endl;
+        if(j == 0) std::cout << "====================================\n";
+        std::cout << crj << " " << rDir << " ( " << startF[fi] << "  " << endF[fi] << " ) " << std::endl;
 #endif
+            
         /*refine cells*/
         forEach(list,k) {
             Int fni = list[k];
             Facet f = mFacets[fni];
-    
+            
+            //straighten edges
+            if(f.size() > 4)
+            {
+                Facet r,rr;
+                straightenEdges(f,r,rr);
+                f = r;
+            }
+            
+#ifdef RDEBUG
+            Vector fc;
+            calcFaceCenter(f,fc);
+            std::cout << f << std::endl;
+            std::cout << fc << std::endl;
+            std::cout << "----\n";
+#endif
+            
             Cell cn;
             cn.push_back(fni);
 
@@ -1002,7 +1120,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
                 fn.push_back(v2i);
                 fn.push_back(cci);
                 //duplicate
-                Int k = ifBegin1;
+                Int k = ifBegin;
                 for(; k < mFacets.size();k++) {
                     if(equal(fn,mFacets[k])) {
                         cn.push_back(k);
@@ -1021,9 +1139,56 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
             newc.push_back(cn);
         }
     }
+    
+    //Replace co-planar faces
+    forEach(newc,i) {
+        if(ownerf[i] < Constants::MAX_INT / 2)
+            continue;
+        
+        Cell& nc = newc[i];
+        Int fi = nc[0];
+        Facet& nf = mFacets[fi];
+        
+        IntVector forg;
+        std::pair<IntVector,IntVector> pair;
+        pair = sharedMap[ownerf[i] - Constants::MAX_INT / 2];
+        const IntVector& faces1 = pair.first;
+        const IntVector& faces2 = pair.second;
+        forEach(faces2,j) {
+            if(fi == faces2[j]) {
+                IntVector org;
+                if(faces1.size() > 1) {
+                    forEach(faces1, i)
+                        org.push_back(c[faces1[i]]);
+                } else {
+                    Int m = c[faces1[0]];
+                    for(Int k = startF[m]; k < endF[m];k++)
+                        org.push_back(k);
+                }
+                
+                forEach(org,k) {
+                    Int m = org[k];
+                    Vector fc;
+                    calcFaceCenter(mFacets[m],fc);
+                    if(Mesh::pointInPolygon(mVertices,nf,fc))
+                        forg.push_back(m);
+                }
+                
+                break;
+            }
+        }
+            
+        if(forg.size()) {
+            nc.insert(nc.begin() + 1,forg.size() - 1,0);
+            Int cnt = 0;
+            forEach(forg,j)
+                nc[cnt++] = forg[j];
+        }
+    }
+    
     /* *********************
      *
-     * Merge cells 
+     * Merge new cells 
      *
      * *********************/
     {
@@ -1045,12 +1210,8 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
             forEachS(newc,k,j+1) {
                 Int o2 = ownerf[k];
                 Cell& c2 = newc[k];
-                if(o1 > Constants::MAX_INT / 2 && 
-                   o2 > Constants::MAX_INT / 2) {
-                    if(o1 != o2) continue;
-                } else {
-                    if(o1 == o2) continue;
-                }
+
+                if(o1 == o2) continue;
             
                 /*Compare faces*/
                 forEach(c1,m) {
@@ -1176,7 +1337,6 @@ void Mesh::MeshObject::refineCell(const Cell& c,const IntVector& cr, Int rDir,
 #ifdef RDEBUG
     std::cout << " After merge new cells " << newc.size() << std::endl;
     std::cout << newc << std::endl;
-    std::cout << "============================\n";
     forEach(newc,i) {
         Cell& c = newc[i];
         forEach(c,j) {
@@ -1219,28 +1379,14 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
             }
             if(!straight) {
                 refineF[c[j]] = 1;
-                cr[j] = 1;
             } else {
-                Facet f;
-                mergeFacetsCell(c,shared,f);
-                Facets newf;
-                refineFacet(f,newf,ivBegin);
-
-                const Int base = Constants::MAX_INT / 2 + c[shared[0]] * 256;
+                
+                const Int id = Constants::MAX_INT / 2 + shared[0];
                 forEach(shared,k) {
                     Int v = shared[k];
-                    Vector fc = mFC[c[v]];
-
-                    forEach(newf,m) {
-                        const Facet& nf = newf[m];
-                        if(Mesh::pointInPolygon(mVertices,nf,fc)) {
-                            cr[v] = base + m;
-                            break;
-                        }
-                    }
-                    
+                    cr[v] = id;
                     flag[v] = 1;
-                }
+                } 
             }
         }
     }
@@ -1440,8 +1586,38 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             rFacets.push_back(i);
     }
     
-    /*set refine directions and then refine*/    
-    refineFacets(rFacets,refineF,startF,endF,ivBegin);
+    /*set refine directions and then refine*/
+    {
+        IntVector rfDirs;
+        rfDirs.assign(rFacets.size(),0);
+        {
+            IntVector rft;
+            rft.assign(mFacets.size(),0);
+            forEach(rCells,i) {
+                Cell& c = mCells[rCells[i]];
+                forEach(c,j) {
+                    Int fi = c[j];
+                    rft[fi] |= rDirs[i];
+                }
+            }
+            Int cnt = 0;
+            forEach(refineF,i) {
+                if(refineF[i])
+                    rfDirs[cnt++] = rft[i];
+            }
+            
+            forEach(rCells,i) {
+                Cell& c = mCells[rCells[i]];
+                Cell& cr = crefineF[i];
+                forEach(cr,j) {
+                    if(cr[j] == 0)
+                        cr[j] = rft[c[j]];
+                }
+            }
+        }
+        
+        refineFacets(rFacets,refineF,rfDirs,startF,endF,ivBegin);
+    }
     
     /*************************
      * Refine cells
@@ -1455,7 +1631,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         Cells ncrefineF;
 
         Int ci = rCells[i];
-        Int dir = rDirs[i];
+        Int ndir = rDirs[i];
         newc.push_back(mCells[ci]);
         ncrefineF.push_back(crefineF[i]);
         
@@ -1520,8 +1696,18 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                         erase_indices(rfFacets,alRef);
                     }
                     
+                    //set face refinement directions
+                    IntVector rfDirs;
+                    rfDirs.assign(rfFacets.size(),ndir);
+                    
+                    forEach(ncrefineF,i) {
+                        Cell& cr = ncrefineF[i];
+                        forEach(cr,j)
+                            if(cr[j] == 0)
+                                cr[j] = ndir;
+                    }
                     //refine face
-                    refineFacets(rfFacets,refineF,startF,endF,ivBegin);
+                    refineFacets(rfFacets,refineF,rfDirs,startF,endF,ivBegin);
                 }
             }
 
@@ -1532,18 +1718,19 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 Cells newcn;
                 
 #ifdef RDEBUG
-                std::cout << "========================================\n";
+                std::cout << "========================================"
+                             "========================================\n";
+                std::cout << "Refinement level " << m + 1 << std::endl;
+                std::cout << "==================\n";
                 std::cout << "Cell " << c << std::endl;
                 std::cout << "-------------\n";
                 std::cout << "Facets of cell:\n";
                 forEach(c,j)
                     std::cout << gFacets[c[j]] << std::endl;
                 std::cout << "-------------\n";
-                std::cout << "Refinement level " << m + 1 << std::endl;
-                std::cout << "==================\n";
+                std::cout << "cr " << cr << std::endl;
 #endif
-            
-                refineCell(c,cr,dir,refineF,startF,endF,newcn,delFacets);
+                refineCell(c,cr,ndir,refineF,startF,endF,newcn,delFacets,ivBegin);
                 
                 /*add children to the mAmrTree*/
                 {

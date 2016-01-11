@@ -4,6 +4,9 @@
 
 using namespace std;
 
+/**
+Define some geometric fields
+*/
 namespace Mesh {
     VectorVertexField vC(false);
     VectorFacetField  fC(false);
@@ -24,6 +27,9 @@ namespace Mesh {
 std::list<BaseField*> BaseField::allFields;
 std::vector<std::string> BaseField::fieldNames;
 
+/**
+Solver control parameters
+*/
 namespace Controls {
     Scheme convection_scheme = HYBRID;
     Int TVDbruner = 0;
@@ -49,7 +55,9 @@ namespace Controls {
     CommMethod parallel_method = BLOCKED;
     Vector gravity = Vector(0,0,-9.860616);
 }
-/*find the last grid loaded*/
+/**
+Find the last refined grid
+*/
 static int findLastRefinedGrid(Int step_) {
     int step = step_;
     for(;step >= 0;--step) {
@@ -63,9 +71,9 @@ static int findLastRefinedGrid(Int step_) {
     if(step < 0) step = step_;
     return step;
 }
-/*
- * Load mesh
- */
+/**
+ Load mesh
+*/
 bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
     /*load refined mesh*/
     int step = findLastRefinedGrid(step_);
@@ -109,9 +117,9 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
     }
     return false;
 }
-/*
- * Initialize geometric mesh fields
- */
+/**
+ Initialize geometric mesh fields
+*/
 void Mesh::initGeomMeshFields() {
     FO = gFOC;
     FN = gFNC;
@@ -262,7 +270,9 @@ void Mesh::initGeomMeshFields() {
         applyExplicitBCs(yWall,true,true);
     }
 }
-/*find nearest cell*/
+/**
+Find nearest cell
+*/
 Int Mesh::findNearestCell(const Vector& v) {
     Scalar mindist,dist;
     Int bi = 0;
@@ -276,6 +286,9 @@ Int Mesh::findNearestCell(const Vector& v) {
     }
     return bi;
 }
+/**
+Find nearest face
+*/
 Int Mesh::findNearestFace(const Vector& v) {
     Scalar mindist,dist;
     Int bi = 0;
@@ -289,6 +302,9 @@ Int Mesh::findNearestFace(const Vector& v) {
     }
     return bi;
 }
+/**
+Find nearest cells of probes
+*/
 void Mesh::getProbeCells(IntVector& probes) {
     forEach(probePoints,j) {
         Vector v = probePoints[j];
@@ -296,6 +312,9 @@ void Mesh::getProbeCells(IntVector& probes) {
         probes.push_back(index);
     }
 }
+/**
+Find nearest faces of probes
+*/
 void Mesh::getProbeFaces(IntVector& probes) {
     forEach(probePoints,j) {
         Vector v = probePoints[j];
@@ -303,6 +322,9 @@ void Mesh::getProbeFaces(IntVector& probes) {
         probes.push_back(index);
     }
 }
+/**
+Calculate global courant number
+*/
 void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
     ScalarCellField Courant;
     Courant = mag(U) * dt / pow(cV,1.0/3);
@@ -319,21 +341,30 @@ void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
             globalmax,globalmin);
     }
 }
-/*
- * Read/Write
- */
+/**
+ Write all fields
+*/
 void Mesh::write_fields(Int step) {
     forEachCellField(writeAll(step));
 }
+/**
+ Read all fields
+*/
 void Mesh::read_fields(Int step) {
     forEachCellField(readAll(step));
 }
+/**
+ Remove all fields
+*/
 void Mesh::remove_fields() {
     forEachCellField(removeAll());
     forEachFacetField(removeAll());
     forEachVertexField(removeAll());
     BaseField::allFields.clear();
 }
+/**
+ Enroll solver control parameters
+*/
 void Mesh::enroll(Util::ParamList& params) {
     using namespace Controls;
     using namespace Util;
@@ -384,7 +415,7 @@ void Mesh::enroll(Util::ParamList& params) {
     params.enroll("npz",&DG::Nop[2]);
 }
 /**
-create fields
+Create fields
 */
 void Prepare::createFields(vector<string>& fields,Int step) {
     BaseField::destroyFields();
@@ -413,7 +444,7 @@ void Prepare::createFields(vector<string>& fields,Int step) {
     }
 }
 /**
-read fields
+Cead fields
 */
 Int Prepare::readFields(vector<string>& fields,Int step) {
     Int count = 0;
