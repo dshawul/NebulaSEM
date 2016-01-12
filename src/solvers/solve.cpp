@@ -3,6 +3,10 @@
 /* *********************************************************************
  *  Solve system of linear equations iteratively
  * *********************************************************************/
+
+/**
+Calculate global residual
+*/
 template<class type, ENTITY entity>
 Scalar getResidual(const MeshField<type,entity>& r,
                    const MeshField<type,entity>& cF,
@@ -22,7 +26,9 @@ Scalar getResidual(const MeshField<type,entity>& r,
     }
     return sqrt(sdiv(mag(res[0]), mag(res[1])));
 }
-
+/**
+Solve a system of linear equations Ax=B
+*/
 template<class T1, class T2, class T3>
 void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     using namespace Mesh;
@@ -509,6 +515,9 @@ PROBE:
         "%.5e Final Residual %.5e\n",iterations,ires,res);
     }
 }
+/**
+Solve a diagonal system
+*/
 template<class T1,class T2,class T3>
 void SolveTexplicit(const MeshMatrix<T1,T2,T3>& M) {
     *M.cF = M.Su / M.ap;

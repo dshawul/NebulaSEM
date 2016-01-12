@@ -3,10 +3,15 @@
 using namespace std;
 using namespace Mesh;
 
+/** Write in polyhedral vtk format */
 bool Vtk::write_polyhedral = false;
+/** Write cell centered values besides vertices */
 bool Vtk::write_cell_value = true;
 
-static Int cell_count(Cell& c) {
+namespace {
+
+/** Counts number of facets and vertices of cell */
+Int cell_count(Cell& c) {
     Facet* f;
     Int i,nFacets = c.size(),nVertices = 0,nTotal;
     for(i = 0;i < nFacets;i++) {
@@ -17,7 +22,8 @@ static Int cell_count(Cell& c) {
     return nTotal;
 }
 
-static void cell_vtk(std::ofstream& of, Cell& c) {
+/** Writes one cell in ascii vtk format */
+void cell_vtk(std::ofstream& of, Cell& c) {
     Facet* f;
     Int i,j,nFacets = c.size(),nTotal = cell_count(c);
     /*write*/
@@ -32,6 +38,9 @@ static void cell_vtk(std::ofstream& of, Cell& c) {
     of << endl;
 }
 
+}
+
+/** Write ASCII vtk file at time step */
 void Vtk::write_vtk(Int step) {
     Int i,total;
     stringstream path;

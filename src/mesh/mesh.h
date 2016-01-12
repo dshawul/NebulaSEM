@@ -4,18 +4,21 @@
 #include "tensor.h"
 #include "util.h"
 
-/*Index by integer ID instead of pointers */
+/** Basic building blocks (entities) */
+enum ENTITY {
+    CELL,    /**< A cell (volume), each LGL node gets one cell in DG. */
+    FACET,   /**< A polygonal face. */
+    VERTEX,  /**< A node. */
+    CELLMAT  /**< An NXN matrix for each element. */
+};
+
+/** \name Indexing of entities is done via integer indices (not pointers). */
+//@{
 typedef std::vector<Int>      IntVector;
 typedef std::vector<Scalar>   ScalarVector;
 typedef std::vector<Vector>   VectorVector;
 typedef std::vector<bool>     BoolVector;
 
-/*our basic building blocks */
-enum ENTITY {
-    CELL, FACET, VERTEX, /*others*/CELLMAT
-};
-
-/*typdefs*/
 typedef Vector           Vertex;
 typedef IntVector        Facet;  
 typedef IntVector        Cell; 
@@ -24,8 +27,9 @@ typedef std::vector<Vertex>   Vertices;
 typedef std::vector<Facet>    Facets;
 typedef std::vector<Cell>     Cells; 
 typedef std::map<std::string,IntVector> Boundaries;
+//@}
 
-/*AMR parameters*/
+/** AMR parameters */
 struct RefineParams {
     Vector dir;
     std::string field;
@@ -41,7 +45,7 @@ struct RefineParams {
     }
 };
 
-/*Decomposition parameters*/
+/** Decomposition parameters */
 struct DecomposeParams {
     Int type;
     IntVector n;
@@ -54,15 +58,19 @@ struct DecomposeParams {
     }
 };
 
-/*global mesh*/
+/**
+Mesh data structure
+*/
 namespace Mesh {
+    /** Inter-processor boundary */
     struct interBoundary {
         IntVector* f;
         Int from;
         Int to;
         Int buffer_index;
     };
-        
+    
+    /** Boundary patch */
     struct Patch {
         Int from;
         Int to;
@@ -74,6 +82,7 @@ namespace Mesh {
         }
     };
     
+    /** AMR tree node */
     struct Node {
         Int id;
         Int cid;
@@ -97,34 +106,35 @@ namespace Mesh {
     typedef std::vector<Patch> PatchVector;
     typedef std::vector<Node> NodeVector;
     
+    /** Mesh object */
     struct MeshObject {
-        /*vertices , facets and cells */
-        Vertices mVertices;
-        Facets   mFacets;
-        Cells    mCells;
-        /*other info*/
-        std::string name;
-        Boundaries  mBoundaries;
-        IntVector   mFOC;
-        IntVector   mFNC;
-        /*start of boundary cells,facets & vertices*/
-        Int      mNV;
-        Int      mNF;
-        Int      mBCS;
-        Int      mBCSI;
-        /*Start of boundary patches*/
-        PatchVector      mPatches;
-        InterBoundVector mInterMesh;
-        /*original face orientation*/
-        Cells    mFaceID;
-        /*geometric data*/
-        VectorVector mFC;
-        VectorVector mCC;
-        VectorVector mFN;
-        ScalarVector mCV;
-        BoolVector   mReversed;
-        /*AMR tree*/
-        NodeVector   mAmrTree;
+        
+        Vertices mVertices; /**< vertices */
+        Facets   mFacets;   /**< facets */
+        Cells    mCells;    /**< Cells */
+        
+        std::string name;           /**< File name */
+        Boundaries  mBoundaries;    /**< List of boundary patches */
+        IntVector   mFOC;           /**< Facet owners of elements */
+        IntVector   mFNC;           /**< Facet neighbors of elements */
+        
+        Int      mNV;   /**< Number of vertices */
+        Int      mNF;   /**< Number of faces */
+        Int      mBCS;  /**< Number of internal cells */
+        Int      mBCSI; /**< Number of internal cells one layer away from boundary */
+
+        PatchVector      mPatches;      /**< List of patches */
+        InterBoundVector mInterMesh;    /**< List of inter-processor boundaries */
+        
+        Cells    mFaceID;   /**< Original face orientation*/
+
+        VectorVector mFC;   /**< Facet centers */
+        VectorVector mCC;   /**< Cell centers */
+        VectorVector mFN;   /**< Facet normals */
+        ScalarVector mCV;   /**< Cell volumes */
+        BoolVector   mReversed; /**< Is normal reversed? */
+        
+        NodeVector   mAmrTree;  /**< AMR tree */
         
         /*functions*/
         void clear();
@@ -156,7 +166,8 @@ namespace Mesh {
                         const IntVector&, IntVector&, IntVector&);
     };
     
-    //Global mesh object with its members
+    /** \name Global mesh object with its members */
+    //@{
     extern  MeshObject        gMesh;
     extern  std::string&      gMeshName;
     extern  Vertices&         gVertices;
@@ -174,27 +185,31 @@ namespace Mesh {
     extern  VectorVector&     gCC;
     extern  VectorVector&     gFN;
     extern  ScalarVector&     gCV;
+    //@}
     
-    //probe points
+    /** probe points */
     extern  Vertices         probePoints;
     
     void clear();
     void enroll(Util::ParamList& params);
 }
+
 namespace Controls {
     extern RefineParams refine_params;
     extern DecomposeParams decompose_params;
     void enrollRefine(Util::ParamList& params);
     void enrollDecompose(Util::ParamList& params);
 }
-/*
- * Model for flow close to the wall (Law of the wall).
- *   1 -> Viscous layer
- *   2 -> Buffer layer
- *   3 -> Log-law layer
- * The wall function model is modified for rough surfaces 
- * using Cebecci and Bradshaw formulae.
- */
+/**
+ \verbatim
+ Model for flow close to the wall (Law of the wall).
+    1 -> Viscous layer
+    2 -> Buffer layer
+    3 -> Log-law layer
+  The wall function model is modified for rough surfaces 
+  using Cebecci and Bradshaw formulae.
+ \endverbatim
+*/
 struct LawOfWall {
     Scalar E;
     Scalar kappa;
@@ -260,7 +275,9 @@ struct LawOfWall {
         return true;
     }
 };
-/*Boundary condition types*/
+/** 
+Boundary condition types
+*/
 namespace Mesh {
     const Int DIRICHLET    = Util::hash_function("DIRICHLET");
     const Int NEUMANN      = Util::hash_function("NEUMANN");
@@ -276,6 +293,7 @@ namespace Mesh {
     const Int ROUGHWALL    = Util::hash_function("ROUGHWALL");
     const Int CALC_NEUMANN = Util::hash_function("CALC_NEUMANN");
 }
+/** Basic boundary condition */
 struct BasicBCondition {
     IntVector* bdry;
     Int     fIndex;
@@ -285,6 +303,7 @@ struct BasicBCondition {
     std::string fname;
     LawOfWall low;
 };
+/** Template boundary condition's class for different tensors */
 template <class type>
 struct BCondition : public BasicBCondition {
     type   value;
@@ -316,7 +335,7 @@ struct BCondition : public BasicBCondition {
         cIndex = Util::hash_function(cname);
     }
 };
-/*IO*/
+/** Write boundary conditions */
 template <class type> 
 std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
     os << p.bname << "\n{\n";
@@ -343,6 +362,7 @@ std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
     os << "}\n";
     return os;
 }
+/** Read boundary conditions */
 template <class type> 
 std::istream& operator >> (std::istream& is, BCondition<type>& p) {
     using namespace Util;
@@ -387,14 +407,15 @@ std::istream& operator >> (std::istream& is, BCondition<type>& p) {
 }
 
 namespace Mesh {
-    /*list of all BCS*/
+    
     extern  std::vector<BasicBCondition*> AllBConditions;
+    /** Clear list of  BCs */
     inline void clearBC() {
         forEach(AllBConditions,i)
             delete AllBConditions[i];
         AllBConditions.clear();
     }
-    /*point in line/polygon*/
+    /* point in line/polygon*/
     bool pointInLine(const Vector&,const Vector&,const Vector&);
     bool pointInPolygon(const VectorVector&,const IntVector&,const Vector&);
 }

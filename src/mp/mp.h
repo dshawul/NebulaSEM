@@ -10,13 +10,23 @@
 #   define MPI_SCALAR  MPI_FLOAT
 #endif
 
+/**
+Class for multi-processor support via MPI
+*/
 class MP {
 public:
+    /** Message types */
     enum {
-        FIELD, END, FIELD_BLK
+        FIELD,      /**< Field data marker */
+        END,        /**< END of communicatins marker */
+        FIELD_BLK   /**< Field data marker when not in iteration*/
     };
+    /** Global reduction types */
     enum {
-        OP_MAX, OP_MIN, OP_SUM, OP_PROD
+        OP_MAX, /**< Global maximum */
+        OP_MIN, /**< Global minimum */
+        OP_SUM, /**< Global sum */
+        OP_PROD /**< Global product */
     };
     MP(int argc,char* argv[]);
     ~MP();
@@ -39,7 +49,6 @@ public:
     static void print(const char* format,...);
     static bool hasElapsed(const Int);
 
-    /*send and recieve messages*/
     template <class type>
     static void recieve(type* buffer,int size,int source,int message_id) {
         const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));

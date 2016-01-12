@@ -2,6 +2,7 @@
 
 using namespace Constants;
 
+/** Cross product of two vectors */
 Vector operator ^ (const Vector& p,const Vector& q) {
     Vector r;
     r[XX] = p[YY] * q[ZZ] - p[ZZ] * q[YY];
@@ -9,6 +10,7 @@ Vector operator ^ (const Vector& p,const Vector& q) {
     r[ZZ] = p[XX] * q[YY] - p[YY] * q[XX];
     return r;
 }
+/** Outer product of two vectors */
 Tensor mul(const Vector& p,const Vector& q) {
     Tensor r;
     r[XX] = p[XX] * q[XX];
@@ -24,6 +26,7 @@ Tensor mul(const Vector& p,const Vector& q) {
     r[ZX] = p[ZZ] * q[XX];
     return r;
 }
+/** Outer product of a vector with itself */
 STensor mul(const Vector& p) {
     STensor r;
     r[XX] = p[XX] * p[XX];
@@ -35,6 +38,7 @@ STensor mul(const Vector& p) {
     r[XZ] = p[XX] * p[ZZ];
     return r;
 }
+/** Product of two tensors */
 Tensor mul(const Tensor& p,const Tensor& q) {
     Tensor r;
     r[XX] = p[XX] * q[XX] + p[XY] * q[YX] + p[XZ] * q[ZX];
@@ -51,6 +55,7 @@ Tensor mul(const Tensor& p,const Tensor& q) {
 
     return r;
 }
+/** Product of two symmetric tensors */
 STensor mul(const STensor& p,const STensor& q) {
     STensor r;
     r[XX] = p[XX] * q[XX] + p[XY] * q[XY] + p[XZ] * q[XZ];
@@ -63,6 +68,7 @@ STensor mul(const STensor& p,const STensor& q) {
 
     return r;
 }
+/** Inner product of a tensor and a vector */
 Vector dot(const Vector& p,const Tensor& q) {
     Vector r;
     r[XX] = q[XX] * p[XX] + q[XY] * p[YY] + q[XZ] * p[ZZ];
@@ -70,6 +76,7 @@ Vector dot(const Vector& p,const Tensor& q) {
     r[ZZ] = q[ZX] * p[XX] + q[ZY] * p[YY] + q[ZZ] * p[ZZ];
     return r;
 }
+/** Inner product of a symmetric tensor and a vector */
 Vector dot(const Vector& p,const STensor& q) {
     Vector r;
     r[XX] = q[XX] * p[XX] + q[XY] * p[YY] + q[XZ] * p[ZZ];
@@ -77,6 +84,7 @@ Vector dot(const Vector& p,const STensor& q) {
     r[ZZ] = q[XZ] * p[XX] + q[YZ] * p[YY] + q[ZZ] * p[ZZ];
     return r;
 }
+/** Symmetric part of a tensor */
 STensor sym(const Tensor& p) {
     STensor r;
     r[XX] = p[XX];
@@ -88,6 +96,7 @@ STensor sym(const Tensor& p) {
     r[XZ] = (p[XZ] + p[ZX]) / 2;
     return r;
 }
+/** Skew-symmetric part of a tensor */
 Tensor skw(const Tensor& p) {
     Tensor r;
     r[XX] = 0;
@@ -103,6 +112,7 @@ Tensor skw(const Tensor& p) {
     r[ZX] = (p[ZX] - p[XZ]) / 2;
     return r;
 }
+/** Transpose of a tensor */
 Tensor trn(const Tensor& p) {
     Tensor r = p;
     r[XX] = p[XX];
@@ -118,6 +128,7 @@ Tensor trn(const Tensor& p) {
     r[ZX] = p[XZ];
     return r;
 }
+/** Rotate a vector by an angle */
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta) {
     Vector r;
     Scalar sum = v & N;
@@ -127,6 +138,7 @@ Vector rotate(const Vector& v,const Vector& N,const Scalar& theta) {
     r[ZZ] = N[ZZ] * sum * (1 - cost) + v[ZZ] * cost + (-N[YY] * v[XX] + N[XX] * v[YY]) * sint;
     return r;
 }
+/** Determinant of a tensor */
 Scalar det(const Tensor& p) {
     Scalar r;
     r =  p[XX] * (p[YY] * p[ZZ] - p[YZ] * p[ZY]) +
@@ -134,6 +146,7 @@ Scalar det(const Tensor& p) {
          p[XZ] * (p[YX] * p[ZY] - p[YY] * p[ZX]);
     return r;
 }
+/** Inverse of a tensor */
 Tensor inv(const Tensor& p) {
     Tensor r;
     r[XX] = p[YY] * p[ZZ] - p[YZ] * p[ZY];

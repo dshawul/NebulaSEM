@@ -8,28 +8,64 @@
  *                              Control parameters
  *******************************************************************************/
 namespace Controls {
+    /** Convection differencing schemes */
     enum Scheme{
-        CDS,UDS,HYBRID,BLENDED,LUD,CDSS,MUSCL,QUICK,
-        VANLEER,VANALBADA,MINMOD,SUPERBEE,SWEBY,QUICKL,UMIST,
-        DDS,FROMM
+        CDS,    /**< Central difference */
+        UDS,    /**< Upwind difference */
+        HYBRID, /**< Hybrid scheme that switches b/n CDS/UDS */
+        BLENDED,/**< Blended CDS/UDS difference */
+        LUD,    /**< Linear upwind */
+        CDSS,   /**< Stabilized central difference */
+        MUSCL,  /**< Monotonic upstream centered */
+        QUICK,  /**< Upstream weighted quadratic  */
+        VANLEER,/**< Van Leer's scheme */
+        VANALBADA,  /**< Van Albada's scheme */
+        MINMOD,     /**< Minmod scheme */
+        SUPERBEE,   /**< Superbee scheme */
+        SWEBY,      /**< Sweby scheme */
+        QUICKL,     /**< Limited QUICK scheme */
+        UMIST,      /**< Lien & Leschziner, 1994 */
+        DDS,        /**< DDS scheme */
+        FROMM       /**< FROMM scheme */
     };
+    /** Non-orthogonality correction schemes (Jasak) */
     enum NonOrthoScheme {
-        NONE,MINIMUM, ORTHOGONAL, OVER_RELAXED
+        NONE,           /**< No correction */
+        MINIMUM,        /**< Minimum correction */
+        ORTHOGONAL,     /**< Orthogonal correction */
+        OVER_RELAXED    /**< Over-relaxed correction (default) */
     };
+    /** Backward differencing formula */
     enum TimeScheme {
-        BDF1, BDF2, BDF3, BDF4, BDF5, BDF6
+        BDF1,   /**< First order */
+        BDF2,   /**< Second order */
+        BDF3,   /**< Third order */
+        BDF4,   /**< Fourth order */
+        BDF5,   /**< Fifth order */
+        BDF6    /**< Sixth order */
     };
+    /** Iterative solvers */
     enum Solvers {
-        JACOBI, SOR, PCG
+        JACOBI, /**< Jacobi */
+        SOR,    /**< Successive over-relaxation */
+        PCG     /**< Pre-conditioned conjugate gradient */
     };
+    /** Preconditioners for conjugate gradient */
     enum Preconditioners {
-        NOPR,DIAG,SSOR,DILU
+        NOPR,   /**< No preconditioner */
+        DIAG,   /**< Diagonal (Jacobi) preconditioner */
+        SSOR,   /**< Symmetric SOR preconditioner */
+        DILU    /**< Diagonal incomplete LU factorization */
     };
+    /** Communication methods */
     enum CommMethod {
-        BLOCKED, ASYNCHRONOUS
+        BLOCKED,        /**< Blocked send/recv */
+        ASYNCHRONOUS    /**< Asycnhronous communication */
     };
+    /** Steady/transient state */
     enum State {
-        STEADY, TRANSIENT
+        STEADY,     /**< Steady state solution sought */
+        TRANSIENT   /**< Transient solution sought */
     };
 
     extern Scheme convection_scheme;
@@ -60,23 +96,31 @@ namespace Controls {
     extern Vector gravity;
 }
 
+/** Read/Write access for field */
+enum ACCESS {
+    NO = 0,         /**< No access allowed */
+    READ = 1,       /**< Read only access */
+    WRITE = 2,      /**< Write only access */
+    READWRITE = 3,  /**< Read write access */
+    STOREPREV = 4   /**< Store previous iteration value */
+};
+
 namespace DG {
     extern Int Nop[3];
     extern Int NP, NPI, NPMAT, NPF;
 };
+
 namespace Mesh {
     extern IntVector  probeCells;
     extern Int  gBCSfield; 
     extern Int  gBCSIfield;
 };
 
-enum ACCESS {
-    NO = 0, READ = 1, WRITE = 2,READWRITE = 3,STOREPREV = 4
-};
-
 /* *****************************************************************************
  *                    Field variables defined on mesh                          
  * *****************************************************************************/
+
+/** Base field class */
 class BaseField {   
 public:
     std::string  fName;
@@ -108,6 +152,10 @@ public:
     }
 };
 
+/**
+ Template field class for field of type (scalar,vector,tensor)
+ defined on entity (vertex,face or cell)
+ */
 template <class type,ENTITY entity> 
 class MeshField : public BaseField {
 private:
@@ -531,7 +579,8 @@ public:
     STensorVertexField::X;          \
     TensorVertexField::X;           \
 }
-/* typedefs */
+/** \name Typedef common mesh field types */
+//@{
 typedef MeshField<Scalar,CELL>    ScalarCellField;
 typedef MeshField<Scalar,FACET>   ScalarFacetField;
 typedef MeshField<Scalar,VERTEX>  ScalarVertexField;
@@ -544,11 +593,12 @@ typedef MeshField<Tensor,VERTEX>  TensorVertexField;
 typedef MeshField<STensor,CELL>   STensorCellField;
 typedef MeshField<STensor,FACET>  STensorFacetField;
 typedef MeshField<STensor,VERTEX> STensorVertexField;
+//@}
 
 /***********************************
  *  Specific tensor operations
  ***********************************/
-/* Default operator overload for scalar fields*/
+/** Default operator overload for scalar fields*/
 #define Op(name,F,S)                                                                            \
     template<class T,ENTITY E>                                                                  \
     MeshField<T,E> name(const MeshField<F,E>& p,const MeshField<S,E>& q) {                      \
@@ -562,7 +612,7 @@ Op(operator /,Scalar,T)
 Op(operator *,T,Scalar)
 Op(operator /,T,Scalar)
 #undef Op
-/*multiply*/
+/* multiply */
 template <ENTITY E>
 MeshField<Tensor,E> mul(const MeshField<Vector,E>& p,const MeshField<Vector,E>& q) {
     MeshField<Tensor,E> r;
@@ -684,6 +734,7 @@ namespace Prepare {
     int mergeFields(Int);
 }
 
+/** Scale boundary condition by a constant */
 template <class type>
 void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
     using namespace Mesh;
@@ -712,6 +763,8 @@ void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest,
         }
     }
 }
+
+/** Calculate neumann boundary condition from initial condition */
 template <class T,ENTITY E> 
 void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
     using namespace Mesh;
@@ -743,6 +796,8 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
 /* **********************************************
  *  Input - output operations
  * **********************************************/
+
+/** Read internal field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
     using namespace Mesh;
@@ -776,8 +831,10 @@ void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
             is >> value >> perterb >> center >> radius;
             for(Int i = 0;i < gBCSfield;i++) {
                 Scalar R = mag((cC[i] - center) / radius);
+                Scalar v = exp(-R*R);
+                if(equal(v,Scalar(0))) v = 0;
                 T val = value;
-                val += perterb *  exp(-R*R);
+                val += perterb *  v;
                 (*this)[i] = val;
             }
         } else if(str == "hydrostatic") {
@@ -804,6 +861,8 @@ void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
         is >> symbol;
     }
 }
+
+/** Read boundary field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::readBoundary(std::istream& is) {
     using namespace Mesh;
@@ -818,6 +877,8 @@ void MeshField<T,E>::readBoundary(std::istream& is) {
         AllBConditions.push_back(bc);
     }
 }
+
+/** Read field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::read(Int step) {
     using namespace Mesh;
@@ -842,6 +903,8 @@ void MeshField<T,E>::read(Int step) {
     /*update BCs*/
     applyExplicitBCs(*this,true,true);
 }
+
+/** Write internal field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
     using namespace Mesh;
@@ -865,6 +928,8 @@ void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
     }
     os << "}" << std::endl;
 }
+
+/** Write boundary field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::writeBoundary(std::ostream& os) {
     using namespace Mesh;
@@ -880,6 +945,8 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
         }
     }
 }
+
+/** Write field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::write(Int step, IntVector* cMap) {
     /*open*/
@@ -900,14 +967,20 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
 /*********************************************************************************
  *                      matrix class defined on mesh                             
  *********************************************************************************/
+
+/**
+ Matrix defined on Mesh
+ */
 template <class T1, class T2 = Scalar, class T3 = T1> 
 struct MeshMatrix {
-    MeshField<T1,CELL>*   cF;
-    MeshField<T2,CELL>    ap;
-    MeshField<T2,FACET>   an[2];
-    MeshField<T2,CELLMAT> adg;
-    MeshField<T3,CELL>    Su;
-    Int flags;
+    MeshField<T1,CELL>*   cF;    /**< Solution field X */
+    MeshField<T2,CELL>    ap;    /**< Diagonal of the matrix */
+    MeshField<T2,FACET>   an[2]; /**< Off-diagonals defined by owner/neighbor of face */
+    MeshField<T2,CELLMAT> adg;   /**< In DG this is an NxN matrix tying the nodes in an element */
+    MeshField<T3,CELL>    Su;    /**< Source field B */
+    Int flags;                   /**< Flags for special matrix */
+    
+    /** Special matrix flag */
     enum FLAG {
         SYMMETRIC = 1, DIAGONAL = 2
     };
@@ -1039,15 +1112,19 @@ struct MeshMatrix {
     }
 };
 
-/*typedefs*/
+/** \name Typedef common matrix types*/
+//@{
 typedef MeshMatrix<Scalar>  ScalarCellMatrix;
 typedef MeshMatrix<Vector>  VectorCellMatrix;
 typedef MeshMatrix<Tensor>  TensorCellMatrix;
 typedef MeshMatrix<STensor> STensorCellMatrix;
+//@}
 
 /*************************************
  *  Asynchronous communication
  *************************************/
+
+/** Class for asynchronous communication using MPI */
 template <class T> 
 class ASYNC_COMM {
 private:
@@ -1149,8 +1226,10 @@ public:
 #define TensorProductM(Q,P) TensorProduct_(Q,P,false,+=)
 
 /* *******************************
- * matrix - vector product p * q
+ * matrix - vector products
  * *******************************/
+
+/** matrix - vector product p * q */
 template <class T1, class T2, class T3> 
 MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
     using namespace Mesh;
@@ -1186,7 +1265,7 @@ MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& 
     
     return r;
 }
-/*matrix transopose - vector product pT * q */
+/** matrix transopose - vector product pT * q */
 template <class T1, class T2, class T3> 
 MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
     using namespace Mesh;
@@ -1222,7 +1301,7 @@ MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>&
     
     return r;
 }
-/* calculate RHS sum */
+/** calculate right-hand-side sum */
 template <class T1, class T2, class T3> 
 MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
     using namespace Mesh;
@@ -1260,9 +1339,11 @@ MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false
     return r;
 }
 
-/* ***************************************
- * Implicit boundary conditions
- * ***************************************/
+/* ***************************
+ * Apply boundary conditions
+ * ***************************/
+
+/** Apply implicit boundary conditions */
 template <class T1, class T2, class T3> 
  void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
      using namespace Mesh;
@@ -1310,10 +1391,7 @@ template <class T1, class T2, class T3>
      }
  }
  
-
- /* ***************************************
- * Explicit boundary conditions
- * **************************************/
+/** Apply explicit boundary conditions */
 template<class T,ENTITY E>
 void applyExplicitBCs(const MeshField<T,E>& cF,
                               bool update_ghost = false,
@@ -1462,9 +1540,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
     
     if(sync) comm.recv();
 }
-/* ***************************************
- * Fill boundary from internal values
- * **************************************/
+
+/** Fill boundary values from internals */
 template<class T>
 const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
     using namespace Mesh;
@@ -1507,9 +1584,7 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
     }
     return cF;
 }
-/* **************************
- * Integrate field operation
- * **************************/
+/** Integrate field operation */
 template<class type>
 MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
     using namespace Mesh;
@@ -1524,7 +1599,8 @@ MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
 /* ********************************
  * Interpolate field operations
  * *******************************/
-/*central difference*/
+
+/** central difference scheme */
 template<class type>
 MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
     using namespace Mesh;
@@ -1534,7 +1610,7 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
     }
     return fF;
 }
-/*upwind*/
+/** upwind differencing scheme */
 template<class type,class T3>
 MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
     using namespace Mesh;
@@ -1546,7 +1622,7 @@ MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACE
     return fF;
 }
 
-/*facet data to vertex data */
+/** interpolate facet data to vertex data */
 template<class type>
 MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
     using namespace Mesh;
@@ -1580,11 +1656,12 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 
     return vF;
 }
+
 /* *******************************
  * Linearized source term
  * *******************************/
 
-/*Implicit*/
+/** Add implicit source terms*/
 template <class T1, class T2, class T3> 
 MeshMatrix<T1,T2,T3> src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2,CELL>& Sp) {
     MeshMatrix<T1,T2,T3> m;
@@ -1599,7 +1676,7 @@ MeshMatrix<T1,T2,T3> src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, co
     return m;
 }
 
-/*Explicit*/
+/** Add explicit source term */
 template<class type>
 MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
     return (Su * Mesh::cV);
@@ -1652,9 +1729,9 @@ GRAD(Tensor,Vector);
 
 #define gradi(x) (gradf(x)  / Mesh::cV)
 
- /***********************************************
- * Numerical flux computation
- ************************************************/ 
+/**
+ Compute numerical flux
+ */
 template<class T1, class T2, class T3, class T4>
 void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
     using namespace Controls;
@@ -1808,7 +1885,9 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
     }
 }
 
-/* Implicit */
+/**
+ Implicit gradient operator
+*/
 template<class T1, class T2>
 MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_cell,
                     const MeshField<T2,FACET>& flux) {
@@ -1911,7 +1990,9 @@ DIV(Vector,Tensor);
     
 #define divi(x)  (divf(x)   / Mesh::cV)
 
-/* Implicit */
+/** 
+Implicit divergence operator
+*/
 template<class type>
 MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
                     const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
@@ -1981,7 +2062,9 @@ MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,en
 
 #define lapi(x,y) (lapf(x,y)  / Mesh::cV)
 
-/*Implicit*/
+/**
+Implicit laplacian operator
+*/
 template<class type>
 MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
 
@@ -2104,6 +2187,7 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
  * *******************************/
 #define PREV(k) (rho ? (cF.tstore[k] * rho->tstore[k]) : cF.tstore[k])
 
+/** First derivative with respect to time */
 template<class type>
 MeshMatrix<type> ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
     MeshMatrix<type> m;
@@ -2139,6 +2223,8 @@ MeshMatrix<type> ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
     
     return m;
 }
+
+/** Second derivative with respect to time */
 template<class type>
 MeshMatrix<type> ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
     MeshMatrix<type> m;
@@ -2165,6 +2251,7 @@ MeshMatrix<type> ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
 
 #undef PREV
 
+/** Time stepper */
 template<int order, class type>
 void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
     using namespace Controls;

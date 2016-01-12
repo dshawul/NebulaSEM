@@ -2,6 +2,9 @@
 
 using namespace std;
 
+/**
+Read ANSYS ascii mesh (.msh format)
+*/
 void Mesh::MeshObject::readMshMesh(std::istream& is) {
     char symbol,c;
     int id,ND,zone,findex,lindex,
@@ -139,6 +142,9 @@ void Mesh::MeshObject::readMshMesh(std::istream& is) {
             mCells[cn].push_back(i);
     }
 }
+/**
+Write ANSYS ascii mesh (.msh format)
+*/
 void Mesh::MeshObject::writeMshMesh(std::ostream& os) {
     os << "(0 \"ASCII msh file\")" << endl << endl;
     os << "(0 \"Dimension:\")" << endl;

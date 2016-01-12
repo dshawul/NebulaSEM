@@ -12,7 +12,8 @@
 #include <algorithm>
 #include <cstdarg>
 
-/*iterators*/
+/** \name Container iterators */
+//@{
 #define forEach(field,i)                                \
     for(register Int i = 0;i < (field).size();i++)
 
@@ -28,23 +29,28 @@
 #define forEachIt(cont,field,it)                        \
     for(cont::iterator it = (field).begin();            \
         it != (field).end();++it)
+//@}
 
+/** Copy collection */            
 #define copyColl(src,trg)                               \
     std::copy(std::begin(src),std::end(src),std::back_inserter(trg));
-    
+ 
+/** Erase by value */   
 #define eraseValue(field,val)                           \
     (field).erase(std::remove((field).begin(),(field).end(),val),(field).end());
     
-/*vector IO*/
+/** Write a vector to stream */
 template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
     os << p.size() << std::endl;
     os << "{ " << std::endl;
     forEach(p,i)
         os << p[i] << std::endl;
-    os << "}";
+    os << "}\n";
     return os;
 }
+
+/** Read a vector from stream */
 template <class T>
 std::istream& operator >> (std::istream& is, std::vector<T>& p) {
     Int size;
@@ -60,13 +66,13 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 template<>
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
 
-/*equal vectors*/
+/** Test if two vectors are equal*/
 template <class T>
 bool equal(std::vector<T>& v1,std::vector<T>& v2) {
     Int j;
     forEach(v1,i) {
         for(j = 0;j < v2.size();j++) {
-            if(v1[i] == v2[j]) 
+            if(v1[i] == v2[j])
                 break;
         }
         if(j == v2.size())
@@ -75,7 +81,7 @@ bool equal(std::vector<T>& v1,std::vector<T>& v2) {
     return true;
 }
     
-/*erase indices from vector -- assumes indices are already sorted*/
+/** Erase indices from a vector. It assumes the indices are already sorted */
 template<typename T>
 void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete) {
     if(indicesToDelete.size() == 0)
@@ -99,7 +105,7 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
     data = temp;
 }
 
-/*compare pair with second*/
+/** Compare pair using second value */
 template<template <typename> class P = std::less >
 struct compare_pair_second {
     template<class T1, class T2> bool operator()(
@@ -110,13 +116,13 @@ struct compare_pair_second {
     }
 };
 
-/*Utililty functions*/
+/** Class for some utililty functions */
 namespace Util {
     Int hash_function(std::string s);
     int nextc(std::istream&);
     void cleanup();
 
-    /*string compare*/
+    /** Compare two strings case-insensitive */
     inline int compare(std::string& s1,std::string s2) {
         std::string t1 = s1,t2 = s2;
         std::transform(t1.begin(),t1.end(),t1.begin(),toupper);
@@ -124,46 +130,43 @@ namespace Util {
         return (t1 != t2);
     }
 
-    /*general string option list*/
-    namespace A {
-        struct Option {
-            Int* val;
-            std::vector<std::string> list;
-            Option(void* v,Int N, ...) {
-                val = (Int*)v;
-                std::string str;
-                list.assign(N,"");
-                va_list ap;
-                va_start(ap, N);
-                for(Int i = 0;i < N;i++) {
-                    str = va_arg(ap,char*);
-                    list[i] = str;
-                }
-                va_end(ap);
+    /** General string option list*/
+    struct Option {
+        Int* val;
+        std::vector<std::string> list;
+        Option(void* v,Int N, ...) {
+            val = (Int*)v;
+            std::string str;
+            list.assign(N,"");
+            va_list ap;
+            va_start(ap, N);
+            for(Int i = 0;i < N;i++) {
+                str = va_arg(ap,char*);
+                list[i] = str;
             }
-            Int getID(std::string str) {
-                forEach(list,i) {
-                    if(!Util::compare(list[i],str)) 
-                        return i;
-                }
-                std::cout << "Unknown parameter : " << str << std::endl;
-                return 0;
+            va_end(ap);
+        }
+        Int getID(std::string str) {
+            forEach(list,i) {
+                if(!Util::compare(list[i],str)) 
+                    return i;
             }
-            friend std::istream& operator >> (std::istream& is, Option& p) {
-                std::string str;
-                is >> str;
-                *(p.val) = p.getID(str);
-                return is;
-            }
-            friend std::ostream& operator << (std::ostream& os, const Option& p) {
-                os << p.list[*(p.val)];
-                return os;
-            }
-        };
-    }
-    using A::Option;
+            std::cout << "Unknown parameter : " << str << std::endl;
+            return 0;
+        }
+        friend std::istream& operator >> (std::istream& is, Option& p) {
+            std::string str;
+            is >> str;
+            *(p.val) = p.getID(str);
+            return is;
+        }
+        friend std::ostream& operator << (std::ostream& os, const Option& p) {
+            os << p.list[*(p.val)];
+            return os;
+        }
+    };
 
-    /*bool option*/
+    /** Special boolean option as a YES/NO */
     struct BoolOption : public Option {
         BoolOption(void* v) :
         Option(v,2,"NO","YES")
@@ -171,7 +174,7 @@ namespace Util {
         }
     };
 
-    /*parameters*/
+    /** List of parameters in a group */
     template <typename T> 
     class Parameters{
         std::map<std::string,T*> list;
@@ -191,7 +194,7 @@ namespace Util {
     };
     extern void read_params(std::istream&, bool print, std::string block = "");
 
-    /*parameters list*/
+    /** Parameter list*/
     struct ParamList {
         std::string name;
         static std::map<std::string,ParamList*> list;

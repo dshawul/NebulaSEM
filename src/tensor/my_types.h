@@ -5,13 +5,13 @@
 #    pragma warning (disable: 4996)
 #endif
 
-/*define double precision*/
+/** Defines double precision */
 #define __DOUBLE
 
-/*unsigned int*/
+/** Unsigned integer type*/
 typedef unsigned int  Int;
 
-/*force inline*/
+/** Forces inlining of fucntions*/
 #ifdef _MSC_VER
 #   define FORCEINLINE __forceinline
 #else

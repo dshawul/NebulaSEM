@@ -9,7 +9,7 @@ References to global mesh
 */
 namespace Mesh {
     MeshObject        gMesh;
-    std::string&      gMeshName = gMesh.name;
+    string&           gMeshName = gMesh.name;
     Vertices&         gVertices = gMesh.mVertices;
     Facets&           gFacets   = gMesh.mFacets;
     Cells&            gCells    = gMesh.mCells;
@@ -109,7 +109,7 @@ bool Mesh::MeshObject::readMesh(Int step,bool first) {
         gB.insert(gB.begin(),index.begin(),index.end());
 
         /*internal mesh boundaries*/
-        if(str.find("interMesh") != std::string::npos) {
+        if(str.find("interMesh") != string::npos) {
             interBoundary b;
             sscanf(str.c_str(), "interMesh_%x_%x", &b.from,&b.to);
             b.f    = &mBoundaries[str];
@@ -600,9 +600,9 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
                 break;
             }
         }
-        std::rotate(f1.begin(),f1.begin() + v1,f1.end());
+        rotate(f1.begin(),f1.begin() + v1,f1.end());
         if(v2 != -1)
-            std::rotate(f2.begin(),f2.begin() + v2,f2.end());
+            rotate(f2.begin(),f2.begin() + v2,f2.end());
         else
             contained = true;
     }   
@@ -676,23 +676,23 @@ void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,F
 
 #ifdef RDEBUG
     if(f.size() < 4)  {
-        std::cout << "Merge failed.\n";
-        std::cout << "=======================\n";
-        std::cout << c1 << std::endl;
-        std::cout << shared1 << std::endl;
+        cout << "Merge failed.\n";
+        cout << "=======================\n";
+        cout << c1 << endl;
+        cout << shared1 << endl;
         forEach(shared1,i)
-            std::cout << gFacets[c1[shared1[i]]] << std::endl;
-        std::cout << "-----------------------\n";
+            cout << gFacets[c1[shared1[i]]] << endl;
+        cout << "-----------------------\n";
         {
             Facet r,rr;
             straightenEdges(f,r,rr);
-            std::cout << "Merged face  : " << f << std::endl;
-            std::cout << "Straight Edge: " << r << std::endl;
-            std::cout << "Removed      : " << rr << std::endl;
+            cout << "Merged face  : " << f << endl;
+            cout << "Straight Edge: " << r << endl;
+            cout << "Removed      : " << rr << endl;
         }
         forEach(f,i)
-            std::cout << mVertices[f[i]] << " : ";
-        std::cout << std::endl;
+            cout << mVertices[f[i]] << " : ";
+        cout << endl;
         exit(0);
     }
 #endif
@@ -992,7 +992,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
     *
     * *************************/
     //co-planar faces
-    typedef std::map<Int, std::pair<IntVector,IntVector> > typeMap;
+    typedef map<Int, pair<IntVector,IntVector> > typeMap;
     typeMap sharedMap;
 
     IntVector c1;
@@ -1047,8 +1047,8 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         }
         
 #ifdef RDEBUG
-        std::cout << it->first << " = " << it->second.first << " = " << it->second.second <<  std::endl;
-        std::cout << "---\n";
+        cout << it->first << " = " << it->second.first << " = " << it->second.second <<  endl;
+        cout << "---\n";
 #endif
         
     }
@@ -1061,7 +1061,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
     Int ifBegin = mFacets.size();
 
 #ifdef RDEBUG
-    std::cout << "Cell center: " << C << std::endl;
+    cout << "Cell center: " << C << endl;
 #endif
 
     IntVector ownerf;
@@ -1082,8 +1082,8 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         }
 
 #ifdef RDEBUG
-        if(j == 0) std::cout << "====================================\n";
-        std::cout << crj << " " << rDir << " ( " << startF[fi] << "  " << endF[fi] << " ) " << std::endl;
+        if(j == 0) cout << "====================================\n";
+        cout << crj << " " << rDir << " ( " << startF[fi] << "  " << endF[fi] << " ) " << endl;
 #endif
             
         /*refine cells*/
@@ -1102,9 +1102,9 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 #ifdef RDEBUG
             Vector fc;
             calcFaceCenter(f,fc);
-            std::cout << f << std::endl;
-            std::cout << fc << std::endl;
-            std::cout << "----\n";
+            cout << f << endl;
+            cout << fc << endl;
+            cout << "----\n";
 #endif
             
             Cell cn;
@@ -1150,7 +1150,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         Facet& nf = mFacets[fi];
         
         IntVector forg;
-        std::pair<IntVector,IntVector> pair;
+        pair<IntVector,IntVector> pair;
         pair = sharedMap[ownerf[i] - Constants::MAX_INT / 2];
         const IntVector& faces1 = pair.first;
         const IntVector& faces2 = pair.second;
@@ -1196,10 +1196,10 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
          * and merge if they have a shared face
          */
 #ifdef RDEBUG
-        std::cout << "============\n";
-        std::cout << " New cells before merge " << newc.size() << std::endl;
-        std::cout << newc << std::endl;
-        std::cout << "============\n";
+        cout << "============\n";
+        cout << " New cells before merge " << newc.size() << endl;
+        cout << newc << endl;
+        cout << "============\n";
 #endif
         
         Cells mergec;
@@ -1284,9 +1284,9 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         }
         
 #ifdef RDEBUG
-        std::cout << " New cells " << newc.size() << std::endl;
-        std::cout << newc << std::endl;
-        std::cout << "============\n";
+        cout << " New cells " << newc.size() << endl;
+        cout << newc << endl;
+        cout << "============\n";
 #endif
     
         /*two cells should share only one face*/
@@ -1335,13 +1335,13 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         }
     }
 #ifdef RDEBUG
-    std::cout << " After merge new cells " << newc.size() << std::endl;
-    std::cout << newc << std::endl;
+    cout << " After merge new cells " << newc.size() << endl;
+    cout << newc << endl;
     forEach(newc,i) {
         Cell& c = newc[i];
         forEach(c,j) {
             if(mFacets[c[j]].size() <= 3) {
-                std::cout << "Cell still has triangular face.\n";
+                cout << "Cell still has triangular face.\n";
                 exit(0);
             }
         }
@@ -1457,10 +1457,10 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             Cell& c1 = mCells[ci];
 
 #ifdef RDEBUG
-            std::cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << std::endl;
+            cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << endl;
 #endif
 
-            typedef std::map<Int,IntVector> Pair;
+            typedef map<Int,IntVector> Pair;
             Pair sharedMap;
 
             forEach(c1,j) {
@@ -1480,8 +1480,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
 
 #ifdef RDEBUG
             forEachIt(Pair,sharedMap,it)
-                std::cout << it->first << " " << it->second << std::endl;
-            std::cout << "------\n";
+                cout << it->first << " " << it->second << endl;
+            cout << "------\n";
 #endif
 
             IntVector allDel;
@@ -1509,7 +1509,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                         //Assume all faces are on same patch [Fix me later]
                         forEachIt(Boundaries,mBoundaries,it) {
                             IntVector& c2 = it->second;
-                            if(std::find(c2.begin(),c2.end(),fi) != c2.end()) {
+                            if(find(c2.begin(),c2.end(),fi) != c2.end()) {
                                 forEachS(faces,j,1)
                                     eraseValue(c2,c1[faces[j]]);
                                 break;
@@ -1542,7 +1542,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
         }
 #ifdef RDEBUG
-        std::cout << "Coarsening " << delTree << std::endl;
+        cout << "Coarsening " << delTree << endl;
 #endif
         /*delete coarsened cells*/
         sort(delTree.begin(),delTree.end());
@@ -1555,8 +1555,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
     *
     *************************/
 #ifdef RDEBUG
-    std::cout << "=======================================\n";
-    std::cout << "Refining " << rCells << std::endl;
+    cout << "=======================================\n";
+    cout << "Refining " << rCells << endl;
 #endif
         
     /***************************
@@ -1655,8 +1655,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                     IntVector rfFacets;
                     forEach(newc,j)
                         rfFacets.insert(rfFacets.end(),newc[j].begin(),newc[j].end());
-                    std::sort(rfFacets.begin(), rfFacets.end());
-                    rfFacets.erase(std::unique(rfFacets.begin(),rfFacets.end()), rfFacets.end());
+                    sort(rfFacets.begin(), rfFacets.end());
+                    rfFacets.erase(unique(rfFacets.begin(),rfFacets.end()), rfFacets.end());
                 
                     //handle already refined faces
                     {
@@ -1718,17 +1718,17 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 Cells newcn;
                 
 #ifdef RDEBUG
-                std::cout << "========================================"
+                cout << "========================================"
                              "========================================\n";
-                std::cout << "Refinement level " << m + 1 << std::endl;
-                std::cout << "==================\n";
-                std::cout << "Cell " << c << std::endl;
-                std::cout << "-------------\n";
-                std::cout << "Facets of cell:\n";
+                cout << "Refinement level " << m + 1 << endl;
+                cout << "==================\n";
+                cout << "Cell " << c << endl;
+                cout << "-------------\n";
+                cout << "Facets of cell:\n";
                 forEach(c,j)
-                    std::cout << gFacets[c[j]] << std::endl;
-                std::cout << "-------------\n";
-                std::cout << "cr " << cr << std::endl;
+                    cout << gFacets[c[j]] << endl;
+                cout << "-------------\n";
+                cout << "cr " << cr << endl;
 #endif
                 refineCell(c,cr,ndir,refineF,startF,endF,newcn,delFacets,ivBegin);
                 
@@ -1756,8 +1756,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
     
 #ifdef RDEBUG
             if(NR > 1) {
-                std::cout << "==================\n";
-                std::cout << newc << std::endl;
+                cout << "==================\n";
+                cout << newc << endl;
             }
 #endif
         }

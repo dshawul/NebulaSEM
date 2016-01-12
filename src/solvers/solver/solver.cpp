@@ -6,8 +6,10 @@
 
 using namespace std;
 
-/*general properties*/
-namespace GENERAL {
+/**
+general properties
+*/
+namespace General {
     Scalar density = 1.177;
     Scalar viscosity = 1.568e-5;
     Scalar Pr = 0.9;
@@ -66,7 +68,7 @@ int main(int argc, char* argv[]) {
         params.enroll("solver", &sname);
         params.enroll("mesh", &Mesh::gMeshName);
         Mesh::enroll(params);
-        GENERAL::enroll(params);
+        General::enroll(params);
         params.read(input);
     }
     /*AMR options*/
@@ -300,7 +302,7 @@ public:
 */
 void piso(istream& input) {
     /*Solver specific parameters*/
-    Scalar& nu = GENERAL::viscosity;
+    Scalar& nu = General::viscosity;
     Scalar velocity_UR = Scalar(0.8);
     Scalar pressure_UR = Scalar(0.5);
     Scalar t_UR = Scalar(0.8);
@@ -329,7 +331,7 @@ void piso(istream& input) {
     
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        ScalarCellField rho = GENERAL::density;
+        ScalarCellField rho = General::density;
         VectorCellField U("U", READWRITE);
         ScalarCellField p("p", READWRITE);
         ScalarCellField T(false);
@@ -376,11 +378,11 @@ void piso(istream& input) {
                 if (buoyancy != NONE) {
                     Scalar beta;
                     if(buoyancy <= BOUSSINESQ_T2) 
-                        beta = GENERAL::beta;
+                        beta = General::beta;
                     else
-                        beta = 1 / GENERAL::T0;
+                        beta = 1 / General::T0;
                     if (buoyancy == BOUSSINESQ_T1 || buoyancy == BOUSSINESQ_THETA1) {  
-                        ScalarCellField rhok = rho * (0 - beta * (T - GENERAL::T0));
+                        ScalarCellField rhok = rho * (0 - beta * (T - General::T0));
                         Sc += (rhok * VectorCellField(Controls::gravity));
                     } else if(buoyancy == BOUSSINESQ_T2 || buoyancy == BOUSSINESQ_THETA2) {
                         ScalarCellField gz = dot(Mesh::cC,VectorCellField(Controls::gravity));
@@ -395,7 +397,7 @@ void piso(istream& input) {
                 }
                 /*energy predicition*/
                 if (buoyancy != NONE) {
-                    ScalarCellField mu = eddy_mu / GENERAL::Prt + (rho * nu) / GENERAL::Pr;
+                    ScalarCellField mu = eddy_mu / General::Prt + (rho * nu) / General::Pr;
                     ScalarCellMatrix Mt = transport(T, Fc, F, mu, t_UR);
                     Solve(Mt);
                     T = max(T, Constants::MachineEpsilon);
@@ -502,7 +504,7 @@ void euler(istream& input) {
 
         /*gas constants*/
         Scalar p_factor, p_gamma, R, psi, iPr;
-        using namespace GENERAL;
+        using namespace General;
         R = cp - cv;
         p_gamma = cp / cv;
         p_factor = P0 * pow(R / P0, p_gamma);
@@ -784,6 +786,9 @@ void walldist(istream& input) {
         Mesh::calc_walldist(ait.get_step(), n_ORTHO);
     }
 }
+/**
+Calculate wall distance at given time step
+*/
 void Mesh::calc_walldist(Int step, Int n_ORTHO) {
     ScalarCellField& phi = yWall;
     /*poisson equation*/

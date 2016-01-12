@@ -1,5 +1,8 @@
 #include "field.h"
 
+/**
+Nodal Discontinuos Galerkin variables
+*/
 namespace DG {
     Int Nop[3] = {0, 0, 0};
     Int NPX, NPY, NPZ;

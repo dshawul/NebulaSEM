@@ -6,12 +6,15 @@ namespace Util {
     std::map<std::string,ParamList*> ParamList::list;
 }
 
+/** String hash function */
 Int Util::hash_function(std::string s) {
     Int h = 0;
     const char* p = s.c_str();
     while(*p) { h = 31 * h + *p++; }
     return h;
 }
+
+/** Read next character */
 int Util::nextc(std::istream& is) {
     char c;
     is >> c;
@@ -24,6 +27,8 @@ int Util::nextc(std::istream& is) {
     is.putback(c);
     return c;
 }
+
+/** Reads parameters */
 void Util::read_params(istream& is, bool output, std::string block) {
     string str;
     char c;
@@ -73,7 +78,7 @@ END:
     is.seekg(0,ios::beg);
 }
 
-/*IntVector cout*/
+/** Outputs an integer vector to stream*/
 template<>
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p) {
     Int sz = p.size();

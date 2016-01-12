@@ -13,7 +13,7 @@ bool MP::Terminated = false;
 bool MP::printOn = true;
 char MP::workingDir[PATH_MAX + 1];
 
-/*Initialize*/
+/** Initialize MPI */
 MP::MP(int argc,char* argv[]) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &n_hosts);
@@ -29,27 +29,27 @@ MP::MP(int argc,char* argv[]) {
     fflush(stdout);
 }
 
-/*finalize*/
+/** Finalize MPI*/
 MP::~MP() {
     MPI_Finalize();
 }
 
-/*send*/
+/** Synchronous seend */
 void MP::send(int source,int message_id) {
     MPI_Send(MPI_BOTTOM,0,MPI_INT,source,message_id,MPI_COMM_WORLD);
 }
 
-/*recieve*/
+/** Synchronous recieve */
 void MP::recieve(int source,int message_id) {
     MPI_Recv(MPI_BOTTOM,0,MPI_INT,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 }
 
-/*barrier*/
+/** Barrier */
 void MP::barrier() {
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-/*probe for messages*/
+/** Asynchronous probe for messages */
 int MP::iprobe(int& source,int& message_id,int tag) {
     int flag;
     MPI_Status mpi_status;
@@ -61,7 +61,7 @@ int MP::iprobe(int& source,int& message_id,int tag) {
     }
     return false;
 }
-/*print*/
+/** Print with hearder */
 void MP::printH(const char* format,...) {
     printf("%d [%d] ",System::get_time() - _start_time,host_id);
     va_list ap;
@@ -70,6 +70,7 @@ void MP::printH(const char* format,...) {
     va_end(ap);
     fflush(stdout);
 }
+/** Print without hearder */
 void MP::print(const char* format,...) {
     va_list ap;
     va_start(ap, format);
@@ -77,7 +78,7 @@ void MP::print(const char* format,...) {
     va_end(ap);
     fflush(stdout);
 }
-/*cleanup*/
+/** Exit point */
 void MP::cleanup () {
     Terminated = true;
     if(host_id == 0) {
@@ -85,7 +86,7 @@ void MP::cleanup () {
             System::get_time() - _start_time, host_id, n_hosts);
     }
 }
-/*delay*/
+/** Check if certain amout of time is elapsed */
 bool MP::hasElapsed(const Int delta) {
     static Int prev_time = 0;
     Int current_time;

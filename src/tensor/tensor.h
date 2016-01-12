@@ -15,14 +15,15 @@
 #   define Scalar  float
 #endif
 
-/* Arthimetic operators are defined via compound assignment*/
+/** Adds general arthimetic operators defined via compound assignment*/
 #define AddOperator(T,$)                                            \
     friend FORCEINLINE T operator $ (const T& p,const T& q) {       \
         T r = p;                                                    \
         r $##= q;                                                   \
         return r;                                                   \
     }
-/*Scalar operators*/
+/** \name General scalar operators */
+//@{
 #define AddRightScalarOperator(T,$)                                 \
     friend FORCEINLINE T operator $ (const T& p,const Scalar& q) {  \
         T r = p;                                                    \
@@ -41,6 +42,7 @@
         r $##= q;                                                   \
         return r;                                                   \
     }
+//@}
     
 #define AddOperators(T)\
     AddOperator(T,+)\
@@ -58,7 +60,8 @@
     AddLeftScalarOperator2(T,-)\
     AddLeftScalarOperator2(T,/)
 
-/*other scalar operations*/
+/** \name Other operations on scalars*/
+//@{
 FORCEINLINE Scalar mag(const Scalar& p) { 
     return fabs(p); 
 }
@@ -74,9 +77,15 @@ FORCEINLINE Scalar min(const Scalar& p,const Scalar& q) {
 FORCEINLINE Scalar dot(const Scalar& p, const Scalar& q) {
     return p * q;
 }
+//@}
+
 /*********************************
- * loop unroller for tensors
+ * Tensors
  *********************************/
+
+/**
+Loop unroller for the Tensor class
+*/
 template <int N>
 struct Unroll {
     /*macro*/
@@ -151,6 +160,9 @@ struct Unroll {
 #undef Fp2
 };
 
+/**
+Terminator class for the loop unroller
+*/
 template <>
 struct Unroll<0> {
     /*macro*/
@@ -208,9 +220,12 @@ struct Unroll<0> {
 #undef Fp2
 };
 
-/***************************************
- * Template Tensor class
- ***************************************/
+
+/**
+Template tensor class for defining different size
+tensors Scalar=1 Vector=3, Symmetric tensor = 6 and
+asymmetric tensor = 9
+*/
 template <Int SIZE>
 class TTensor {
 public:
@@ -368,10 +383,13 @@ public:
         return is;
     }
 };
-/*typedef tensors*/
+
+/** \name Define basic tensors of order 3,6, and 9*/
+//@{
 typedef TTensor<3> Vector;
 typedef TTensor<6> STensor;
 typedef TTensor<9> Tensor;
+//@}
 
 /*Tensor operations*/
 Vector operator ^ (const Vector& p,const Vector& q);
@@ -388,8 +406,11 @@ Scalar det(const Tensor& p);
 Tensor inv(const Tensor& p);
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta); 
 
-/*constants*/
+/**
+Mathematical constants
+*/
 namespace Constants {
+    /** Names for the 9 indices of a tensor (2-rank) */
     enum {
         XX, YY, ZZ, XY, YZ, XZ, YX, ZY, ZX
     };
@@ -402,14 +423,16 @@ namespace Constants {
     const Tensor I_T = Tensor(1,1,1);
     const STensor I_ST = STensor(1,1,1);
 }
-
+/** Checks if two scalars are equal within machine epsilon */
 FORCEINLINE  bool equal(const Scalar& p,const Scalar& q) { 
     return (mag(p - q) <= Constants::EqualEpsilon); 
 }
+/** Checks if two vectors are equal within machine epsilon */
 FORCEINLINE  bool equal(const Vector& p,const Vector& q) {
     return (equal(p[0],q[0]) && equal(p[1],q[1]) && equal(p[2],q[2]));
 }
-/*for symmetry boundary condition*/
+/** \name Symmetry boundary condition*/
+//@{
 FORCEINLINE Scalar sym(const Scalar& p,const Vector& n) {
     return p;
 }
@@ -440,9 +463,11 @@ FORCEINLINE Tensor sym(const Tensor& p,const Vector& n) {
         return r;
     return r * (mag(p) / magR);
 }
-/*
- * Blending
- */
+//@}
+
+/**
+ Transfinite interpolation on face (2D)
+*/
 template <class T>
 T Interpolate_face (Scalar r,Scalar s, T x00, T x01, T x10,
   T x11, T xr0, T xr1, T x0s, T x1s
@@ -460,6 +485,9 @@ T Interpolate_face (Scalar r,Scalar s, T x00, T x01, T x10,
 
   return result;
 }
+/**
+ Transfinite interpolation on cell (3D)
+*/
 template <class T>
 T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
   T x000, T x001, T x010, T x011,

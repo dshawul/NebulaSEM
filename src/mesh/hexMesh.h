@@ -3,13 +3,23 @@
 
 #include "mesh.h"
 
+/** Element edges refinement options */
 enum {
-    LINEAR, GEOMETRIC, WALL, MIXED
-};
-enum {
-    NONE = 0,ARC,COSINE,QUAD
+    LINEAR,     /**< Uniform spacing */
+    GEOMETRIC,  /**< Geometrically varying spacing */
+    WALL,       /**< Larger spacing at the center */
+    MIXED       /**< Mixed mode for different edges of the element */
 };
 
+/** Edge shapes */
+enum {
+    NONE = 0,   /**< Straight edge */
+    ARC,        /**< Circular arc */
+    COSINE,     /**< Cosine shaped edge */
+    QUAD        /**< Quadratic shaped edge */
+};
+
+/** Edge of an element */
 struct Edge {
     int type;
     Scalar theta;

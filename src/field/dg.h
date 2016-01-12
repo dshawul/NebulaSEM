@@ -92,7 +92,7 @@ namespace DG {
     void init_basis();
     void init_geom();
     
-    /*expand fields*/
+    /** Expand fields originally defined on elements to nodes*/
     template<class type, ENTITY entity>
     void expand(const MeshField<type,entity>& cF) {
         if(DG::NPMAT) {

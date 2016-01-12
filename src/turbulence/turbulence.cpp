@@ -8,6 +8,7 @@
 Int Turbulence_Model::turb_model = 2;
 bool Turbulence_Model::bneedWallDist = false;
 
+/** Register type of turbulence model desired */
 void Turbulence_Model::RegisterTable(Util::ParamList& params) {
     Util::Option* op;
     op = new Util::Option(&turb_model,7,
@@ -15,6 +16,7 @@ void Turbulence_Model::RegisterTable(Util::ParamList& params) {
     params.enroll("turbulence_model",op);
 }
 
+/** Select type of turbulence model at run-time */
 Turbulence_Model* Turbulence_Model::Select(VectorCellField& U,ScalarFacetField& F,
                     ScalarCellField& rho,Scalar& viscosity) {
     /*turbulence model*/

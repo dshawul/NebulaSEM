@@ -13,9 +13,11 @@
 #    include <sys/time.h>
 #endif
 
-
+/**
+System dependent collection of functions
+*/
 namespace System {
-    /*get processor id*/
+    /** Gets processor id*/
     inline int get_pid() {
 #ifdef _MSC_VER
         return _getpid();
@@ -23,7 +25,7 @@ namespace System {
         return getpid();
 #endif
     }
-    /*system dependent directory operations*/
+    /** Change directory*/
     inline int cd(std::string path) {
 #ifdef _MSC_VER
         return ::SetCurrentDirectory((LPCTSTR)path.c_str());
@@ -31,6 +33,7 @@ namespace System {
         return !::chdir(path.c_str());
 #endif
     }
+    /** Makes new directory */
     inline int mkdir(std::string path) {
 #ifdef _MSC_VER
         return ::CreateDirectory((LPCTSTR)path.c_str(),NULL);
@@ -38,6 +41,7 @@ namespace System {
         return !::mkdir(path.c_str(),S_IRWXU);
 #endif
     }
+    /** Removes directory */
     inline int rmdir(std::string path) {
 #ifdef _MSC_VER
         return ::RemoveDirectory((LPCTSTR)path.c_str());
@@ -45,6 +49,7 @@ namespace System {
         return !::rmdir(path.c_str());
 #endif
     }
+    /** Gets present working directory */
     inline int pwd(char* path, int len) {
 #ifdef _MSC_VER
         return ::GetCurrentDirectory(len,(LPTSTR)path);
@@ -52,7 +57,7 @@ namespace System {
         return !::getcwd(path, len);
 #endif
     }
-    /*time*/
+    /** Gets time in milli-seconds */
     inline int get_time() {
 #ifdef _MSC_VER
         timeb tb;
