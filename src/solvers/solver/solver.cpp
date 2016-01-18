@@ -369,7 +369,7 @@ void piso(istream& input) {
              */
             VectorCellMatrix M;
             {
-                VectorCellField Sc = turb->getTurbSource();
+                VectorCellField Sc = turb->getExplicitStresses();
                 ScalarCellField eddy_mu = turb->getTurbVisc();
                 /* Add buoyancy in two ways
                  *  1. pm = p - rho*g*h

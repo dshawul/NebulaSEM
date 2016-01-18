@@ -79,7 +79,6 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
     int step = findLastRefinedGrid(step_);
     
     /*load mesh*/
-    Mesh::clear();
     if(gMesh.readMesh(step,first)) {
         if(MP::printOn)
             cout << "--------------------------------------------\n";

@@ -7,36 +7,47 @@
      \verbatim
      Description of RANS turbulence models
      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     Navier Stokes without source term:
-         d(rho*u)/dt + div(rho*uu) = -grad(p) + div(mu*gu)
-     RANS:
-         d(rho*U)/dt + div(rho*UU) + div(rho*u'u') = -grad(P) + div(mu*gU)
-         d(rho*U)/dt + div(rho*UU) = -grad(P) + div(mu*gU) - div(rho*u'u')
+     Navier Stokes without source terms:
+         d(rho*u)/dt + div(rho*uu) = -grad(p) + div(V)
+           where u,rho are instantaneous quantities, and V is the 
+           deviatoric stress tensor (a.k,a Viscous stress tensor ).
+     RANS (Reynolds averaged navier stokes): with mean quantites U, rho
+         d(rho*U)/dt + div(rho*UU) + div(rho*u'u') = -grad(P) + div(V)
          d(rho*U)/dt + div(rho*UU) = -grad(P) + div(V + R)
-     where Viscous (V) and Reynolds (R) stress tensors are
-         V =  mu*gU
+     where the Viscous (V) and Reynolds (R) stress tensors are
+         V =  2*mu*dev(S)
          R = -rho*u'u'
-     Boussinesq model for R:
-         Traceless(R) = 2 * emu * Traceless(S) 
-         where S = (gU + gUt) / 2
-         R - R_ii/3 = 2 * emu * (S - S_ii/3)
-         R = 2 * emu * (S - S_ii/3) + R_ii/3
-           = 2 * emu * ((gU + gUt)/2 - gU_ii/3) + R_ii/3
-           = emu * gU + emu * (gUt - 2/3*gUt_ii) + R_ii/3
-           = emu * gU + emu * dev(gUt,2) - 2/3*rho*k*I
+       where S = (gU + gUt) / 2 is the mean strain tensor.
+         2 * dev(S) = (gU + gUt) - 2 * gUt_ii / 3
+                    = gU + (gUt - 2 * gUt_ii/3)
+                    = gU + dev(gUt,2)
+     The viscouse and reynolds stresses contain normal components that could
+     be absored to the pressure term for computational efficiency reasons.
+              V = 2 * mu * dev(S)
+     Boussinesq model for the deviatoric Reynolds stress uses eddy viscosity (emu):
+         dev(R) = 2 * emu * dev(S) 
+              R = 2 * emu * dev(S) + R_ii/3
      Viscous and Reynolds stress together:
-         V + R = {mu * gU} + {emu * gU + emu * dev(gUt,2) - 2/3*rho*k*I}
-               = (mu + emu) * gU + emu * dev(gUt,2) - 2/3*rho*k*I
-               = ( eff_mu ) * gU + emu * dev(gUt,2) - 2/3*rho*k*I
-     Volume integrated V+R i.e force:
-         div(V + R) = div(eff_mu*gU) + div(emu * dev(gUt,2)) - div(2/3*rho*k*I)
-                         Implicit           Explicit          Absored in pressure 
-                                                              p_m = p + 2/3*k*rho
+         V + R = 2 * (mu + emu) * dev(S) + R_ii/3
+               = 2 * eff_mu * dev(S) + R_ii/3
+     Volume integrated V+R (i.e. force), results in a laplacian for the implict term
+         div(V + R) = div(2 * eff_mu * dev(S)) + div(R_ii/3)
+                    = div(eff_mu*gU) + div(eff_mu * dev(gUt,2))  + div(R_ii/3)
+                         Implicit           Explicit               Absorbed in pressure
+                                                                    P_m = P - R_ii/3
+     For constant effective viscosity (i.e. no turbulence and constant dynamic viscosity)
+              div(eff_mu * gU)  = eff_mu * laplacian(U)
+              div(eff_mu * gUt) = eff_mu * grad(div(U)).
+     In this case, the second term be dropped for incompressible flows where div(U) = 0.
+
      Final RANS equation after substituting div(V+R):
          d(rho*U)/dt + div(rho*UU) = -grad(P) + div(V + R)
-         d(rho*U)/dt + div(rho*UU) = -grad(P_m) + div(eff_mu*gU) + div(emu * dev(gUt,2))
-     Since the k term is absorbed into the pressure gradient, we only need models for
-     turbulent diffusivity emu.
+                                   = -grad(P_m) + div(eff_mu*gU) + div(eff_mu * dev(gUt,2))
+     where the modified pressure P_m, a.k.a mechanical pressure, can be calculated from 
+     thermodynamic pressure P as
+         P_m = P - R_ii/3
+             = P + 2/3*rho*k
+     since R_ii/3 = trace(-rho*u'u') = -2/3*rho*k*I
 
      Base turbulence model:
          This default class has no turbulence model so it is a laminar solver. 
@@ -72,16 +83,17 @@ struct Turbulence_Model {
         params.enroll("writeStress",op);
     };
     virtual void solve() {};
+    /* Turbulence viscosity */
     virtual ScalarCellField getTurbVisc() {
         return Scalar(0);
     }
-    virtual VectorCellField getTurbSource() {
-        return Vector(0);
+    /* Explicit V */
+    virtual VectorCellField getExplicitStresses() {
+        return divi((rho * nu) * dev(trn(gradi(U)),2));
     };
     /* V */
     STensorCellField getViscousStress() {
-        STensorCellField V = 2 * rho * nu * sym(gradi(U));
-        return V;
+        return 2.0 * (rho * nu) * dev(sym(gradi(U)));
     }
     /* R */
     virtual STensorCellField getReynoldsStress() {
@@ -135,13 +147,13 @@ struct EddyViscosity_Model : public Turbulence_Model {
     virtual ScalarCellField getTurbVisc() {
         return eddy_mu;
     }
-    /* V + R */
-    virtual VectorCellField getTurbSource() {
+    /* Explicit V + R */
+    virtual VectorCellField getExplicitStresses() {
         TensorCellField gradU = gradi(U);
         calcEddyViscosity(gradU);
         setWallEddyMu();
         fillBCs(eddy_mu);
-        return divi(eddy_mu * dev(trn(gradU),2));
+        return divi((eddy_mu + rho * nu) * dev(trn(gradU),2));
     };
 
     /* R */

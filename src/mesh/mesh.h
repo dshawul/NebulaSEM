@@ -190,7 +190,6 @@ namespace Mesh {
     /** probe points */
     extern  Vertices         probePoints;
     
-    void clear();
     void enroll(Util::ParamList& params);
 }
 

@@ -54,7 +54,6 @@ int main(int argc,char* argv[]) {
         ofstream output(e_file_name);
         if(Import) str = i_file_name;
         else str = "grid";
-        Mesh::clear();
         Mesh::gMeshName = str;
         Mesh::gMesh.readMesh();
         Mesh::gMesh.addBoundaryCells();

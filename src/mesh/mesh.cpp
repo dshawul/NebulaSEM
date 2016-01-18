@@ -57,14 +57,6 @@ void Controls::enrollDecompose(Util::ParamList& params) {
     params.enroll("type",op);
 }
 /**
-Clear mesh
-*/
-void Mesh::clear() {
-    gMesh.clear();
-    Mesh::clearBC();
-    Mesh::probePoints.clear();
-}
-/**
 Clear mesh object
 */
 void Mesh::MeshObject::clear() {
@@ -94,6 +86,10 @@ bool Mesh::MeshObject::readMesh(Int step,bool first) {
         } else
             return false;
     }
+    /*clear*/
+    clear();
+    Mesh::clearBC();
+    Mesh::probePoints.clear();
     /*read*/
     is >> hex;
     is >> mVertices;
