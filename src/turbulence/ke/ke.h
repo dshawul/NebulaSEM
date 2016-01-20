@@ -5,7 +5,7 @@
 
 struct KE_Model : public KX_Model {
     /*constructor*/
-    KE_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,Scalar&);
+    KE_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
 
     /*others*/
     virtual void enroll();

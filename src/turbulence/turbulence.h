@@ -36,9 +36,9 @@
                          Implicit           Explicit               Absorbed in pressure
                                                                     P_m = P - R_ii/3
      For constant effective viscosity (i.e. no turbulence and constant dynamic viscosity)
-              div(eff_mu * gU)  = eff_mu * laplacian(U)
-              div(eff_mu * gUt) = eff_mu * grad(div(U)).
-     In this case, the second term be dropped for incompressible flows where div(U) = 0.
+              (Implicit) div(eff_mu * gU)  = eff_mu * div(grad(U)) = eff_mu * lapalacian(U)
+              (Explicit) div(eff_mu * gUt) = eff_mu * grad(div(U)).
+     In this case, the explicit term can be dropped for incompressible flows where div(U) = 0.
 
      Final RANS equation after substituting div(V+R):
          d(rho*U)/dt + div(rho*UU) = -grad(P) + div(V + R)
@@ -61,16 +61,16 @@ struct Turbulence_Model {
     VectorCellField& U;
     ScalarFacetField& F;
     ScalarCellField& rho;
-    Scalar& nu;
+    ScalarCellField& mu;
 
     Util::ParamList params;
     bool writeStress;
     /*constructor*/
-    Turbulence_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
+    Turbulence_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
         U(tU),
         F(tF),
         rho(trho),
-        nu(tnu),
+        mu(tmu),
         params("turbulence"),
         writeStress(false)
     {
@@ -89,11 +89,11 @@ struct Turbulence_Model {
     }
     /* Explicit V */
     virtual VectorCellField getExplicitStresses() {
-        return divi((rho * nu) * dev(trn(gradi(U)),2));
+        return divi(mu * dev(trn(gradi(U)),2));
     };
     /* V */
     STensorCellField getViscousStress() {
-        return 2.0 * (rho * nu) * dev(sym(gradi(U)));
+        return 2.0 * mu * dev(sym(gradi(U)));
     }
     /* R */
     virtual STensorCellField getReynoldsStress() {
@@ -109,7 +109,7 @@ struct Turbulence_Model {
     static bool needWallDist() { return bneedWallDist;}
     static void RegisterTable(Util::ParamList& params);
     static Turbulence_Model* Select(VectorCellField& U,ScalarFacetField& F,
-        ScalarCellField& rho,Scalar& nu);
+        ScalarCellField& rho,ScalarCellField& mu);
 };
 /**
  * Eddy viscosity models based on Boussinesq's assumption
@@ -127,8 +127,8 @@ struct EddyViscosity_Model : public Turbulence_Model {
     WallModel wallModel;
     
     /*constructor*/
-    EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
-        Turbulence_Model(tU,tF,trho,tnu),
+    EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+        Turbulence_Model(tU,tF,trho,tmu),
         eddy_mu("emu",READWRITE),
         modelType(SMAGORNSKY),
         wallModel(STANDARD)
@@ -153,7 +153,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
         calcEddyViscosity(gradU);
         setWallEddyMu();
         fillBCs(eddy_mu);
-        return divi((eddy_mu + rho * nu) * dev(trn(gradU),2));
+        return divi((eddy_mu + mu) * dev(trn(gradU),2));
     };
 
     /* R */
@@ -237,8 +237,8 @@ struct KX_Model : public EddyViscosity_Model {
     ScalarCellField Pk;       
 
     /*constructor*/
-    KX_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu,const char* xname) :
-        EddyViscosity_Model(tU,tF,trho,tnu),
+    KX_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu,const char* xname) :
+        EddyViscosity_Model(tU,tF,trho,tmu),
         k_UR(0.7),
         x_UR(0.7),
         k("k",READWRITE),
@@ -273,6 +273,7 @@ struct KX_Model : public EddyViscosity_Model {
         Int c2 = FN[f];
 
         /*calc ustar*/
+        Scalar nu = mu[c1] / rho[c1];
         Scalar ustar = Scalar(0.0);
         Scalar y = mag(unit(fN[f]) & (cC[c1] - cC[c2]));
         if(wallModel == STANDARD) {
@@ -286,7 +287,7 @@ struct KX_Model : public EddyViscosity_Model {
         /* calculate eddy viscosity*/
         Scalar yp = (ustar * y) / nu;
         Scalar up = low.getUp(ustar,nu,yp);                                         
-        eddy_mu[c1] = (rho[c1] * nu) * (yp / up - 1);
+        eddy_mu[c1] = mu[c1] * (yp / up - 1);
 
         /* turbulence generation and dissipation */
         if(wallModel == LAUNDER) {

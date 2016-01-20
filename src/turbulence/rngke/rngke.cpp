@@ -3,8 +3,8 @@
 References:
     http://www.cfd-online.com/Wiki/RNG_k-epsilon_model
 */
-RNG_KE_Model::RNG_KE_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,Scalar& tnu) :
-    KE_Model(tU,tF,trho,tnu),
+RNG_KE_Model::RNG_KE_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+    KE_Model(tU,tF,trho,tmu),
     eta0(4.38),
     beta(0.012)
 {
@@ -33,11 +33,11 @@ void RNG_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
 }
 void RNG_KE_Model::solve() {
     ScalarCellMatrix M;
-    ScalarCellField mu;
+    ScalarCellField eff_mu;
 
     /*turbulent dissipation*/
-    mu = eddy_mu / SigmaX + rho * nu;
-    M = transport(x, U, F, mu, x_UR,
+    eff_mu = eddy_mu / SigmaX + mu;
+    M = transport(x, U, F, eff_mu, x_UR,
                 (C1x * Pk * x / k),
                 -(C2eStar * rho * x / k), &rho);
     FixNearWallValues(M);
@@ -45,8 +45,8 @@ void RNG_KE_Model::solve() {
     x = max(x,Constants::MachineEpsilon);
 
     /*turbulent kinetic energy*/
-    mu = eddy_mu / SigmaK + rho * nu;
-    M = transport(k, U, F, mu, k_UR,
+    eff_mu = eddy_mu / SigmaK + mu;
+    M = transport(k, U, F, eff_mu, k_UR,
                     Pk,
                     -(rho * x / k), &rho);
     if(wallModel == STANDARD)

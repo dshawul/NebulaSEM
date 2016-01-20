@@ -302,7 +302,6 @@ public:
 */
 void piso(istream& input) {
     /*Solver specific parameters*/
-    Scalar& nu = General::viscosity;
     Scalar velocity_UR = Scalar(0.8);
     Scalar pressure_UR = Scalar(0.5);
     Scalar t_UR = Scalar(0.8);
@@ -332,6 +331,7 @@ void piso(istream& input) {
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
         ScalarCellField rho = General::density;
+        ScalarCellField mu = rho * General::viscosity;
         VectorCellField U("U", READWRITE);
         ScalarCellField p("p", READWRITE);
         ScalarCellField T(false);
@@ -342,7 +342,7 @@ void piso(istream& input) {
         
         /*turbulence model*/
         ScalarFacetField F;
-        Turbulence_Model* turb = Turbulence_Model::Select(U, F, rho, nu);
+        Turbulence_Model* turb = Turbulence_Model::Select(U, F, rho, mu);
 
         /*read parameters*/
         if(ait.start()) {
@@ -391,14 +391,14 @@ void piso(istream& input) {
                 }
                 /*momentum prediction*/
                 {
-                    ScalarCellField mu = eddy_mu + rho * nu;
-                    M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0));
+                    ScalarCellField eff_mu = eddy_mu + mu;
+                    M = transport(U, Fc, F, eff_mu, velocity_UR, Sc, Scalar(0));
                     Solve(M == gP);
                 }
                 /*energy predicition*/
                 if (buoyancy != NONE) {
-                    ScalarCellField mu = eddy_mu / General::Prt + (rho * nu) / General::Pr;
-                    ScalarCellMatrix Mt = transport(T, Fc, F, mu, t_UR);
+                    ScalarCellField eff_mu = eddy_mu / General::Prt + mu / General::Pr;
+                    ScalarCellMatrix Mt = transport(T, Fc, F, eff_mu, t_UR);
                     Solve(Mt);
                     T = max(T, Constants::MachineEpsilon);
                 }
