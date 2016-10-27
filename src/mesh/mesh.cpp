@@ -26,35 +26,7 @@ namespace Mesh {
     VectorVector&     gFN = gMesh.mFN;
     ScalarVector&     gCV = gMesh.mCV;
     
-    vector<BasicBCondition*> AllBConditions;
-    Vertices         probePoints;
-}
-/**
-Refinement and domain decomposition parameters
-*/
-namespace Controls {
-    RefineParams refine_params;
-    DecomposeParams decompose_params;
-}
-/**
-Enroll refine parameters
-*/
-void Controls::enrollRefine(Util::ParamList& params) {
-    params.enroll("direction",&refine_params.dir);
-    params.enroll("field",&refine_params.field);
-    params.enroll("field_max",&refine_params.field_max);
-    params.enroll("field_min",&refine_params.field_min);
-    params.enroll("limit",&refine_params.limit);
-}
-/**
-Enroll domain decomposition parameters
-*/
-void Controls::enrollDecompose(Util::ParamList& params) {
-    params.enroll("n",&decompose_params.n);
-    params.enroll("axis",&decompose_params.axis);
-    Util::Option* op = new Util::Option(&decompose_params.type, 4, 
-            "XYZ","CELLID","METIS","NONE");
-    params.enroll("type",op);
+    Vector            amr_direction(0,0,0);
 }
 /**
 Clear mesh object
@@ -88,8 +60,6 @@ bool Mesh::MeshObject::readMesh(Int step,bool first) {
     }
     /*clear*/
     clear();
-    Mesh::clearBC();
-    Mesh::probePoints.clear();
     /*read*/
     is >> hex;
     is >> mVertices;
@@ -811,9 +781,8 @@ void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
 Refine facet
 */
 void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int ivBegin) {
-    using namespace Controls;
-    
-    const bool refine3D = equal(Scalar(0.0),mag(refine_params.dir));
+
+    const bool refine3D = equal(Scalar(0.0),mag(amr_direction));
     
     /*add face center*/
     Vector C;
@@ -846,7 +815,7 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
         Vector uLine = unit(v2 - v1);
         
         if(!refine3D) {
-            const Vector uDir = unit(refine_params.dir);
+            const Vector uDir = unit(amr_direction);
             RDIR(uDir);
         }
         
@@ -1392,8 +1361,7 @@ Refine mesh
 */
 void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCells,const IntVector& rLevel,
                                   const IntVector& rDirs, IntVector& cellMap,IntVector& coarseMap) {
-    using namespace Controls;
-    
+
     Int ivBegin = mVertices.size();
     IntVector delFacets;
     IntVector delCells;
@@ -1715,7 +1683,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 
 #ifdef RDEBUG
                 cout << "========================================"
-                             "========================================\n";
+                        "========================================\n";
                 cout << "Refinement level " << m + 1 << endl;
                 cout << "==================\n";
                 cout << "Cell " << c << endl;

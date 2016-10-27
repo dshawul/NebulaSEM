@@ -233,7 +233,7 @@ void DG::legendre_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
     }
     dpsi[v] = -cc;
     
-    delete bb;
+    delete[] bb;
 }
 /**
 Initialize polynomial order

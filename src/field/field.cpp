@@ -22,10 +22,21 @@ namespace Mesh {
     Int         gBCSfield;
     Int         gBCSIfield;
     Int         gBFSfield;
+    
+    Vertices                 probePoints;
+    vector<BasicBCondition*> AllBConditions;
 }
 
 std::list<BaseField*> BaseField::allFields;
 std::vector<std::string> BaseField::fieldNames;
+
+/**
+Refinement and domain decomposition parameters
+*/
+namespace Controls {
+    RefineParams refine_params;
+    DecomposeParams decompose_params;
+}
 
 /**
 Solver control parameters
@@ -80,6 +91,10 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
     
     /*load mesh*/
     if(gMesh.readMesh(step,first)) {
+        /*clear bc and probing points list*/
+        Mesh::clearBC();
+        Mesh::probePoints.clear();
+        /*print info*/
         if(MP::printOn)
             cout << "--------------------------------------------\n";
         MP::printH("\t%d vertices\t%d facets\t%d cells\n",
@@ -362,6 +377,26 @@ void Mesh::remove_fields() {
     BaseField::allFields.clear();
 }
 /**
+Enroll refine parameters
+*/
+void Controls::enrollRefine(Util::ParamList& params) {
+    params.enroll("direction",&refine_params.dir);
+    params.enroll("field",&refine_params.field);
+    params.enroll("field_max",&refine_params.field_max);
+    params.enroll("field_min",&refine_params.field_min);
+    params.enroll("limit",&refine_params.limit);
+}
+/**
+Enroll domain decomposition parameters
+*/
+void Controls::enrollDecompose(Util::ParamList& params) {
+    params.enroll("n",&decompose_params.n);
+    params.enroll("axis",&decompose_params.axis);
+    Util::Option* op = new Util::Option(&decompose_params.type, 4, 
+            "XYZ","CELLID","METIS","NONE");
+    params.enroll("type",op);
+}
+/**
  Enroll solver control parameters
 */
 void Mesh::enroll(Util::ParamList& params) {
@@ -519,7 +554,10 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     using namespace Controls;
 
     std::cout << "Refining grid at step " << step << std::endl;
-
+    
+    /*Specify AMR direction (3D or 2D)*/
+    Mesh::amr_direction = refine_params.dir;
+    
     /*Load mesh*/
     LoadMesh(step,true,false);
 
