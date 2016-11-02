@@ -409,9 +409,10 @@ public:
     static std::list<BaseField*> allFields;
     static std::vector<std::string> fieldNames;
     static void destroyFields() {
-        forEachIt(std::list<BaseField*>, allFields, it)
+        std::list<BaseField*> save;
+        copyColl(allFields,save);
+        forEachIt(std::list<BaseField*>, save, it)
             (*it)->deallocate(false);
-        allFields.clear();
     }
     static BaseField* findField(const std::string& name) {
         forEachIt(std::list<BaseField*>, allFields, it) {
@@ -668,10 +669,9 @@ public:
         }
     } 
     static void removeAll() {
-        allFields.clear();
         fields_.clear();
         forEachIt(typename std::list<type*>,mem_,it)
-            delete (*it);
+            delete[] (*it);
         mem_.clear();
         n_alloc = 0;
     } 

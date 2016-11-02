@@ -1,4 +1,3 @@
-#include "mesh.h"
 #include "hexMesh.h"
 
 using namespace std;
