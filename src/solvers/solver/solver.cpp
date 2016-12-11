@@ -42,6 +42,7 @@ void transport(istream&);
 void walldist(istream&);
 void euler(istream&);
 void wave(istream&);
+void hydro_balance(istream&);
 /**
  \verbatim
  Main application entry point for different solvers.
@@ -105,6 +106,8 @@ int main(int argc, char* argv[]) {
         transport(input);
     } else if (!Util::compare(sname, "potential")) {
         potential(input);
+    } else if (!Util::compare(sname, "hydro_balance")) {
+        hydro_balance(input);
     } else if (!Util::compare(sname, "walldist")) {
         walldist(input);
     } else if (!Util::compare(sname, "wave")) {
@@ -307,6 +310,7 @@ void piso(istream& input) {
     Scalar t_UR = Scalar(0.8);
     Int n_PISO = 1;
     Int n_ORTHO = 0;
+    Int momentum_predictor = 0;
     /*Include buoyancy?*/
     enum BOUYANCY {
         NONE, BOUSSINESQ_T1, BOUSSINESQ_T2, 
@@ -324,6 +328,8 @@ void piso(istream& input) {
     params.enroll("t_UR", &t_UR);
     params.enroll("n_PISO", &n_PISO);
     params.enroll("n_ORTHO", &n_ORTHO);
+    op = new Util::BoolOption(&momentum_predictor);
+    params.enroll("momentum_predictor",op);
     
     Turbulence_Model::RegisterTable(params);
     params.read(input);
@@ -359,7 +365,7 @@ void piso(istream& input) {
         ScalarCellField po = p;
         VectorCellField gP = -gradf(p);
         VectorCellField Fc;
-    
+        
         Fc = rho * U;
         F = flx(Fc);
 
@@ -393,14 +399,9 @@ void piso(istream& input) {
                 {
                     ScalarCellField eff_mu = eddy_mu + mu;
                     M = transport(U, Fc, F, eff_mu, velocity_UR, Sc, Scalar(0));
-                    Solve(M == gP);
-                }
-                /*energy predicition*/
-                if (buoyancy != NONE) {
-                    ScalarCellField eff_mu = eddy_mu / General::Prt + mu / General::Pr;
-                    ScalarCellMatrix Mt = transport(T, Fc, F, eff_mu, t_UR);
-                    Solve(Mt);
-                    T = max(T, Constants::MachineEpsilon);
+                    if(momentum_predictor) {
+                        Solve(M == gP);
+                    }
                 }
             }
 
@@ -420,7 +421,7 @@ void piso(istream& input) {
                 {
                     ScalarCellField rhs = divf(rho * U);
                     for (Int k = 0; k <= n_ORTHO; k++)
-                        Solve(lap(p, rmu) += rhs);
+                        Solve(lap(p, rmu, true) += rhs);
                 }
             
                 /*explicit velocity correction : add pressure contribution*/
@@ -428,14 +429,24 @@ void piso(istream& input) {
                 U -= gP * api;
                 applyExplicitBCs(U, true);
             }
+            
             /*update fluctuations*/
             applyExplicitBCs(U, true, true);
             Fc = rho * U;
             F = flx(Fc);
-
+            
             /*solve turbulence transport equations*/
             turb->solve();
-
+            
+            /*solve energy transport*/
+            if (buoyancy != NONE) {
+                ScalarCellField eddy_mu = turb->getTurbVisc();
+                ScalarCellField eff_mu = eddy_mu / General::Prt + mu / General::Pr;
+                ScalarCellMatrix Mt = transport(T, Fc, F, eff_mu, t_UR);
+                Solve(Mt);
+                T = max(T, Constants::MachineEpsilon);
+            }
+            
             /*explicitly under relax pressure*/
             if (Controls::state == Controls::STEADY) {
                 p.Relax(po, pressure_UR);
@@ -706,19 +717,34 @@ void wave(istream& input) {
     ~~~~~~~~~~~~~~~~~~~~~
     In potential flow the velocity field is irrotational (vorticity = curl(U) = 0).
     This assumption fails for boundary layers and wakes that exhibit strong vorticity,
-    but it can still be used to initialize the flow field for further simulations.
+    but the theory can still be used to initialize flow field for complex simulations.
 
-    For incompressible flow
-           div(U) = 0
-    Velocity is the gradient of velocity potential phi
+    The potential flow assumption is that velocity is the gradient of a scalar field,
+    which is the velocity potential (phi) 
            U = grad(phi)
-           div(grad(phi)) = 0
+           curl(U) = curl(grad(phi))
+           curl(U) = 0
+    where the last step is possible due to the vector identity curl(grad(phi)) = 0.
+    Hence, defining the velocity as a gradient of a scalar ensures vorticity is zero.
+    Let us now take the divergence instead as
+           U = grad(phi)
+           div(U) = div(grad(phi))
+           div(U) = lap(phi)
+    Since div(U)=0 for incompressible, the poisson equation becomes a laplace equation
            lap(phi) = 0
-    phi is pressure for this solver. The initial flow field will inevitably not satisfy 
-    continuity due to imposed boundary conditons. Therefore we solve a pressure poisson 
-    equation and then correct the velocity with the gradient of p.
-           lap(p) = div(U)
-           U -= grad(p)
+
+    What the solver does
+    ~~~~~~~~~~~~~~~~~~~~~
+    Given an initial velocity field (Ua) that does not satisfy continuity (div(Ua) != 0),
+    we can correct Ua with the pressure gradient to get a divergence free velocity field U
+           U = Ua - grad(p)
+           div(Ua - grad(p)) = div(U) = 0
+           div(Ua) = div(grad(p))
+    If Ua is irrotational, i.e. curl(Ua) = 0 and Ua = grad(phia), then so is U because
+           U = Ua - grad(p)
+           U = grad(phia) - grad(p)
+           U = grad(phia - p)
+    where U = grad(phi) such that phi = phia - p.
   \endverbatim
 */
 void potential(istream& input) {
@@ -736,27 +762,59 @@ void potential(istream& input) {
     for (AmrIteration ait; !ait.end(); ait.next()) {
         
         VectorCellField U("U", READWRITE);
-        ScalarCellField p("p", READ);
-    
-        /*set internal field to zero*/
-        for (Int i = 0; i < Mesh::gBCSfield; i++) {
-            U[i] = Vector(0, 0, 0);
-            p[i] = Scalar(0);
-        }
-        applyExplicitBCs(U, true);
-        applyExplicitBCs(p, true);
+        ScalarCellField p("p", READWRITE);
 
         /*Time loop*/
         for (Iteration it(ait.get_step()); it.start(); it.next()) {
-            /*solve potential equation*/
             ScalarCellField divU = divf(U);
             ScalarCellField one = Scalar(1);
+            
+            /*solve pressure poisson equation for correction*/
             for (Int k = 0; k <= n_ORTHO; k++)
                 Solve(lap(p, one, true) == divU);
-
+            
             /*correct velocity*/
             U -= gradi(p);
             applyExplicitBCs(U, true);
+        }
+    }
+}
+/**
+ \verbatim
+ Hydrostatic
+ ~~~~~~~~~~~~~
+    Solver for hydrostatic balance
+        grad(p) = -rho*g
+    Using gravitational potential theory
+       div(grad(p)) = div(-rho*g)
+ \endverbatim
+*/
+void hydro_balance(istream& input) {
+    /*Solver specific parameters*/
+    Int n_ORTHO = 0;
+
+    /*potential*/
+    Util::ParamList params("hydro_balance");
+    params.enroll("n_ORTHO", &n_ORTHO);
+
+    /*read parameters*/
+    Util::read_params(input,MP::printOn);
+    
+    /*solve*/
+
+    for (AmrIteration ait; !ait.end(); ait.next()) {
+        
+        ScalarCellField p("p", READWRITE);
+        
+        for (Iteration it(ait.get_step()); it.start(); it.next()) {
+            
+            const ScalarCellField one = Scalar(1);
+            const VectorCellField rhog = General::density * Controls::gravity;
+            ScalarCellField ndivRhoG = -divf(rhog);
+        
+            /*solve poisson equation*/
+            for (Int k = 0; k <= n_ORTHO; k++)
+                Solve(lap(p, one, true) == ndivRhoG);
         }
     }
 }
