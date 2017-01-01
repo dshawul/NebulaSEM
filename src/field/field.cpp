@@ -215,11 +215,18 @@ void Mesh::initGeomMeshFields() {
         //penalty
         Scalar k = (NPX > NPY) ? NPX : 
                   ((NPY > NPZ) ? NPY : NPZ);
-        Scalar num = (k + 1) * (k + 3) / 3;
+        Scalar num;
+        
+        if(NP == k)
+            num = (k + 1) * (k + 1) / 1;
+        else if(NPX == 1 || NPY == 1 || NPZ == 1)
+            num = (k + 1) * (k + 2) / 2;
+        else
+            num = (k + 1) * (k + 3) / 3;
         
         fD = cds(cV);
         forEach(fN,i)
-            fD[i] = num * mag(fN[i]) / (fD[i]);
+            fD[i] = -num * mag(fN[i]) / (fD[i]);
         
         //diffusivity
         VectorCellField grad_psi = Vector(0);
@@ -242,7 +249,6 @@ void Mesh::initGeomMeshFields() {
         }
 
         fD += dot(cds(grad_psi),fN);
-            
     } else {
         using namespace Controls;
         

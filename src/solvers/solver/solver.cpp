@@ -376,7 +376,7 @@ void piso(istream& input) {
             VectorCellMatrix M;
             {
                 VectorCellField Sc = turb->getExplicitStresses();
-                ScalarCellField eddy_mu = turb->getTurbVisc();
+                const ScalarCellField eddy_mu = turb->getTurbVisc();
                 /* Add buoyancy in two ways
                  *  1. pm = p - rho*g*h
                  *  2. pm = p - rho_m*g*h
@@ -397,7 +397,7 @@ void piso(istream& input) {
                 }
                 /*momentum prediction*/
                 {
-                    ScalarCellField eff_mu = eddy_mu + mu;
+                    const ScalarCellField eff_mu = eddy_mu + mu;
                     M = transport(U, Fc, F, eff_mu, velocity_UR, Sc, Scalar(0));
                     if(momentum_predictor) {
                         Solve(M == gP);
@@ -408,9 +408,9 @@ void piso(istream& input) {
             /*
              * Correction
              */
-            ScalarCellField api = fillBCs(1.0 / M.ap);
-            ScalarCellField rmu = rho * api * Mesh::cV;
-        
+            const ScalarCellField api = fillBCs(1.0 / M.ap);
+            const ScalarCellField rmu = rho * api * Mesh::cV;
+            
             /*PISO loop*/
             for (Int j = 0; j < n_PISO; j++) {
                 /* Ua = H(U) / ap*/
@@ -419,7 +419,7 @@ void piso(istream& input) {
             
                 /*solve pressure poisson equation to satisfy continuity*/
                 {
-                    ScalarCellField rhs = divf(rho * U);
+                    const ScalarCellField rhs = divf(rho * U);
                     for (Int k = 0; k <= n_ORTHO; k++)
                         Solve(lap(p, rmu, true) += rhs);
                 }
@@ -440,8 +440,8 @@ void piso(istream& input) {
             
             /*solve energy transport*/
             if (buoyancy != NONE) {
-                ScalarCellField eddy_mu = turb->getTurbVisc();
-                ScalarCellField eff_mu = eddy_mu / General::Prt + mu / General::Pr;
+                const ScalarCellField eddy_mu = turb->getTurbVisc();
+                const ScalarCellField eff_mu = eddy_mu / General::Prt + mu / General::Pr;
                 ScalarCellMatrix Mt = transport(T, Fc, F, eff_mu, t_UR);
                 Solve(Mt);
                 T = max(T, Constants::MachineEpsilon);
@@ -766,8 +766,8 @@ void potential(istream& input) {
 
         /*Time loop*/
         for (Iteration it(ait.get_step()); it.start(); it.next()) {
-            ScalarCellField divU = divf(U);
-            ScalarCellField one = Scalar(1);
+            const ScalarCellField divU = divf(U);
+            const ScalarCellField one = Scalar(1);
             
             /*solve pressure poisson equation for correction*/
             for (Int k = 0; k <= n_ORTHO; k++)
@@ -810,7 +810,7 @@ void hydro_balance(istream& input) {
             
             const ScalarCellField one = Scalar(1);
             const VectorCellField rhog = General::density * Controls::gravity;
-            ScalarCellField ndivRhoG = -divf(rhog);
+            const ScalarCellField ndivRhoG = -divf(rhog);
         
             /*solve poisson equation*/
             for (Int k = 0; k <= n_ORTHO; k++)
@@ -851,13 +851,13 @@ void Mesh::calc_walldist(Int step, Int n_ORTHO) {
     ScalarCellField& phi = yWall;
     /*poisson equation*/
     {
-        ScalarCellField one = Scalar(1);
+        const ScalarCellField one = Scalar(1);
         for (Int k = 0; k <= n_ORTHO; k++)
             Solve(lap(phi, one, true) == -cV);
     }
     /*wall distance*/
     {
-        VectorCellField g = gradi(phi);
+        const VectorCellField g = gradi(phi);
         yWall = sqrt((g & g) + 2 * phi) - mag(g);
     }
     /*write it*/
