@@ -38,7 +38,7 @@
     }
 #define AddLeftScalarOperator2(T,$)                                 \
     friend FORCEINLINE T operator $ (const Scalar& p,const T& q) {  \
-        T r = p;                                                    \
+        T r(p);                                                     \
         r $##= q;                                                   \
         return r;                                                   \
     }
@@ -355,7 +355,7 @@ public:
     friend Scalar tr(const TTensor& p) {
         return p[0] + p[1] + p[2];
     }
-    friend TTensor dev(const TTensor& p,const Scalar factor = 1.) {
+    friend TTensor dev(const TTensor& p,const Scalar& factor) {
         TTensor r = p;
         Scalar t = tr(p) * factor / 3;
         r[0] -= t;
@@ -363,7 +363,7 @@ public:
         r[2] -= t;
         return r;
     }
-    friend TTensor hyd(const TTensor& p,const Scalar factor = 1.) {
+    friend TTensor hyd(const TTensor& p,const Scalar& factor) {
         TTensor r(1,1,1);
         Scalar t = tr(p) * factor / 3;
         r[0] = t;
@@ -397,8 +397,8 @@ STensor mul(const Vector& p);
 Tensor mul(const Vector& p,const Vector& q);
 Tensor mul(const Tensor& p,const Tensor& q);
 STensor mul(const STensor& p,const STensor& q);
-Vector dot(const Vector&,const Tensor&);
-Vector dot(const Vector&,const STensor&);
+Vector dot(const Tensor&,const Vector&);
+Vector dot(const STensor&,const Vector&);
 STensor sym(const Tensor& p);
 Tensor skw(const Tensor& p);
 Tensor trn(const Tensor& p);
@@ -439,7 +439,7 @@ FORCEINLINE Scalar sym(const Scalar& p,const Vector& n) {
 FORCEINLINE Vector sym(const Vector& p,const Vector& n) {
     Vector en = unit(n);
     STensor A = Constants::I_ST - mul(en);
-    Vector r = dot(p,A);
+    Vector r = dot(A,p);
     Scalar magR = mag(r);
     if(equal(magR,Scalar(0)))
         return r;
@@ -528,6 +528,299 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 
   return result;
 }
+
+/** \name Tensor array expressions */
+
+//@{
+#define DEFINE_UNARY_TOP_PART1_A(DApOpp,func,type,rtype)		                \
+	class DApOpp {												                \
+	public:														                \
+		DApOpp() { }											                \
+		static inline rtype apply(type a)						                \
+		{ return func(a); }										                \
+	};
+#define DEFINE_UNARY_TOP_PART1_B(DApOpp,$,type,rtype)		                    \
+	class DApOpp {												                \
+	public:														                \
+		DApOpp() { }											                \
+		static inline rtype apply(type a)						                \
+		{ return ($ a); }										                \
+	};
+#define DEFINE_UNARY_TOP_PART2(DApOpp,func,type,rtype)                          \
+	DVExpr<rtype,DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> >		                \
+	func(const DVExpr<type,A>& a) {						                        \
+		typedef DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> ExprT;	                \
+		return DVExpr<rtype,ExprT>(ExprT(a));					                \
+	}
+
+#define DEFINE_UNARY_OP(x,func,type)                                            \
+    template<class type>                                                        \
+    DEFINE_UNARY_TOP_PART1_A(x,func,type,type)                                  \
+    template<class type, class A>								                \
+    DEFINE_UNARY_TOP_PART2(x<type>,func,type,type)
+        
+#define DEFINE_UNARY_OP2(x,$,func,type)                                         \
+    template<class type>                                                        \
+    DEFINE_UNARY_TOP_PART1_B(x,$,type,type)                                     \
+    template<class type, class A>								                \
+    DEFINE_UNARY_TOP_PART2(x<type>,func,type,type)
+        
+#define DEFINE_UNARY_SOP(x,func,type,rtype)                                     \
+    template<class type>                                                        \
+    DEFINE_UNARY_TOP_PART1_A(x,func,type,rtype)                                 \
+    template<class type, class A>                                               \
+    DEFINE_UNARY_TOP_PART2(x<type>,func,type,rtype)
+	
+
+#define DEFINE_BINARY_TOP_PART1_A(DApOpp,$,func,type1,type2,rtype)		        \
+	class DApOpp {												                \
+	public:														                \
+		DApOpp() { }											                \
+		static inline rtype apply(type1 a, type2 b)				                \
+		{ return (a $ b); }				                                        \
+	};
+#define DEFINE_BINARY_TOP_PART1_B(DApOpp,$,func,type1,type2,rtype)		        \
+	class DApOpp {												                \
+	public:														                \
+		DApOpp() { }											                \
+		static inline rtype apply(type1 a, type2 b)				                \
+		{ return func(a, b); }				                                    \
+	};	
+#define DEFINE_BINARY_TOP_PART2(DApOpp,$,func,type1,type2,rtype)	            \
+	DVExpr<rtype,DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> >	    \
+	func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {		            \
+		typedef DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> ExprT;	\
+		return DVExpr<rtype,ExprT>(ExprT(a,b));					                \
+	}
+	
+#define DEFINE_BINARY_OP(x,$,func,type)                                         \
+    template<class type>                                                        \
+    DEFINE_BINARY_TOP_PART1_A(x,$,func,type,type,type)                          \
+    template<class type, class A, class B>                                      \
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,type)	
+
+#define DEFINE_BINARY_OP2(x,func,type)                                          \
+    template<class type>                                                        \
+    DEFINE_BINARY_TOP_PART1_B(x,$,func,type,type,type)                          \
+    template<class type, class A, class B>                                      \
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,type)	
+   
+#define DEFINE_BINARY_OP_A(x,$,func,type,rtype)                                 \
+    template<class type>                                                        \
+    DEFINE_BINARY_TOP_PART1_A(x,$,func,type,type,rtype)                         \
+    template<class type, class A, class B>                                      \
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,rtype)	
+
+#define DEFINE_BINARY_OP2_A(x,func,type,rtype)                                  \
+    template<class type>                                                        \
+    DEFINE_BINARY_TOP_PART1_B(x,$,func,type,type,rtype)                         \
+    template<class type, class A, class B>                                      \
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,rtype)	
+             
+#define DEFINE_BINARY_OP_O(x,$,func,type1,type2,rtype)                          \
+    DEFINE_BINARY_TOP_PART1_A(x,$,func,type1,type2,rtype)                       \
+    template<class A, class B>									                \
+    DEFINE_BINARY_TOP_PART2(x,$,func,type1,type2,rtype)
+
+#define DEFINE_BINARY_OP2_O(x,func,type1,type2,rtype)                           \
+    DEFINE_BINARY_TOP_PART1_B(x,$,func,type1,type2,rtype)                       \
+    template<class A, class B>									                \
+    DEFINE_BINARY_TOP_PART2(x,$,func,type1,type2,rtype)
+
+#define DEFINE_BINARY_TSOP_PART1_A(DApOpp,$,func,type,type1,type2)              \
+	class DApOpp {												                \
+	public:														                \
+		DApOpp() { }											                \
+		static inline type apply(type1 a, type2 b)				                \
+		{ return (a $ b); }				                                        \
+	};
+#define DEFINE_BINARY_TSOP_PART1_B(DApOpp,$,func,type,type1,type2)              \
+	class DApOpp {												                \
+	public:														                \
+		DApOpp() { }											                \
+		static inline type apply(type1 a, type2 b)				                \
+		{ return func(a, b); }				                                    \
+	};	
+#define DEFINE_BINARY_TSOP_PART2_I(DApOpp,$,func,type,type2)		            \
+	DVExpr<type,DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> >	            \
+	func(const DVExpr<type,A>& a, const type2& b) {			                    \
+		typedef DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> ExprT;	        \
+		return DVExpr<type,ExprT>(ExprT(a,b));						            \
+	}
+#define DEFINE_BINARY_TSOP_PART2_II(DApOpp,$,func,type,type2)		            \
+	DVExpr<type,DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> >	            \
+	func(const type2& a, const DVExpr<type,A>& b) {			                    \
+		typedef DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> ExprT;	    \
+		return DVExpr<type,ExprT>(ExprT(a,b));						            \
+	}
+					
+#define DEFINE_BINARY_SOP(x,$,func,type,type2)                                  \
+    template<class type>                                                        \
+    DEFINE_BINARY_TSOP_PART1_A(x,$,func,type,type,type2)                        \
+    template<class type,class A>                                                \
+    DEFINE_BINARY_TSOP_PART2_I(x<type>,$,func,type,type2)                       \
+    template<class type>                                                        \
+    DEFINE_BINARY_TSOP_PART1_A(x##Inv,$,func,type,type2,type)                   \
+    template<class type,class A>                                                \
+    DEFINE_BINARY_TSOP_PART2_II(x##Inv<type>,$,func,type,type2)
+       
+#define DEFINE_BINARY_SOP2(x,func,type,type2)                                   \
+    template<class type>                                                        \
+    DEFINE_BINARY_TSOP_PART1_B(x,$,func,type,type,type2)                        \
+    template<class type,class A>                                                \
+    DEFINE_BINARY_TSOP_PART2_I(x<type>,$,func,type,type2)                       \
+    template<class type>                                                        \
+    DEFINE_BINARY_TSOP_PART1_B(x##Inv,$,func,type,type2,type)                   \
+    template<class type,class A>                                                \
+    DEFINE_BINARY_TSOP_PART2_II(x##Inv<type>,$,func,type,type2)
+        
+template<class C, class A, class Op>
+class DVUnaryExpr {
+protected:
+    A iter_;
+public:
+    DVUnaryExpr(const A& a)
+        : iter_(a)
+    { }
+    C operator[](Int i) const { 
+    	return Op::apply(iter_[i]); 
+    }
+};
+
+template<class C, class A, class B, class Op>
+class DVBinExpr {
+protected:
+    A iter1_;
+    B iter2_;
+public:
+    DVBinExpr(const A& a, const B& b)
+        : iter1_(a), iter2_(b)
+    { }
+	C operator[](Int i) const { 
+    	return Op::apply(iter1_[i], iter2_[i]); 
+    }
+};
+
+template<class C, class A, class B, class Op>
+class DVBinScaExpr {
+protected:
+    A iter1_;
+    B iter2_;
+public:
+    DVBinScaExpr(const A& a, const B& b)
+        : iter1_(a), iter2_(b)
+    { }
+	C operator[](Int i) const { 
+    	return Op::apply(iter1_[i], iter2_); 
+    }
+};
+
+template<class C, class A, class B, class Op>
+class DVBinScaInvExpr {
+protected:
+    A iter1_;
+    B iter2_;
+public:
+    DVBinScaInvExpr(const A& a, const B& b)
+        : iter1_(a), iter2_(b)
+    { }
+	C operator[](Int i) const { 
+    	return Op::apply(iter1_, iter2_[i]); 
+    }
+};
+
+template<class type, class C>
+class DVExpr {
+protected:
+    C P;
+public:
+    DVExpr()
+    { }
+	DVExpr(const C& a)
+		: P(a)
+	{ }
+    type operator[](Int i) const
+    { return P[i]; }
+};
+
+//templated expressions
+DEFINE_UNARY_OP(oacos,acos,type);
+DEFINE_UNARY_OP(oasin,asin,type);
+DEFINE_UNARY_OP(oatan,atan,type);
+DEFINE_UNARY_OP(oceil,ceil,type);
+DEFINE_UNARY_OP(ocos,cos,type);
+DEFINE_UNARY_OP(ocosh,cosh,type);
+DEFINE_UNARY_OP(oexp,exp,type);
+DEFINE_UNARY_OP(ofabs,fabs,type);
+DEFINE_UNARY_OP(ofloor,floor,type);
+DEFINE_UNARY_OP(olog,log,type);
+DEFINE_UNARY_OP(olog10,log10,type);
+DEFINE_UNARY_OP(osin,sin,type);
+DEFINE_UNARY_OP(osinh,sinh,type);
+DEFINE_UNARY_OP(osqrt,sqrt,type);
+DEFINE_UNARY_OP(otan,tan,type);
+DEFINE_UNARY_OP(otanh,tanh,type);
+
+DEFINE_UNARY_OP(otrn,trn,Tensor);
+DEFINE_UNARY_OP(oskw,skw,Tensor);
+DEFINE_UNARY_OP(ounit,unit,type);
+
+DEFINE_UNARY_OP2(oneg,-,operator -,type);
+
+DEFINE_UNARY_SOP(omag,mag,type,Scalar);
+DEFINE_UNARY_SOP(osym,sym,Tensor,STensor)
+    
+DEFINE_BINARY_OP(oadd,+,operator +,type);
+DEFINE_BINARY_OP(osub,-,operator -,type);
+DEFINE_BINARY_OP(omul,*,operator *,type);
+DEFINE_BINARY_OP(odiv,/,operator /,type);
+
+DEFINE_BINARY_OP2(oatan2,atan2,type);
+DEFINE_BINARY_OP2(omin,min,type);
+DEFINE_BINARY_OP2(omax,max,type);
+DEFINE_BINARY_OP2(ossdiv,sdiv,type);
+
+DEFINE_BINARY_SOP(osadd,+,operator +,type,Scalar);
+DEFINE_BINARY_SOP(ossub,-,operator -,type,Scalar);
+DEFINE_BINARY_SOP(osmul,*,operator *,type,Scalar);
+DEFINE_BINARY_SOP(osdiv,/,operator /,type,Scalar);
+
+DEFINE_BINARY_SOP2(opow,pow,type,Scalar);
+DEFINE_BINARY_SOP2(odev,dev,type,Scalar);
+DEFINE_BINARY_SOP2(ohyd,hyd,type,Scalar);
+DEFINE_BINARY_SOP2(omins,min,type,type);
+DEFINE_BINARY_SOP2(omaxs,max,type,type);
+
+DEFINE_BINARY_OP_A(oinner,&,operator &,type,Scalar)
+DEFINE_BINARY_OP2_A(odot,dot,type,Scalar)
+    
+//specific expressions
+#define ScaMul(T,$)                                          \
+    DEFINE_BINARY_OP_O(omul1##$,*,operator *,T,Scalar,T)     \
+    DEFINE_BINARY_OP_O(omul2##$,*,operator *,Scalar,T,T)     \
+    DEFINE_BINARY_OP_O(odiv1##$,/,operator /,T,Scalar,T)     \
+    DEFINE_BINARY_OP_O(odiv2##$,/,operator /,Scalar,T,T)
+
+    ScaMul(Vector,1)
+    ScaMul(Tensor,2)
+    ScaMul(STensor,3)
+
+#undef ScaMul
+
+DEFINE_BINARY_OP_O(omula,*,operator *,Scalar,Scalar,Scalar);
+DEFINE_BINARY_OP_O(omulb,*,operator *,Vector,Vector,Vector);
+DEFINE_BINARY_OP_O(omulc,*,operator *,Tensor,Tensor,Tensor);
+DEFINE_BINARY_OP_O(omuld,*,operator *,STensor,STensor,STensor);
+
+DEFINE_BINARY_OP2_O(omul2,mul,Vector,Vector,Tensor)
+DEFINE_BINARY_OP2_O(omul3,mul,Vector,Scalar,Vector)
+DEFINE_BINARY_OP2_O(omul4,mul,Tensor,Tensor,Tensor)
+DEFINE_BINARY_OP2_O(omul5,mul,STensor,STensor,STensor)
+
+DEFINE_BINARY_OP2_O(odot2,dot,STensor,Vector,Vector)
+DEFINE_BINARY_OP2_O(odot3,dot,Tensor,Vector,Vector)
+//@}
+    
 /*
  * end
  */

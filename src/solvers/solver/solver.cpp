@@ -408,7 +408,7 @@ void piso(istream& input) {
             /*
              * Correction
              */
-            const ScalarCellField api = fillBCs(1.0 / M.ap);
+            const ScalarCellField api = fillBCs<Scalar>(1.0 / M.ap);
             const ScalarCellField rmu = rho * api * Mesh::cV;
             
             /*PISO loop*/
@@ -449,7 +449,7 @@ void piso(istream& input) {
             
             /*explicitly under relax pressure*/
             if (Controls::state == Controls::STEADY) {
-                p.Relax(po, pressure_UR);
+                p = po + (p - po) * pressure_UR;
                 gP = -gradf(p);
                 po = p;
             }

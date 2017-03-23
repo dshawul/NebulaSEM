@@ -239,7 +239,7 @@ void Mesh::initGeomMeshFields() {
     Int index1 = INDEX4(ci,im,jm,km);       \
     Vector dpsi_ij;                         \
     DPSIR(dpsi_ij,im,jm,km);                \
-    dpsi_ij = dot(dpsi_ij,Jinv[index1]);    \
+    dpsi_ij = dot(Jinv[index1],dpsi_ij);    \
     grad_psi[index] += dpsi_ij;             \
 }
                 forEachLglX(i) PSID(i,jj,kk);

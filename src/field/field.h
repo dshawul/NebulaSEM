@@ -428,11 +428,12 @@ public:
  defined on entity (vertex,face or cell)
  */
 template <class type,ENTITY entity> 
-class MeshField : public BaseField {
+class MeshField : public BaseField, public DVExpr<type,type*>  
+{
 private:
-    type*        P;
-    int          allocated;
+    using DVExpr<type,type*>::P;
     static Int   SIZE;
+    int          allocated;
 public:
     ACCESS       access;
     Int          fIndex;
@@ -440,12 +441,13 @@ public:
     /*common*/
     static const Int TYPE_SIZE = sizeof(type) / sizeof(Scalar);
     static std::list<MeshField*> fields_;
-    static std::list<type*> mem_;
-    static Int n_alloc,n_alloc_max;
+    static std::list<type*> mem_pool;
+    static Int n_alloc, n_alloc_max;
 
     /*constructors*/
     MeshField(const char* str = "", ACCESS a = NO,bool recycle = true) : 
-                P(0),allocated(0),access(a) {
+                allocated(0),access(a) {
+        P = 0;
         fName = str;
         construct(str,a,recycle);
     }
@@ -463,7 +465,7 @@ public:
     }
     /*allocators*/
     void allocate(bool recycle = true) {
-        if(!recycle || mem_.empty()) {
+        if(!recycle || mem_pool.empty()) {
             switch(entity) {
                 case CELL:   SIZE = Mesh::gCells.size() * DG::NP;    break;
                 case FACET:  SIZE = Mesh::gFacets.size() * DG::NPF;  break;
@@ -476,13 +478,15 @@ public:
             else if(entity == CELLMAT) 
                 sz += DG::NP;
             P = new type[sz];
+            
+            n_alloc++;
+            if(n_alloc > n_alloc_max)
+                n_alloc_max = n_alloc;
         } else {
-            P = mem_.front();
-            mem_.pop_front();
+            P = mem_pool.front();
+            mem_pool.pop_front();
         }
-        n_alloc++;
-        if(n_alloc > n_alloc_max)
-            n_alloc_max = n_alloc;
+
         allocated = 1;
     }
     void allocate(std::vector<type>& q) {
@@ -494,16 +498,17 @@ public:
         if(allocated) {
             allocated = 0;
             if(recycle) {
-                mem_.push_front(P);
+                mem_pool.push_front(P);
             } else {
                 delete[] P;
                 P = 0;
+                n_alloc--;
             }
             if(fIndex) {
                 fields_.remove(this);
                 allFields.remove(this);
             }
-            n_alloc--;
+            
         }
     }
     void construct(const char* str = "", ACCESS a = NO, bool recycle = true) {
@@ -522,16 +527,6 @@ public:
         if(!MP::Terminated)
             deallocate();
     }
-
-    /*static functions*/
-    void calc_neumann(BCondition<type>*);
-    void readInternal(std::istream&,IntVector*);
-    void readBoundary(std::istream&);
-    void writeInternal(std::ostream&,IntVector*);
-    void writeBoundary(std::ostream&);
-    void read(Int step);
-    void write(Int step, IntVector* = 0);
-
     /*accessors*/
     Int size() const {
         return SIZE;
@@ -539,20 +534,8 @@ public:
     type& operator [] (Int i) const {
         return P[i];
     }
-    /*unary ops*/
-    MeshField operator - () {
-        MeshField r;
-        forEach(*this,i)
-            r[i] = -P[i];
-        return r;
-    }
-    friend MeshField<Scalar,entity> operator & (const MeshField& p,const MeshField& q) {
-        MeshField<Scalar,entity> r;
-        forEach(r,i)
-            r[i] = p[i] & q[i];
-        return r;
-    }
-    /*unrolled operations*/
+    
+    /*Assignment from Meshfield and Scalar*/
 #define Op($)                                                       \
     MeshField& operator $(const MeshField& q) {                     \
         forEach(*this,i)                                            \
@@ -565,95 +548,48 @@ public:
             P[i] $ q;                                               \
         return *this;                                               \
     }
-#define Fp(name)                                                    \
-    friend MeshField name(const MeshField& p,const MeshField& s) {  \
-        MeshField r;                                                \
-        forEach(r,i)                                                \
-            r[i] = name(p[i],s[i]);                                 \
-        return r;                                                   \
-    }
-#define Fp1(name)                                                   \
-    friend MeshField name(const MeshField& p,const Scalar& s) {     \
-        MeshField r;                                                \
-        forEach(r,i)                                                \
-            r[i] = name(p[i],s);                                    \
-        return r;                                                   \
-    }
-#define Fp2(name)                                                   \
-    friend MeshField name(const MeshField& p) {                     \
-        MeshField r;                                                \
-        forEach(r,i)                                                \
-            r[i] = name(p[i]);                                      \
-        return r;                                                   \
-    }
-    /*define ops*/
     Op(=)
-    Op(+=)
-    Op(-=)
-    Op(*=)
-    Op(/=)
     SOp(=)
     SOp(+=)
     SOp(-=)
     SOp(*=)
     SOp(/=)
-    Fp(sdiv)
-    /*from math.h*/
-    Fp2(acos)
-    Fp2(asin)
-    Fp2(atan)
-    Fp(atan2)
-    Fp2(ceil)
-    Fp2(cos)
-    Fp2(cosh)
-    Fp2(exp)
-    Fp2(fabs)
-    Fp2(floor)
-    Fp2(log)
-    Fp2(log10)
-    Fp1(pow)
-    Fp2(sin)
-    Fp2(sinh)
-    Fp2(sqrt)
-    Fp2(tan)
-    Fp2(tanh)
-    Fp(min)
-    Fp(max)
-    /*additional*/
-    Fp2(unit)
 #undef Op
 #undef SOp
-#undef Fp
-#undef Fp1
-#undef Fp2
-    AddOperators(MeshField)
-    AddScalarOperators(MeshField)
-    /*friend ops*/
+        
+    /*Assignment from expressions*/
+    template <class A>
+    MeshField(const DVExpr<type,A>& p) {
+        allocate();
+        forEach(*this,i)
+            P[i] = p[i];
+    }
+
+#define Op($)                                                       \
+    template <class A>                                              \
+    MeshField& operator $(const DVExpr<type,A>& q) {                \
+        forEach(*this,i)                                            \
+            P[i] $ q[i];                                            \
+        return *this;                                               \
+    }
+    Op(=)
+    Op(+=)
+    Op(-=)
+    Op(*=)
+    Op(/=)  
+#undef Op
+        
+    /*other member functions*/
+    void calc_neumann(BCondition<type>*);
+    void readInternal(std::istream&,IntVector*);
+    void readBoundary(std::istream&);
+    void writeInternal(std::ostream&,IntVector*);
+    void writeBoundary(std::ostream&);
+    void read(Int step);
+    void write(Int step, IntVector* = 0);
+    
     void norm(BaseField* pnorm) {
         *((MeshField<Scalar,entity>*)pnorm) = mag(*this);
-    }
-    friend MeshField<Scalar,entity> mag(const MeshField& p) {
-        MeshField<Scalar,entity> r;
-        forEach(r,i)
-            r[i] = mag(p[i]);
-        return r;
-    }
-    friend MeshField dev(const MeshField& p,const Scalar factor = 1.) {
-        MeshField r;
-        forEach(r,i)
-            r[i] = dev(p[i],factor);
-        return r;
-    }
-    friend MeshField hyd(const MeshField& p,const Scalar factor = 1.) {
-        MeshField r;
-        forEach(r,i)
-            r[i] = hyd(p[i],factor);
-        return r;
-    }
-    /*relax*/
-    void Relax(const MeshField& po,Scalar UR) {
-        forEach(*this,i) 
-            P[i] = po[i] + (P[i] - po[i]) * UR;
     }
     /*read/write all fields*/
     static void readAll(Int step) {
@@ -670,9 +606,9 @@ public:
     } 
     static void removeAll() {
         fields_.clear();
-        forEachIt(typename std::list<type*>,mem_,it)
+        forEachIt(typename std::list<type*>,mem_pool,it)
             delete[] (*it);
-        mem_.clear();
+        mem_pool.clear();
         n_alloc = 0;
     } 
     static int count_writable() {
@@ -831,6 +767,7 @@ public:
         }
     }
 };
+
 #define forEachCellField(X)  {      \
     ScalarCellField::X;             \
     VectorCellField::X;             \
@@ -865,83 +802,13 @@ typedef MeshField<STensor,FACET>  STensorFacetField;
 typedef MeshField<STensor,VERTEX> STensorVertexField;
 //@}
 
-/***********************************
- *  Specific tensor operations
- ***********************************/
-/** Default operator overload for scalar fields*/
-#define Op(name,F,S)                                                                            \
-    template<class T,ENTITY E>                                                                  \
-    MeshField<T,E> name(const MeshField<F,E>& p,const MeshField<S,E>& q) {                      \
-        MeshField<T,E> r;                                                                       \
-        forEach(r,i)                                                                            \
-            r[i] = name(p[i],q[i]);                                                             \
-        return r;                                                                               \
-    }
-Op(operator *,Scalar,T)
-Op(operator /,Scalar,T)
-Op(operator *,T,Scalar)
-Op(operator /,T,Scalar)
-#undef Op
-/* multiply */
-template <ENTITY E>
-MeshField<Tensor,E> mul(const MeshField<Vector,E>& p,const MeshField<Vector,E>& q) {
-    MeshField<Tensor,E> r;
-    forEach(r,i)
-        r[i] = mul(p[i],q[i]);
-    return r;
-}
-template <ENTITY E> 
-inline MeshField<Vector,E> mul(const MeshField<Vector,E>& p,const MeshField<Scalar,E>& q) { 
-    return p * q; 
-}
-template <class T,ENTITY E>
-MeshField<T,E> mul(const MeshField<T,E>& p,const MeshField<T,E>& q) {
-    MeshField<T,E> r;
-    forEach(r,i) 
-        r[i] = mul(p[i],q[i]);
-    return r;
-}
-/*dot*/
-template <ENTITY E,Int SIZE> 
-MeshField<Vector,E> dot(const MeshField<TTensor<SIZE>,E>& p,const MeshField<Vector,E>& q) {
-    MeshField<Vector,E> r;
-    forEach(r,i)
-        r[i] = dot(q[i],p[i]);
-    return r;
-}
-template <ENTITY E> 
-inline MeshField<Scalar,E> dot(const MeshField<Vector,E>& p,const MeshField<Vector,E>& q) { 
-    return p & q; 
-}
-/*symmetric & skew-symmetric*/
-template <ENTITY E>
-MeshField<STensor,E> sym(const MeshField<Tensor,E>& p) {
-    MeshField<STensor,E> r;
-    forEach(r,i) 
-        r[i] = sym(p[i]);
-    return r;
-}
-template <ENTITY E>
-MeshField<Tensor,E> skw(const MeshField<Tensor,E>& p) {
-    MeshField<Tensor,E> r;
-    forEach(r,i) 
-        r[i] = skw(p[i]);
-    return r;
-}
-/*transpose*/
-template <ENTITY E>
-MeshField<Tensor,E> trn(const MeshField<Tensor,E>& p) {
-    MeshField<Tensor,E> r;
-    forEach(r,i) 
-        r[i] = trn(p[i]);
-    return r;
-}
-/*static variables*/
+/** \name Static variables of MeshField */
+//@{
 template <class T,ENTITY E> 
 std::list<MeshField<T,E>*> MeshField<T,E>::fields_;
 
 template <class T,ENTITY E> 
-std::list<T*> MeshField<T,E>::mem_;
+std::list<T*> MeshField<T,E>::mem_pool;
 
 template <class T,ENTITY E> 
 Int MeshField<T,E>::n_alloc;
@@ -949,7 +816,7 @@ Int MeshField<T,E>::n_alloc;
 template <class T,ENTITY E> 
 Int MeshField<T,E>::n_alloc_max;
 
-template <class T,ENTITY E> 
+template <class T,ENTITY E>
 Int MeshField<T,E>::SIZE;
 
 template <class T,ENTITY E>
@@ -963,6 +830,7 @@ std::vector<MeshField<T,E>*> MeshField<T,E>::tstds;
 
 template <class T,ENTITY E> 
 typename MeshField<T,E>::vertexFieldsType* MeshField<T,E>::vf_fields_;
+//@}
 
 /* ***************************************
  * global mesh fields
@@ -1002,6 +870,92 @@ namespace Prepare {
     void initRefineThreshold();
     int decomposeMesh(Int);
     int mergeFields(Int);
+}
+
+/** central difference scheme */
+template<class type>
+MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
+    using namespace Mesh;
+    MeshField<type,FACET> fF;
+    forEach(fF,i) {
+        fF[i] =  (cF[FO[i]] * (fI[i])) + (cF[FN[i]] * (1 - fI[i]));
+    }
+    return fF;
+}
+
+template<class type, class A>
+MeshField<type,FACET> cds(const DVExpr<type,A>& expr) {
+    return cds(MeshField<type,CELL>(expr));
+}
+
+/** upwind differencing scheme */
+template<class type,class T3>
+MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
+    using namespace Mesh;
+    MeshField<type,FACET> fF;
+    forEach(fF,i) {
+        if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[FO[i]];
+        else fF[i] = cF[FN[i]];
+    }
+    return fF;
+}
+
+template<class type, class T3, class A>
+MeshField<type,FACET> uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
+    return uds(MeshField<type,CELL>(expr),flux);
+}
+
+/** interpolate facet data to vertex data */
+template<class type>
+MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
+    using namespace Mesh;
+    MeshField<type,VERTEX> vF;
+    std::vector<Scalar> cnt;
+
+    cnt.assign(vF.size(),Scalar(0));
+    vF = type(0);
+
+    forEach(fF,i) {
+        Facet& f = gFacets[i];
+        if(FN[i] < gBCSfield) {
+            forEach(f,j) {
+                Scalar dist = Scalar(1.0) / magSq(gVertices[f[j]] - fC[i]);
+                vF[f[j]] += (fF[i] * dist);
+                cnt[f[j]] += dist;
+            }
+        } else {
+            forEach(f,j) {
+                vF[f[j]] += Scalar(10e30) * fF[i];
+                cnt[f[j]] += Scalar(10e30);
+            }
+        }
+    }
+
+    forEach(vF,i) {
+        vF[i] /= cnt[i];
+        if(mag(vF[i]) < Constants::MachineEpsilon)
+            vF[i] = type(0);
+    }
+
+    return vF;
+}
+
+/** Integrate field operation */
+template<class type>
+MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
+    using namespace Mesh;
+    MeshField<type,CELL> cF;
+    cF = type(0);
+    forEach(fF,i) {
+        cF[FO[i]] += fF[i];
+        cF[FN[i]] -= fF[i];
+    }
+    return cF;
+}
+
+template<class type, class A>
+MeshField<type,CELL> sum(const DVExpr<type,A>& expr) {
+    return sum(MeshField<type,FACET>(expr));
 }
 
 /** Scale boundary condition by a constant */
@@ -1277,7 +1231,8 @@ struct MeshMatrix {
         Su = T3(0);
         adg = T2(0);
     }
-    MeshMatrix(const MeshField<T1,CELL>& p) {
+    template<class A>
+    MeshMatrix(const DVExpr<T1,A>& p) {
         cF = 0;
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
@@ -1535,6 +1490,12 @@ MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& 
     
     return r;
 }
+
+template <class T1, class T2, class T3, class A> 
+MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const DVExpr<T1,A>& q, const bool sync = false) {
+    return mul(p,MeshField<T1,CELL>(q),sync);
+}
+
 /** matrix transopose - vector product = A^T * x */
 template <class T1, class T2, class T3> 
 MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
@@ -1615,7 +1576,7 @@ MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false
 
 /** Apply implicit boundary conditions */
 template <class T1, class T2, class T3> 
- void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
+void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
      using namespace Mesh;
      MeshField<T1,CELL>& cF = *M.cF;
      BasicBCondition* bbc;
@@ -1659,7 +1620,7 @@ template <class T1, class T2, class T3>
              }
          }
      }
- }
+}
  
 /** Apply explicit boundary conditions */
 template<class T,ENTITY E>
@@ -1823,7 +1784,6 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
         }
     }
     
-
     //special: set neumann bcs to dirchlet for grad(i)
     if(bind) {
         forEach(AllBConditions,i) {
@@ -1854,79 +1814,6 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
     }
     return cF;
 }
-/** Integrate field operation */
-template<class type>
-MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
-    using namespace Mesh;
-    MeshField<type,CELL> cF;
-    cF = type(0);
-    forEach(fF,i) {
-        cF[FO[i]] += fF[i];
-        cF[FN[i]] -= fF[i];
-    }
-    return cF;
-}
-/* ********************************
- * Interpolate field operations
- * *******************************/
-
-/** central difference scheme */
-template<class type>
-MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
-    using namespace Mesh;
-    MeshField<type,FACET> fF;
-    forEach(fF,i) {
-        fF[i] =  (cF[FO[i]] * (fI[i])) + (cF[FN[i]] * (1 - fI[i]));
-    }
-    return fF;
-}
-/** upwind differencing scheme */
-template<class type,class T3>
-MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
-    using namespace Mesh;
-    MeshField<type,FACET> fF;
-    forEach(fF,i) {
-        if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[FO[i]];
-        else fF[i] = cF[FN[i]];
-    }
-    return fF;
-}
-
-/** interpolate facet data to vertex data */
-template<class type>
-MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
-    using namespace Mesh;
-    MeshField<type,VERTEX> vF;
-    std::vector<Scalar> cnt;
-
-    cnt.assign(vF.size(),Scalar(0));
-    vF = type(0);
-
-    forEach(fF,i) {
-        Facet& f = gFacets[i];
-        if(FN[i] < gBCSfield) {
-            forEach(f,j) {
-                Scalar dist = Scalar(1.0) / magSq(gVertices[f[j]] - fC[i]);
-                vF[f[j]] += (fF[i] * dist);
-                cnt[f[j]] += dist;
-            }
-        } else {
-            forEach(f,j) {
-                vF[f[j]] += Scalar(10e30) * fF[i];
-                cnt[f[j]] += Scalar(10e30);
-            }
-        }
-    }
-
-    forEach(vF,i) {
-        vF[i] /= cnt[i];
-        if(mag(vF[i]) < Constants::MachineEpsilon)
-            vF[i] = type(0);
-    }
-
-    return vF;
-}
-
 /* *******************************
  * Linearized source term
  * *******************************/
@@ -1963,7 +1850,7 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
     DPSI(dpsi_ij,im,jm,km);                         \
-    dpsi_ij = dot(dpsi_ij,Jin);                     \
+    dpsi_ij = dot(Jin,dpsi_ij);                     \
     r[index1] -= mul(dpsi_ij,p[index]);             \
 }
 
@@ -2182,7 +2069,7 @@ MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_
     Int index2 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    T2 val = -dot(dpsi_ij,Jr) * F;                          \
+    T2 val = -dot(Jr,dpsi_ij) * F;                          \
     if(index == index2) {                                   \
         m.ap[index] = -val;                                 \
         m.adg[indexm] = 0;                                  \
@@ -2221,8 +2108,8 @@ MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
     DPSI(dpsi_ij,im,jm,km);                         \
-    dpsi_ij = dot(dpsi_ij,Jin);                     \
-    r[index1] -= dot(dpsi_ij,p[index]);             \
+    dpsi_ij = dot(Jin,dpsi_ij);                     \
+    r[index1] -= dot(p[index],dpsi_ij);             \
 }
 
 #define DIV(T1,T2)                                                                          \
@@ -2281,13 +2168,13 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
-                Vector Jr = dot(flux_cell[index],Jinv[index]) * cV[index];
+                Vector Jr = dot(Jinv[index],flux_cell[index]) * cV[index];
 
 #define DIVD(im,jm,km) {                                    \
     Int index2 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    Scalar val = -dot(dpsi_ij,Jr);                          \
+    Scalar val = -dot(Jr,dpsi_ij);                          \
     if(index == index2) {                                   \
         m.ap[index] = -val;                                 \
         m.adg[indexm] = 0;                                  \
@@ -2380,7 +2267,7 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
     Int index2 = INDEX4(ci,in,jn,kn);               \
     Vector dpsi_jk;                                 \
     DPSI(dpsi_jk,in,jn,kn);                         \
-    dpsi_jk = dot(dpsi_jk,Jin);                     \
+    dpsi_jk = dot(Jin,dpsi_jk);                     \
     Scalar val = -dot(dpsi_ik,dpsi_jk);             \
     if(index1 == index2) {                          \
         m.ap[index1] += -val;                       \
@@ -2394,7 +2281,7 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
     Int index1 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ik,dp1;                                     \
     DPSI(dpsi_ik,im,jm,km);                                 \
-    dpsi_ik = dot(dpsi_ik,Jin) * cV[index] * muc[index];    \
+    dpsi_ik = dot(Jin,dpsi_ik) * cV[index] * muc[index];    \
     forEachLglX(i2) if(i2 >= im) {                          \
         Int indexm  = ci * NPMAT + INDEX_TX(im,jm,km,i2);   \
         Int indexmt = ci * NPMAT + INDEX_X(im,jm,km,i2);    \
@@ -2534,23 +2421,27 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
         
         //Multistage Runge-Kutta for linearized (constant jacobian)
         if(!equal(implicit_factor,1)) {
-            MeshField<type,CELL> k1 = M.Su - mul(M,  M.cF->tstore[0]);
+            MeshField<type, CELL> k1 = M.Su - mul(M,  M.cF->tstore[0]);
             if(runge_kutta == 1) {
-                M = M * (implicit_factor) + k1  * (1 - implicit_factor);
+                MeshField<type, CELL> val = k1  * (1 - implicit_factor);
+                M = M * (implicit_factor) + val;
             } else {
                 ScalarCellField mdt = Controls::dt / (Mesh::cV);
                 if (runge_kutta == 2) {
                     MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt);
-                    M = M * (implicit_factor) + ((k2 + k1) / 2) * (1 - implicit_factor);
+                    MeshField<type, CELL> val = ((k2 + k1) / 2) * (1 - implicit_factor);
+                    M = M * (implicit_factor) + val;
                 } else if (runge_kutta == 3) {
                     MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
                     MeshField<type, CELL> k3 = k1 - mul(M, (2 * k2 - k1) * mdt);
-                    M = M * (implicit_factor) + ((k3 + 4 * k2 + k1) / 6) * (1 - implicit_factor);
+                    MeshField<type, CELL> val = ((k3 + 4 * k2 + k1) / 6) * (1 - implicit_factor);
+                    M = M * (implicit_factor) + val;
                 } else if (runge_kutta == 4) {
                     MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
                     MeshField<type, CELL> k3 = k1 - mul(M, k2 * mdt / 2);
                     MeshField<type, CELL> k4 = k1 - mul(M, k3 * mdt);
-                    M = M * (implicit_factor) + ((k4 + 2 * k3 + 2 * k2 + k1) / 6) * (1 - implicit_factor);
+                    MeshField<type, CELL> val = ((k4 + 2 * k3 + 2 * k2 + k1) / 6) * (1 - implicit_factor);
+                    M = M * (implicit_factor) + val;
                 }
             }
             if(equal(implicit_factor,0))

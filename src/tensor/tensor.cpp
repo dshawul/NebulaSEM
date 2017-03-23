@@ -69,7 +69,7 @@ STensor mul(const STensor& p,const STensor& q) {
     return r;
 }
 /** Inner product of a tensor and a vector */
-Vector dot(const Vector& p,const Tensor& q) {
+Vector dot(const Tensor& q, const Vector& p) {
     Vector r;
     r[XX] = q[XX] * p[XX] + q[XY] * p[YY] + q[XZ] * p[ZZ];
     r[YY] = q[YX] * p[XX] + q[YY] * p[YY] + q[YZ] * p[ZZ];
@@ -77,7 +77,7 @@ Vector dot(const Vector& p,const Tensor& q) {
     return r;
 }
 /** Inner product of a symmetric tensor and a vector */
-Vector dot(const Vector& p,const STensor& q) {
+Vector dot(const STensor& q, const Vector& p) {
     Vector r;
     r[XX] = q[XX] * p[XX] + q[XY] * p[YY] + q[XZ] * p[ZZ];
     r[YY] = q[XY] * p[XX] + q[YY] * p[YY] + q[YZ] * p[ZZ];
