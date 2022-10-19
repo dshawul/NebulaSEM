@@ -10,6 +10,10 @@
 #   define MPI_SCALAR  MPI_FLOAT
 #endif
 
+#if !defined(PATH_MAX)
+#   define PATH_MAX 256
+#endif
+
 /**
 Class for multi-processor support via MPI
 */
