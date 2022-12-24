@@ -10,9 +10,7 @@
 #   define MPI_SCALAR  MPI_FLOAT
 #endif
 
-#if !defined(PATH_MAX)
-#   define PATH_MAX 256
-#endif
+#define  MY_PATH_MAX  512
 
 /**
 Class for multi-processor support via MPI
@@ -38,11 +36,11 @@ public:
     typedef MPI_Request REQUEST;
 
     static int n_hosts,host_id,name_len;
-    static char host_name[PATH_MAX + 1];
+    static char host_name[MY_PATH_MAX + 1];
     static int _start_time;
     static bool Terminated;
     static bool printOn;
-    static char workingDir[PATH_MAX + 1];
+    static char workingDir[MY_PATH_MAX + 1];
     static void cleanup();
     static void loop();
     static void barrier();

@@ -7,11 +7,11 @@
 int  MP::n_hosts;
 int  MP::host_id;
 int  MP::name_len;
-char MP::host_name[PATH_MAX + 1];
+char MP::host_name[MY_PATH_MAX + 1];
 int  MP::_start_time = 0;
 bool MP::Terminated = false;
 bool MP::printOn = true;
-char MP::workingDir[PATH_MAX + 1];
+char MP::workingDir[MY_PATH_MAX + 1];
 
 /** Initialize MPI */
 MP::MP(int argc,char* argv[]) {
@@ -20,7 +20,7 @@ MP::MP(int argc,char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &host_id);
     MPI_Get_processor_name(host_name, &name_len);
     _start_time = System::get_time();
-    System::pwd(workingDir,PATH_MAX + 1);
+    System::pwd(workingDir,MY_PATH_MAX + 1);
     if(host_id == 0) {
         printf("--------------------------------------------\n");
         printf("%d processes started with master on %s pid %d\n",

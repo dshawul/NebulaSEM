@@ -3,7 +3,8 @@
 using namespace Mesh;
 
 /**
-Center of a triangle
+Center of a triangle. This is the circum-center (center of circumscribed circle)
+or crossing point of two perpendicular bisectors
 */
 Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
     Vector v12 = v1 - v2;
@@ -500,7 +501,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
         for(Int j = 0;j < s3;j++) {
             found = 0;
             for(Int i = s1;i < s2;i++) {
-                if(!index1[i - s1] && equal(m2.mFacets[i],b.fb[j])) {
+                if(!index1[i - s1] && equalSet(m2.mFacets[i],b.fb[j])) {
 
                     m1.mFacets.push_back(b.fb[j]);
                     index0[j]      = m1.mFacets.size() - 1;

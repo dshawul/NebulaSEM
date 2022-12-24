@@ -543,7 +543,7 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
     //rotate nodes of faces to first non-shared node
     Int contained = false;
     {
-        Int v1 = -1,v2 = -1;
+        int v1 = -1,v2 = -1;
         forEach(f1,i) {
             Int j;
             for(j = 0;j < f2.size();j++) {
@@ -574,8 +574,8 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
     }   
     
     //find start and end of shared edges
-    int a[2];
-    int b[2];
+    Int a[2];
+    Int b[2];
     Int count;
     
     count = 0;
@@ -1087,7 +1087,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
                 //duplicate
                 Int k = ifBegin;
                 for(; k < mFacets.size();k++) {
-                    if(equal(fn,mFacets[k])) {
+                    if(equalSet(fn,mFacets[k])) {
                         cn.push_back(k);
                         break;
                     }

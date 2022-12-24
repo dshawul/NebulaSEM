@@ -15,16 +15,16 @@
 /** \name Container iterators */
 //@{
 #define forEach(field,i)                                \
-    for(register Int i = 0;i < (field).size();i++)
+    for(Int i = 0;i < (field).size();i++)
 
 #define forEachR(field,i)                               \
-    for(register Int i = (field).size();i-- > 0;)
+    for(Int i = (field).size();i-- > 0;)
 
 #define forEachS(field,i,strt)                          \
-    for(register Int i = strt;i < (field).size();i++)
+    for(Int i = strt;i < (field).size();i++)
 
 #define forEachSR(field,i,strt)                         \
-    for(register Int i = (field).size();i-- > strt;)
+    for(Int i = (field).size();i-- > strt;)
 
 #define forEachIt(cont,field,it)                        \
     for(cont::iterator it = (field).begin();            \
@@ -66,16 +66,18 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 template<>
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
 
-/** Test if two vectors are equal*/
-template <class T>
-bool equal(std::vector<T>& v1,std::vector<T>& v2) {
-    Int j;
+/** Test if two Int vectors are equal. O(n^2) complexity but arrays
+are small since it is used for edges/faces/cells*/
+FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
     forEach(v1,i) {
-        for(j = 0;j < v2.size();j++) {
-            if(v1[i] == v2[j])
+        bool found = false;
+        forEach(v2,j) {
+            if(v1[i] == v2[j]) {
+                found = true;
                 break;
+            }
         }
-        if(j == v2.size())
+        if(!found)
             return false;
     }
     return true;

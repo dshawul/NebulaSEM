@@ -479,6 +479,7 @@ void Prepare::createFields(vector<string>& fields,Int step) {
                 case 6 :  bf = new STensorCellField(fields[i].c_str(),READWRITE,false); break;
                 case 9 :  bf = new TensorCellField(fields[i].c_str(),READWRITE,false); break;
             }
+            if(bf) bf->fName = bf->fName;
             /*end*/
         }
     }

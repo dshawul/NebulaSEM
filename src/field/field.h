@@ -667,12 +667,12 @@ public:
         nstore = Controls::time_scheme - Controls::BDF1 + 1;
         tstore = new MeshField[nstore];
         access = ACCESS(int(access) | STOREPREV);
-        for(int i = 0;i < nstore;i++)
+        for(Int i = 0;i < nstore;i++)
             tstore[i] = *this;
         nstored = 0;
     }
     void updateStore() {
-        for(int i = 0;i < nstore - 1;i++)
+        for(Int i = 0;i < nstore - 1;i++)
             tstore[nstore - i - 1] = tstore[nstore - i - 2];
         tstore[0] = *this;
         nstored++;
