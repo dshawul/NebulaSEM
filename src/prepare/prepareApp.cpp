@@ -7,10 +7,10 @@ using namespace std;
 /**
   \verbatim
   Post/Pre processing jobs such as
-  Domain decomposition
-  Merging results of decomposed domains
-  Converting data to VTK format
-  Probing result at specified locations
+    Domain decomposition
+    Merging results of decomposed domains
+    Converting data to VTK format
+    Probing result at specified locations
   \endverbatim
  */
 int main(int argc,char* argv[]) {

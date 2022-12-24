@@ -17,7 +17,7 @@ Vector circumcenter(const Vector& v1,const Vector& v2,const Vector& v3) {
     return a * v1 + b * v2 + c * v3;
 }
 /**
-  Add different shapes of edges
+  Add a vertex following shape of a given edge
  */
 void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
     Edge& e = edges[w];
@@ -27,7 +27,7 @@ void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
         vd[w] = rotate(e.v[0] - e.v[3],e.N,e.theta * m) + e.v[3];
     } else if(e.type == COSINE) {
         vd[w] = (1 - m) * e.v[0] + (m) * e.v[1] + 
-            pow(cos(3.1416 * (m - 0.5)),2) * e.N;
+            pow(cos(Constants::PI * (m - 0.5)),2) * e.N;
     } else if(e.type == QUAD) {
         vd[w] = (1 - m) * e.v[0] + (m) * e.v[1] + 
             (4 * m * (1 - m)) * e.N;
@@ -105,7 +105,6 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
         } else if(e.type == COSINE || e.type == QUAD) {
             Vector mid = (e.v[1] + e.v[0]) / 2;
             e.N = e.v[2] - mid;
-            e.L = mag(mid - e.v[0]) / 2;
         }
     }
     /*variables*/

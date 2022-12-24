@@ -21,19 +21,19 @@ enum {
 
 /** Edge of an element */
 struct Edge {
-    int type;
-    Scalar theta;
-    Scalar L;
-    Vector N;
-    Vertex v[8];
+    int type;     /**< Edge shape type */
+    Scalar theta; /**< Subtended angle of arc */
+    Vector N;     /**< Unit normal vector of edge */
+    Vertex v[4];  /**< Points defining share of edge */
     Edge() {
         type = NONE;
     }
 };
 
+/** Boundary faces and vertices for merging hex grids*/
 struct MergeObject {
-    Vertices vb;
-    Facets   fb;
+    Vertices vb;  /**< List of boundary vertices */
+    Facets   fb;  /**< List of boundary faces */
 };
 
 void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,Mesh::MeshObject& mo);

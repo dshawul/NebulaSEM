@@ -199,7 +199,7 @@ void Mesh::MeshObject::calcGeometry() {
     mCV.assign(mCells.size(),Scalar(0));
     mReversed.assign(mFacets.size(),false);
 
-    /* face centre*/
+    /* face centre: centroid of face vertices*/
     forEach(mFacets,i) {
         Facet& f = mFacets[i];
         Vector C(0);
@@ -207,7 +207,7 @@ void Mesh::MeshObject::calcGeometry() {
             C += mVertices[f[j]];
         mFC[i] = C / Scalar(f.size());
     }
-    /* cell centre */
+    /* cell centre: centroid of cell vertices */
     forEach(mCells,i) {
         Cell& c = mCells[i];
         Vector C(0);
@@ -234,7 +234,9 @@ void Mesh::MeshObject::calcGeometry() {
             Ntot += magN;
             N += Ni;
         }
-        mFC[i] = C / Ntot;    /*corrected face centre*/
+        /*corrected face center: which is the centroid of the solid polygon
+          instead of the vertices alone*/
+        mFC[i] = C / Ntot;
         Vector v = mFC[i] - mCC[mFOC[i]];
         if((v & N) < 0) {
             N = -N;
@@ -253,7 +255,9 @@ void Mesh::MeshObject::calcGeometry() {
             C += Vi * (3 * mFC[c[j]] + mCC[i]) / 4;
             V += Vi;
         }
-        mCC[i] = C / V;         /*corrected cell centre */
+        /*corrected cell center: which is the centroid of the solid control volume
+          instead of the vertices alone*/
+        mCC[i] = C / V;
         mCV[i] = V / Scalar(3);
     }
     /*boundary cell centre and volume*/
@@ -1749,6 +1753,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
     /*erase old facets and add the new ones*/
 #define ERASEADD() {                                        \
     bool has;                                               \
+                                                            \
     do {                                                    \
         has = false;                                        \
         IntVector newF,eraseF;                              \
@@ -1765,7 +1770,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         erase_indices(c,eraseF);                            \
         c.insert(c.end(),newF.begin(),newF.end());          \
     } while (has);                                          \
-    \
+                                                            \
     forEach(c,j)    {                                       \
         c[j] = refineF[c[j]];                               \
     }                                                       \

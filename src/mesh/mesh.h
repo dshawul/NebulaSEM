@@ -80,8 +80,8 @@ namespace Mesh {
         IntVector   mFOC;           /**< Facet owners of elements */
         IntVector   mFNC;           /**< Facet neighbors of elements */
 
-        Int      mNV;   /**< Number of vertices */
-        Int      mNF;   /**< Number of faces */
+        Int      mNV;   /**< Number of internal vertices */
+        Int      mNF;   /**< Number of internal faces */
         Int      mBCS;  /**< Number of internal cells */
         Int      mBCSI; /**< Number of internal cells one layer away from boundary */
 
