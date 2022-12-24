@@ -16,11 +16,20 @@ function run() {
 }
 
 #prepare directory
-rm -rf run$1
-cp -r $case run$1
+rundir=run$1
+rm -rf $rundir
+cp -r $case $rundir
+cd $rundir
 
-#change controls
-cd run$1
-sed -i '' -e "s/3 {2 1 1}/3 {"$2" "$3" 1}/g" controls
+#modify controls
+if [ ! -z $2 ]; then
+    sed -i "s/3 {2 1 1}/3 {"$2" "$3" 1}/g" ./controls
+fi
+
+#run
 run $grid $1
+
+#vtk
+../bin/prepare ./controls -vtk
+
 cd ..
