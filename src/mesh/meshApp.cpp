@@ -3,16 +3,16 @@
 using namespace std;
 
 /**
-Boundary information
-*/
+  Boundary information
+ */
 struct Bdry {
     string name;
     IntVector index;
 };
 
 /**
-Mesh generator application
-*/
+  Mesh generator application
+ */
 int main(int argc,char* argv[]) {
     using namespace Mesh;
     using namespace Util;
@@ -39,11 +39,11 @@ int main(int argc,char* argv[]) {
             e_file_name = argv[i];
         } else if(!strcmp(argv[i],"-h")) {
             std::cout << "Usage:\n"
-                      << "  ./mesh <inputfile> <Options>\n"
-                      << "Options:\n"
-                      << "  -i     --  Import from Fluent .msh file\n"
-                      << "  -o     --  Export to Fluent .msh file format\n"
-                      << "  -h     --  Display this message\n\n";
+                << "  ./mesh <inputfile> <Options>\n"
+                << "Options:\n"
+                << "  -i     --  Import from Fluent .msh file\n"
+                << "  -o     --  Export to Fluent .msh file format\n"
+                << "  -h     --  Display this message\n\n";
             return 0;
         } 
     }
@@ -107,7 +107,7 @@ int main(int argc,char* argv[]) {
                 else if(!compare(str,"wall")) type = WALL;
                 else if(!compare(str,"mixed")) type = MIXED;
                 else return 1;
-            
+
                 //read divisions
                 vector<Scalar> ts(s);
                 vector<Int> tt(t);
@@ -218,14 +218,14 @@ int main(int argc,char* argv[]) {
     }
     /*merge boundary & internals*/
     merge(gMesh,bMerge);
-    
+
     /*boundaries*/
     forEach(patches,i) {
         IntVector list;
         IntVector& b = patches[i].index;
         Vector N = (corners[b[1]] - corners[b[0]]) ^ (corners[b[2]] - corners[b[0]]);
         N /= mag(N);
-        
+
         forEach(gMesh.mPatches,j) {
             Patch& p = gMesh.mPatches[j];
             Vector H = (p.C - corners[b[0]]);
@@ -237,7 +237,7 @@ int main(int argc,char* argv[]) {
                     list.push_back(k);
             }
         }
-        
+
         if(!list.empty()) {
             IntVector& gB = gBoundaries[patches[i].name.c_str()];
             IntVector::iterator it = find(gB.begin(),gB.end(),list[0]);
@@ -256,7 +256,7 @@ int main(int argc,char* argv[]) {
             forEach(gB,j)
                 faceInB[gB[j]] = 1;
         }
-    
+
         IntVector& gB = gBoundaries[default_name.c_str()];
         forEachS(gFacets,i,gMesh.mNF) {
             if(!faceInB[i])

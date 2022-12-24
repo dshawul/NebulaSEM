@@ -80,7 +80,7 @@ namespace DG {
     extern TensorCellField Jinv;
     extern Int NPX, NPY, NPZ;
     extern Scalar Penalty;
-    
+
     void legendre(int p, Scalar x,Scalar& L0,Scalar& L0_1,Scalar& L0_2);
     void newton_cotes(int N, Scalar* xgl, Scalar* wgl);
     void legendre_gauss(int N, Scalar* xgl, Scalar* wgl);
@@ -91,7 +91,7 @@ namespace DG {
     void init_poly();
     void init_basis();
     void init_geom();
-    
+
     /** Expand fields originally defined on elements to nodes*/
     template<class type, ENTITY entity>
     void expand(const MeshField<type,entity>& cF) {
@@ -101,7 +101,7 @@ namespace DG {
                 block = NP;
             else if(entity == FACET) 
                 block = NPF;
-            
+
             for(int i = cF.size() - 1;i >= 0;i -= block) {
                 Int ii = i / block;
                 type C = cF[ii];

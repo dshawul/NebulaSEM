@@ -7,8 +7,8 @@
 using namespace std;
 
 /**
-general properties
-*/
+  general properties
+ */
 namespace General {
     Scalar density = 1.177;
     Scalar viscosity = 1.568e-5;
@@ -19,7 +19,7 @@ namespace General {
     Scalar P0 = 101325;
     Scalar cp = 1004.67;
     Scalar cv = 715.5;
-    
+
     void enroll(Util::ParamList& params) {
         params.enroll("rho", &density);
         params.enroll("viscosity", &viscosity);
@@ -44,10 +44,10 @@ void euler(istream&);
 void wave(istream&);
 void hydro_balance(istream&);
 /**
- \verbatim
- Main application entry point for different solvers.
- \endverbatim
-*/
+  \verbatim
+  Main application entry point for different solvers.
+  \endverbatim
+ */
 int main(int argc, char* argv[]) {
 
     /*message passing object*/
@@ -55,9 +55,9 @@ int main(int argc, char* argv[]) {
     MP::printOn = (MP::host_id == 0);
     if(!strcmp(argv[1],"-h")) {
         std::cout << "Usage:\n"
-                  << "  ./solver <inputfile>\n"
-                  << "Options:\n"
-                  << "  -h          --  Display this message\n\n";
+            << "  ./solver <inputfile>\n"
+            << "Options:\n"
+            << "  -h          --  Display this message\n\n";
         return 0;
     } 
     ifstream input(argv[1]);
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     } else if (!Util::compare(sname, "wave")) {
         wave(input);
     }
-    
+
 #ifdef _DEBUG
     /*print memory usage*/
     std::cout << "====================================" << std::endl;
@@ -123,186 +123,186 @@ int main(int argc, char* argv[]) {
     forEachVertexField(printUsage());
     std::cout << "====================================" << std::endl;
 #endif  
-    
+
     return 0;
 }
 /**
- Iteration object that does common book keeping stuff
- for all solvers.
-*/
+  Iteration object that does common book keeping stuff
+  for all solvers.
+ */
 class Iteration {
-private:
-    Int starti;
-    Int endi;
-    Int i;
-    Int n_deferred;
-    Int idf;
-public:
-    Iteration(Int step) {
-        starti = Controls::write_interval * step + 1;
-        endi = Controls::write_interval * (step + Controls::amr_step);
-        if(endi > Controls::end_step) endi = Controls::end_step;
-        n_deferred = Controls::n_deferred;
-        i = starti;
-        idf = 0;
-        if(MP::printOn)
-            cout << "--------------------------------------------\n";
-        Mesh::read_fields(step);
-        Mesh::getProbeCells(Mesh::probeCells);
-        forEachCellField (initTimeSeries());
-        if(MP::printOn) {
-            cout << "--------------------------------------------\n";
-            MP::printH("Starting iterations.\n");
-        }
-    }
-    bool start() {
-        return (i == starti);
-    }
-    bool end() {
-        if(i > endi)
-            return true;
-        /*iteration number*/
-        if(MP::printOn && idf == 0) {
-            if(Controls::state == Controls::STEADY)
-                MP::printH("Step %d\n",i);
-            else
-                MP::printH("Time %f\n",i * Controls::dt);
-        }
-        return false;
-    }
-    void next() {
-        idf++;
-        if(idf <= n_deferred)
-            return;
-        idf = 0;
-        
-        /*set output printing*/
-        MP::printOn = (MP::host_id == 0 && 
-            (MP::hasElapsed(Controls::print_time) || i == Controls::end_step - 1)); 
-        
-        /*update time series*/
-        forEachCellField(updateTimeSeries(i));
-
-        /*write result to file*/
-        if((i % Controls::write_interval) == 0) {
-            Int step = i / Controls::write_interval;
-            Mesh::write_fields(step);
-        }
-
-        /*increment*/
-        i++;
-    }
-    ~Iteration() {
-    }
-};
-/**
- Iterator for AMR
-*/
-class AmrIteration {
-private:
-    Int starti;
-    Int endi;
-    Int i;
-public:
-    AmrIteration() {
-        starti = Controls::start_step / Controls::write_interval;
-        endi = Controls::end_step / Controls::write_interval;
-        if(!Controls::amr_step)
-            Controls::amr_step = endi;
-        i = starti;
-
-        if (MP::n_hosts > 1) {
-            /*decompose*/
-            if (MP::host_id == 0)
-                Prepare::decomposeMesh(i);
-            /*wait*/
-            MP::barrier();
-            /*change directory*/
-            stringstream s;
-            s << Mesh::gMeshName << MP::host_id;
-            System::cd(s.str());
-        }
-        Mesh::LoadMesh(i);
-    }
-    bool start() {
-        return (i == starti);
-    }
-    bool end() {
-        if(i >= endi)
-            return true;
-        return false;
-    }
-    void next() {
-        i += Controls::amr_step;
-        if(i < endi) {
-            if (MP::host_id == 0) {
-                if(MP::n_hosts > 1) {
-                    System::cd(MP::workingDir);
-                    Prepare::mergeFields(i);
-                }
-                
-                bool init_threshold = (i == starti + Controls::amr_step);
-                Prepare::refineMesh(i, init_threshold);
-
-                if(MP::n_hosts > 1) {
-                    /*decompose mesh*/
-                    Prepare::decomposeMesh(i);
-                    /*change directory*/
-                    stringstream s;
-                    s << Mesh::gMeshName << MP::host_id;
-                    System::cd(s.str());
-                }
+    private:
+        Int starti;
+        Int endi;
+        Int i;
+        Int n_deferred;
+        Int idf;
+    public:
+        Iteration(Int step) {
+            starti = Controls::write_interval * step + 1;
+            endi = Controls::write_interval * (step + Controls::amr_step);
+            if(endi > Controls::end_step) endi = Controls::end_step;
+            n_deferred = Controls::n_deferred;
+            i = starti;
+            idf = 0;
+            if(MP::printOn)
+                cout << "--------------------------------------------\n";
+            Mesh::read_fields(step);
+            Mesh::getProbeCells(Mesh::probeCells);
+            forEachCellField (initTimeSeries());
+            if(MP::printOn) {
+                cout << "--------------------------------------------\n";
+                MP::printH("Starting iterations.\n");
             }
-            MP::barrier();
-            Mesh::LoadMesh(i);  
         }
-    }
-    ~AmrIteration() {
-    }
-    Int get_step() {
-        return i;
-    }
+        bool start() {
+            return (i == starti);
+        }
+        bool end() {
+            if(i > endi)
+                return true;
+            /*iteration number*/
+            if(MP::printOn && idf == 0) {
+                if(Controls::state == Controls::STEADY)
+                    MP::printH("Step %d\n",i);
+                else
+                    MP::printH("Time %f\n",i * Controls::dt);
+            }
+            return false;
+        }
+        void next() {
+            idf++;
+            if(idf <= n_deferred)
+                return;
+            idf = 0;
+
+            /*set output printing*/
+            MP::printOn = (MP::host_id == 0 && 
+                    (MP::hasElapsed(Controls::print_time) || i == Controls::end_step - 1)); 
+
+            /*update time series*/
+            forEachCellField(updateTimeSeries(i));
+
+            /*write result to file*/
+            if((i % Controls::write_interval) == 0) {
+                Int step = i / Controls::write_interval;
+                Mesh::write_fields(step);
+            }
+
+            /*increment*/
+            i++;
+        }
+        ~Iteration() {
+        }
 };
 /**
- \verbatim
- Navier stokes solver using PISO algorithm
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- References:
-    Hrvoje Jasak, "Error analysis and estimation of FVM with 
-    applications to fluid flow".
- Description:
-    The PISO algorithm is used to solve NS equations on collocated grids 
-    using Rhie-Chow interpolation to avoid wiggles in pressure field.
+  Iterator for AMR
+ */
+class AmrIteration {
+    private:
+        Int starti;
+        Int endi;
+        Int i;
+    public:
+        AmrIteration() {
+            starti = Controls::start_step / Controls::write_interval;
+            endi = Controls::end_step / Controls::write_interval;
+            if(!Controls::amr_step)
+                Controls::amr_step = endi;
+            i = starti;
 
-    Prediction
-    ~~~~~~~~~~
-    Discretize and solve the momenum equation with current values of pressure. 
-    The velocities obtained will not satisfy continuity unless exact pressure 
-    happened to be specified. 
+            if (MP::n_hosts > 1) {
+                /*decompose*/
+                if (MP::host_id == 0)
+                    Prepare::decomposeMesh(i);
+                /*wait*/
+                MP::barrier();
+                /*change directory*/
+                stringstream s;
+                s << Mesh::gMeshName << MP::host_id;
+                System::cd(s.str());
+            }
+            Mesh::LoadMesh(i);
+        }
+        bool start() {
+            return (i == starti);
+        }
+        bool end() {
+            if(i >= endi)
+                return true;
+            return false;
+        }
+        void next() {
+            i += Controls::amr_step;
+            if(i < endi) {
+                if (MP::host_id == 0) {
+                    if(MP::n_hosts > 1) {
+                        System::cd(MP::workingDir);
+                        Prepare::mergeFields(i);
+                    }
 
-    Correction
-    ~~~~~~~~~~
-    Step 1) 
-      Determine velocity with all terms included except pressure gradient source contribution.
-          ap * Up = H(U) - grad(p)
-          Up = H(U) / ap - grad(p) / ap
-      Droping grad(p) term:
-          Ua = H(U) / ap
-          Up = Ua - grad(p) / ap
-      One jacobi sweep is done to find Ua.
-    Step 2)
-      Solve poisson pressure equation to satisfy continuity with fluxes calculated 
-      from interpolated Ua.
-          div(Up) = 0
-          div(1/ap * grad(p)) = div(H(U)/ap)
-          lap(p,1/ap) = div(Ua)
-    Step 3)
-      Correct the velocity with gradient of newly found pressure
-          U = Ua - grad(p) / ap
-    These steps are repeated two or more times for transient solutions.
-    For steady state problems once is enough.
-    \endverbatim
-*/
+                    bool init_threshold = (i == starti + Controls::amr_step);
+                    Prepare::refineMesh(i, init_threshold);
+
+                    if(MP::n_hosts > 1) {
+                        /*decompose mesh*/
+                        Prepare::decomposeMesh(i);
+                        /*change directory*/
+                        stringstream s;
+                        s << Mesh::gMeshName << MP::host_id;
+                        System::cd(s.str());
+                    }
+                }
+                MP::barrier();
+                Mesh::LoadMesh(i);  
+            }
+        }
+        ~AmrIteration() {
+        }
+        Int get_step() {
+            return i;
+        }
+};
+/**
+  \verbatim
+  Navier stokes solver using PISO algorithm
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  References:
+     Hrvoje Jasak, "Error analysis and estimation of FVM with 
+     applications to fluid flow".
+  Description:
+     The PISO algorithm is used to solve NS equations on collocated grids 
+     using Rhie-Chow interpolation to avoid wiggles in pressure field.
+ 
+     Prediction
+     ~~~~~~~~~~
+     Discretize and solve the momenum equation with current values of pressure. 
+     The velocities obtained will not satisfy continuity unless exact pressure 
+     happened to be specified. 
+ 
+     Correction
+     ~~~~~~~~~~
+     Step 1) 
+       Determine velocity with all terms included except pressure gradient source contribution.
+           ap * Up = H(U) - grad(p)
+           Up = H(U) / ap - grad(p) / ap
+       Droping grad(p) term:
+           Ua = H(U) / ap
+           Up = Ua - grad(p) / ap
+       One jacobi sweep is done to find Ua.
+     Step 2)
+       Solve poisson pressure equation to satisfy continuity with fluxes calculated 
+       from interpolated Ua.
+           div(Up) = 0
+           div(1/ap * grad(p)) = div(H(U)/ap)
+           lap(p,1/ap) = div(Ua)
+     Step 3)
+       Correct the velocity with gradient of newly found pressure
+           U = Ua - grad(p) / ap
+     These steps are repeated two or more times for transient solutions.
+     For steady state problems once is enough.
+     \endverbatim
+ */
 void piso(istream& input) {
     /*Solver specific parameters*/
     Scalar velocity_UR = Scalar(0.8);
@@ -330,10 +330,10 @@ void piso(istream& input) {
     params.enroll("n_ORTHO", &n_ORTHO);
     op = new Util::BoolOption(&momentum_predictor);
     params.enroll("momentum_predictor",op);
-    
+
     Turbulence_Model::RegisterTable(params);
     params.read(input);
-    
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
         ScalarCellField rho = General::density;
@@ -345,7 +345,7 @@ void piso(istream& input) {
         /*temperature*/
         if(buoyancy != NONE)
             T.construct("T",READWRITE);
-        
+
         /*turbulence model*/
         ScalarFacetField F;
         Turbulence_Model* turb = Turbulence_Model::Select(U, F, rho, mu);
@@ -365,7 +365,7 @@ void piso(istream& input) {
         ScalarCellField po = p;
         VectorCellField gP = -gradf(p);
         VectorCellField Fc;
-        
+
         Fc = rho * U;
         F = flx(Fc);
 
@@ -410,34 +410,34 @@ void piso(istream& input) {
              */
             const ScalarCellField api = fillBCs<Scalar>(1.0 / M.ap);
             const ScalarCellField rmu = rho * api * Mesh::cV;
-            
+
             /*PISO loop*/
             for (Int j = 0; j < n_PISO; j++) {
                 /* Ua = H(U) / ap*/
                 U = getRHS(M) * api;
                 applyExplicitBCs(U, true);
-            
+
                 /*solve pressure poisson equation to satisfy continuity*/
                 {
                     const ScalarCellField rhs = divf(rho * U);
                     for (Int k = 0; k <= n_ORTHO; k++)
                         Solve(lap(p, rmu, true) += rhs);
                 }
-            
+
                 /*explicit velocity correction : add pressure contribution*/
                 gP = -gradf(p);
                 U -= gP * api;
                 applyExplicitBCs(U, true);
             }
-            
+
             /*update fluctuations*/
             applyExplicitBCs(U, true, true);
             Fc = rho * U;
             F = flx(Fc);
-            
+
             /*solve turbulence transport equations*/
             turb->solve();
-            
+
             /*solve energy transport*/
             if (buoyancy != NONE) {
                 const ScalarCellField eddy_mu = turb->getTurbVisc();
@@ -446,7 +446,7 @@ void piso(istream& input) {
                 Solve(Mt);
                 T = max(T, Constants::MachineEpsilon);
             }
-            
+
             /*explicitly under relax pressure*/
             if (Controls::state == Controls::STEADY) {
                 p = po + (p - po) * pressure_UR;
@@ -454,7 +454,7 @@ void piso(istream& input) {
                 po = p;
             }
         }
-        
+
         /*write calculated turbulence fields*/
         if (turb->writeStress) {
             ScalarCellField K("Ksgs", WRITE);
@@ -465,7 +465,7 @@ void piso(istream& input) {
             V = turb->getViscousStress();
             Mesh::write_fields(ait.get_step());
         }
-        
+
         delete turb;
     }
 }
@@ -496,18 +496,18 @@ void euler(istream& input) {
     params.enroll("buoyancy",op);
     op = new Util::BoolOption(&diffusion);
     params.enroll("diffusion",op);
-    
+
     /*read parameters*/
     Util::read_params(input,MP::printOn);
-    
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         ScalarCellField p("p",READWRITE);
         VectorCellField U("U",READWRITE);
         ScalarCellField T("T",READWRITE);
         ScalarCellField rho("rho",WRITE);
-        
+
         /*Read fields*/
         Iteration it(ait.get_step());
         ScalarFacetField F;
@@ -526,7 +526,7 @@ void euler(istream& input) {
         rho = pow(p / p_factor, 1 / p_gamma) / T;
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         rho.write(0);
-    
+
         /*Time loop*/
         for (; !it.end(); it.next()) {
             /*fluxes*/
@@ -584,10 +584,10 @@ void convection(istream& input) {
 
     /*read parameters*/
     Util::read_params(input,MP::printOn);
-    
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         VectorCellField U("U", READWRITE);
         ScalarCellField T("T", READWRITE);
 
@@ -602,13 +602,13 @@ void convection(istream& input) {
     }
 }
 /**
- \verbatim
- Diffusion solver
- ~~~~~~~~~~~~~~~~
- Solver for pdes of parabolic heat equation type:
-       dT/dt = lap(T,DT)
- \endverbatim
-*/
+  \verbatim
+  Diffusion solver
+  ~~~~~~~~~~~~~~~~
+  Solver for pdes of parabolic heat equation type:
+        dT/dt = lap(T,DT)
+  \endverbatim
+ */
 void diffusion(istream& input) {
     /*Solver specific parameters*/
     Scalar DT = Scalar(1);
@@ -621,12 +621,12 @@ void diffusion(istream& input) {
 
     /*read parameters*/
     Util::read_params(input,MP::printOn);
-    
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         ScalarCellField T("T", READWRITE);
-        
+
         /*Time loop*/
         ScalarCellField mu = DT;
         for (Iteration it(ait.get_step()); !it.end(); it.next()) {
@@ -657,13 +657,13 @@ void transport(istream& input) {
 
     /*read parameters*/
     Util::read_params(input,MP::printOn);
-    
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         VectorCellField U("U", READWRITE);
         ScalarCellField T("T", READWRITE);
-        
+
         /*Time loop*/
         Iteration it(ait.get_step());
         ScalarFacetField F = flx(U);
@@ -676,13 +676,13 @@ void transport(istream& input) {
     }
 }
 /**
- \verbatim
- Wave equation solver
- ~~~~~~~~~~~~~~~~~~~~
- Solver for pdes of hyperbolic wave equation type:
-       d2T/dt2 = c^2 * lap(T)
- \endverbatim
-*/
+  \verbatim
+  Wave equation solver
+  ~~~~~~~~~~~~~~~~~~~~
+  Solver for pdes of hyperbolic wave equation type:
+        d2T/dt2 = c^2 * lap(T)
+  \endverbatim
+ */
 void wave(istream& input) {
     /*Solver specific parameters*/
     Scalar C2 = Scalar(1);
@@ -695,12 +695,12 @@ void wave(istream& input) {
 
     /*read parameters*/
     Util::read_params(input,MP::printOn);
-    
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         ScalarCellField T("T", READWRITE);
-        
+
         /*Time loop*/
         ScalarCellField mu = C2;
         for (Iteration it(ait.get_step()); !it.end(); it.next()) {
@@ -713,40 +713,40 @@ void wave(istream& input) {
 }
 /**
   \verbatim
-    Potential flow solver
-    ~~~~~~~~~~~~~~~~~~~~~
-    In potential flow the velocity field is irrotational (vorticity = curl(U) = 0).
-    This assumption fails for boundary layers and wakes that exhibit strong vorticity,
-    but the theory can still be used to initialize flow field for complex simulations.
+  Potential flow solver
+  ~~~~~~~~~~~~~~~~~~~~~
+  In potential flow the velocity field is irrotational (vorticity = curl(U) = 0).
+  This assumption fails for boundary layers and wakes that exhibit strong vorticity,
+  but the theory can still be used to initialize flow field for complex simulations.
 
-    The potential flow assumption is that velocity is the gradient of a scalar field,
-    which is the velocity potential (phi) 
-           U = grad(phi)
-           curl(U) = curl(grad(phi))
-           curl(U) = 0
-    where the last step is possible due to the vector identity curl(grad(phi)) = 0.
-    Hence, defining the velocity as a gradient of a scalar ensures vorticity is zero.
-    Let us now take the divergence instead as
-           U = grad(phi)
-           div(U) = div(grad(phi))
-           div(U) = lap(phi)
-    Since div(U)=0 for incompressible, the poisson equation becomes a laplace equation
-           lap(phi) = 0
+  The potential flow assumption is that velocity is the gradient of a scalar field,
+  which is the velocity potential (phi) 
+         U = grad(phi)
+         curl(U) = curl(grad(phi))
+         curl(U) = 0
+  where the last step is possible due to the vector identity curl(grad(phi)) = 0.
+  Hence, defining the velocity as a gradient of a scalar ensures vorticity is zero.
+  Let us now take the divergence instead as
+         U = grad(phi)
+         div(U) = div(grad(phi))
+         div(U) = lap(phi)
+  Since div(U)=0 for incompressible, the poisson equation becomes a laplace equation
+         lap(phi) = 0
 
-    What the solver does
-    ~~~~~~~~~~~~~~~~~~~~~
-    Given an initial velocity field (Ua) that does not satisfy continuity (div(Ua) != 0),
-    we can correct Ua with the pressure gradient to get a divergence free velocity field U
-           U = Ua - grad(p)
-           div(Ua - grad(p)) = div(U) = 0
-           div(Ua) = div(grad(p))
-    If Ua is irrotational, i.e. curl(Ua) = 0 and Ua = grad(phia), then so is U because
-           U = Ua - grad(p)
-           U = grad(phia) - grad(p)
-           U = grad(phia - p)
-    where U = grad(phi) such that phi = phia - p.
+  What the solver does
+  ~~~~~~~~~~~~~~~~~~~~~
+  Given an initial velocity field (Ua) that does not satisfy continuity (div(Ua) != 0),
+  we can correct Ua with the pressure gradient to get a divergence free velocity field U
+         U = Ua - grad(p)
+         div(Ua - grad(p)) = div(U) = 0
+         div(Ua) = div(grad(p))
+  If Ua is irrotational, i.e. curl(Ua) = 0 and Ua = grad(phia), then so is U because
+         U = Ua - grad(p)
+         U = grad(phia) - grad(p)
+         U = grad(phia - p)
+  where U = grad(phi) such that phi = phia - p.
   \endverbatim
-*/
+ */
 void potential(istream& input) {
     /*Solver specific parameters*/
     Int n_ORTHO = 0;
@@ -760,7 +760,7 @@ void potential(istream& input) {
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         VectorCellField U("U", READWRITE);
         ScalarCellField p("p", READWRITE);
 
@@ -768,11 +768,11 @@ void potential(istream& input) {
         for (Iteration it(ait.get_step()); it.start(); it.next()) {
             const ScalarCellField divU = divf(U);
             const ScalarCellField one = Scalar(1);
-            
+
             /*solve pressure poisson equation for correction*/
             for (Int k = 0; k <= n_ORTHO; k++)
                 Solve(lap(p, one, true) == divU);
-            
+
             /*correct velocity*/
             U -= gradi(p);
             applyExplicitBCs(U, true);
@@ -780,14 +780,14 @@ void potential(istream& input) {
     }
 }
 /**
- \verbatim
- Hydrostatic
- ~~~~~~~~~~~~~
-    Solver for hydrostatic balance
-        grad(p) = -rho*g
-    Using gravitational potential theory
-       div(grad(p)) = div(-rho*g)
- \endverbatim
+  \verbatim
+  Hydrostatic
+  ~~~~~~~~~~~~~
+     Solver for hydrostatic balance
+         grad(p) = -rho*g
+     Using gravitational potential theory
+        div(grad(p)) = div(-rho*g)
+  \endverbatim
 */
 void hydro_balance(istream& input) {
     /*Solver specific parameters*/
@@ -799,19 +799,19 @@ void hydro_balance(istream& input) {
 
     /*read parameters*/
     Util::read_params(input,MP::printOn);
-    
+
     /*solve*/
 
     for (AmrIteration ait; !ait.end(); ait.next()) {
-        
+
         ScalarCellField p("p", READWRITE);
-        
+
         for (Iteration it(ait.get_step()); it.start(); it.next()) {
-            
+
             const ScalarCellField one = Scalar(1);
             const VectorCellField rhog = General::density * Controls::gravity;
             const ScalarCellField ndivRhoG = -divf(rhog);
-        
+
             /*solve poisson equation*/
             for (Int k = 0; k <= n_ORTHO; k++)
                 Solve(lap(p, one, true) == ndivRhoG);
@@ -819,16 +819,16 @@ void hydro_balance(istream& input) {
     }
 }
 /**
- \verbatim
- Wall distance
- ~~~~~~~~~~~~~
-    Reference:
-       D.B.Spalding, Calculation of turbulent heat transfer in cluttered spaces
-    Description:
-       Poisson equation is solved to get approximate nearest wall distance.
-             lap(phi,1) = -cV
-       The boundary conditions are phi=0 at walls, and grad(phi) = 0 elsewhere.
- \endverbatim
+  \verbatim
+  Wall distance
+  ~~~~~~~~~~~~~
+     Reference:
+        D.B.Spalding, Calculation of turbulent heat transfer in cluttered spaces
+     Description:
+        Poisson equation is solved to get approximate nearest wall distance.
+              lap(phi,1) = -cV
+        The boundary conditions are phi=0 at walls, and grad(phi) = 0 elsewhere.
+  \endverbatim
 */
 void walldist(istream& input) {
     /*Solver specific parameters*/
@@ -845,8 +845,8 @@ void walldist(istream& input) {
     }
 }
 /**
-Calculate wall distance at given time step
-*/
+  Calculate wall distance at given time step
+ */
 void Mesh::calc_walldist(Int step, Int n_ORTHO) {
     ScalarCellField& phi = yWall;
     /*poisson equation*/

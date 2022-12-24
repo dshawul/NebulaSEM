@@ -5,12 +5,12 @@
  * *********************************************************************/
 
 /**
-Calculate global residual
-*/
+  Calculate global residual
+ */
 template<class type, ENTITY entity>
 Scalar getResidual(const MeshField<type,entity>& r,
-                   const MeshField<type,entity>& cF,
-                   bool sync) {
+        const MeshField<type,entity>& cF,
+        bool sync) {
     type res[2];
     res[0] = type(0);
     res[1] = type(0); 
@@ -27,8 +27,8 @@ Scalar getResidual(const MeshField<type,entity>& r,
     return sqrt(sdiv(mag(res[0]), mag(res[1])));
 }
 /**
-Solve a system of linear equations Ax=B
-*/
+  Solve a system of linear equations Ax=B
+ */
 template<class T1, class T2, class T3>
 void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     using namespace Mesh;
@@ -113,59 +113,59 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     /***********************************
      *  Forward/backward substitution
      ***********************************/
-#define Substitute_(X,B,ci,forw,tr) {               \
-        const Int index1 = INDEX4(ci,ii,jj,kk);     \
-        T3 ncF = B[index1];                         \
-        if(NPMAT) {                                 \
-            T3 val(Scalar(0));                      \
-            forEachLglX(i) {                                                        \
-                Int index2 = INDEX4(ci,i,jj,kk);                                    \
-                if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
-                    Int indexm = ci * NPMAT +                                       \
-                        (tr ? INDEX_TX(ii,jj,kk,i) : INDEX_X(ii,jj,kk,i));          \
-                    val += X[index2] * M.adg[indexm];                               \
-                }                                                                   \
-            }                                                                       \
-            forEachLglY(j) if(j != jj) {                                            \
-                Int index2 = INDEX4(ci,ii,j,kk);                                    \
-                if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
-                    Int indexm = ci * NPMAT +                                       \
-                    (tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));              \
-                    val += X[index2] * M.adg[indexm];                               \
-                }                                                                   \
-            }                                                                       \
-            forEachLglZ(k) if(k != kk) {                                            \
-                Int index2 = INDEX4(ci,ii,jj,k);                                    \
-                if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
-                    Int indexm = ci * NPMAT +                                       \
-                    (tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));              \
-                    val += X[index2] * M.adg[indexm];                               \
-                }                                                                   \
-            }                                                                       \
-            ncF += val;                                 \
-        }                                               \
-        if(isBoundary(ii,jj,kk)) {                      \
-            forEach(c,j) {                              \
-                Int faceid = c[j];                      \
-                for(Int n = 0; n < NPF;n++) {           \
-                    Int k = faceid * NPF + n;           \
-                    Int c1 = FO[k];                     \
-                    Int c2 = FN[k];                     \
-                    if(index1 == c1) {                  \
-                        if((forw && (c2 < c1)) ||       \
-                          (!forw && (c1 < c2))) {       \
+#define Substitute_(X,B,ci,forw,tr) {           \
+    const Int index1 = INDEX4(ci,ii,jj,kk);     \
+    T3 ncF = B[index1];                         \
+    if(NPMAT) {                                 \
+        T3 val(Scalar(0));                      \
+        forEachLglX(i) {                                                        \
+            Int index2 = INDEX4(ci,i,jj,kk);                                    \
+            if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
+                Int indexm = ci * NPMAT +                                       \
+                    (tr ? INDEX_TX(ii,jj,kk,i) : INDEX_X(ii,jj,kk,i));          \
+                val += X[index2] * M.adg[indexm];                               \
+            }                                                                   \
+        }                                                                       \
+        forEachLglY(j) if(j != jj) {                                            \
+            Int index2 = INDEX4(ci,ii,j,kk);                                    \
+            if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
+                Int indexm = ci * NPMAT +                                       \
+                (tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));              \
+                val += X[index2] * M.adg[indexm];                               \
+            }                                                                   \
+        }                                                                       \
+        forEachLglZ(k) if(k != kk) {                                            \
+            Int index2 = INDEX4(ci,ii,jj,k);                                    \
+            if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
+                Int indexm = ci * NPMAT +                                       \
+                (tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));              \
+                val += X[index2] * M.adg[indexm];                               \
+            }                                                                   \
+        }                                                                       \
+        ncF += val;                                 \
+    }                                               \
+    if(isBoundary(ii,jj,kk)) {                      \
+        forEach(c,j) {                              \
+            Int faceid = c[j];                      \
+            for(Int n = 0; n < NPF;n++) {           \
+                Int k = faceid * NPF + n;           \
+                Int c1 = FO[k];                     \
+                Int c2 = FN[k];                     \
+                if(index1 == c1) {                  \
+                    if((forw && (c2 < c1)) ||       \
+                      (!forw && (c1 < c2))) {       \
                         ncF += X[c2] * M.an[1 - tr][k]; \
-                        }                               \
-                    } else if(index1 == c2) {           \
-                        if((forw && (c2 > c1)) ||       \
-                          (!forw && (c1 > c2)))         \
-                        ncF += X[c1] * M.an[0 + tr][k]; \
-                    }                                   \
-                }                                       \
-            }                                           \
-        }                                               \
-        ncF *= iD[index1];                              \
-        X[index1] = ncF;                                \
+                    }                               \
+                } else if(index1 == c2) {           \
+                    if((forw && (c2 > c1)) ||       \
+                      (!forw && (c1 > c2)))         \
+                    ncF += X[c1] * M.an[0 + tr][k]; \
+                }                                   \
+            }                                       \
+        }                                           \
+    }                                               \
+    ncF *= iD[index1];                              \
+    X[index1] = ncF;                                \
 }
 #define ForwardSub(X,B,TR) {                        \
     for(Int ci = 0;ci < gBCS;ci++)  {               \
@@ -271,24 +271,24 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                                 Int index2 = INDEX4(ci,i,jj,kk);
                                 if(index1 > index2) {
                                     val += iD[index2] * 
-                                           M.adg[ci * NPMAT + INDEX_X(ii,jj,kk,i)] *
-                                           M.adg[ci * NPMAT + INDEX_TX(ii,jj,kk,i)];
+                                        M.adg[ci * NPMAT + INDEX_X(ii,jj,kk,i)] *
+                                        M.adg[ci * NPMAT + INDEX_TX(ii,jj,kk,i)];
                                 }
                             }
                             forEachLglY(j) if(j != jj) {
                                 Int index2 = INDEX4(ci,ii,j,kk);
                                 if(index1 > index2) {
                                     val += iD[index2] * 
-                                           M.adg[ci * NPMAT + INDEX_Y(ii,jj,kk,j)] *
-                                           M.adg[ci * NPMAT + INDEX_TY(ii,jj,kk,j)];
+                                        M.adg[ci * NPMAT + INDEX_Y(ii,jj,kk,j)] *
+                                        M.adg[ci * NPMAT + INDEX_TY(ii,jj,kk,j)];
                                 }
                             }
                             forEachLglZ(k) if(k != kk) {
                                 Int index2 = INDEX4(ci,ii,jj,k);
                                 if(index1 > index2) {
                                     val += iD[index2] * 
-                                           M.adg[ci * NPMAT + INDEX_Z(ii,jj,kk,k)] *
-                                           M.adg[ci * NPMAT + INDEX_TZ(ii,jj,kk,k)];
+                                        M.adg[ci * NPMAT + INDEX_Z(ii,jj,kk,k)] *
+                                        M.adg[ci * NPMAT + INDEX_TZ(ii,jj,kk,k)];
                                 }
                             }
                             D[index1] -= val;
@@ -302,10 +302,10 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                                     Int c2 = FN[k];                     
                                     if(index1 == c1) {
                                         if(c2 > c1) D[c2] -= 
-                                        (M.an[0][k] * M.an[1][k] * iD[c1]); 
+                                            (M.an[0][k] * M.an[1][k] * iD[c1]); 
                                     } else if(index1 == c2) {
                                         if(c1 > c2) D[c1] -= 
-                                        (M.an[0][k] * M.an[1][k] * iD[c2]);     
+                                            (M.an[0][k] * M.an[1][k] * iD[c2]);     
                                     }       
                                 }                               
                             }
@@ -323,9 +323,9 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     CALC_RESID();
     ires = res;
     /********************************************************
-    * Initialize exchange of ghost cells just once.
-    * Lower numbered processors send message to higher ones.
-    *********************************************************/  
+     * Initialize exchange of ghost cells just once.
+     * Lower numbered processors send message to higher ones.
+     *********************************************************/  
     if(!sync) {
         end_count = gInterMesh.size();
         forEach(gInterMesh,i) {
@@ -352,7 +352,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     while(iterations < Controls::max_iterations) {
         /*counter*/
         iterations++;
-
+    
         /*select solver*/
         if(Controls::Solver != Controls::PCG) {
             p = cF;
@@ -401,11 +401,11 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
             /*end*/
         }
         /* *********************************************
-        * calculate norm of residual & check convergence
-        * **********************************************/
+         * calculate norm of residual & check convergence
+         * **********************************************/
         res = getResidual(AP,cF,sync);
         if(res <= Controls::tolerance
-            || iterations == Controls::max_iterations)
+                || iterations == Controls::max_iterations)
             converged = true;
 PROBE:
         /* **********************************************************
@@ -417,7 +417,7 @@ PROBE:
             int source,message_id;
             /*probe*/
             while(MP::iprobe(source,message_id,MP::FIELD)
-               || MP::iprobe(source,message_id,MP::END)) {
+                    || MP::iprobe(source,message_id,MP::END)) {
                 /*find the boundary*/
                 Int patchi;
                 for(patchi = 0;patchi < gInterMesh.size();patchi++) {
@@ -429,7 +429,7 @@ PROBE:
                     interBoundary& b = gInterMesh[patchi];
                     IntVector& f = *(b.f);
                     Int buf_size = f.size() * NPF;
-                    
+    
                     /*recieve*/
                     MP::recieve(&buffer[0],buf_size,source,message_id);
                     forEach(f,j) {
@@ -440,11 +440,11 @@ PROBE:
                             cF[FN[k]] = buffer[offset + n];
                         }
                     }
-                    
+    
                     /*Re-calculate residual.*/                  
                     CALC_RESID();
                     if(res > Controls::tolerance
-                        && iterations < Controls::max_iterations)
+                            && iterations < Controls::max_iterations)
                         converged = false;
                     /* For communication to continue, processor have to send back 
                      * something for every message recieved.*/
@@ -456,7 +456,7 @@ PROBE:
                         }
                         continue;
                     }
-                    
+    
                     /*send*/
                     forEach(f,j) {
                         Int faceid = f[j];
@@ -467,7 +467,7 @@ PROBE:
                         }
                     }
                     MP::send(&buffer[0],buf_size,source,message_id);
-                    
+    
                 } else if(message_id == MP::END) {
                     /*END marker recieved*/
                     MP::recieve(source,message_id);
@@ -480,9 +480,9 @@ PROBE:
             }
         }
         /* *****************************************
-        * Wait untill all partner processors send us
-        * an END message i.e. until end_count = 0.
-        * *****************************************/
+         * Wait untill all partner processors send us
+         * an END message i.e. until end_count = 0.
+         * *****************************************/
         if(converged) {
             if(end_count > 0) goto PROBE;
             else break;
@@ -505,26 +505,26 @@ PROBE:
             MP::print("SOR :");
         else {
             switch(Controls::Preconditioner) {
-            case Controls::NOPR: MP::print("NONE-PCG :"); break;
-            case Controls::DIAG: MP::print("DIAG-PCG :"); break;
-            case Controls::SSOR: MP::print("SSOR-PCG :"); break;
-            case Controls::DILU: MP::print("DILU-PCG :"); break;
+                case Controls::NOPR: MP::print("NONE-PCG :"); break;
+                case Controls::DIAG: MP::print("DIAG-PCG :"); break;
+                case Controls::SSOR: MP::print("SSOR-PCG :"); break;
+                case Controls::DILU: MP::print("DILU-PCG :"); break;
             }
         }
         MP::print("Iterations %d Initial Residual "
-        "%.5e Final Residual %.5e\n",iterations,ires,res);
+                "%.5e Final Residual %.5e\n",iterations,ires,res);
     }
 }
 /**
-Solve a diagonal system
-*/
+  Solve a diagonal system
+ */
 template<class T1,class T2,class T3>
 void SolveTexplicit(const MeshMatrix<T1,T2,T3>& M) {
     *M.cF = M.Su / M.ap;
     if(MP::printOn) {
         MP::printH("DIAG-DIAG:");
         MP::print("Iterations %d Initial Residual "
-        "%.5e Final Residual %.5e\n",1,0.0,0.0);
+                "%.5e Final Residual %.5e\n",1,0.0,0.0);
     }
 }
 /***************************

@@ -142,8 +142,8 @@ Vector rotate(const Vector& v,const Vector& N,const Scalar& theta) {
 Scalar det(const Tensor& p) {
     Scalar r;
     r =  p[XX] * (p[YY] * p[ZZ] - p[YZ] * p[ZY]) +
-         p[XY] * (p[YZ] * p[ZX] - p[YX] * p[ZZ]) +
-         p[XZ] * (p[YX] * p[ZY] - p[YY] * p[ZX]);
+        p[XY] * (p[YZ] * p[ZX] - p[YX] * p[ZZ]) +
+        p[XZ] * (p[YX] * p[ZY] - p[YY] * p[ZX]);
     return r;
 }
 /** Inverse of a tensor */

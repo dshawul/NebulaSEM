@@ -48,7 +48,7 @@ void Util::read_params(istream& is, bool output, std::string block) {
 
         map<string,ParamList*>::iterator it = ParamList::list.find(str);
         if((it == ParamList::list.end()) || 
-            (!block.empty() && compare(str,block))) {
+                (!block.empty() && compare(str,block))) {
             int braces = 1;
             while((c = Util::nextc(is))) {
                 is >> c;

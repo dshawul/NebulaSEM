@@ -5,14 +5,14 @@
 using namespace std;
 
 /**
-\verbatim
-Post/Pre processing jobs such as
+  \verbatim
+  Post/Pre processing jobs such as
   Domain decomposition
   Merging results of decomposed domains
   Converting data to VTK format
   Probing result at specified locations
-\endverbatim
-*/
+  \endverbatim
+ */
 int main(int argc,char* argv[]) {
     /*message passing object*/
     MP mp(argc,argv);
@@ -36,25 +36,25 @@ int main(int argc,char* argv[]) {
             start_index = atoi(argv[i]);
         } else if(!strcmp(argv[i],"-h")) {
             std::cout << "Usage:\n"
-                      << "  ./prepare <inputfile> <Options>\n"
-                      << "Options:\n"
-                      << "  -merge      --  Merge results of decomposed domain\n"
-                      << "  -vtk        --  Convert data to VTK format\n"
-                      << "  -probe      --  Probe result at specified locations\n"
-                      << "  -refine     --  Refine mesh\n"
-                      << "  -poly       --  Write VTK in polyhedral format\n"
-                      << "  -start <i>  --  Start at time step <i>\n"
-                      << "  -h          --  Display this message\n\n";
+                << "  ./prepare <inputfile> <Options>\n"
+                << "Options:\n"
+                << "  -merge      --  Merge results of decomposed domain\n"
+                << "  -vtk        --  Convert data to VTK format\n"
+                << "  -probe      --  Probe result at specified locations\n"
+                << "  -refine     --  Refine mesh\n"
+                << "  -poly       --  Write VTK in polyhedral format\n"
+                << "  -start <i>  --  Start at time step <i>\n"
+                << "  -h          --  Display this message\n\n";
             return 0;
         } 
     }
-    
+
     /*open job specification file*/
     ifstream input(argv[1]);
 
     /*read mesh & fields*/
     vector<string>& fields = BaseField::fieldNames;
-    
+
     /*Options*/
     {
         Util::ParamList params("general");

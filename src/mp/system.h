@@ -14,8 +14,8 @@
 #endif
 
 /**
-System dependent collection of functions
-*/
+  System dependent collection of functions
+ */
 namespace System {
     /** Gets processor id*/
     inline int get_pid() {

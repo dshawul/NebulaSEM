@@ -12,19 +12,19 @@ bool Turbulence_Model::bneedWallDist = false;
 void Turbulence_Model::RegisterTable(Util::ParamList& params) {
     Util::Option* op;
     op = new Util::Option(&turb_model,7,
-        "NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES");
+            "NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES");
     params.enroll("turbulence_model",op);
 }
 
 /** Select type of turbulence model at run-time */
 Turbulence_Model* Turbulence_Model::Select(VectorCellField& U,ScalarFacetField& F,
-                    ScalarCellField& rho,ScalarCellField& mu) {
+        ScalarCellField& rho,ScalarCellField& mu) {
     /*turbulence model*/
     enum TurbModel {
         NONE,MIXING_LENGTH,KE,RNG_KE,REALIZABLE_KE,KW,LES
     };
     bneedWallDist = false;
-    
+
     /*Select turbulence model*/
     Turbulence_Model* turb;
     switch(turb_model) {

@@ -28,17 +28,17 @@
 
 #define forEachIt(cont,field,it)                        \
     for(cont::iterator it = (field).begin();            \
-        it != (field).end();++it)
+            it != (field).end();++it)
 //@}
 
 /** Copy collection */            
 #define copyColl(src,trg)                               \
     std::copy(std::begin(src),std::end(src),std::back_inserter(trg));
- 
+
 /** Erase by value */   
 #define eraseValue(field,val)                           \
     (field).erase(std::remove((field).begin(),(field).end(),val),(field).end());
-    
+
 /** Write a vector to stream */
 template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
@@ -67,7 +67,7 @@ template<>
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
 
 /** Test if two Int vectors are equal. O(n^2) complexity but arrays
-are small since it is used for edges/faces/cells*/
+  are small since it is used for edges/faces/cells*/
 FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
     forEach(v1,i) {
         bool found = false;
@@ -82,19 +82,19 @@ FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
     }
     return true;
 }
-    
+
 /** Erase indices from a vector. It assumes the indices are already sorted */
 template<typename T>
 void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete) {
     if(indicesToDelete.size() == 0)
         return;
-        
+
     std::vector<T> temp;
     temp.reserve(data.size() - indicesToDelete.size());
 
     typename std::vector<T>::const_iterator itBlockBegin = data.begin();
     for(std::vector<Int>::const_iterator it = indicesToDelete.begin(); 
-        it != indicesToDelete.end(); ++ it) {
+            it != indicesToDelete.end(); ++ it) {
         typename std::vector<T>::const_iterator itBlockEnd = data.begin() + *it;
         if(itBlockBegin != itBlockEnd)
             std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
@@ -111,9 +111,9 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
 template<template <typename> class P = std::less >
 struct compare_pair_second {
     template<class T1, class T2> bool operator()(
-        const std::pair<T1, T2>& left, 
-        const std::pair<T1, T2>& right
-        ) {
+            const std::pair<T1, T2>& left, 
+            const std::pair<T1, T2>& right
+            ) {
         return P<T2>()(left.second, right.second);
     }
 };
@@ -171,7 +171,7 @@ namespace Util {
     /** Special boolean option as a YES/NO */
     struct BoolOption : public Option {
         BoolOption(void* v) :
-        Option(v,2,"NO","YES")
+            Option(v,2,"NO","YES")
         {
         }
     };
@@ -179,20 +179,21 @@ namespace Util {
     /** List of parameters in a group */
     template <typename T> 
     class Parameters{
-        std::map<std::string,T*> list;
-    public:
-        void enroll(std::string str,T* addr) {
-            list[str] = addr;
-        }
-        bool read(std::string str,std::istream& is,bool out) {
-            typename std::map<std::string,T*>::iterator it = list.find(str);
-            if(it != list.end()) {
-                is >> *(it->second);
-                if(out) std::cout << *(it->second);
-                return true;
+        private:
+            std::map<std::string,T*> list;
+        public:
+            void enroll(std::string str,T* addr) {
+                list[str] = addr;
             }
-            return false;
-        }
+            bool read(std::string str,std::istream& is,bool out) {
+                typename std::map<std::string,T*>::iterator it = list.find(str);
+                if(it != list.end()) {
+                    is >> *(it->second);
+                    if(out) std::cout << *(it->second);
+                    return true;
+                }
+                return false;
+            }
     };
     extern void read_params(std::istream&, bool print, std::string block = "");
 

@@ -10,33 +10,33 @@ bool Vtk::write_cell_value = true;
 
 namespace {
 
-/** Counts number of facets and vertices of cell */
-Int cell_count(Cell& c) {
-    Facet* f;
-    Int i,nFacets = c.size(),nVertices = 0,nTotal;
-    for(i = 0;i < nFacets;i++) {
-        f = &gFacets[c[i]];
-        nVertices += f->size();
-    }
-    nTotal = nFacets + nVertices + 2;
-    return nTotal;
-}
-
-/** Writes one cell in ascii vtk format */
-void cell_vtk(std::ofstream& of, Cell& c) {
-    Facet* f;
-    Int i,j,nFacets = c.size(),nTotal = cell_count(c);
-    /*write*/
-    of << nTotal - 1 << " " << nFacets << " ";
-    for(i = 0;i < nFacets;i++) {
-        f = &gFacets[c[i]];
-        of << f->size() << " ";
-        for(j = 0;j < f->size();j++) {
-            of << (*f)[j] << " ";
+    /** Counts number of facets and vertices of cell */
+    Int cell_count(Cell& c) {
+        Facet* f;
+        Int i,nFacets = c.size(),nVertices = 0,nTotal;
+        for(i = 0;i < nFacets;i++) {
+            f = &gFacets[c[i]];
+            nVertices += f->size();
         }
+        nTotal = nFacets + nVertices + 2;
+        return nTotal;
     }
-    of << endl;
-}
+
+    /** Writes one cell in ascii vtk format */
+    void cell_vtk(std::ofstream& of, Cell& c) {
+        Facet* f;
+        Int i,j,nFacets = c.size(),nTotal = cell_count(c);
+        /*write*/
+        of << nTotal - 1 << " " << nFacets << " ";
+        for(i = 0;i < nFacets;i++) {
+            f = &gFacets[c[i]];
+            of << f->size() << " ";
+            for(j = 0;j < f->size();j++) {
+                of << (*f)[j] << " ";
+            }
+        }
+        of << endl;
+    }
 
 }
 
@@ -53,7 +53,7 @@ void Vtk::write_vtk(Int step) {
     of << Mesh::gMeshName << endl;
     of << "ASCII" << endl;
     of << "DATASET UNSTRUCTURED_GRID" << endl;
-    
+
     if(DG::NPMAT <= 1) {
         /*vertices*/
         {
@@ -97,10 +97,10 @@ void Vtk::write_vtk(Int step) {
         }
         /*Fields*/
         total = ScalarCellField::count_writable() +
-                VectorCellField::count_writable() +
-                STensorCellField::count_writable() +
-                TensorCellField::count_writable();
-            
+            VectorCellField::count_writable() +
+            STensorCellField::count_writable() +
+            TensorCellField::count_writable();
+
         /*cells*/
         if(write_cell_value) {
             of << "CELL_DATA " << gBCS << endl;
@@ -147,13 +147,13 @@ void Vtk::write_vtk(Int step) {
                 of << "CELLS " << ncells << " " << ncells * 3 << endl;
                 Int r = 0, s = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int t = 0;t < NPZ - 1;t++)
-                {
-                    of << "2 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,  r,  s,  t+1) << " ";
-                    of << endl; 
-                }
+                    for(Int t = 0;t < NPZ - 1;t++)
+                    {
+                        of << "2 ";
+                        of << INDEX4(ci,  r,  s,  t) << " ";
+                        of << INDEX4(ci,  r,  s,  t+1) << " ";
+                        of << endl; 
+                    }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "3" << endl;
@@ -162,13 +162,13 @@ void Vtk::write_vtk(Int step) {
                 of << "CELLS " << ncells << " " << ncells * 3 << endl;
                 Int r = 0, t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int s = 0;s < NPY - 1;s++)
-                {
-                    of << "2 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,  r,s+1,  t) << " ";
-                    of << endl; 
-                }
+                    for(Int s = 0;s < NPY - 1;s++)
+                    {
+                        of << "2 ";
+                        of << INDEX4(ci,  r,  s,  t) << " ";
+                        of << INDEX4(ci,  r,s+1,  t) << " ";
+                        of << endl; 
+                    }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "3" << endl;
@@ -177,13 +177,13 @@ void Vtk::write_vtk(Int step) {
                 of << "CELLS " << ncells << " " << ncells * 3 << endl;
                 Int s = 0, t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int r = 0;r < NPX - 1;r++)
-                {
-                    of << "2 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,  s,  t) << " ";
-                    of << endl; 
-                }
+                    for(Int r = 0;r < NPX - 1;r++)
+                    {
+                        of << "2 ";
+                        of << INDEX4(ci,  r,  s,  t) << " ";
+                        of << INDEX4(ci,r+1,  s,  t) << " ";
+                        of << endl; 
+                    }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "3" << endl;
@@ -193,16 +193,16 @@ void Vtk::write_vtk(Int step) {
                 of << "CELLS " << ncells << " " << ncells * 5 << endl;
                 Int r = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int s = 0;s < NPY - 1;s++)
-                for(Int t = 0;t < NPZ - 1;t++)
-                {
-                    of << "4 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,  r,s+1,  t) << " ";
-                    of << INDEX4(ci,  r,s+1,  t+1) << " ";
-                    of << INDEX4(ci,  r,  s,  t+1) << " ";
-                    of << endl; 
-                }
+                    for(Int s = 0;s < NPY - 1;s++)
+                        for(Int t = 0;t < NPZ - 1;t++)
+                        {
+                            of << "4 ";
+                            of << INDEX4(ci,  r,  s,  t) << " ";
+                            of << INDEX4(ci,  r,s+1,  t) << " ";
+                            of << INDEX4(ci,  r,s+1,  t+1) << " ";
+                            of << INDEX4(ci,  r,  s,  t+1) << " ";
+                            of << endl; 
+                        }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "9" << endl;
@@ -211,16 +211,16 @@ void Vtk::write_vtk(Int step) {
                 of << "CELLS " << ncells << " " << ncells * 5 << endl;
                 Int s = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int r = 0;r < NPX - 1;r++)
-                for(Int t = 0;t < NPZ - 1;t++)
-                {
-                    of << "4 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,  s,  t+1) << " ";
-                    of << INDEX4(ci,  r,  s,  t+1) << " ";
-                    of << endl; 
-                }
+                    for(Int r = 0;r < NPX - 1;r++)
+                        for(Int t = 0;t < NPZ - 1;t++)
+                        {
+                            of << "4 ";
+                            of << INDEX4(ci,  r,  s,  t) << " ";
+                            of << INDEX4(ci,r+1,  s,  t) << " ";
+                            of << INDEX4(ci,r+1,  s,  t+1) << " ";
+                            of << INDEX4(ci,  r,  s,  t+1) << " ";
+                            of << endl; 
+                        }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "9" << endl;
@@ -229,16 +229,16 @@ void Vtk::write_vtk(Int step) {
                 of << "CELLS " << ncells << " " << ncells * 5 << endl;
                 Int t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int r = 0;r < NPX - 1;r++)
-                for(Int s = 0;s < NPY - 1;s++)
-                {
-                    of << "4 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,s+1,  t) << " ";
-                    of << INDEX4(ci,  r,s+1,  t) << " ";
-                    of << endl; 
-                }
+                    for(Int r = 0;r < NPX - 1;r++)
+                        for(Int s = 0;s < NPY - 1;s++)
+                        {
+                            of << "4 ";
+                            of << INDEX4(ci,  r,  s,  t) << " ";
+                            of << INDEX4(ci,r+1,  s,  t) << " ";
+                            of << INDEX4(ci,r+1,s+1,  t) << " ";
+                            of << INDEX4(ci,  r,s+1,  t) << " ";
+                            of << endl; 
+                        }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "9" << endl;
@@ -247,21 +247,21 @@ void Vtk::write_vtk(Int step) {
                 Int ncells = gBCS * (NPX - 1) * (NPY - 1) * (NPZ - 1);
                 of << "CELLS " << ncells << " " << ncells * 9 << endl;
                 for(Int ci = 0;ci < gBCS;ci++)
-                for(Int r = 0;r < NPX - 1;r++)
-                for(Int s = 0;s < NPY - 1;s++)
-                for(Int t = 0;t < NPZ - 1;t++)
-                {
-                    of << "8 ";
-                    of << INDEX4(ci,  r,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,  s,  t) << " ";
-                    of << INDEX4(ci,r+1,s+1,  t) << " ";
-                    of << INDEX4(ci,  r,s+1,  t) << " ";
-                    of << INDEX4(ci,  r,  s,t+1) << " ";
-                    of << INDEX4(ci,r+1,  s,t+1) << " ";
-                    of << INDEX4(ci,r+1,s+1,t+1) << " ";
-                    of << INDEX4(ci,  r,s+1,t+1) << " ";
-                    of << endl;
-                }
+                    for(Int r = 0;r < NPX - 1;r++)
+                        for(Int s = 0;s < NPY - 1;s++)
+                            for(Int t = 0;t < NPZ - 1;t++)
+                            {
+                                of << "8 ";
+                                of << INDEX4(ci,  r,  s,  t) << " ";
+                                of << INDEX4(ci,r+1,  s,  t) << " ";
+                                of << INDEX4(ci,r+1,s+1,  t) << " ";
+                                of << INDEX4(ci,  r,s+1,  t) << " ";
+                                of << INDEX4(ci,  r,  s,t+1) << " ";
+                                of << INDEX4(ci,r+1,  s,t+1) << " ";
+                                of << INDEX4(ci,r+1,s+1,t+1) << " ";
+                                of << INDEX4(ci,  r,s+1,t+1) << " ";
+                                of << endl;
+                            }
                 of << "CELL_TYPES " << ncells << endl;
                 for(i = 0;i < ncells;i++)
                     of << "12" << endl;
@@ -269,9 +269,9 @@ void Vtk::write_vtk(Int step) {
         }
         /*Fields*/
         total = ScalarCellField::count_writable() +
-                VectorCellField::count_writable() +
-                STensorCellField::count_writable() +
-                TensorCellField::count_writable();
+            VectorCellField::count_writable() +
+            STensorCellField::count_writable() +
+            TensorCellField::count_writable();
         /*vertices*/
         {
             of << "POINT_DATA " << gBCSfield << endl;

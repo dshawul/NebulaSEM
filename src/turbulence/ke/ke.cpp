@@ -2,7 +2,7 @@
 /*
 References:
     http://www.cfd-online.com/Wiki/Standard_k-epsilon_model
-*/
+ */
 KE_Model::KE_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
     KX_Model(tU,tF,trho,tmu,"e")
 {
@@ -37,8 +37,8 @@ void KE_Model::solve() {
     /*turbulent kinetic energy*/
     eff_mu = eddy_mu / SigmaK + mu;
     M = transport<Scalar>(k, U, F, eff_mu, k_UR,
-                Pk,
-                -(rho * x / k), &rho);
+            Pk,
+            -(rho * x / k), &rho);
     if(wallModel == STANDARD)
         FixNearWallValues(M);
     Solve(M);

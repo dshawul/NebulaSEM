@@ -2,7 +2,7 @@
 /*
 References:
     http://www.cfd-online.com/Wiki/RNG_k-epsilon_model
-*/
+ */
 RNG_KE_Model::RNG_KE_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
     KE_Model(tU,tF,trho,tmu),
     eta0(4.38),
@@ -38,8 +38,8 @@ void RNG_KE_Model::solve() {
     /*turbulent dissipation*/
     eff_mu = eddy_mu / SigmaX + mu;
     M = transport<Scalar>(x, U, F, eff_mu, x_UR,
-                (C1x * Pk * x / k),
-                -(C2eStar * rho * x / k), &rho);
+            (C1x * Pk * x / k),
+            -(C2eStar * rho * x / k), &rho);
     FixNearWallValues(M);
     Solve(M);
     x = max(x,Constants::MachineEpsilon);
@@ -47,8 +47,8 @@ void RNG_KE_Model::solve() {
     /*turbulent kinetic energy*/
     eff_mu = eddy_mu / SigmaK + mu;
     M = transport<Scalar>(k, U, F, eff_mu, k_UR,
-                    Pk,
-                    -(rho * x / k), &rho);
+            Pk,
+            -(rho * x / k), &rho);
     if(wallModel == STANDARD)
         FixNearWallValues(M);
     Solve(M);

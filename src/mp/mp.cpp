@@ -24,7 +24,7 @@ MP::MP(int argc,char* argv[]) {
     if(host_id == 0) {
         printf("--------------------------------------------\n");
         printf("%d processes started with master on %s pid %d\n",
-            n_hosts,host_name,System::get_pid());
+                n_hosts,host_name,System::get_pid());
     }
     fflush(stdout);
 }
@@ -83,7 +83,7 @@ void MP::cleanup () {
     Terminated = true;
     if(host_id == 0) {
         printf("%d [%d] Exiting application run with %d processes\n", 
-            System::get_time() - _start_time, host_id, n_hosts);
+                System::get_time() - _start_time, host_id, n_hosts);
     }
 }
 /** Check if certain amout of time is elapsed */

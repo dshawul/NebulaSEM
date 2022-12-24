@@ -3,10 +3,10 @@
 using namespace Mesh;
 
 /**
-Center of a triangle. This is the circum-center (center of circumscribed circle)
-or crossing point of two perpendicular bisectors
-*/
-Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
+  Calculate the circum-circumcenter of triangel (circumcenter of circumscribed circle)
+  or crossing point of two perpendicular bisectors. Used for ARC edges.
+ */
+Vector circumcenter(const Vector& v1,const Vector& v2,const Vector& v3) {
     Vector v12 = v1 - v2;
     Vector v13 = v1 - v3;
     Vector v23 = v2 - v3;
@@ -17,8 +17,8 @@ Vector center(const Vector& v1,const Vector& v2,const Vector& v3) {
     return a * v1 + b * v2 + c * v3;
 }
 /**
-Add different shapes of edges
-*/
+  Add different shapes of edges
+ */
 void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
     Edge& e = edges[w];
     if(e.type == NONE) {
@@ -34,13 +34,13 @@ void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
     }
 }
 /**
-Generate hexahedral mesh
-*/
+  Generate hexahedral mesh
+ */
 void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
     Int i,j,k,m;
 
     /*for wall division set twice 
-    number of divisions requested*/
+      number of divisions requested*/
     for(j = 0;j < 3;j++) {
         bool found = false;
         for(i = j;i < 12;i+=3) {
@@ -58,7 +58,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             }
         }
     }
-    
+
     /*calculate scale*/
     Scalar* sc[12];
     for(i = 0;i < 12;i++) {
@@ -95,7 +95,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
     for(i = 0;i < 12;i++) {
         Edge& e = edges[i];
         if(e.type == ARC) {
-            Vector C = center(e.v[0],e.v[1],e.v[2]);
+            Vector C = circumcenter(e.v[0],e.v[1],e.v[2]);
             Vector r1 = e.v[0] - C;
             Vector r2 = e.v[1] - C;
             e.theta = acos((r1 & r2) / (mag(r1) * mag(r2)));
@@ -176,7 +176,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
         }
     }
     mo.mNV = mo.mVertices.size();
-
+    
     /*boundaries*/
     for(i = 0;i < nx; i += (nx - 1)) {
         for(j = 0;j < ny;j++) {
@@ -205,7 +205,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             }
         }
     }
-    /*end*/
+/*end*/
 #undef ADD
 #undef ADDF
 #undef ADDE
@@ -214,7 +214,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
     delete[] sc[1];
     delete[] sc[2];
 
-    /*faces*/
+/*faces*/
 #define I1(i,j,k)   (i * (ny - 1) * (nz - 1) + j * (nz - 1) + k)
 #define I2(i,j,k)   (i * (ny - 0) * (nz - 1) + j * (nz - 1) + k + B1)
 #define I3(i,j,k)   (i * (ny - 1) * (nz - 0) + j * (nz - 0) + k + B1 + B2)
@@ -292,21 +292,21 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
         p.to = mo.mFacets.size();
         mo.mPatches.push_back(p);
     }
-    /*compute normals of mPatches*/
+/*compute normals of mPatches*/
 #define NORMAL(i,j,k,l,p) {                     \
     p.N = ((vp[j] - vp[i]) ^ (vp[k] - vp[i]));  \
     p.N /= mag(p.N);                            \
     p.C = (vp[i] + vp[j] + vp[k] + vp[l]) / 4;  \
 }
-NORMAL(0,1,2,3,mo.mPatches[0]);
-NORMAL(4,5,6,7,mo.mPatches[1]);
-NORMAL(0,1,5,4,mo.mPatches[2]);
-NORMAL(3,2,6,7,mo.mPatches[3]);
-NORMAL(0,3,7,4,mo.mPatches[4]);
-NORMAL(1,2,6,5,mo.mPatches[5]);
+    NORMAL(0,1,2,3,mo.mPatches[0]);
+    NORMAL(4,5,6,7,mo.mPatches[1]);
+    NORMAL(0,1,5,4,mo.mPatches[2]);
+    NORMAL(3,2,6,7,mo.mPatches[3]);
+    NORMAL(0,3,7,4,mo.mPatches[4]);
+    NORMAL(1,2,6,5,mo.mPatches[5]);
 #undef NORMAL
 
-    /*end*/
+/*end*/
 #undef ADD
 
     /*cells*/
@@ -317,15 +317,15 @@ NORMAL(1,2,6,5,mo.mPatches[5]);
                 m = I3(i,j,k);
                 c.push_back(FI[m]);
                 c.push_back(FI[m + 1]);
-                
+    
                 m = I2(i,j,k);
                 c.push_back(FI[m]);
                 c.push_back(FI[m + (nz - 1)]);
-                
+    
                 m = I1(i,j,k);
                 c.push_back(FI[m]);
                 c.push_back(FI[m + (ny - 1) * (nz - 1)]);
-
+    
                 mo.mCells.push_back(c);
             }
         }
@@ -351,8 +351,8 @@ NORMAL(1,2,6,5,mo.mPatches[5]);
 }
 
 /**
-Remove duplicate vertices,faces and cells
-*/
+  Remove duplicate vertices,faces and cells
+ */
 void remove_duplicate(Mesh::MeshObject& mo) {
     Int i,j,sz,corr;
     int count;
@@ -447,8 +447,8 @@ void remove_duplicate(Mesh::MeshObject& mo) {
 #define MAXNUM 1073741824
 
 /**
-Merge mesh m2 onto m1 (internal) and b (boundary) meshes
-*/
+  Merge mesh m2 onto m1 (internal) and b (boundary) meshes
+ */
 void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
     Int found,s0,s1,s2,s3;
 
@@ -493,7 +493,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
         s2 = m2.mFacets.size();
         s3 = b.fb.size();
         m1.mFacets.insert(m1.mFacets.end(),m2.mFacets.begin(),m2.mFacets.begin() + s1);
-        
+
         //insert faces
         IntVector index0(s3,0),index1(s2 - s1,0);
         Int count = 0;
@@ -527,7 +527,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
             }
         }
         b.fb.resize(count);
-        
+
         //insert patch
         forEach(m2.mPatches,i) {
             m2.mPatches[i].from += s0 + s3;
@@ -589,8 +589,8 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
     }
 }
 /**
-Merge boundary and internals
-*/
+  Merge boundary and internals
+ */
 void merge(Mesh::MeshObject& m,MergeObject& b) {
     m.mNV = m.mVertices.size();
     m.mNF = m.mFacets.size();

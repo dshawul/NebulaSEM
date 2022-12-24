@@ -21,8 +21,8 @@ typedef std::map<std::string,IntVector> Boundaries;
 //@}
 
 /**
-Mesh data structure
-*/
+  Mesh data structure
+ */
 namespace Mesh {
     /** Inter-processor boundary */
     struct interBoundary {
@@ -31,7 +31,7 @@ namespace Mesh {
         Int to;
         Int buffer_index;
     };
-    
+
     /** Boundary patch */
     struct Patch {
         Int from;
@@ -43,7 +43,7 @@ namespace Mesh {
             to = 0;
         }
     };
-    
+
     /** AMR tree node */
     struct Node {
         Int id;
@@ -63,23 +63,23 @@ namespace Mesh {
             return is;
         }
     };
-    
+
     typedef std::vector<interBoundary> InterBoundVector;
     typedef std::vector<Patch> PatchVector;
     typedef std::vector<Node> NodeVector;
-    
+
     /** Mesh object */
     struct MeshObject {
-        
+
         Vertices mVertices; /**< vertices */
         Facets   mFacets;   /**< facets */
         Cells    mCells;    /**< Cells */
-        
+
         std::string name;           /**< File name */
         Boundaries  mBoundaries;    /**< List of boundary patches */
         IntVector   mFOC;           /**< Facet owners of elements */
         IntVector   mFNC;           /**< Facet neighbors of elements */
-        
+
         Int      mNV;   /**< Number of vertices */
         Int      mNF;   /**< Number of faces */
         Int      mBCS;  /**< Number of internal cells */
@@ -87,7 +87,7 @@ namespace Mesh {
 
         PatchVector      mPatches;      /**< List of patches */
         InterBoundVector mInterMesh;    /**< List of inter-processor boundaries */
-        
+
         Cells    mFaceID;   /**< Original face orientation*/
 
         VectorVector mFC;   /**< Facet centers */
@@ -95,9 +95,9 @@ namespace Mesh {
         VectorVector mFN;   /**< Facet normals */
         ScalarVector mCV;   /**< Cell volumes */
         BoolVector   mReversed; /**< Is normal reversed? */
-        
+
         NodeVector   mAmrTree;  /**< AMR tree */
-        
+
         /*functions*/
         void clear();
         void writeMesh(std::ostream&);
@@ -109,7 +109,7 @@ namespace Mesh {
         void removeBoundary(const IntVector&);
         Int  removeUnusedVertices(Int = 0);
         void breakEdges(Int);
-        
+
         void straightenEdges(const Facet&, Facet&, Facet&);
         bool coplanarFaces(const Facet&,const Facet&);
         bool mergeFacets(const Facet&,const Facet&, Facet&);
@@ -123,11 +123,11 @@ namespace Mesh {
         void refineFacet(const Facet&, Facets&, Int, Int); 
         void refineFacets(const IntVector&, IntVector&, const IntVector&, IntVector&, IntVector&,Int);
         void refineCell(const Cell&, IntVector&, Int, IntVector&,
-                        IntVector&, IntVector&, Cells&, IntVector&, Int);
+                IntVector&, IntVector&, Cells&, IntVector&, Int);
         void refineMesh(const IntVector&, const IntVector&, const IntVector&, 
-                        const IntVector&, IntVector&, IntVector&);
+                const IntVector&, IntVector&, IntVector&);
     };
-    
+
     /** \name Global mesh object with its members */
     //@{
     extern  MeshObject        gMesh;
@@ -148,9 +148,9 @@ namespace Mesh {
     extern  VectorVector&     gFN;
     extern  ScalarVector&     gCV;
     //@}
-    
+
     extern  Vector amr_direction; /**< Direction of AMR */
-    
+
     bool pointInLine(const Vector&,const Vector&,const Vector&);
     bool pointInPolygon(const VectorVector&,const IntVector&,const Vector&);
 }
