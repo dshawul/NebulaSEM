@@ -38,7 +38,20 @@
 #define eraseValue(field,val)                           \
     (field).erase(std::remove((field).begin(),(field).end(),val),(field).end());
 
-/** Write a vector to stream */
+/** std::pair I/O*/
+template <class T1, class T2>
+std::ostream& operator << (std::ostream& os, const std::pair<T1,T2>& p) {
+    os << p.first << " " << p.second;
+    return os;
+}
+
+template <class T1, class T2>
+std::istream& operator >> (std::istream& is, std::pair<T1,T2>& p) {
+    is >> p.first >> p.second;
+    return is;
+}
+
+/** std::vector I/O*/
 template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
     os << p.size() << std::endl;
@@ -49,7 +62,6 @@ std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
     return os;
 }
 
-/** Read a vector from stream */
 template <class T>
 std::istream& operator >> (std::istream& is, std::vector<T>& p) {
     Int size;
@@ -64,6 +76,32 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
 
 template<>
 std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
+
+/** std::map I/O */
+template <class T1, class T2>
+std::ostream& operator << (std::ostream& os, const std::map<T1,T2>& p) {
+    os << p.size() << std::endl;
+    os << "{ " << std::endl;
+    forEachIt(p,it) {
+        os << it->first << std::endl;
+        os << it->second << std::endl;
+    }
+    os << "}\n";
+    return os;
+}
+
+template <class T1, class T2>
+std::istream& operator >> (std::istream& is, std::map<T1,T2>& p) {
+    Int size;
+    char symbol;
+    is >> size >> symbol;
+    p.resize(size);
+    forEachIt(p,it) {
+        is >> it->first >> it->second;
+    }
+    is >> symbol;
+    return is;
+}
 
 /** Test if two Int vectors are equal. O(n^2) complexity but arrays
   are small since it is used for edges/faces/cells*/

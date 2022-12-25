@@ -927,7 +927,6 @@ int Prepare::decomposeMesh(Int step) {
 
     for(ID = 0;ID < total;ID++) {
         pmesh = &meshes[ID];
-        pvLoc = &vLoc[ID];
         pfLoc = &fLoc[ID];
 
         /*create directory and switch to it*/
