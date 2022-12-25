@@ -53,7 +53,9 @@ bool Mesh::MeshObject::readMesh(Int step,bool first) {
     ifstream is(str.c_str());
     if(is.fail()) {
         if(first) {
-            str = name;
+            path.clear();
+            path << name << "_" << 0;
+            str = path.str();
             is.open(str.c_str());
         } else
             return false;

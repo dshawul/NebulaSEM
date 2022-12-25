@@ -462,7 +462,6 @@ void Prepare::createFields(vector<string>& fields,Int step) {
 
     /*for each field*/
     forEach(fields,i) {
-        /*read at time 0*/
         stringstream path;
         Int size;
         path << fields[i] << step;

@@ -83,7 +83,7 @@ int main(int argc,char* argv[]) {
     }
 
     /*switch directory*/
-    if(work != 0 && mp.n_hosts > 1) {
+    if(mp.n_hosts > 1) {
         stringstream s;
         s << Mesh::gMeshName << mp.host_id;
         if(!System::cd(s.str()))
@@ -97,6 +97,7 @@ int main(int argc,char* argv[]) {
     if(work == 1) {
         if(MP::host_id == 0) {
             cout << "Merging decomposed domain.\n";
+            System::cd(MP::workingDir);
             Prepare::mergeFields(start_index);
         }
     } else if(work == 2) {
@@ -113,6 +114,7 @@ int main(int argc,char* argv[]) {
     } else {
         if(MP::host_id == 0) {
             cout << "Decomposing domain.\n";
+            System::cd(MP::workingDir);
             Prepare::decomposeMesh(start_index);
         }
     } 

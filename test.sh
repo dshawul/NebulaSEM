@@ -9,7 +9,7 @@ function run() {
 	echo "Starting job with " $2 " processors"
 
 	#generate grid
-	../bin/mesh $1 >grid
+	../bin/mesh $1 >grid_0
 
 	#solve
 	mpirun --np $2  ../bin/solver controls
