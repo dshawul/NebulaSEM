@@ -772,12 +772,7 @@ int Prepare::decomposeMesh(Int step) {
     vector<string>& fields = BaseField::fieldNames;
     Int i,j,ID,count;
 
-    /*no decomposition*/
-    if(total == 1)
-        return 1;
-
     std::cout << "Decomposing grid at step " << step << std::endl;
-    System::cd(MP::workingDir);
 
     /*Read mesh*/
     LoadMesh(step,true,false);
@@ -789,10 +784,12 @@ int Prepare::decomposeMesh(Int step) {
     /**********************
      * decompose mesh
      **********************/
-    MeshObject* meshes = new MeshObject[total];
-    IntVector* vLoc = new IntVector[total];
-    IntVector* fLoc = new IntVector[total];
-    IntVector* cLoc = new IntVector[total];
+    std::vector<MeshObject> meshes(total);
+    std::map<std::pair<Int,Int>,IntVector> imesh;
+    std::vector<IntVector> vLoc(total);
+    std::vector<IntVector> fLoc(total);
+    std::vector<IntVector> cLoc(total);
+
     for(i = 0;i < total;i++) {
         vLoc[i].assign(gVertices.size(),0);
         fLoc[i].assign(gFacets.size(),0);
@@ -884,15 +881,14 @@ int Prepare::decomposeMesh(Int step) {
         }
     }
     /*inter mesh faces*/
-    IntVector* imesh = new IntVector[total * total];
     Int co,cn;
     forEach(gFacets,i) {
         if(gFNC[i] < gBCS) {
             co = blockIndex[gFOC[i]];
             cn = blockIndex[gFNC[i]];
             if(co != cn) {
-                imesh[co * total + cn].push_back(fLoc[co][i]);
-                imesh[cn * total + co].push_back(fLoc[cn][i]);
+                imesh[std::make_pair(co,cn)].push_back(fLoc[co][i]);
+                imesh[std::make_pair(cn,co)].push_back(fLoc[cn][i]);
             }
         }
     }
@@ -954,8 +950,9 @@ int Prepare::decomposeMesh(Int step) {
 
         /*inter mesh boundaries*/
         for(j = 0;j < total;j++) {
-            IntVector& f = imesh[ID * total + j];
-            if(f.size()) {
+            std::pair<Int,Int> key = std::make_pair(ID,j);
+            if(imesh.find(key) != imesh.end()) {
+                IntVector& f = imesh[key];
                 of << "interMesh_" << ID << "_" << j << " ";
                 of << f << endl;
             }
@@ -983,8 +980,8 @@ int Prepare::decomposeMesh(Int step) {
 
             /*inter mesh boundaries*/
             for(j = 0;j < total;j++) {
-                IntVector& f = imesh[ID * total + j];
-                if(f.size()) {
+                std::pair<Int,Int> key = std::make_pair(ID,j);
+                if(imesh.find(key) != imesh.end()) {
                     of3 << "interMesh_" << ID << "_" << j << " "
                         << "{\n\ttype GHOST\n}" << endl;
                 }
@@ -996,13 +993,6 @@ int Prepare::decomposeMesh(Int step) {
 
     /*destroy*/ 
     BaseField::destroyFields();
-
-    /*delete*/
-    delete[] meshes;
-    delete[] imesh;
-    delete[] vLoc;
-    delete[] fLoc;
-    delete[] cLoc;
 
     return 0;
 }

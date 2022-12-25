@@ -95,7 +95,7 @@ int main(int argc,char* argv[]) {
     if(MP::printOn)
         cout << "--------------------------------------------\n";
     if(work == 1) {
-        if(MP::host_id == 0) {
+        if(MP::host_id == 0 && MP::n_hosts > 1) {
             cout << "Merging decomposed domain.\n";
             System::cd(MP::workingDir);
             Prepare::mergeFields(start_index);
@@ -112,7 +112,7 @@ int main(int argc,char* argv[]) {
             Prepare::refineMesh(start_index);
         }
     } else {
-        if(MP::host_id == 0) {
+        if(MP::host_id == 0 && MP::n_hosts > 1) {
             cout << "Decomposing domain.\n";
             System::cd(MP::workingDir);
             Prepare::decomposeMesh(start_index);
