@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #set case file
-case=examples/backface/ 
-grid=backface
+case=examples/cavity/
+grid=cavity
 
 #run solver
 function run() {
@@ -12,7 +12,7 @@ function run() {
 	../bin/mesh $1 >grid_0
 
 	#solve
-	mpirun --np $2  ../bin/solver controls
+	mpirun -n $2  ../bin/solver ./controls
 }
 
 #prepare directory
@@ -28,6 +28,15 @@ fi
 
 #run
 run $grid $1
+
+#merge
+if [[ $1 -gt 1 ]]; then
+    t=1
+    while [ -f "./grid0/U$t" ]; do
+	    mpirun -n $1 ../bin/prepare ./controls -merge -start $t
+        t=$((t+1))
+    done
+fi
 
 #vtk
 ../bin/prepare ./controls -vtk

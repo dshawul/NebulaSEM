@@ -1359,8 +1359,8 @@ class ASYNC_COMM {
         MeshField<T,CELL> recvbuf;
     public:
         ASYNC_COMM(T* p) : P(p)
-    {
-    }
+        {
+        }
         void send() {
             using namespace Mesh;
             using namespace DG;
