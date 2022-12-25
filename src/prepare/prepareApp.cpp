@@ -83,7 +83,7 @@ int main(int argc,char* argv[]) {
     }
 
     /*switch directory*/
-    if(mp.n_hosts > 1) {
+    if(work != 0 && mp.n_hosts > 1) {
         stringstream s;
         s << Mesh::gMeshName << mp.host_id;
         if(!System::cd(s.str()))
@@ -95,8 +95,10 @@ int main(int argc,char* argv[]) {
     if(MP::printOn)
         cout << "--------------------------------------------\n";
     if(work == 1) {
-        cout << "Merging decomposed domain.\n";
-        Prepare::mergeFields(start_index);
+        if(MP::host_id == 0) {
+            cout << "Merging decomposed domain.\n";
+            Prepare::mergeFields(start_index);
+        }
     } else if(work == 2) {
         cout << "Converting result to VTK format.\n";
         Prepare::convertVTK(fields,start_index);
@@ -104,11 +106,16 @@ int main(int argc,char* argv[]) {
         cout << "Probing result at specified locations.\n";
         Prepare::probe(fields,start_index);
     } else if(work == 4) {
-        cout << "Refining grid.\n";
-        Prepare::refineMesh(start_index);
+        if(MP::host_id == 0) {
+            cout << "Refining grid.\n";
+            Prepare::refineMesh(start_index);
+        }
     } else {
-        cout << "Decomposing domain.\n";
-        Prepare::decomposeMesh(start_index);
+        if(MP::host_id == 0) {
+            cout << "Decomposing domain.\n";
+            Prepare::decomposeMesh(start_index);
+        }
     } 
+    MP::barrier();
     return 0;
 }

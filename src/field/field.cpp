@@ -807,12 +807,12 @@ int Prepare::decomposeMesh(Int step) {
     /*choose*/
     decomposeMetis(total,blockIndex);
     if(dp.type == 0) {
-        IntVector n(3);
-        Int t = dp.n[0] * dp.n[1] * dp.n[2];
-        Scalar v = pow(Scalar(total) / t,Scalar(1)/3);
-        n[0] = Int(v * n[0]);
-        n[1] = Int(v * n[1]);
-        n[2] = Int(v * n[2]);
+        Int tn = dp.n[0] * dp.n[1] * dp.n[2];
+        if(total != tn) {
+            std::cerr << "Error in XYZ decomposition: use "
+                << tn << " ranks" << std::endl;
+            exit(1);
+        }
         decomposeXYZ(&dp.n[0],&dp.axis[0],blockIndex);
     } else if(dp.type == 1)
         decomposeIndex(total,blockIndex);
