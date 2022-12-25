@@ -43,23 +43,9 @@ void Mesh::MeshObject::clear() {
     mAmrTree.clear();
 }
 /**
-  Read mesh at given time step
+  Read mesh from file
  */
-bool Mesh::MeshObject::readMesh(Int step,bool first) {
-    /*open file*/
-    stringstream path;
-    path << name << "_" << step;
-    string str = path.str();
-    ifstream is(str.c_str());
-    if(is.fail()) {
-        if(first) {
-            path.clear();
-            path << name << "_" << 0;
-            str = path.str();
-            is.open(str.c_str());
-        } else
-            return false;
-    }
+bool Mesh::MeshObject::readMesh(istream& is) {
     /*clear*/
     clear();
     /*read*/
@@ -97,14 +83,14 @@ bool Mesh::MeshObject::readMesh(Int step,bool first) {
 /**
   Write mesh to file
  */
-void Mesh::MeshObject::writeMesh(ostream& os) {
+void Mesh::MeshObject::writeMesh(ostream& os) const {
     os << hex;
     os.precision(12);
     os << mVertices;
     os.precision(6);
     os << mFacets;
     os << mCells;
-    forEachIt(Boundaries,mBoundaries,it)
+    forEachIt(mBoundaries,it)
         os << it->first << " " << it->second << endl;
     os << dec;
 }
@@ -132,7 +118,7 @@ void Mesh::MeshObject::addBoundaryCells() {
     {
         IntVector faceInB;
         faceInB.assign(mFacets.size(),0);
-        forEachIt(Boundaries,mBoundaries,it) {
+        forEachIt(mBoundaries,it) {
             IntVector& mB = it->second; 
             forEach(mB,j)
                 faceInB[mB[j]] = 1;
@@ -153,7 +139,7 @@ void Mesh::MeshObject::addBoundaryCells() {
         Int count = 0;
         Int bdry_size = 0;
 
-        forEachIt(Boundaries,mBoundaries,it)
+        forEachIt(mBoundaries,it)
             bdry_size += it->second.size();
         bcs.resize(bdry_size);
         allbs.resize(bdry_size);
@@ -176,7 +162,7 @@ void Mesh::MeshObject::addBoundaryCells() {
         mCells.insert(mCells.end(),bcs.begin(),bcs.end());
     }
     /*add boundary cells*/
-    forEachIt(Boundaries,mBoundaries,it) {
+    forEachIt(mBoundaries,it) {
         IntVector& mB = it->second;
         forEach(mB,j) {
             Int fi = mB[j];
@@ -361,7 +347,7 @@ void Mesh::MeshObject::removeBoundary(const IntVector& fs) {
         mFNC[i] = Idc[mFNC[i]];
     }
     /*patches*/
-    forEachIt(Boundaries,mBoundaries,it) {
+    forEachIt(mBoundaries,it) {
         IntVector& mB = it->second;
         forEach(mB,i)
             mB[i] = Idf[mB[i]];
@@ -990,7 +976,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         shared.push_back(j);
     }
 
-    forEachIt(typeMap,sharedMap,it) {
+    forEachIt(sharedMap,it) {
         IntVector& shared = (it->second).first;
 
         Facet f;
@@ -1430,8 +1416,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << endl;
 #endif
 
-            typedef map<Int,IntVector> Pair;
-            Pair sharedMap;
+            map<Int,IntVector> sharedMap;
 
             forEach(c1,j) {
                 Int f1 = c1[j];
@@ -1449,13 +1434,13 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
 
 #ifdef RDEBUG
-            forEachIt(Pair,sharedMap,it)
+            forEachIt(sharedMap,it)
                 cout << it->first << " " << it->second << endl;
             cout << "------\n";
 #endif
 
             IntVector allDel;
-            forEachIt(Pair,sharedMap,it) {
+            forEachIt(sharedMap,it) {
                 IntVector& faces = it->second;
                 if(faces.size() > 1) {
                     //merge facets of cell
@@ -1477,7 +1462,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                             eraseValue(c2,c1[faces[j]]);
                     } else {
                         //Assume all faces are on same patch [Fix me later]
-                        forEachIt(Boundaries,mBoundaries,it) {
+                        forEachIt(mBoundaries,it) {
                             IntVector& c2 = it->second;
                             if(find(c2.begin(),c2.end(),fi) != c2.end()) {
                                 forEachS(faces,j,1)
@@ -1781,7 +1766,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         Cell& c = mCells[i];
         ERASEADD();
     }
-    forEachIt(Boundaries,mBoundaries,it) {
+    forEachIt(mBoundaries,it) {
         IntVector& c = it->second;
         ERASEADD();
     }

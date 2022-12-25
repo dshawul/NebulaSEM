@@ -89,8 +89,23 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
     /*load refined mesh*/
     int step = findLastRefinedGrid(step_);
 
+    /*open file*/
+    stringstream path;
+    path << gMesh.name << "_" << step;
+    string str = path.str();
+    ifstream is(str.c_str());
+    if(is.fail()) {
+        if(first) {
+            path.clear();
+            path << gMesh.name << "_" << 0;
+            str = path.str();
+            is.open(str.c_str());
+        } else
+            return false;
+    }
+
     /*load mesh*/
-    if(gMesh.readMesh(step,first)) {
+    if(gMesh.readMesh(is)) {
         /*clear bc and probing points list*/
         Mesh::clearBC();
         Mesh::probePoints.clear();
@@ -272,7 +287,7 @@ void Mesh::initGeomMeshFields() {
         yWall = Scalar(0);
         //boundary
         BCondition<Scalar>* bc;
-        forEachIt(Boundaries,gBoundaries,it) {
+        forEachIt(gBoundaries,it) {
             string bname = it->first;
             bc = new BCondition<Scalar>(yWall.fName);
             bc->bname = bname;
@@ -634,7 +649,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     {
         IntVector refineMap,coarseMap;
         gMesh.refineMesh(rCells,cCells,rLevel,rDirs,refineMap,coarseMap);
-        forEachIt(std::list<BaseField*>, BaseField::allFields, it)
+        forEachIt(BaseField::allFields, it)
             (*it)->refineField(step,refineMap,coarseMap);
     }
     /*Write amrTree*/
@@ -909,6 +924,7 @@ int Prepare::decomposeMesh(Int step) {
     /***************************
      * write mesh/index/fields
      ***************************/
+
     for(ID = 0;ID < total;ID++) {
         pmesh = &meshes[ID];
         pvLoc = &vLoc[ID];
@@ -933,7 +949,7 @@ int Prepare::decomposeMesh(Int step) {
         of << pmesh->mCells << endl;
 
         /*bcs*/
-        forEachIt(Boundaries,gMesh.mBoundaries,it) {
+        forEachIt(gMesh.mBoundaries,it) {
             IntVector b;    
             Int f;
             forEach(it->second,j) {

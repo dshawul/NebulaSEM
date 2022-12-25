@@ -411,11 +411,11 @@ class BaseField {
         static void destroyFields() {
             std::list<BaseField*> save;
             copyColl(allFields,save);
-            forEachIt(std::list<BaseField*>, save, it)
+            forEachIt(save, it)
                 (*it)->deallocate(false);
         }
         static BaseField* findField(const std::string& name) {
-            forEachIt(std::list<BaseField*>, allFields, it) {
+            forEachIt(allFields, it) {
                 if(!Util::compare((*it)->fName,name)) 
                     return (*it);
             }
@@ -593,27 +593,27 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         }
         /*read/write all fields*/
         static void readAll(Int step) {
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 if((*it)->access & READ)
                     (*it)->read(step);
             }
         }
         static void writeAll(Int step) {
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 if((*it)->access & WRITE)
                     (*it)->write(step);
             }
         } 
         static void removeAll() {
             fields_.clear();
-            forEachIt(typename std::list<type*>,mem_pool,it)
+            forEachIt(mem_pool,it)
                 delete[] (*it);
             mem_pool.clear();
             n_alloc = 0;
         } 
         static int count_writable() {
             int count = 0;
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 if((*it)->access & WRITE)
                     count++;
             }
@@ -621,7 +621,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         }
         static void writeVtkCellAll(std::ostream& os) {
             MeshField<type,CELL>* pf;
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 pf = *it;
                 if(pf->access & WRITE) {
                     os << pf->fName <<" "<< TYPE_SIZE <<" "
@@ -634,7 +634,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         }
         static void writeVtkVertexAll(std::ostream& os) {
             MeshField<type,VERTEX> vf;
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 if((*it)->access & WRITE) {
                     vf = cds(cds(*(*it)));
                     os << (*it)->fName <<" "<< TYPE_SIZE <<" "
@@ -652,7 +652,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
             vf_fields_ = new vertexFieldsType;
             vf_fields_->clear();
             MeshField<type,VERTEX> vf;
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 if((*it)->access & WRITE) {
                     vf = cds(cds(*(*it)));
                     vf_fields_->push_back(vf);
@@ -684,7 +684,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
 
         static void initTimeSeries() {
             MeshField<type,CELL>* pf;
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 pf = *it;
                 if(pf->access & WRITE) {
                     if(Mesh::probeCells.size()) {
@@ -707,7 +707,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         static void updateTimeSeries(int i) {
             int count = 0;
             MeshField<type,CELL>* pf;
-            forEachIt(typename std::list<MeshField*>, fields_, it) {
+            forEachIt(fields_, it) {
                 pf = *it;
                 if(pf->access & WRITE) {
                     if(Mesh::probeCells.size()) {

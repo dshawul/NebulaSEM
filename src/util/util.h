@@ -26,9 +26,8 @@
 #define forEachSR(field,i,strt)                         \
     for(Int i = (field).size();i-- > strt;)
 
-#define forEachIt(cont,field,it)                        \
-    for(cont::iterator it = (field).begin();            \
-            it != (field).end();++it)
+#define forEachIt(field,it)                        \
+    for(auto it = (field).begin(); it != (field).end(); ++it)
 //@}
 
 /** Copy collection */            

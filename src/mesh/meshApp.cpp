@@ -53,8 +53,14 @@ int main(int argc,char* argv[]) {
         ofstream output(e_file_name);
         if(Import) str = i_file_name;
         else str = "grid";
+
+        stringstream path;
+        path << str << "_" << 0;
+        string str = path.str();
+        ifstream is(str.c_str());
+
         Mesh::gMeshName = str;
-        Mesh::gMesh.readMesh();
+        Mesh::gMesh.readMesh(is);
         Mesh::gMesh.addBoundaryCells();
         Mesh::gMesh.calcGeometry();
 
@@ -251,7 +257,7 @@ int main(int argc,char* argv[]) {
     if(!default_name.empty()) {
         IntVector faceInB;
         faceInB.assign(gFacets.size(),0);
-        forEachIt(Boundaries,gBoundaries,it) {
+        forEachIt(gBoundaries,it) {
             IntVector& gB = it->second; 
             forEach(gB,j)
                 faceInB[gB[j]] = 1;

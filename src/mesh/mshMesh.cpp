@@ -192,7 +192,7 @@ void Mesh::MeshObject::writeMshMesh(std::ostream& os) {
     os << "))" << endl << endl;
 
     //boundary
-    forEachIt(Boundaries,mBoundaries,it) {
+    forEachIt(mBoundaries,it) {
         const IntVector& fvec = it->second; 
         os << "(0 \"" << it->first << "\")" << endl;
 
