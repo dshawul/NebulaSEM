@@ -895,7 +895,7 @@ int Prepare::decomposeMesh(Int step) {
                 c[j] = (*pfLoc)[c[j]];
         }
     }
-    /*inter mesh faces*/
+    /*inter-processor boundary faces*/
     Int co,cn;
     forEach(gFacets,i) {
         if(gFNC[i] < gBCS) {
@@ -1019,7 +1019,7 @@ int Prepare::mergeFields(Int step) {
 
     /*indexes*/
     Int total = MP::n_hosts;
-    IntVector* cLoc = new IntVector[total];
+    std::vector<IntVector> cLoc(total);
 
     std::cout << "Merging fields at step " << step << std::endl;
 

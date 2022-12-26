@@ -55,10 +55,10 @@ std::istream& operator >> (std::istream& is, std::pair<T1,T2>& p) {
 template <class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
     os << p.size() << std::endl;
-    os << "{ " << std::endl;
+    os << "{" << std::endl;
     forEach(p,i)
         os << p[i] << std::endl;
-    os << "}\n";
+    os << "}" << std::endl;
     return os;
 }
 
@@ -81,12 +81,10 @@ std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
 template <class T1, class T2>
 std::ostream& operator << (std::ostream& os, const std::map<T1,T2>& p) {
     os << p.size() << std::endl;
-    os << "{ " << std::endl;
-    forEachIt(p,it) {
-        os << it->first << std::endl;
-        os << it->second << std::endl;
-    }
-    os << "}\n";
+    os << "{" << std::endl;
+    forEachIt(p,it)
+        os << it->first << " " << it->second << std::endl;
+    os << "}" << std::endl;
     return os;
 }
 
@@ -96,9 +94,8 @@ std::istream& operator >> (std::istream& is, std::map<T1,T2>& p) {
     char symbol;
     is >> size >> symbol;
     p.resize(size);
-    forEachIt(p,it) {
+    forEachIt(p,it)
         is >> it->first >> it->second;
-    }
     is >> symbol;
     return is;
 }

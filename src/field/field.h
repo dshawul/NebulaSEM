@@ -1165,7 +1165,7 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
         bbc = AllBConditions[i];
         if(bbc->fIndex == this->fIndex) {
             bc = static_cast<BCondition<T>*> (bbc);
-            os << *bc << std::endl;
+            os << *bc;
         }
     }
 }

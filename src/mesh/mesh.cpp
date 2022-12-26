@@ -46,6 +46,8 @@ void Mesh::MeshObject::clear() {
   Read mesh from file
  */
 bool Mesh::MeshObject::readMesh(istream& is) {
+    Int size;
+    char symbol;
     /*clear*/
     clear();
     /*read*/
@@ -53,7 +55,8 @@ bool Mesh::MeshObject::readMesh(istream& is) {
     is >> mVertices;
     is >> mFacets;
     is >> mCells;
-    while(Util::nextc(is)) {
+    is >> size >> symbol;
+    for(Int i = 0; i < size; i++) {
         IntVector index;
         string str;
         is >> str;
@@ -70,6 +73,7 @@ bool Mesh::MeshObject::readMesh(istream& is) {
             mInterMesh.push_back(b);
         }
     }
+    is >> symbol;
     /*start of buffer*/ 
     Int buffer_index = 0;
     forEach(mInterMesh,i) {
@@ -90,8 +94,7 @@ void Mesh::MeshObject::writeMesh(ostream& os) const {
     os.precision(6);
     os << mFacets;
     os << mCells;
-    forEachIt(mBoundaries,it)
-        os << it->first << " " << it->second << endl;
+    os << mBoundaries;
     os << dec;
 }
 /**
@@ -1434,8 +1437,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
 
 #ifdef RDEBUG
-            forEachIt(sharedMap,it)
-                cout << it->first << " " << it->second << endl;
+            cout << sharedMap << endl;
             cout << "------\n";
 #endif
 

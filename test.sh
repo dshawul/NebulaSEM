@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -ex
+
 #set case file
 case=examples/cavity/
 grid=cavity
