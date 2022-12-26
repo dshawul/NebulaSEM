@@ -1,5 +1,7 @@
 size 1
 uniform 0
+5
+{
 inlet1 {
 	type NONE
 }
@@ -15,4 +17,4 @@ topbot {
 WALLS {
 	type WALL
 }
-
+}

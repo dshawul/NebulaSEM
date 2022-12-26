@@ -1,5 +1,7 @@
 size 1
 uniform 0.0032
+5
+{
 inlet {
 	type INVERSE 
 	value 0.0016
@@ -18,4 +20,4 @@ top {
 WALLS {
 	type NEUMANN
 }
-
+}

@@ -1,5 +1,7 @@
 size 1
 uniform 2.42
+5
+{
 inlet {
 	type DIRICHLET 
 	value 2.42
@@ -17,4 +19,5 @@ top {
 WALLS {
 	type NEUMANN 
 	value 0
+}
 }

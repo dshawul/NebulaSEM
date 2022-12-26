@@ -1,5 +1,7 @@
 size 1
 uniform 0
+2
+{
 inlet {
 	type DIRICHLET 
 	value 1
@@ -7,4 +9,5 @@ inlet {
 outlet {
 	type DIRICHLET 
 	value 0
+}
 }

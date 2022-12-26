@@ -1,5 +1,7 @@
 size 1
 uniform 0
+5
+{
 inlet {
 	type NEUMANN 
 	value 0
@@ -14,4 +16,5 @@ top {
 WALLS {
 	type NEUMANN 
 	value 0
+}
 }

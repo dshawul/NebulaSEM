@@ -1092,14 +1092,17 @@ void MeshField<T,E>::readBoundary(std::istream& is) {
     using namespace Mesh;
 
     /*boundary field*/
-    char c;
+    Int size;
+    char symbol;
     BCondition<T>* bc;
-    while((c = Util::nextc(is)) && isalpha(c)) {
+    is >> size >> symbol;
+    for(Int i = 0; i < size; i++) {
         bc = new BCondition<T>(this->fName);
         is >> *bc;
         this->calc_neumann(bc);
         AllBConditions.push_back(bc);
     }
+    is >> symbol;
 }
 
 /** Read field */
@@ -1161,6 +1164,18 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
     /*boundary field*/
     BasicBCondition* bbc;
     BCondition<T>* bc;
+    Int size;
+
+    //count
+    size = 0;
+    forEach(AllBConditions,i) {
+        bbc = AllBConditions[i];
+        if(bbc->fIndex == this->fIndex) size++;
+    }
+
+    //write
+    os << size << std::endl;
+    os << "{" << std::endl;
     forEach(AllBConditions,i) {
         bbc = AllBConditions[i];
         if(bbc->fIndex == this->fIndex) {
@@ -1168,6 +1183,7 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
             os << *bc;
         }
     }
+    os << "}" << std::endl;
 }
 
 /** Write field */

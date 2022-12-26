@@ -1,5 +1,7 @@
 size 1
 uniform 14.855
+3
+{
 inlet {
 	type DIRICHLET 
 	value 14.855
@@ -11,4 +13,5 @@ outlet {
 WALLS {
 	type NEUMANN
 	value 0
+}
 }

@@ -1,5 +1,7 @@
 size 3
 uniform 16.75 0 0
+5
+{
 inlet {
 	type LOG 
 	value 16.75 0 0 
@@ -17,4 +19,5 @@ top {
 WALLS {
 	type DIRICHLET 
 	value 0 0 0
+}
 }

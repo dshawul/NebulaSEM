@@ -1,5 +1,7 @@
 size 1
 uniform 0
+3
+{
 top {
 	type NEUMANN 
 	value 0
@@ -11,4 +13,5 @@ bottom {
 sides {
 	type NEUMANN 
 	value 0
+}
 }

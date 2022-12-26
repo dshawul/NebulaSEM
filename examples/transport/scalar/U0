@@ -1,5 +1,7 @@
 size 3
 uniform 0.1 0 0
+2
+{
 inlet {
 	type DIRICHLET
 	value 0.1 0 0
@@ -7,4 +9,5 @@ inlet {
 outlet {
 	type NEUMANN
 	value 0 0 0
+}
 }

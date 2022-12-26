@@ -1,5 +1,7 @@
 size 3
 uniform 0 0 0
+3
+{
 top {
 	type SYMMETRY 
 	value 0 0 0
@@ -11,4 +13,5 @@ bottom {
 sides {
 	type SYMMETRY 
 	value 0 0 0
+}
 }

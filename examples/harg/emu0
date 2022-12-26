@@ -1,5 +1,7 @@
 size 1
 uniform 0
+5
+{
 inlet {
 	type NONE
 }
@@ -17,4 +19,4 @@ WALLS {
 	ks   0.47
      cs   0.5
 }
-
+}

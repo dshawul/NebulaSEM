@@ -1,5 +1,7 @@
 size 1
 uniform 300
+2
+{
 top_WALL {
 	type NEUMANN 
 	value 0
@@ -7,4 +9,5 @@ top_WALL {
 all_WALL {
 	type NEUMANN 
 	value 0
+}
 }

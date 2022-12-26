@@ -1,5 +1,8 @@
 size 3
 uniform 2 0 0
+1
+{
 inout {
 	type CYCLIC
+}
 }

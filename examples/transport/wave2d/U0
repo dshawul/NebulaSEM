@@ -1,8 +1,11 @@
 size 3
 uniform 0.1 0 0
+2
+{
 inout {
 	type NEUMANN
 }
 topbot {
 	type NEUMANN
+}
 }

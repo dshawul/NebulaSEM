@@ -1,5 +1,7 @@
 size 1
 uniform 0
+4
+{
 inlet {
 	type NEUMANN
 }
@@ -11,4 +13,5 @@ top {
 }
 WALLS {
 	type SYMMETRY
+}
 }

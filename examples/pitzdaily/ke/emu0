@@ -1,5 +1,7 @@
 size 1
 uniform 0
+3
+{
 inlet {
 	type NONE
 }
@@ -9,4 +11,4 @@ outlet {
 WALLS {
 	type ROUGHWALL
 }
-
+}

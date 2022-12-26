@@ -1,5 +1,7 @@
 size 1
 uniform 0
+4
+{
 left {
    type DIRICHLET 
    value 100
@@ -15,4 +17,5 @@ right {
 top {
    type NEUMANN 
    value 0
+}
 }
