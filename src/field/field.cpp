@@ -922,12 +922,42 @@ int Prepare::decomposeMesh(Int step) {
         }
     }
     /***************************
-     * write mesh/index/fields
+     * Boundaries
      ***************************/
-
     for(ID = 0;ID < total;ID++) {
         pmesh = &meshes[ID];
         pfLoc = &fLoc[ID];
+
+        /*physical boundary*/
+        forEachIt(gMesh.mBoundaries,it) {
+            IntVector b;    
+            Int f;
+            forEach(it->second,j) {
+                f = (*pfLoc)[it->second[j]];
+                if(f != Constants::MAX_INT)
+                    b.push_back(f);
+            }
+            if(b.size())
+                pmesh->mBoundaries[it->first] = b;
+        }
+
+        /*inter-processor boundaries*/
+        for(j = 0;j < total;j++) {
+            std::pair<Int,Int> key = std::make_pair(ID,j);
+            if(imesh.find(key) != imesh.end()) {
+                stringstream path;
+                path << "interMesh_" << ID << "_" << j;
+                string str = path.str();
+                pmesh->mBoundaries[str.c_str()] = imesh[key];
+            }
+        }
+
+    }
+    /***************************
+     * write mesh/index/fields
+     ***************************/
+    for(ID = 0;ID < total;ID++) {
+        pmesh = &meshes[ID];
 
         /*create directory and switch to it*/
         stringstream path;
@@ -937,43 +967,11 @@ int Prepare::decomposeMesh(Int step) {
         if(!System::cd(path.str()))    
             return 1;
 
-        /*v,f & c*/
+        /*mesh*/
         stringstream path1;
         path1 << gMeshName << "_" << step;
         ofstream of(path1.str().c_str());
-
-        of << hex;
-        of << pmesh->mVertices << endl;
-        of << pmesh->mFacets << endl;
-        of << pmesh->mCells << endl;
-
-        /*bcs*/
-        forEachIt(gMesh.mBoundaries,it) {
-            IntVector b;    
-            Int f;
-            forEach(it->second,j) {
-                f = (*pfLoc)[it->second[j]];
-                if(f != Constants::MAX_INT)
-                    b.push_back(f);
-            }
-            /*write to file*/
-            if(b.size()) {
-                of << it->first << "  ";
-                of << b << endl;
-            }
-        }
-
-        /*inter mesh boundaries*/
-        for(j = 0;j < total;j++) {
-            std::pair<Int,Int> key = std::make_pair(ID,j);
-            if(imesh.find(key) != imesh.end()) {
-                IntVector& f = imesh[key];
-                of << "interMesh_" << ID << "_" << j << " ";
-                of << f << endl;
-            }
-        }
-
-        of << dec;
+        of << *pmesh << endl;
 
         /*index file*/
         stringstream path2;
@@ -994,11 +992,10 @@ int Prepare::decomposeMesh(Int step) {
             pf->writeBoundary(of3);
 
             /*inter mesh boundaries*/
-            for(j = 0;j < total;j++) {
-                std::pair<Int,Int> key = std::make_pair(ID,j);
-                if(imesh.find(key) != imesh.end()) {
-                    of3 << "interMesh_" << ID << "_" << j << " "
-                        << "{\n\ttype GHOST\n}" << endl;
+            forEachIt(pmesh->mBoundaries,it) {
+                if(it->first.find("interMesh") != string::npos) {
+                   of3 << it->first << " "
+                       << "{\n\ttype GHOST\n}" << endl;
                 }
             }
         }
