@@ -988,8 +988,7 @@ int Prepare::decomposeMesh(Int step) {
 
             /*fields*/
             BaseField* pf = BaseField::findField(fields[i]);
-            pf->writeInternal(of3,&cLoc[ID]);
-            pf->writeBoundary(of3);
+            pf->write(of3, &cLoc[ID]);
 
             /*inter mesh boundaries*/
             forEachIt(pmesh->mBoundaries,it) {

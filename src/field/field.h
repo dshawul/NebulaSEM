@@ -402,6 +402,7 @@ class BaseField {
         virtual void writeBoundary(std::ostream&) = 0;
         virtual void readBoundary(std::istream&) = 0;
         virtual void read(Int step) = 0;
+        virtual void write(std::ostream&, IntVector* = 0) = 0;
         virtual void write(Int, IntVector* = 0) = 0;
         virtual void norm(BaseField*) = 0;
         virtual ~BaseField() {};
@@ -586,6 +587,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         void writeInternal(std::ostream&,IntVector*);
         void writeBoundary(std::ostream&);
         void read(Int step);
+        void write(std::ostream&, IntVector* = 0);
         void write(Int step, IntVector* = 0);
 
         void norm(BaseField* pnorm) {
@@ -1136,9 +1138,6 @@ template <class T,ENTITY E>
 void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
     using namespace Mesh;
 
-    /*size*/
-    os << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
-
     /*internal field*/
     Int size;
     if(cMap)
@@ -1188,15 +1187,21 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
 
 /** Write field */
 template <class T,ENTITY E> 
+void MeshField<T,E>::write(std::ostream& of, IntVector* cMap) {
+    of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
+    writeInternal(of,cMap);
+    writeBoundary(of);
+}
+
+template <class T,ENTITY E> 
 void MeshField<T,E>::write(Int step, IntVector* cMap) {
-    /*open*/
+    /*open file*/
     std::stringstream path;
     path << fName << step;
     std::ofstream of(path.str().c_str());
 
     /*write*/
-    writeInternal(of,cMap);
-    writeBoundary(of);
+    this->write(of, cMap);
 }
 
 /* ********************
