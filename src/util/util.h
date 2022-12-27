@@ -126,15 +126,14 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
     std::vector<T> temp;
     temp.reserve(data.size() - indicesToDelete.size());
 
-    typename std::vector<T>::const_iterator itBlockBegin = data.begin();
-    for(std::vector<Int>::const_iterator it = indicesToDelete.begin(); 
-            it != indicesToDelete.end(); ++ it) {
-        typename std::vector<T>::const_iterator itBlockEnd = data.begin() + *it;
+    auto itBlockBegin = data.begin();
+    forEachIt(indicesToDelete,it) {
+        auto itBlockEnd = data.begin() + *it;
         if(itBlockBegin != itBlockEnd)
             std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
         itBlockBegin = itBlockEnd + 1;
     }
-    typename std::vector<T>::const_iterator itBlockEnd = data.end();
+    auto itBlockEnd = data.end();
     if(itBlockBegin != itBlockEnd) 
         std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
 

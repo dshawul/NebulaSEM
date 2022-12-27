@@ -93,7 +93,14 @@ void Mesh::MeshObject::writeMesh(ostream& os) const {
     os << mVertices;
     os.precision(6);
     os << mFacets;
-    os << mCells;
+    /*cells*/
+    Int size = mBCS;
+    os << size << std::endl;
+    os << "{" << std::endl;
+    for(Int i = 0; i < size; i++)
+        os << mCells[i] << std::endl;
+    os << "}" << std::endl;
+    /*boundaries*/
     os << mBoundaries;
     os << dec;
 }

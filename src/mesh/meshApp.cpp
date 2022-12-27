@@ -79,7 +79,7 @@ int main(int argc,char* argv[]) {
         gMesh.readMshMesh(input);
         input >> dec;
 
-        gMesh.writeMesh(cout);
+        cout << gMesh;
         return 0;
     }
 
@@ -270,6 +270,6 @@ int main(int argc,char* argv[]) {
         }
     }
     /*write it*/
-    gMesh.writeMesh(cout);
+    cout << gMesh;
     return 0;
 }

@@ -664,7 +664,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
         stringstream path;
         path << gMeshName << "_" << step;
         ofstream os(path.str().c_str());
-        gMesh.writeMesh(os);
+        os << gMesh;
     }
 
     /*destroy*/
@@ -829,6 +829,10 @@ int Prepare::decomposeMesh(Int step) {
         else
             decomposeMetis(total,blockIndex);
 
+        /***************************************
+         * Prepare decomposed grid
+         **************************************/
+
         /*add cells*/
         for(i = 0;i < gBCS;i++) {
             Cell& c = gCells[i];
@@ -856,6 +860,8 @@ int Prepare::decomposeMesh(Int step) {
             pmesh = &meshes[ID];
             pvLoc = &vLoc[ID];
             pfLoc = &fLoc[ID];
+
+            pmesh->mBCS = pmesh->mCells.size();
 
             count = 0;
             forEach(gVertices,i) {
@@ -906,20 +912,6 @@ int Prepare::decomposeMesh(Int step) {
             }
         }
         /***************************
-         * Expand cLoc
-         ***************************/
-        for(ID = 0;ID < total;ID++) {
-            const Int block = DG::NP;
-            IntVector& cF = cLoc[ID];
-            cF.resize(cF.size() * block);
-            for(int i = cF.size() - 1;i >= 0;i -= block) {
-                Int ii = i / block;
-                Int C = cF[ii] * block;
-                for(Int j = 0; j < block;j++)
-                    cF[i - j] = C + block - 1 - j; 
-            }
-        }
-        /***************************
          * Boundaries
          ***************************/
         for(ID = 0;ID < total;ID++) {
@@ -951,53 +943,116 @@ int Prepare::decomposeMesh(Int step) {
             }
 
         }
-        /***************************
-         * write mesh/index/fields
-         ***************************/
+        /**************************************
+         * Write grid
+         **************************************/
+
+        /* write master grid after reordering cells*/
+        {
+            Cells reordered;
+            for(ID = 0;ID < total;ID++) {
+                forEach(cLoc[ID],i) {
+                    Cell& c = gCells[cLoc[ID][i]];
+                    reordered.push_back(c);
+                }
+            }
+            for(i = 0;i < gBCS;i++)
+                gCells[i] = reordered[i];
+            /*write mesh*/
+            stringstream path;
+            path << gMeshName << "_" << step;
+            ofstream of(path.str().c_str());
+            of << gMesh;
+        }
+
+        /* write slave grids*/
         for(ID = 0;ID < total;ID++) {
             pmesh = &meshes[ID];
 
-            /*create directory and switch to it*/
+            /*create directory*/
             stringstream path;
             path << gMeshName << ID;
-
             System::mkdir(path.str());
-            if(!System::cd(path.str()))    
-                return 1;
 
             /*mesh*/
             stringstream path1;
-            path1 << gMeshName << "_" << step;
+            path1 << path.str() << "/" << gMeshName << "_" << step;
             ofstream of(path1.str().c_str());
             of << *pmesh << endl;
+        }
 
-            /*index file*/
-            stringstream path2;
-            path2 << "index_" << step;
-            ofstream of2(path2.str().c_str());
-            of2 << cLoc[ID] << endl;
+        /***************************
+         * Expand cLoc
+         ***************************/
+        for(ID = 0;ID < total;ID++) {
+            const Int block = DG::NP;
+            IntVector& cF = cLoc[ID];
+            cF.resize(cF.size() * block);
+            for(int i = cF.size() - 1;i >= 0;i -= block) {
+                Int ii = i / block;
+                Int C = cF[ii] * block;
+                for(Int j = 0; j < block;j++)
+                    cF[i - j] = C + block - 1 - j; 
+            }
+        }
+        /***************************
+         * Write fields
+         ***************************/
 
-            /*fields*/
+        /*slave fields*/
+        for(ID = 0;ID < total;ID++) {
+            pmesh = &meshes[ID];
+
             forEach(fields,i) {
                 stringstream path;
-                path << fields[i] << step;
+                path << gMeshName << ID << "/" << fields[i] << step;
                 string str = path.str();
-                ofstream of3(str.c_str());
+                ofstream of(str.c_str());
 
                 /*fields*/
                 BaseField* pf = BaseField::findField(fields[i]);
-                pf->write(of3, &cLoc[ID]);
+                pf->write(of, &cLoc[ID]);
 
                 /*inter mesh boundaries*/
                 forEachIt(pmesh->mBoundaries,it) {
                     if(it->first.find("interMesh") != string::npos) {
-                       of3 << it->first << " "
+                       of << it->first << " "
                            << "{\n\ttype GHOST\n}" << endl;
                     }
                 }
             }
+        }
 
-            System::cd(MP::workingDir);
+        /*master fields*/
+        forEach(fields,i) {
+            stringstream path;
+            path << fields[i] << step;
+            string str = path.str();
+            ofstream of(str.c_str());
+
+            /*fields*/
+            IntVector cLocAll(gBCS);
+            count = 0;
+            for(ID = 0;ID < total;ID++) {
+                forEach(cLoc[ID], i)
+                    cLocAll[count++] = cLoc[ID][i];
+            }
+            BaseField* pf = BaseField::findField(fields[i]);
+            pf->write(of, &cLocAll);
+        }
+
+        /***************************
+         * write adjusted index
+         ***************************/
+        count = 0;
+        for(ID = 0;ID < total;ID++) {
+            forEach(cLoc[ID],i)
+                cLoc[ID][i] = count++;
+            /*index file*/
+            stringstream path2;
+            path2 << gMeshName << ID << "/index_" << step;
+            ofstream of2(path2.str().c_str());
+            of2 << cLoc[ID] << endl;
         }
 
         /*destroy*/ 
