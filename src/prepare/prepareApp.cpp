@@ -83,7 +83,7 @@ int main(int argc,char* argv[]) {
     }
 
     /*switch directory*/
-    if(mp.n_hosts > 1) {
+    if(work != 0 && mp.n_hosts > 1) {
         stringstream s;
         s << Mesh::gMeshName << mp.host_id;
         if(!System::cd(s.str()))
