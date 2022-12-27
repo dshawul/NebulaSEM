@@ -85,7 +85,7 @@ static int findLastRefinedGrid(Int step_) {
 /**
   Load mesh
  */
-bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
+bool Mesh::LoadMesh(Int step_, bool remove_empty) {
     /*load refined mesh*/
     int step = findLastRefinedGrid(step_);
 
@@ -95,13 +95,10 @@ bool Mesh::LoadMesh(Int step_, bool first, bool remove_empty) {
     string str = path.str();
     ifstream is(str.c_str());
     if(is.fail()) {
-        if(first) {
-            path.clear();
-            path << gMesh.name << "_" << 0;
-            str = path.str();
-            is.open(str.c_str());
-        } else
-            return false;
+        path.clear();
+        path << gMesh.name << "_" << 0;
+        str = path.str();
+        is.open(str.c_str());
     }
 
     /*load mesh*/
@@ -580,7 +577,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     Mesh::amr_direction = refine_params.dir;
 
     /*Load mesh*/
-    LoadMesh(step,true,false);
+    LoadMesh(step,false);
 
     /*create fields*/
     Prepare::createFields(BaseField::fieldNames,step);
@@ -790,7 +787,7 @@ int Prepare::decomposeMesh(Int step) {
     std::cout << "Decomposing grid at step " << step << std::endl;
 
     /*Read mesh*/
-    LoadMesh(step,true,false);
+    LoadMesh(step,false);
 
     /*Read fields*/
     createFields(fields,step);
@@ -1024,7 +1021,7 @@ int Prepare::mergeFields(Int step) {
 
     /*Read mesh*/
     int stepm = findLastRefinedGrid(step);
-    LoadMesh(stepm,true,false);
+    LoadMesh(stepm,false);
 
     /*Read fields*/
     createFields(fields,stepm);

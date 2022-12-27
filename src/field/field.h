@@ -849,7 +849,7 @@ namespace Mesh {
     extern IntVector         FO;
     extern IntVector         FN; 
 
-    bool   LoadMesh(Int = 0,bool = true, bool = true);
+    bool   LoadMesh(Int = 0, bool = true);
     void   initGeomMeshFields();
     void   calc_walldist(Int,Int = 1);
     void   write_fields(Int);

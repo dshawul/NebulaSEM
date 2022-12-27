@@ -8,7 +8,7 @@ using namespace Mesh;
  */
 int Prepare::convertVTK(vector<string>& fields,Int start_index) {
     for(Int step = start_index;;step++) {
-        if(LoadMesh(step,(step == start_index),true))
+        if(LoadMesh(step,true))
             createFields(fields,step);
         if(!readFields(fields,step))
             break;
@@ -28,7 +28,7 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
 
     /*probe at each time step*/
     for(Int step = start_index;;step++) {
-        if(LoadMesh(step,(step == start_index),true)) {
+        if(LoadMesh(step,true)) {
             createFields(fields,step);
             probes.clear();
             getProbeFaces(probes);
