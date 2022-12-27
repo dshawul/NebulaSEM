@@ -211,18 +211,10 @@ class AmrIteration {
                 Controls::amr_step = endi;
             i = starti;
 
-            if (MP::n_hosts > 1) {
-                /*decompose*/
-                if (MP::host_id == 0)
-                    Prepare::decomposeMesh(i);
-                /*wait*/
-                MP::barrier();
-                /*change directory*/
-                stringstream s;
-                s << Mesh::gMeshName << MP::host_id;
-                System::cd(s.str());
-            }
-            Mesh::LoadMesh(i);
+            if (MP::n_hosts > 1)
+                Prepare::decomposeMesh(i);
+            else
+                Mesh::LoadMesh(i);
         }
         bool start() {
             return (i == starti);
@@ -243,18 +235,12 @@ class AmrIteration {
 
                     bool init_threshold = (i == starti + Controls::amr_step);
                     Prepare::refineMesh(i, init_threshold);
-
-                    if(MP::n_hosts > 1) {
-                        /*decompose mesh*/
-                        Prepare::decomposeMesh(i);
-                        /*change directory*/
-                        stringstream s;
-                        s << Mesh::gMeshName << MP::host_id;
-                        System::cd(s.str());
-                    }
                 }
-                MP::barrier();
-                Mesh::LoadMesh(i);  
+
+                if(MP::n_hosts > 1)
+                    Prepare::decomposeMesh(i);
+                else
+                    Mesh::LoadMesh(i);  
             }
         }
         ~AmrIteration() {

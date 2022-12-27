@@ -779,226 +779,237 @@ int Prepare::decomposeMesh(Int step) {
     using namespace Mesh;
     using namespace Constants;
 
-    Int total = MP::n_hosts;
-    DecomposeParams& dp = Controls::decompose_params;
-    vector<string>& fields = BaseField::fieldNames;
-    Int i,j,ID,count;
+    /*Decompose mesh with master rank*/
+    if(MP::host_id == 0) {
 
-    std::cout << "Decomposing grid at step " << step << std::endl;
+        Int total = MP::n_hosts;
+        DecomposeParams& dp = Controls::decompose_params;
+        vector<string>& fields = BaseField::fieldNames;
+        Int i,j,ID,count;
 
-    /*Read mesh*/
-    LoadMesh(step,false);
+        std::cout << "Decomposing grid at step " << step << std::endl;
 
-    /*Read fields*/
-    createFields(fields,step);
-    readFields(fields,step);
+        /*Read mesh*/
+        LoadMesh(step,false);
 
-    /**********************
-     * decompose mesh
-     **********************/
-    std::vector<MeshObject> meshes(total);
-    std::map<std::pair<Int,Int>,IntVector> imesh;
-    std::vector<IntVector> vLoc(total);
-    std::vector<IntVector> fLoc(total);
-    std::vector<IntVector> cLoc(total);
+        /*Read fields*/
+        createFields(fields,step);
+        readFields(fields,step);
 
-    for(i = 0;i < total;i++) {
-        vLoc[i].assign(gVertices.size(),0);
-        fLoc[i].assign(gFacets.size(),0);
-    }
+        /**********************
+         * decompose mesh
+         **********************/
+        std::vector<MeshObject> meshes(total);
+        std::map<std::pair<Int,Int>,IntVector> imesh;
+        std::vector<IntVector> vLoc(total);
+        std::vector<IntVector> fLoc(total);
+        std::vector<IntVector> cLoc(total);
 
-    /*decompose cells*/
-    MeshObject *pmesh;
-    IntVector *pvLoc,*pfLoc,blockIndex;
-    blockIndex.assign(gBCS,0);
-
-    /*choose*/
-    if(dp.type == 0) {
-        Int tn = dp.n[0] * dp.n[1] * dp.n[2];
-        if(total != tn) {
-            std::cerr << "Error in XYZ decomposition: use "
-                << tn << " ranks" << std::endl;
-            exit(1);
+        for(i = 0;i < total;i++) {
+            vLoc[i].assign(gVertices.size(),0);
+            fLoc[i].assign(gFacets.size(),0);
         }
-        decomposeXYZ(&dp.n[0],&dp.axis[0],blockIndex);
-    } else if(dp.type == 1)
-        decomposeIndex(total,blockIndex);
-    else
-        decomposeMetis(total,blockIndex);
 
-    /*add cells*/
-    for(i = 0;i < gBCS;i++) {
-        Cell& c = gCells[i];
+        /*decompose cells*/
+        MeshObject *pmesh;
+        IntVector *pvLoc,*pfLoc,blockIndex;
+        blockIndex.assign(gBCS,0);
 
-        /* add cell */
-        ID = blockIndex[i];
-        pmesh = &meshes[ID];
-        pvLoc = &vLoc[ID];
-        pfLoc = &fLoc[ID];
-        pmesh->mCells.push_back(c);
-        cLoc[ID].push_back(i);
-
-        /* mark vertices and facets */
-        forEach(c,j) {
-            Facet& f = gFacets[c[j]];
-            (*pfLoc)[c[j]] = 1;
-            forEach(f,k) {
-                (*pvLoc)[f[k]] = 1; 
+        /*choose*/
+        if(dp.type == 0) {
+            Int tn = dp.n[0] * dp.n[1] * dp.n[2];
+            if(total != tn) {
+                std::cerr << "Error in XYZ decomposition: use "
+                    << tn << " ranks" << std::endl;
+                exit(1);
             }
-        }
-    }
+            decomposeXYZ(&dp.n[0],&dp.axis[0],blockIndex);
+        } else if(dp.type == 1)
+            decomposeIndex(total,blockIndex);
+        else
+            decomposeMetis(total,blockIndex);
 
-    /*add vertices & facets*/
-    for(ID = 0;ID < total;ID++) {
-        pmesh = &meshes[ID];
-        pvLoc = &vLoc[ID];
-        pfLoc = &fLoc[ID];
+        /*add cells*/
+        for(i = 0;i < gBCS;i++) {
+            Cell& c = gCells[i];
 
-        count = 0;
-        forEach(gVertices,i) {
-            if((*pvLoc)[i]) {
-                pmesh->mVertices.push_back(gVertices[i]);
-                (*pvLoc)[i] = count++;
-            } else
-                (*pvLoc)[i] = Constants::MAX_INT;
-        }
+            /* add cell */
+            ID = blockIndex[i];
+            pmesh = &meshes[ID];
+            pvLoc = &vLoc[ID];
+            pfLoc = &fLoc[ID];
+            pmesh->mCells.push_back(c);
+            cLoc[ID].push_back(i);
 
-        count = 0;
-        forEach(gFacets,i) {
-            if((*pfLoc)[i]) {
-                pmesh->mFacets.push_back(gFacets[i]);
-                (*pfLoc)[i] = count++;
-            } else
-                (*pfLoc)[i] = Constants::MAX_INT;
-        }
-    }
-    /*adjust IDs*/
-    for(ID = 0;ID < total;ID++) {
-        pmesh = &meshes[ID];
-        pvLoc = &vLoc[ID];
-        pfLoc = &fLoc[ID];
-
-        forEach(pmesh->mFacets,i) {
-            Facet& f = pmesh->mFacets[i];
-            forEach(f,j)
-                f[j] = (*pvLoc)[f[j]];
-        }
-
-        forEach(pmesh->mCells,i) {
-            Cell& c = pmesh->mCells[i];
-            forEach(c,j)
-                c[j] = (*pfLoc)[c[j]];
-        }
-    }
-    /*inter-processor boundary faces*/
-    Int co,cn;
-    forEach(gFacets,i) {
-        if(gFNC[i] < gBCS) {
-            co = blockIndex[gFOC[i]];
-            cn = blockIndex[gFNC[i]];
-            if(co != cn) {
-                imesh[std::make_pair(co,cn)].push_back(fLoc[co][i]);
-                imesh[std::make_pair(cn,co)].push_back(fLoc[cn][i]);
-            }
-        }
-    }
-    /***************************
-     * Expand cLoc
-     ***************************/
-    for(ID = 0;ID < total;ID++) {
-        const Int block = DG::NP;
-        IntVector& cF = cLoc[ID];
-        cF.resize(cF.size() * block);
-        for(int i = cF.size() - 1;i >= 0;i -= block) {
-            Int ii = i / block;
-            Int C = cF[ii] * block;
-            for(Int j = 0; j < block;j++)
-                cF[i - j] = C + block - 1 - j; 
-        }
-    }
-    /***************************
-     * Boundaries
-     ***************************/
-    for(ID = 0;ID < total;ID++) {
-        pmesh = &meshes[ID];
-        pfLoc = &fLoc[ID];
-
-        /*physical boundary*/
-        forEachIt(gMesh.mBoundaries,it) {
-            IntVector b;    
-            Int f;
-            forEach(it->second,j) {
-                f = (*pfLoc)[it->second[j]];
-                if(f != Constants::MAX_INT)
-                    b.push_back(f);
-            }
-            if(b.size())
-                pmesh->mBoundaries[it->first] = b;
-        }
-
-        /*inter-processor boundaries*/
-        for(j = 0;j < total;j++) {
-            std::pair<Int,Int> key = std::make_pair(ID,j);
-            if(imesh.find(key) != imesh.end()) {
-                stringstream path;
-                path << "interMesh_" << ID << "_" << j;
-                string str = path.str();
-                pmesh->mBoundaries[str.c_str()] = imesh[key];
-            }
-        }
-
-    }
-    /***************************
-     * write mesh/index/fields
-     ***************************/
-    for(ID = 0;ID < total;ID++) {
-        pmesh = &meshes[ID];
-
-        /*create directory and switch to it*/
-        stringstream path;
-        path << gMeshName << ID;
-
-        System::mkdir(path.str());
-        if(!System::cd(path.str()))    
-            return 1;
-
-        /*mesh*/
-        stringstream path1;
-        path1 << gMeshName << "_" << step;
-        ofstream of(path1.str().c_str());
-        of << *pmesh << endl;
-
-        /*index file*/
-        stringstream path2;
-        path2 << "index_" << step;
-        ofstream of2(path2.str().c_str());
-        of2 << cLoc[ID] << endl;
-
-        /*fields*/
-        forEach(fields,i) {
-            stringstream path;
-            path << fields[i] << step;
-            string str = path.str();
-            ofstream of3(str.c_str());
-
-            /*fields*/
-            BaseField* pf = BaseField::findField(fields[i]);
-            pf->write(of3, &cLoc[ID]);
-
-            /*inter mesh boundaries*/
-            forEachIt(pmesh->mBoundaries,it) {
-                if(it->first.find("interMesh") != string::npos) {
-                   of3 << it->first << " "
-                       << "{\n\ttype GHOST\n}" << endl;
+            /* mark vertices and facets */
+            forEach(c,j) {
+                Facet& f = gFacets[c[j]];
+                (*pfLoc)[c[j]] = 1;
+                forEach(f,k) {
+                    (*pvLoc)[f[k]] = 1; 
                 }
             }
         }
 
-        System::cd(MP::workingDir);
-    }
+        /*add vertices & facets*/
+        for(ID = 0;ID < total;ID++) {
+            pmesh = &meshes[ID];
+            pvLoc = &vLoc[ID];
+            pfLoc = &fLoc[ID];
 
-    /*destroy*/ 
-    BaseField::destroyFields();
+            count = 0;
+            forEach(gVertices,i) {
+                if((*pvLoc)[i]) {
+                    pmesh->mVertices.push_back(gVertices[i]);
+                    (*pvLoc)[i] = count++;
+                } else
+                    (*pvLoc)[i] = Constants::MAX_INT;
+            }
+
+            count = 0;
+            forEach(gFacets,i) {
+                if((*pfLoc)[i]) {
+                    pmesh->mFacets.push_back(gFacets[i]);
+                    (*pfLoc)[i] = count++;
+                } else
+                    (*pfLoc)[i] = Constants::MAX_INT;
+            }
+        }
+        /*adjust IDs*/
+        for(ID = 0;ID < total;ID++) {
+            pmesh = &meshes[ID];
+            pvLoc = &vLoc[ID];
+            pfLoc = &fLoc[ID];
+
+            forEach(pmesh->mFacets,i) {
+                Facet& f = pmesh->mFacets[i];
+                forEach(f,j)
+                    f[j] = (*pvLoc)[f[j]];
+            }
+
+            forEach(pmesh->mCells,i) {
+                Cell& c = pmesh->mCells[i];
+                forEach(c,j)
+                    c[j] = (*pfLoc)[c[j]];
+            }
+        }
+        /*inter-processor boundary faces*/
+        Int co,cn;
+        forEach(gFacets,i) {
+            if(gFNC[i] < gBCS) {
+                co = blockIndex[gFOC[i]];
+                cn = blockIndex[gFNC[i]];
+                if(co != cn) {
+                    imesh[std::make_pair(co,cn)].push_back(fLoc[co][i]);
+                    imesh[std::make_pair(cn,co)].push_back(fLoc[cn][i]);
+                }
+            }
+        }
+        /***************************
+         * Expand cLoc
+         ***************************/
+        for(ID = 0;ID < total;ID++) {
+            const Int block = DG::NP;
+            IntVector& cF = cLoc[ID];
+            cF.resize(cF.size() * block);
+            for(int i = cF.size() - 1;i >= 0;i -= block) {
+                Int ii = i / block;
+                Int C = cF[ii] * block;
+                for(Int j = 0; j < block;j++)
+                    cF[i - j] = C + block - 1 - j; 
+            }
+        }
+        /***************************
+         * Boundaries
+         ***************************/
+        for(ID = 0;ID < total;ID++) {
+            pmesh = &meshes[ID];
+            pfLoc = &fLoc[ID];
+
+            /*physical boundary*/
+            forEachIt(gMesh.mBoundaries,it) {
+                IntVector b;    
+                Int f;
+                forEach(it->second,j) {
+                    f = (*pfLoc)[it->second[j]];
+                    if(f != Constants::MAX_INT)
+                        b.push_back(f);
+                }
+                if(b.size())
+                    pmesh->mBoundaries[it->first] = b;
+            }
+
+            /*inter-processor boundaries*/
+            for(j = 0;j < total;j++) {
+                std::pair<Int,Int> key = std::make_pair(ID,j);
+                if(imesh.find(key) != imesh.end()) {
+                    stringstream path;
+                    path << "interMesh_" << ID << "_" << j;
+                    string str = path.str();
+                    pmesh->mBoundaries[str.c_str()] = imesh[key];
+                }
+            }
+
+        }
+        /***************************
+         * write mesh/index/fields
+         ***************************/
+        for(ID = 0;ID < total;ID++) {
+            pmesh = &meshes[ID];
+
+            /*create directory and switch to it*/
+            stringstream path;
+            path << gMeshName << ID;
+
+            System::mkdir(path.str());
+            if(!System::cd(path.str()))    
+                return 1;
+
+            /*mesh*/
+            stringstream path1;
+            path1 << gMeshName << "_" << step;
+            ofstream of(path1.str().c_str());
+            of << *pmesh << endl;
+
+            /*index file*/
+            stringstream path2;
+            path2 << "index_" << step;
+            ofstream of2(path2.str().c_str());
+            of2 << cLoc[ID] << endl;
+
+            /*fields*/
+            forEach(fields,i) {
+                stringstream path;
+                path << fields[i] << step;
+                string str = path.str();
+                ofstream of3(str.c_str());
+
+                /*fields*/
+                BaseField* pf = BaseField::findField(fields[i]);
+                pf->write(of3, &cLoc[ID]);
+
+                /*inter mesh boundaries*/
+                forEachIt(pmesh->mBoundaries,it) {
+                    if(it->first.find("interMesh") != string::npos) {
+                       of3 << it->first << " "
+                           << "{\n\ttype GHOST\n}" << endl;
+                    }
+                }
+            }
+
+            System::cd(MP::workingDir);
+        }
+
+        /*destroy*/ 
+        BaseField::destroyFields();
+    }
+    MP::barrier();
+
+    /*change directory*/
+    stringstream s;
+    s << Mesh::gMeshName << MP::host_id;
+    System::cd(s.str());
+    Mesh::LoadMesh(step);  
 
     return 0;
 }

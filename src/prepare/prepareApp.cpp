@@ -112,11 +112,9 @@ int main(int argc,char* argv[]) {
             Prepare::refineMesh(start_index);
         }
     } else {
-        if(MP::host_id == 0 && MP::n_hosts > 1) {
-            cout << "Decomposing domain.\n";
-            System::cd(MP::workingDir);
+        System::cd(MP::workingDir);
+        if(MP::n_hosts > 1)
             Prepare::decomposeMesh(start_index);
-        }
     } 
     MP::barrier();
     return 0;
