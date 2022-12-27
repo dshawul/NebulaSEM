@@ -23,11 +23,6 @@ rm -rf $rundir
 cp -r $case $rundir
 cd $rundir
 
-#modify controls
-if [ ! -z $2 ]; then
-    sed -i "s/3 {2 1 1}/3 {"$2" "$3" 1}/g" ./controls
-fi
-
 #run
 run $grid $1
 

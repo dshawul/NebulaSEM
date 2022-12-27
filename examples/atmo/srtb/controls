@@ -69,8 +69,7 @@ prepare
 
 decomposition
 {
-    n 		3 {1 1 1}
-    type      	XYZ
+    type      	METIS
 }
 
 refinement

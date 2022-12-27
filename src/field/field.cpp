@@ -411,7 +411,7 @@ void Controls::enrollDecompose(Util::ParamList& params) {
     params.enroll("n",&decompose_params.n);
     params.enroll("axis",&decompose_params.axis);
     Util::Option* op = new Util::Option(&decompose_params.type, 4, 
-            "XYZ","CELLID","METIS","NONE");
+            "METIS","XYZ","CELLID","NONE");
     params.enroll("type",op);
 }
 /**
@@ -754,7 +754,7 @@ namespace Prepare {
         xadj.push_back(adjncy.size());
 
         /*partition*/
-        METIS_PartGraphRecursive (
+        METIS_PartGraphKway (
                 &ncells,
                 &ncon,
                 &xadj[0],
@@ -816,7 +816,7 @@ int Prepare::decomposeMesh(Int step) {
         blockIndex.assign(gBCS,0);
 
         /*choose*/
-        if(dp.type == 0) {
+        if(dp.type == 1) {
             Int tn = dp.n[0] * dp.n[1] * dp.n[2];
             if(total != tn) {
                 std::cerr << "Error in XYZ decomposition: use "
@@ -824,7 +824,7 @@ int Prepare::decomposeMesh(Int step) {
                 exit(1);
             }
             decomposeXYZ(&dp.n[0],&dp.axis[0],blockIndex);
-        } else if(dp.type == 1)
+        } else if(dp.type == 2)
             decomposeIndex(total,blockIndex);
         else
             decomposeMetis(total,blockIndex);
