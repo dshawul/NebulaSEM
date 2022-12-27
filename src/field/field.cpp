@@ -813,7 +813,6 @@ int Prepare::decomposeMesh(Int step) {
     blockIndex.assign(gBCS,0);
 
     /*choose*/
-    decomposeMetis(total,blockIndex);
     if(dp.type == 0) {
         Int tn = dp.n[0] * dp.n[1] * dp.n[2];
         if(total != tn) {
@@ -824,9 +823,8 @@ int Prepare::decomposeMesh(Int step) {
         decomposeXYZ(&dp.n[0],&dp.axis[0],blockIndex);
     } else if(dp.type == 1)
         decomposeIndex(total,blockIndex);
-    else if(dp.type == 2)
+    else
         decomposeMetis(total,blockIndex);
-    else; //default -- assigns all to processor 0
 
     /*add cells*/
     for(i = 0;i < gBCS;i++) {
