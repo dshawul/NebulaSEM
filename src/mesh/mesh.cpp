@@ -68,8 +68,10 @@ bool Mesh::MeshObject::readMesh(istream& is) {
         /*internal mesh boundaries*/
         if(str.find("interMesh") != string::npos) {
             interBoundary b;
-            sscanf(str.c_str(), "interMesh_%x_%x", &b.from,&b.to);
-            b.f    = &mBoundaries[str];
+            b.f = &mBoundaries[str];
+            std::replace(str.begin(), str.end(), '_', ' ');
+            stringstream ss(str);
+            ss >> str >> b.from >> b.to;
             mInterMesh.push_back(b);
         }
     }
