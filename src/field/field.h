@@ -398,7 +398,7 @@ class BaseField {
         virtual void deallocate(bool) = 0;
         virtual void refineField(Int,IntVector&,IntVector&) = 0;
         virtual void writeInternal(std::ostream&,IntVector*) = 0;
-        virtual void readInternal(std::istream&,IntVector*) = 0;
+        virtual Int readInternal(std::istream&,Int = 0) = 0;
         virtual void writeBoundary(std::ostream&) = 0;
         virtual void readBoundary(std::istream&) = 0;
         virtual void read(Int step) = 0;
@@ -582,7 +582,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
 
         /*other member functions*/
         void calc_neumann(BCondition<type>*);
-        void readInternal(std::istream&,IntVector*);
+        Int readInternal(std::istream&,Int = 0);
         void readBoundary(std::istream&);
         void writeInternal(std::ostream&,IntVector*);
         void writeBoundary(std::ostream&);
@@ -1025,7 +1025,7 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
 
 /** Read internal field */
 template <class T,ENTITY E> 
-void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
+Int MeshField<T,E>::readInternal(std::istream& is, Int offset) {
     using namespace Mesh;
     /*size*/
     char c;
@@ -1073,18 +1073,17 @@ void MeshField<T,E>::readInternal(std::istream& is, IntVector* cMap) {
             }
         } else
             *this = value;
+        return this->size();
     } else {
         T temp;
         char symbol;
         is >> size >> symbol;
         for(int i = 0;i < size;i++) {
             is >> temp;
-            if(cMap) 
-                (*this)[(*cMap)[i]] = temp;
-            else 
-                (*this)[i] = temp;
+            (*this)[offset + i] = temp;
         }
         is >> symbol;
+        return size;
     }
 }
 

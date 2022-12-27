@@ -1041,20 +1041,6 @@ int Prepare::decomposeMesh(Int step) {
             pf->write(of, &cLocAll);
         }
 
-        /***************************
-         * write adjusted index
-         ***************************/
-        count = 0;
-        for(ID = 0;ID < total;ID++) {
-            forEach(cLoc[ID],i)
-                cLoc[ID][i] = count++;
-            /*index file*/
-            stringstream path2;
-            path2 << gMeshName << ID << "/index_" << step;
-            ofstream of2(path2.str().c_str());
-            of2 << cLoc[ID] << endl;
-        }
-
         /*destroy*/ 
         BaseField::destroyFields();
     }
@@ -1079,7 +1065,6 @@ int Prepare::mergeFields(Int step) {
 
     /*indexes*/
     Int total = MP::n_hosts;
-    std::vector<IntVector> cLoc(total);
 
     std::cout << "Merging fields at step " << step << std::endl;
 
@@ -1091,35 +1076,23 @@ int Prepare::mergeFields(Int step) {
     createFields(fields,stepm);
     readFields(fields,stepm);
 
-    /*read indices*/
-    for(Int ID = 0;ID < total;ID++) {
-        stringstream path;
-        path << gMeshName << ID << "/index_" << stepm;
-        ifstream index(path.str().c_str());
-        cLoc[ID].clear();
-        index >> cLoc[ID];
-    }
-
     /*read and merge fields*/
-    Int count = 0;
-    for(Int ID = 0;ID < total;ID++) {
-        stringstream path;
-        path << gMeshName << ID;
-        forEach(fields,i) {
+    forEach(fields,i) {
+        BaseField* pf = BaseField::findField(fields[i]);
+        Int offset = 0;
+        for(Int ID = 0;ID < total;ID++) {
             stringstream fpath;
-            fpath << fields[i] << step;
-            string str = path.str() + "/" + fpath.str();
+            fpath << gMeshName << ID << "/" << fields[i] << step;
+            string str = fpath.str();
             ifstream is(str.c_str());
             if(is.fail())
                 continue;
-            count++;
             /*read*/
-            BaseField* pf = BaseField::findField(fields[i]);
-            pf->readInternal(is,&cLoc[ID]);
+            Int nread = pf->readInternal(is,offset);
+            offset += nread;
         }
     }
-    if(count)
-        write_fields(step);
+    write_fields(step);
 
     /*destroy*/ 
     BaseField::destroyFields();
