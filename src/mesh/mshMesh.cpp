@@ -122,10 +122,10 @@ void Mesh::MeshObject::readMshMesh(std::istream& is) {
         }
     }
     /*rename*/
-    for(map<int,string>::iterator it = bnames.begin();it != bnames.end();++it) {
+    forEachIt(bnames,it) {
         std::stringstream name;
         name << "zone" << dec << it->first;
-        Boundaries::iterator it1 = mBoundaries.find(name.str().c_str());
+        auto it1 = mBoundaries.find(name.str().c_str());
         if(it1 != mBoundaries.end()) {
             mBoundaries[it->second] = it1->second; 
             mBoundaries.erase(it1);

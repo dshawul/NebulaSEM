@@ -56,17 +56,16 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
     }                                                           \
 }
 #define WRITE(T) {                                              \
-    std::list<MeshField<T,CELL>*>::iterator it1 =               \
-    MeshField<T,CELL>::fields_.begin();                         \
-    for(MeshField<T,CELL>::vertexFieldsType::iterator it =      \
-        (MeshField<T,CELL>::vf_fields_)->begin(); it !=         \
-        (MeshField<T,CELL>::vf_fields_)->end(); ++it,++it1) {   \
+    auto it1 = MeshField<T,CELL>::fields_.begin();              \
+    auto vff = MeshField<T,CELL>::vf_fields_;                   \
+    forEachIt(*vff,it) {                                        \
         T sum(0.0);                                             \
         Scalar sumd(0.0);                                       \
         ADD(cC[c1],(*(*it1))[c1],2.0);                          \
         ADD(cC[c2],(*(*it1))[c2],2.0);                          \
         SUM(sc);                                                \
         of <<  (sum/sumd) << " ";                               \
+        it1++;                                                  \
     }                                                           \
 }
         forEach(probes,i) {

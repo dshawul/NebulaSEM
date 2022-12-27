@@ -246,7 +246,7 @@ int main(int argc,char* argv[]) {
 
         if(!list.empty()) {
             IntVector& gB = gBoundaries[patches[i].name.c_str()];
-            IntVector::iterator it = find(gB.begin(),gB.end(),list[0]);
+            auto it = find(gB.begin(),gB.end(),list[0]);
             if(it == gB.end()) {
                 forEach(list,j)
                     gB.push_back(list[j]);

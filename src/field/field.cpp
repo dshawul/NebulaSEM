@@ -117,7 +117,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
         DG::init_poly();
         /* remove empty faces*/
         if(remove_empty) {
-            Boundaries::iterator it = gBoundaries.find("delete");
+            auto it = gBoundaries.find("delete");
             if(it != gBoundaries.end()) {
                 IntVector& fs = gBoundaries["delete"];
                 gMesh.removeBoundary(fs);
@@ -126,8 +126,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
             }
         }
         /*erase interior and empty boundaries*/
-        for(Boundaries::iterator it = gBoundaries.begin();
-                it != gBoundaries.end();) {
+        for(auto it = gBoundaries.begin();it != gBoundaries.end();) {
             if(it->second.size() <= 0 || 
                     it->first.find("interior") != std::string::npos
               ) {

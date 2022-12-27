@@ -219,7 +219,7 @@ namespace Util {
                 list[str] = addr;
             }
             bool read(std::string str,std::istream& is,bool out) {
-                typename std::map<std::string,T*>::iterator it = list.find(str);
+                auto it = list.find(str);
                 if(it != list.end()) {
                     is >> *(it->second);
                     if(out) std::cout << *(it->second);
