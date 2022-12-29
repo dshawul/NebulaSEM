@@ -102,7 +102,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
     }
 
     /*load mesh*/
-    if(gMesh.readMesh(is)) {
+    if(gMesh.readTextMesh(is)) {
         /*clear bc and probing points list*/
         Mesh::clearBC();
         Mesh::probePoints.clear();

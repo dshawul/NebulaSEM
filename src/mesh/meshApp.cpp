@@ -60,7 +60,7 @@ int main(int argc,char* argv[]) {
         ifstream is(str.c_str());
 
         Mesh::gMeshName = str;
-        Mesh::gMesh.readMesh(is);
+        Mesh::gMesh.readTextMesh(is);
         Mesh::gMesh.addBoundaryCells();
         Mesh::gMesh.calcGeometry();
 

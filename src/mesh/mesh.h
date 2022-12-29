@@ -100,8 +100,8 @@ namespace Mesh {
 
         /*functions*/
         void clear();
-        void writeMesh(std::ostream&) const;
-        bool readMesh(std::istream&);
+        void writeTextMesh(std::ostream&) const;
+        bool readTextMesh(std::istream&);
         void writeMshMesh(std::ostream&);
         void readMshMesh(std::istream&);
         void addBoundaryCells();
@@ -128,11 +128,11 @@ namespace Mesh {
                 const IntVector&, IntVector&, IntVector&);
 
         friend std::ostream& operator << (std::ostream& os, const MeshObject& p) {
-            p.writeMesh(os);
+            p.writeTextMesh(os);
             return os;
         }
         friend std::istream& operator >> (std::istream& is, MeshObject& p) {
-            p.readMesh(is);
+            p.readTextMesh(is);
             return is;
         }
     };

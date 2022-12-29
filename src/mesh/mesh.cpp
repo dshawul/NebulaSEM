@@ -43,9 +43,9 @@ void Mesh::MeshObject::clear() {
     mAmrTree.clear();
 }
 /**
-  Read mesh from file
+  Read mesh from file in text format
  */
-bool Mesh::MeshObject::readMesh(istream& is) {
+bool Mesh::MeshObject::readTextMesh(istream& is) {
     Int size;
     char symbol;
     /*clear*/
@@ -87,9 +87,9 @@ bool Mesh::MeshObject::readMesh(istream& is) {
     return true;
 }
 /**
-  Write mesh to file
+  Write mesh to file in text format
  */
-void Mesh::MeshObject::writeMesh(ostream& os) const {
+void Mesh::MeshObject::writeTextMesh(ostream& os) const {
     os << hex;
     os.precision(12);
     os << mVertices;
