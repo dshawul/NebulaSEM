@@ -691,7 +691,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                 if(pf->access & WRITE) {
                     if(Mesh::probeCells.size()) {
                         std::string name = pf->fName + "i";
-                        std::ofstream* of = new std::ofstream(name.c_str());
+                        std::ofstream* of = new std::ofstream(name);
                         tseries.push_back(of);
                     }
                     if(Controls::save_average) {
@@ -1114,7 +1114,7 @@ void MeshField<T,E>::read(Int step) {
     /*open*/
     std::stringstream path;
     path << fName << step;
-    std::ifstream is(path.str().c_str());
+    std::ifstream is(path.str());
     if(is.fail())
         return;
 
@@ -1197,7 +1197,7 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
     /*open file*/
     std::stringstream path;
     path << fName << step;
-    std::ofstream of(path.str().c_str());
+    std::ofstream of(path.str());
 
     /*write*/
     this->write(of, cMap);

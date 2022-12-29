@@ -45,7 +45,7 @@ void Vtk::write_vtk(Int step) {
     Int i,total;
     stringstream path;
     path << gMeshName << step << ".vtk";
-    ofstream of(path.str().c_str());
+    ofstream of(path.str());
     if(write_polyhedral)
         of << "# vtk DataFile Version 2.0" << endl;
     else

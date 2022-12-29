@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -ex
 
@@ -7,7 +7,7 @@ case=examples/cavity/
 grid=cavity
 
 #run solver
-function run() {
+run() {
 	echo "Starting job with " $2 " processors"
 
 	#generate grid

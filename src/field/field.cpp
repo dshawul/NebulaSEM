@@ -75,7 +75,7 @@ static int findLastRefinedGrid(Int step_) {
         stringstream path;
         path << Mesh::gMeshName << "_" << step;
         string str = path.str();
-        ifstream is(str.c_str());
+        ifstream is(str);
         if(!is.fail())
             break;
     }
@@ -93,7 +93,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
     stringstream path;
     path << gMesh.name << "_" << step;
     string str = path.str();
-    ifstream is(str.c_str());
+    ifstream is(str);
     if(is.fail()) {
         path.clear();
         path << gMesh.name << "_" << 0;
@@ -478,7 +478,7 @@ void Prepare::createFields(vector<string>& fields,Int step) {
         path << fields[i] << step;
         std::string str = path.str(); 
 
-        ifstream is(str.c_str());
+        ifstream is(str);
         if(!is.fail()) {
             /*fields*/
             is >> str >> size;
@@ -502,7 +502,7 @@ Int Prepare::readFields(vector<string>& fields,Int step) {
     forEach(fields,i) {
         stringstream fpath;
         fpath << fields[i] << step;
-        ifstream is(fpath.str().c_str());
+        ifstream is(fpath.str());
         if(is.fail())
             continue;
         count++;
@@ -629,7 +629,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
         stringstream path;
         int stepn = findLastRefinedGrid(step);
         path << "amrTree" << "_" << stepn;
-        ifstream is(path.str().c_str());
+        ifstream is(path.str());
         if(!is.fail()) {
             is >> hex;
             is >> gAmrTree;
@@ -652,7 +652,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     {
         stringstream path;
         path << "amrTree" << "_" << step;
-        ofstream os(path.str().c_str());
+        ofstream os(path.str());
         os << hex;
         os << gAmrTree;
         os << dec;
@@ -662,7 +662,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     {
         stringstream path;
         path << gMeshName << "_" << step;
-        ofstream os(path.str().c_str());
+        ofstream os(path.str());
         os << gMesh;
     }
 
@@ -960,7 +960,7 @@ int Prepare::decomposeMesh(Int step) {
             /*write mesh*/
             stringstream path;
             path << gMeshName << "_" << step;
-            ofstream of(path.str().c_str());
+            ofstream of(path.str());
             of << gMesh;
         }
 
@@ -976,7 +976,7 @@ int Prepare::decomposeMesh(Int step) {
             /*mesh*/
             stringstream path1;
             path1 << path.str() << "/" << gMeshName << "_" << step;
-            ofstream of(path1.str().c_str());
+            ofstream of(path1.str());
             of << *pmesh << endl;
         }
 
@@ -1006,7 +1006,7 @@ int Prepare::decomposeMesh(Int step) {
                 stringstream path;
                 path << gMeshName << ID << "/" << fields[i] << step;
                 string str = path.str();
-                ofstream of(str.c_str());
+                ofstream of(str);
 
                 /*fields*/
                 BaseField* pf = BaseField::findField(fields[i]);
@@ -1027,7 +1027,7 @@ int Prepare::decomposeMesh(Int step) {
             stringstream path;
             path << fields[i] << step;
             string str = path.str();
-            ofstream of(str.c_str());
+            ofstream of(str);
 
             /*fields*/
             IntVector cLocAll(gBCS);
@@ -1083,7 +1083,7 @@ int Prepare::mergeFields(Int step) {
             stringstream fpath;
             fpath << gMeshName << ID << "/" << fields[i] << step;
             string str = fpath.str();
-            ifstream is(str.c_str());
+            ifstream is(str);
             if(is.fail())
                 continue;
             /*read*/

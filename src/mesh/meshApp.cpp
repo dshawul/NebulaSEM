@@ -57,7 +57,7 @@ int main(int argc,char* argv[]) {
         stringstream path;
         path << str << "_" << 0;
         string str = path.str();
-        ifstream is(str.c_str());
+        ifstream is(str);
 
         Mesh::gMeshName = str;
         Mesh::gMesh.readTextMesh(is);
