@@ -111,6 +111,61 @@ Ts& operator >> (Ts& is, std::map<T1,T2>& p) {
     return is;
 }
 
+/** Binary output file stream */
+namespace Util{
+
+    class ofstream_bin {
+        private:
+            std::ofstream mos;
+        public:
+            ofstream_bin(const std::string& filename) {
+                mos = std::ofstream(filename, std::ios::out | std::ios::binary);
+            }
+#define AddB(T) \
+            friend Util::ofstream_bin& operator << (Util::ofstream_bin& os, const T& p) {   \
+                os.mos.write((char*)&p, sizeof(p));                                         \
+                return os;                                                                  \
+            }
+            friend Util::ofstream_bin& operator << (Util::ofstream_bin& os, const std::string& p) { 
+                unsigned char size = p.size();
+                os.mos.write((char*)&size, sizeof(size));
+                os.mos.write((char*)p.c_str(), size);
+                return os;
+            }
+            AddB(char);
+            AddB(Int);
+            AddB(size_t);
+            AddB(Scalar);
+#undef AddB
+    };
+
+    class ifstream_bin {
+        private:
+            std::ifstream mos;
+        public:
+            ifstream_bin(const std::string& filename) {
+                mos = std::ifstream(filename, std::ios::in | std::ios::binary);
+            }
+#define AddB(T) \
+            friend Util::ifstream_bin& operator >> (Util::ifstream_bin& is, T& p) {         \
+                is.mos.read((char*)&p, sizeof(p));                                          \
+                return is;                                                                  \
+            }
+            friend Util::ifstream_bin& operator >> (Util::ifstream_bin& is, std::string& p) {
+                unsigned char size;
+                is.mos.read((char*)&size, sizeof(size));
+                p.resize(size);
+                is.mos.read((char*)&p[0], size);
+                return is;
+            }
+            AddB(char);
+            AddB(Int);
+            AddB(size_t);
+            AddB(Scalar);
+#undef AddB
+    };
+
+}
 /** Test if two Int vectors are equal. O(n^2) complexity but arrays
   are small since it is used for edges/faces/cells*/
 FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {

@@ -391,6 +391,12 @@ class BaseField {
         virtual void writeBoundary(std::ostream&) = 0;
         virtual void readBoundary(std::istream&) = 0;
         virtual void write(std::ostream&, IntVector* = 0) = 0;
+
+        virtual void writeInternal(Util::ofstream_bin&,IntVector*) = 0;
+        virtual Int readInternal(Util::ifstream_bin&,Int = 0) = 0;
+        virtual void writeBoundary(Util::ofstream_bin&) = 0;
+        virtual void readBoundary(Util::ifstream_bin&) = 0;
+        virtual void write(Util::ofstream_bin&, IntVector* = 0) = 0;
         //------------
         virtual void read(Int step) = 0;
         virtual void write(Int, IntVector* = 0) = 0;
@@ -425,6 +431,18 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         using DVExpr<type,type*>::P;
         static Int   SIZE;
         int          allocated;
+        //------------
+        template<typename Ts>
+        Int readInternal_(Ts&,Int = 0);
+        template<typename Ts>
+        void readBoundary_(Ts&);
+        template<typename Ts>
+        void writeInternal_(Ts&,IntVector*);
+        template<typename Ts>
+        void writeBoundary_(Ts&);
+        template<typename Ts>
+        void write_(Ts&, IntVector*);
+        //------------
     public:
         ACCESS       access;
         Int          fIndex;
@@ -573,11 +591,17 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         /*other member functions*/
         void calc_neumann(BCondition<type>*);
         //------------
-        Int readInternal(std::istream&,Int = 0) override;
-        void readBoundary(std::istream&) override;
-        void writeInternal(std::ostream&,IntVector*) override;
-        void writeBoundary(std::ostream&) override;
-        virtual void write(std::ostream&, IntVector*) override;
+        Int readInternal(std::istream& is,Int offset = 0) override { return readInternal_(is,offset); }
+        void readBoundary(std::istream& is) override { readBoundary_(is); }
+        void writeInternal(std::ostream& os,IntVector* cMap) override { writeInternal_(os, cMap); };
+        void writeBoundary(std::ostream& os) override {writeBoundary_(os); }
+        void write(std::ostream& os, IntVector* cMap) override {write_(os, cMap); }
+
+        Int readInternal(Util::ifstream_bin& is,Int offset = 0) override { return readInternal_(is,offset); }
+        void readBoundary(Util::ifstream_bin& is) override { readBoundary_(is); }
+        void writeInternal(Util::ofstream_bin& os,IntVector* cMap) override { writeInternal_(os, cMap); };
+        void writeBoundary(Util::ofstream_bin& os) override {writeBoundary_(os); }
+        void write(Util::ofstream_bin& os, IntVector* cMap) override {write_(os, cMap); }
         //------------
         void read(Int step);
         void write(Int step, IntVector* = 0);
@@ -1019,7 +1043,8 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
 
 /** Read internal field */
 template <class T,ENTITY E> 
-Int MeshField<T,E>::readInternal(std::istream& is, Int offset) {
+template <typename Ts>
+Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
     using namespace Mesh;
     /*size*/
     Int size;
@@ -1083,7 +1108,8 @@ Int MeshField<T,E>::readInternal(std::istream& is, Int offset) {
 
 /** Read boundary field */
 template <class T,ENTITY E> 
-void MeshField<T,E>::readBoundary(std::istream& is) {
+template <typename Ts>
+void MeshField<T,E>::readBoundary_(Ts& is) {
     using namespace Mesh;
 
     /*boundary field*/
@@ -1128,7 +1154,8 @@ void MeshField<T,E>::read(Int step) {
 
 /** Write internal field */
 template <class T,ENTITY E> 
-void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
+template <typename Ts>
+void MeshField<T,E>::writeInternal_(Ts& os, IntVector* cMap) {
     using namespace Mesh;
 
     /*internal field*/
@@ -1149,7 +1176,8 @@ void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
 
 /** Write boundary field */
 template <class T,ENTITY E> 
-void MeshField<T,E>::writeBoundary(std::ostream& os) {
+template <typename Ts>
+void MeshField<T,E>::writeBoundary_(Ts& os) {
     using namespace Mesh;
 
     /*boundary field*/
@@ -1178,7 +1206,8 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
 
 /** Write field */
 template <class T,ENTITY E> 
-void MeshField<T,E>::write(std::ostream& of, IntVector* cMap) {
+template <typename Ts>
+void MeshField<T,E>::write_(Ts& of, IntVector* cMap) {
     of << "size " << sizeof(T) / sizeof(Scalar) << "\n";
     writeInternal(of,cMap);
     writeBoundary(of);
@@ -1189,7 +1218,8 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
     /*open file*/
     std::stringstream path;
     path << fName << step;
-    std::ofstream of(path.str());
+    //std::ofstream of(path.str());
+    Util::ofstream_bin of(path.str());
 
     /*write*/
     this->write(of, cMap);
