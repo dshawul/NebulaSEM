@@ -224,14 +224,16 @@ public:
         rows.push_back(cn);
     }
     /*IO*/
-    friend std::ostream& operator << (std::ostream& os, const CSRMatrix& p) {
-        os << p.rows << std::endl;
-        os << p.cols << std::endl;
-        os << p.an << std::endl;
-        os << p.Su << std::endl;
+    template<typename Ts>
+    friend Ts& operator << (Ts& os, const CSRMatrix& p) {
+        os << p.rows << "\n";
+        os << p.cols << "\n";
+        os << p.an << "\n";
+        os << p.Su << "\n";
         return os;
     }
-    friend std::istream& operator >> (std::istream& is, CSRMatrix& p) {
+    template<typename Ts>
+    friend Ts& operator >> (Ts& is, CSRMatrix& p) {
         is >> p.rows;
         is >> p.cols;
         is >> p.an;

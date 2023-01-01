@@ -39,31 +39,30 @@
     (field).erase(std::remove((field).begin(),(field).end(),val),(field).end());
 
 /** std::pair I/O*/
-template <class T1, class T2>
-std::ostream& operator << (std::ostream& os, const std::pair<T1,T2>& p) {
+template <class T1, class T2, typename Ts>
+Ts& operator << (Ts& os, const std::pair<T1,T2>& p) {
     os << p.first << " " << p.second;
     return os;
 }
 
-template <class T1, class T2>
-std::istream& operator >> (std::istream& is, std::pair<T1,T2>& p) {
+template <class T1, class T2, typename Ts>
+Ts& operator >> (Ts& is, std::pair<T1,T2>& p) {
     is >> p.first >> p.second;
     return is;
 }
 
 /** std::vector I/O*/
-template <class T>
-std::ostream& operator << (std::ostream& os, const std::vector<T>& p) {
-    os << p.size() << std::endl;
-    os << "{" << std::endl;
+template <class T, typename Ts>
+Ts& operator << (Ts& os, const std::vector<T>& p) {
+    os << p.size() << "\n{\n";
     forEach(p,i)
-        os << p[i] << std::endl;
-    os << "}" << std::endl;
+        os << p[i] << "\n";
+    os << "}\n";
     return os;
 }
 
-template <class T>
-std::istream& operator >> (std::istream& is, std::vector<T>& p) {
+template <class T, typename Ts>
+Ts& operator >> (Ts& is, std::vector<T>& p) {
     Int size;
     char symbol;
     is >> size >> symbol;
@@ -74,22 +73,34 @@ std::istream& operator >> (std::istream& is, std::vector<T>& p) {
     return is;
 }
 
-template<>
-std::ostream& operator << (std::ostream& os, const std::vector<Int>& p);
-
-/** std::map I/O */
-template <class T1, class T2>
-std::ostream& operator << (std::ostream& os, const std::map<T1,T2>& p) {
-    os << p.size() << std::endl;
-    os << "{" << std::endl;
-    forEachIt(p,it)
-        os << it->first << " " << it->second << std::endl;
-    os << "}" << std::endl;
+template<typename Ts>
+Ts& operator << (Ts& os, const std::vector<Int>& p) {
+    Int sz = p.size();
+    if(sz >= 16) os << sz << "\n{ ";
+    else os << sz << "{ ";
+    for(Int i = 0;i < sz;i++) {
+        if(sz >= 16 && (i % 16) == 0)
+            os << "\n";
+        os << p[i] << " ";
+    }
+    if(sz >= 16) os << "\n}";
+    else os << "}";
     return os;
 }
 
-template <class T1, class T2>
-std::istream& operator >> (std::istream& is, std::map<T1,T2>& p) {
+
+/** std::map I/O */
+template <class T1, class T2, typename Ts>
+Ts& operator << (Ts& os, const std::map<T1,T2>& p) {
+    os << p.size() << "\n{\n";
+    forEachIt(p,it)
+        os << it->first << " " << it->second << "\n";
+    os << "}\n";
+    return os;
+}
+
+template <class T1, class T2, typename Ts>
+Ts& operator >> (Ts& is, std::map<T1,T2>& p) {
     Int size;
     char symbol;
     is >> size >> symbol;
@@ -189,13 +200,15 @@ namespace Util {
             std::cout << "Unknown parameter : " << str << std::endl;
             return 0;
         }
-        friend std::istream& operator >> (std::istream& is, Option& p) {
+        template<typename Ts>
+        friend Ts& operator >> (Ts& is, Option& p) {
             std::string str;
             is >> str;
             *(p.val) = p.getID(str);
             return is;
         }
-        friend std::ostream& operator << (std::ostream& os, const Option& p) {
+        template<typename Ts>
+        friend Ts& operator << (Ts& os, const Option& p) {
             os << p.list[*(p.val)];
             return os;
         }

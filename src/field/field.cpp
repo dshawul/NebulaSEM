@@ -977,7 +977,7 @@ int Prepare::decomposeMesh(Int step) {
             stringstream path1;
             path1 << path.str() << "/" << gMeshName << "_" << step;
             ofstream of(path1.str());
-            of << *pmesh << endl;
+            of << *pmesh << "\n";
         }
 
         /***************************
@@ -1016,7 +1016,7 @@ int Prepare::decomposeMesh(Int step) {
                 forEachIt(pmesh->mBoundaries,it) {
                     if(it->first.find("interMesh") != string::npos) {
                        of << it->first << " "
-                           << "{\n\ttype GHOST\n}" << endl;
+                           << "{\n\ttype GHOST\n}\n";
                     }
                 }
             }

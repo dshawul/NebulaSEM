@@ -83,7 +83,7 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
             WRITE(STensor);
             WRITE(Tensor);
 
-            of << endl;
+            of << "\n";
         }
 #undef WRITE
 #undef SUM

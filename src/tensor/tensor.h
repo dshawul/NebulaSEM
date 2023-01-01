@@ -372,12 +372,14 @@ public:
         return r;
     }
     /*IO*/
-    friend std::ostream& operator << (std::ostream& os, const TTensor<SIZE>& p) {
+    template<typename Ts>
+    friend Ts& operator << (Ts& os, const TTensor<SIZE>& p) {
         for(Int i = 0;i < SIZE;i++) 
             os << p[i] << " ";
         return os;
     }
-    friend std::istream& operator >> (std::istream& is, TTensor<SIZE>& p) {
+    template<typename Ts>
+    friend Ts& operator >> (Ts& is, TTensor<SIZE>& p) {
         for(Int i = 0;i < SIZE;i++) 
             is >> p[i];
         return is;

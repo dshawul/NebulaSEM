@@ -54,11 +54,13 @@ namespace Mesh {
             cid = 0;
             nchildren = 0;
         }
-        friend std::ostream& operator << (std::ostream& os, const Node& p) {
+        template<typename Ts>
+        friend Ts& operator << (Ts& os, const Node& p) {
             os << p.id << " " << p.nchildren << " " << p.cid;
             return os;
         }
-        friend std::istream& operator >> (std::istream& is, Node& p) {
+        template<typename Ts>
+        friend Ts& operator >> (Ts& is, Node& p) {
             is >> p.id >> p.nchildren >> p.cid;
             return is;
         }
@@ -127,11 +129,13 @@ namespace Mesh {
         void refineMesh(const IntVector&, const IntVector&, const IntVector&, 
                 const IntVector&, IntVector&, IntVector&);
 
-        friend std::ostream& operator << (std::ostream& os, const MeshObject& p) {
+        template<typename Ts>
+        friend Ts& operator << (Ts& os, const MeshObject& p) {
             p.writeTextMesh(os);
             return os;
         }
-        friend std::istream& operator >> (std::istream& is, MeshObject& p) {
+        template<typename Ts>
+        friend Ts& operator >> (Ts& is, MeshObject& p) {
             p.readTextMesh(is);
             return is;
         }

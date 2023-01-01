@@ -109,26 +109,6 @@ struct LawOfWall {
         else           up = yp;  
         return up;
     }
-    void write(std::ostream& os) const {
-        os << "\tE " << E << std::endl;
-        os << "\tkappa " << kappa << std::endl;
-        os << "\tks " << ks << std::endl;
-        os << "\tcks " << cks << std::endl;
-    }
-    bool read(std::istream& is,std::string str) {
-        using namespace Util;
-        if(!compare(str,"E")) {
-            is >> E;
-        } else if(!compare(str,"kappa")) {
-            is >> kappa;
-        } else if(!compare(str,"ks")) {
-            is >> ks;
-        } else if(!compare(str,"cks")) {
-            is >> cks;
-        } else
-            return false;
-        return true;
-    }
 };
 /** 
   Boundary condition types
@@ -189,77 +169,85 @@ struct BCondition : public BasicBCondition {
         fIndex = Util::hash_function(fname);
         cIndex = Util::hash_function(cname);
     }
-};
-/** Write boundary conditions */
-template <class type> 
-std::ostream& operator << (std::ostream& os, const BCondition<type>& p) {
-    os << p.bname << "\n{\n";
-    os << "\ttype " << p.cname << std::endl;
-    if(!equal(mag(p.value),Scalar(0)))
-        os << "\tvalue " << p.value << std::endl;
-    if(!equal(p.shape,Scalar(0)))
-        os << "\tshape " << p.shape << std::endl;
-    if(!equal(mag(p.tvalue),Scalar(0)))
-        os << "\ttvalue " << p.tvalue << std::endl;
-    if(!equal(p.tshape,Scalar(0)))
-        os << "\ttshape " << p.tshape << std::endl; 
-    if(!equal(p.dir,Vector(0,0,1)))
-        os << "\tdir " << p.dir << std::endl;
-    if(p.zMax > 0) {
-        os << "\tzMin " << p.zMin << std::endl;
-        os << "\tzMax " << p.zMax << std::endl;
-    }
-    if(p.read) {
-        os << "\tfixed " << p.fixed << std::endl;
-    }
-    if(p.cIndex == Mesh::ROUGHWALL)
-        p.low.write(os);
-    os << "}\n";
-    return os;
-}
-/** Read boundary conditions */
-template <class type> 
-std::istream& operator >> (std::istream& is, BCondition<type>& p) {
-    using namespace Util;
-    std::string str;
-    char c;
-
-    p.reset();
-    is >> p.bname >> c;
-
-    while((c = Util::nextc(is))) {
-        if(c == '}') {
-            is >> c;
-            break;
-        } 
-        is >> str;
-        if(!compare(str,"type")) {
-            is >> p.cname;
-        } else if(!compare(str,"value")) {
-            is >> p.value;
-        } else if(!compare(str,"shape")) {
-            is >> p.shape;
-        } else if(!compare(str,"tvalue")) {
-            is >> p.tvalue;
-        } else if(!compare(str,"tshape")) {
-            is >> p.tshape;
-        } else if(!compare(str,"dir")) {
-            is >> p.dir;
-        } else if(!compare(str,"zMin")) {
-            is >> p.zMin;
-        } else if(!compare(str,"zMax")) {
-            is >> p.zMax;
-        } else if(!compare(str,"fixed")) {
-            is >> p.fixed;
-            p.read = true;
-        } else if(p.low.read(is,str)) {
+    /** Write boundary conditions */
+    template <typename Ts> 
+    friend Ts& operator << (Ts& os, const BCondition<type>& p) {
+        os << p.bname << "\n{\n";
+        os << "\ttype " << p.cname << "\n";
+        if(!equal(mag(p.value),Scalar(0)))
+            os << "\tvalue " << p.value << "\n";
+        if(!equal(p.shape,Scalar(0)))
+            os << "\tshape " << p.shape << "\n";
+        if(!equal(mag(p.tvalue),Scalar(0)))
+            os << "\ttvalue " << p.tvalue << "\n";
+        if(!equal(p.tshape,Scalar(0)))
+            os << "\ttshape " << p.tshape << "\n"; 
+        if(!equal(p.dir,Vector(0,0,1)))
+            os << "\tdir " << p.dir << "\n";
+        if(p.zMax > 0) {
+            os << "\tzMin " << p.zMin << "\n";
+            os << "\tzMax " << p.zMax << "\n";
         }
+        if(p.read)
+            os << "\tfixed " << p.fixed << "\n";
+        if(p.cIndex == Mesh::ROUGHWALL) {
+            os << "\tE " << p.low.E << "\n";
+            os << "\tkappa " << p.low.kappa << "\n";
+            os << "\tks " << p.low.ks << "\n";
+            os << "\tcks " << p.low.cks << "\n";
+        }
+        os << "}\n";
+        return os;
     }
-
-    p.init_indices();
-    p.low.init();
-    return is;
-}
+    /** Read boundary conditions */
+    template <typename Ts> 
+    friend Ts& operator >> (Ts& is, BCondition<type>& p) {
+        using namespace Util;
+        std::string str;
+        char c;
+    
+        p.reset();
+        is >> p.bname >> c;
+    
+        while(true) {
+            is >> str;
+            if(!compare(str,"}")) {
+                break;
+            } else if(!compare(str,"type")) {
+                is >> p.cname;
+            } else if(!compare(str,"value")) {
+                is >> p.value;
+            } else if(!compare(str,"shape")) {
+                is >> p.shape;
+            } else if(!compare(str,"tvalue")) {
+                is >> p.tvalue;
+            } else if(!compare(str,"tshape")) {
+                is >> p.tshape;
+            } else if(!compare(str,"dir")) {
+                is >> p.dir;
+            } else if(!compare(str,"zMin")) {
+                is >> p.zMin;
+            } else if(!compare(str,"zMax")) {
+                is >> p.zMax;
+            } else if(!compare(str,"fixed")) {
+                is >> p.fixed;
+                p.read = true;
+            } else if(!compare(str,"E")) {
+                is >> p.low.E;
+            } else if(!compare(str,"kappa")) {
+                is >> p.low.kappa;
+            } else if(!compare(str,"ks")) {
+                is >> p.low.ks;
+            } else if(!compare(str,"cks")) {
+                is >> p.low.cks;
+            }
+        }
+    
+        p.init_indices();
+        p.low.init();
+        return is;
+    }
+};
 
 namespace Mesh {
     /** List of probing points */
@@ -397,12 +385,14 @@ class BaseField {
     public:
         virtual void deallocate(bool) = 0;
         virtual void refineField(Int,IntVector&,IntVector&) = 0;
+        //------------
         virtual void writeInternal(std::ostream&,IntVector*) = 0;
         virtual Int readInternal(std::istream&,Int = 0) = 0;
         virtual void writeBoundary(std::ostream&) = 0;
         virtual void readBoundary(std::istream&) = 0;
-        virtual void read(Int step) = 0;
         virtual void write(std::ostream&, IntVector* = 0) = 0;
+        //------------
+        virtual void read(Int step) = 0;
         virtual void write(Int, IntVector* = 0) = 0;
         virtual void norm(BaseField*) = 0;
         virtual ~BaseField() {};
@@ -582,12 +572,14 @@ class MeshField : public BaseField, public DVExpr<type,type*>
 
         /*other member functions*/
         void calc_neumann(BCondition<type>*);
-        Int readInternal(std::istream&,Int = 0);
-        void readBoundary(std::istream&);
-        void writeInternal(std::ostream&,IntVector*);
-        void writeBoundary(std::ostream&);
+        //------------
+        Int readInternal(std::istream&,Int = 0) override;
+        void readBoundary(std::istream&) override;
+        void writeInternal(std::ostream&,IntVector*) override;
+        void writeBoundary(std::ostream&) override;
+        virtual void write(std::ostream&, IntVector*) override;
+        //------------
         void read(Int step);
-        void write(std::ostream&, IntVector* = 0);
         void write(Int step, IntVector* = 0);
 
         void norm(BaseField* pnorm) {
@@ -627,10 +619,10 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                 pf = *it;
                 if(pf->access & WRITE) {
                     os << pf->fName <<" "<< TYPE_SIZE <<" "
-                        << Mesh::gBCSfield << " double" << std::endl;
+                        << Mesh::gBCSfield << " double\n";
                     for(Int i = 0;i < Mesh::gBCSfield;i++)
-                        os << (*pf)[i] << std::endl;
-                    os << std::endl;
+                        os << (*pf)[i] << "\n";
+                    os << "\n";
                 }
             }
         }
@@ -640,10 +632,10 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                 if((*it)->access & WRITE) {
                     vf = cds(cds(*(*it)));
                     os << (*it)->fName <<" "<< TYPE_SIZE <<" "
-                        << vf.size() << " double" << std::endl;
+                        << vf.size() << " double\n";
                     forEach(vf,i)
-                        os << vf[i] << std::endl;
-                    os << std::endl;
+                        os << vf[i] << "\n";
+                    os << "\n";
                 }
             }
         }
@@ -717,7 +709,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                         of << i << " ";
                         forEach(Mesh::probeCells,j) 
                             of << (*pf)[Mesh::probeCells[j]] << " ";
-                        of << std::endl;
+                        of << "\n";
                     }
                     if(Controls::save_average) {
                         MeshField& avg = *tavgs[count];
@@ -747,13 +739,15 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                 write(step,&refineMap);
         }
         /*IO*/
-        friend std::ostream& operator << (std::ostream& os, const MeshField& p) {
+        template<typename Ts>
+        friend Ts& operator << (Ts& os, const MeshField& p) {
             forEach(p,i)
-                os << p[i] << std::endl;
-            os << std::endl;
+                os << p[i] << "\n";
+            os << "\n";
             return os;
         }
-        friend std::istream& operator >> (std::istream& is, MeshField& p) {
+        template<typename Ts>
+        friend Ts& operator >> (Ts& is, MeshField& p) {
             forEach(p,i)
                 is >> p[i];
             return is;
@@ -1028,15 +1022,14 @@ template <class T,ENTITY E>
 Int MeshField<T,E>::readInternal(std::istream& is, Int offset) {
     using namespace Mesh;
     /*size*/
-    char c;
-    int size;
+    Int size;
     std::string str;
     is >> str >> size;
 
     /*internal field*/
-    if((c = Util::nextc(is)) && isalpha(c)) {
+    is >> str;
+    if(!isdigit(str[0])) {
         T value = T(0);
-        is >> str;
         if(str == "uniform") {
             is >> value;
             *this = value;
@@ -1077,8 +1070,9 @@ Int MeshField<T,E>::readInternal(std::istream& is, Int offset) {
     } else {
         T temp;
         char symbol;
-        is >> size >> symbol;
-        for(int i = 0;i < size;i++) {
+        size = stoi(str);
+        is >> symbol;
+        for(Int i = 0;i < size;i++) {
             is >> temp;
             (*this)[offset + i] = temp;
         }
@@ -1143,15 +1137,14 @@ void MeshField<T,E>::writeInternal(std::ostream& os, IntVector* cMap) {
         size = cMap->size();
     else
         size = (SIZE == gCells.size() * DG::NP) ? gBCSfield : SIZE;
-    os << size << std::endl;
-    os << "{" << std::endl;
+    os << size << "\n{\n";
     for(Int i = 0;i < size;i++) {
         if(cMap)
-            os << (*this)[(*cMap)[i]] << std::endl;
+            os << (*this)[(*cMap)[i]] << "\n";
         else
-            os << (*this)[i] << std::endl;
+            os << (*this)[i] << "\n";
     }
-    os << "}" << std::endl;
+    os << "}\n";
 }
 
 /** Write boundary field */
@@ -1172,8 +1165,7 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
     }
 
     //write
-    os << size << std::endl;
-    os << "{" << std::endl;
+    os << size << "\n{\n";
     forEach(AllBConditions,i) {
         bbc = AllBConditions[i];
         if(bbc->fIndex == this->fIndex) {
@@ -1181,13 +1173,13 @@ void MeshField<T,E>::writeBoundary(std::ostream& os) {
             os << *bc;
         }
     }
-    os << "}" << std::endl;
+    os << "}\n";
 }
 
 /** Write field */
 template <class T,ENTITY E> 
 void MeshField<T,E>::write(std::ostream& of, IntVector* cMap) {
-    of << "size " << sizeof(T) / sizeof(Scalar) << std::endl;
+    of << "size " << sizeof(T) / sizeof(Scalar) << "\n";
     writeInternal(of,cMap);
     writeBoundary(of);
 }
@@ -1339,15 +1331,17 @@ struct MeshMatrix {
         Su[c] = value * 10e30;
     }
     /*IO*/
-    friend std::ostream& operator << (std::ostream& os, const MeshMatrix& p) {
-        os << p.ap << std::endl << std::endl;
-        os << p.an[0] << std::endl << std::endl;
-        os << p.an[1] << std::endl << std::endl;
-        os << p.Su << std::endl << std::endl;
-        os << p.adg << std::endl << std::endl;
+    template<typename Ts>
+    friend Ts& operator << (Ts& os, const MeshMatrix& p) {
+        os << p.ap << "\n";
+        os << p.an[0] << "\n";
+        os << p.an[1] << "\n";
+        os << p.Su << "\n";
+        os << p.adg << "\n";
         return os;
     }
-    friend std::istream& operator >> (std::istream& is, MeshMatrix& p) {
+    template<typename Ts>
+    friend Ts& operator >> (Ts& is, MeshMatrix& p) {
         is >> p.ap;
         is >> p.an[0];
         is >> p.an[1];

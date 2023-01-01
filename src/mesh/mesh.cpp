@@ -97,11 +97,10 @@ void Mesh::MeshObject::writeTextMesh(ostream& os) const {
     os << mFacets;
     /*cells*/
     Int size = mBCS;
-    os << size << std::endl;
-    os << "{" << std::endl;
+    os << size << "\n{\n";
     for(Int i = 0; i < size; i++)
-        os << mCells[i] << std::endl;
-    os << "}" << std::endl;
+        os << mCells[i] << "\n";
+    os << "}\n";
     /*boundaries*/
     os << mBoundaries;
     os << dec;

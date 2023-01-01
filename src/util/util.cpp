@@ -78,19 +78,3 @@ END:
     is.seekg(0,ios::beg);
 }
 
-/** Outputs an integer vector to stream*/
-template<>
-std::ostream& operator << (std::ostream& os, const std::vector<Int>& p) {
-    Int sz = p.size();
-    if(sz >= 16) os << sz << std::endl << "{ ";
-    else os << sz << "{ ";
-    for(Int i = 0;i < sz;i++) {
-        if(sz >= 16 && (i % 16) == 0)
-            os << std::endl;
-        os << p[i] << " ";
-    }
-    if(sz >= 16) os << std::endl << "}";
-    else os << "}";
-    return os;
-}
-
