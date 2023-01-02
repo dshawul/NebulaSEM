@@ -50,7 +50,7 @@ void Vtk::write_vtk(Int step) {
         of << "# vtk DataFile Version 2.0" << endl;
     else
         of << "# vtk DataFile Version 1.0" << endl;
-    of << Mesh::gMeshName << endl;
+    of << "Data produced by FV/DG solver consisting of fields and grid." << endl;
     of << "ASCII" << endl;
     of << "DATASET UNSTRUCTURED_GRID" << endl;
 

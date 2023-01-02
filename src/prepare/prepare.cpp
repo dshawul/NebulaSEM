@@ -7,7 +7,7 @@ using namespace Mesh;
   Convert to VTK format
  */
 int Prepare::convertVTK(vector<string>& fields,Int step) {
-    if(LoadMesh(step,true))
+    if(LoadMesh(step,false))
         createFields(fields,step);
     readFields(fields,step);
     /*write vtk*/

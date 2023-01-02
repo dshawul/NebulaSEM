@@ -148,6 +148,16 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
         /*geometric mesh fields*/
         remove_fields();
         initGeomMeshFields();
+        /*Adjust interpolation factor for "delete" faces*/
+        if(!remove_empty) {
+            auto it = gBoundaries.find("delete");
+            if(it != gBoundaries.end()) {
+                IntVector& fs = gBoundaries["delete"];
+                forEach(fs,i) {
+                    fI[fs[i]] = 1;
+                }
+            }
+        }
         if(MP::printOn) 
             cout << "--------------------------------------------\n";
         return true;
