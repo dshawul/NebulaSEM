@@ -3,6 +3,7 @@
 
 #include "mesh.h"
 #include "mp.h"
+#include "system.h"
 
 /** Basic building blocks (entities) over which fields are defined */
 enum ENTITY {
@@ -204,10 +205,10 @@ struct BCondition : public BasicBCondition {
     friend Ts& operator >> (Ts& is, BCondition<type>& p) {
         using namespace Util;
         std::string str;
-        char c;
+        char symbol;
     
         p.reset();
-        is >> p.bname >> c;
+        is >> p.bname >> symbol;
     
         while(true) {
             is >> str;
@@ -266,6 +267,13 @@ namespace Mesh {
  *                              Control parameters
  *******************************************************************************/
 namespace Controls {
+
+    /** Fields write format */
+    enum FILE_FORMAT {
+        TEXT = 0,      /**< Plain text format */
+        BINARY = 1     /**< Binary format */
+    };
+
     /** Convection differencing schemes */
     enum Scheme{
         CDS,    /**< Central difference */
@@ -352,6 +360,8 @@ namespace Controls {
     extern Int print_time;
 
     extern Vector gravity;
+
+    extern FILE_FORMAT field_format;
 }
 
 /** Read/Write access for field */
@@ -390,15 +400,17 @@ class BaseField {
         virtual Int readInternal(std::istream&,Int = 0) = 0;
         virtual void writeBoundary(std::ostream&) = 0;
         virtual void readBoundary(std::istream&) = 0;
+        virtual void read(std::istream&) = 0;
         virtual void write(std::ostream&, IntVector* = 0) = 0;
 
         virtual void writeInternal(Util::ofstream_bin&,IntVector*) = 0;
         virtual Int readInternal(Util::ifstream_bin&,Int = 0) = 0;
         virtual void writeBoundary(Util::ofstream_bin&) = 0;
         virtual void readBoundary(Util::ifstream_bin&) = 0;
+        virtual void read(Util::ifstream_bin&) = 0;
         virtual void write(Util::ofstream_bin&, IntVector* = 0) = 0;
         //------------
-        virtual void read(Int step) = 0;
+        virtual void read(Int) = 0;
         virtual void write(Int, IntVector* = 0) = 0;
         virtual void norm(BaseField*) = 0;
         virtual ~BaseField() {};
@@ -440,6 +452,8 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         void writeInternal_(Ts&,IntVector*);
         template<typename Ts>
         void writeBoundary_(Ts&);
+        template<typename Ts>
+        void read_(Ts&);
         template<typename Ts>
         void write_(Ts&, IntVector*);
         //------------
@@ -595,12 +609,14 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         void readBoundary(std::istream& is) override { readBoundary_(is); }
         void writeInternal(std::ostream& os,IntVector* cMap) override { writeInternal_(os, cMap); };
         void writeBoundary(std::ostream& os) override {writeBoundary_(os); }
+        void read(std::istream& os) override {read_(os); }
         void write(std::ostream& os, IntVector* cMap) override {write_(os, cMap); }
 
         Int readInternal(Util::ifstream_bin& is,Int offset = 0) override { return readInternal_(is,offset); }
         void readBoundary(Util::ifstream_bin& is) override { readBoundary_(is); }
         void writeInternal(Util::ofstream_bin& os,IntVector* cMap) override { writeInternal_(os, cMap); };
         void writeBoundary(Util::ofstream_bin& os) override {writeBoundary_(os); }
+        void read(Util::ifstream_bin& os) override {read_(os); }
         void write(Util::ofstream_bin& os, IntVector* cMap) override {write_(os, cMap); }
         //------------
         void read(Int step);
@@ -884,7 +900,7 @@ namespace Mesh {
 
 namespace Prepare {
     void createFields(std::vector<std::string>& fields,Int step);
-    Int  readFields(std::vector<std::string>& fields,Int step);
+    void readFields(std::vector<std::string>& fields,Int step);
     void refineMesh(Int step, bool = false);
     void calcQOI(VectorCellField&);
     void initRefineThreshold();
@@ -1052,8 +1068,9 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
     is >> str >> size;
 
     /*internal field*/
-    is >> str;
-    if(!isdigit(str[0])) {
+    is >> size;
+    if(size == 0) {
+        is >> str;
         T value = T(0);
         if(str == "uniform") {
             is >> value;
@@ -1095,7 +1112,6 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
     } else {
         T temp;
         char symbol;
-        size = stoi(str);
         is >> symbol;
         for(Int i = 0;i < size;i++) {
             is >> temp;
@@ -1128,23 +1144,9 @@ void MeshField<T,E>::readBoundary_(Ts& is) {
 
 /** Read field */
 template <class T,ENTITY E> 
-void MeshField<T,E>::read(Int step) {
-    using namespace Mesh;
-
-    /*open*/
-    std::stringstream path;
-    path << fName << step;
-    std::ifstream is(path.str());
-    if(is.fail())
-        return;
-
-    /*start reading*/
-    if(MP::printOn) {
-        std::cout << "Reading " << fName 
-            << step  << std::endl;
-        std::cout.flush();
-    }
-    /*internal*/
+template <typename Ts>
+void MeshField<T,E>::read_(Ts& is) {
+    /*read*/
     readInternal(is,0);
     readBoundary(is);
 
@@ -1152,11 +1154,35 @@ void MeshField<T,E>::read(Int step) {
     applyExplicitBCs(*this,true,true);
 }
 
+template <class T,ENTITY E> 
+void MeshField<T,E>::read(Int step) {
+    using namespace Mesh;
+    std::stringstream path;
+    path << fName << step;
+
+    /*start reading*/
+    if(MP::printOn) {
+        std::cout << "Reading " << path.str() << std::endl; 
+        std::cout.flush();
+    }
+
+    /*read*/
+    if(System::exists(path.str() + ".txt")) {
+        std::ifstream is(path.str() + ".txt");
+        this->read_(is);
+    } else if(System::exists(path.str() + ".bin")) {
+        Util::ifstream_bin is(path.str() + ".bin");
+        this->read_(is);
+    }
+}
+
 /** Write internal field */
 template <class T,ENTITY E> 
 template <typename Ts>
 void MeshField<T,E>::writeInternal_(Ts& os, IntVector* cMap) {
     using namespace Mesh;
+
+    os << "size " << Int(sizeof(T) / sizeof(Scalar)) << "\n";
 
     /*internal field*/
     Int size;
@@ -1207,22 +1233,23 @@ void MeshField<T,E>::writeBoundary_(Ts& os) {
 /** Write field */
 template <class T,ENTITY E> 
 template <typename Ts>
-void MeshField<T,E>::write_(Ts& of, IntVector* cMap) {
-    of << "size " << sizeof(T) / sizeof(Scalar) << "\n";
-    writeInternal(of,cMap);
-    writeBoundary(of);
+void MeshField<T,E>::write_(Ts& os, IntVector* cMap) {
+    writeInternal(os,cMap);
+    writeBoundary(os);
 }
 
 template <class T,ENTITY E> 
 void MeshField<T,E>::write(Int step, IntVector* cMap) {
-    /*open file*/
     std::stringstream path;
     path << fName << step;
-    //std::ofstream of(path.str());
-    Util::ofstream_bin of(path.str());
 
-    /*write*/
-    this->write(of, cMap);
+    if(Controls::field_format == Controls::TEXT) {
+        std::ofstream of(path.str() + ".txt");
+        this->write(of, cMap);
+    } else {
+        Util::ofstream_bin of(path.str() + ".bin");
+        this->write(of, cMap);
+    }
 }
 
 /* ********************

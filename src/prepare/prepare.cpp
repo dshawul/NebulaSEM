@@ -6,16 +6,12 @@ using namespace Mesh;
 /**
   Convert to VTK format
  */
-int Prepare::convertVTK(vector<string>& fields,Int start_index) {
-    for(Int step = start_index;;step++) {
-        if(LoadMesh(step,true))
-            createFields(fields,step);
-        if(!readFields(fields,step))
-            break;
-        /*write vtk*/
-        Vtk::write_vtk(step);
-    }
-
+int Prepare::convertVTK(vector<string>& fields,Int step) {
+    if(LoadMesh(step,true))
+        createFields(fields,step);
+    readFields(fields,step);
+    /*write vtk*/
+    Vtk::write_vtk(step);
     return 0;
 }
 /**
@@ -33,8 +29,7 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
             probes.clear();
             getProbeFaces(probes);
         }
-        if(!readFields(fields,step))
-            break;
+        readFields(fields,step);
 
         /*Interpolate*/
         forEachCellField(interpolateVertexAll());

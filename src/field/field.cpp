@@ -65,6 +65,7 @@ namespace Controls {
     Int print_time = 0;
     CommMethod parallel_method = BLOCKED;
     Vector gravity = Vector(0,0,-9.860616);
+    FILE_FORMAT field_format = BINARY;
 }
 /**
   Find the last refined grid
@@ -75,8 +76,7 @@ static int findLastRefinedGrid(Int step_) {
         stringstream path;
         path << Mesh::gMeshName << "_" << step;
         string str = path.str();
-        ifstream is(str);
-        if(!is.fail())
+        if(System::exists(str))
             break;
     }
     if(step < 0) step = step_;
@@ -478,10 +478,19 @@ void Prepare::createFields(vector<string>& fields,Int step) {
         path << fields[i] << step;
         std::string str = path.str(); 
 
-        ifstream is(str);
-        if(!is.fail()) {
-            /*fields*/
+        bool exists = false;
+        if(System::exists(str+".txt")) {
+            exists = true;
+            std::ifstream is(str+".txt");
             is >> str >> size;
+        } else if(System::exists(str+".bin")) {
+            exists = true;
+            Util::ifstream_bin is(str+".bin");
+            is >> str >> size;
+        }
+
+        if(exists) {
+            /*fields*/
             BaseField* bf;
             switch(size) {
                 case 1 :  bf = new ScalarCellField(fields[i].c_str(),READWRITE,false); break;
@@ -495,22 +504,10 @@ void Prepare::createFields(vector<string>& fields,Int step) {
     }
 }
 /**
-  Cead fields
+  Read fields
  */
-Int Prepare::readFields(vector<string>& fields,Int step) {
-    Int count = 0;
-    forEach(fields,i) {
-        stringstream fpath;
-        fpath << fields[i] << step;
-        ifstream is(fpath.str());
-        if(is.fail())
-            continue;
-        count++;
-        break;
-    }
-    if(count)
-        Mesh::read_fields(step);
-    return count;
+void Prepare::readFields(vector<string>& fields,Int step) {
+    Mesh::read_fields(step);
 }
 /*********************************
  *
@@ -1004,18 +1001,18 @@ int Prepare::decomposeMesh(Int step) {
 
             forEach(fields,i) {
                 stringstream path;
-                path << gMeshName << ID << "/" << fields[i] << step;
+                path << gMeshName << ID << "/" << fields[i] << step << ".bin";
                 string str = path.str();
-                ofstream of(str);
+                Util::ofstream_bin os(str);
 
                 /*fields*/
                 BaseField* pf = BaseField::findField(fields[i]);
-                pf->write(of, &cLoc[ID]);
+                pf->write(os, &cLoc[ID]);
 
                 /*inter mesh boundaries*/
                 forEachIt(pmesh->mBoundaries,it) {
                     if(it->first.find("interMesh") != string::npos) {
-                       of << it->first << " "
+                       os << it->first << " "
                            << "{\n\ttype GHOST\n}\n";
                     }
                 }
@@ -1025,7 +1022,7 @@ int Prepare::decomposeMesh(Int step) {
         /*master fields*/
         forEach(fields,i) {
             stringstream path;
-            path << fields[i] << step;
+            path << fields[i] << step << ".txt";
             string str = path.str();
             ofstream of(str);
 
@@ -1081,12 +1078,12 @@ int Prepare::mergeFields(Int step) {
         Int offset = 0;
         for(Int ID = 0;ID < total;ID++) {
             stringstream fpath;
-            fpath << gMeshName << ID << "/" << fields[i] << step;
+            fpath << gMeshName << ID << "/" << fields[i] << step << ".bin";
             string str = fpath.str();
-            ifstream is(str);
-            if(is.fail())
+            if(!System::exists(str))
                 continue;
             /*read*/
+            Util::ifstream_bin is(str);
             Int nread = pf->readInternal(is,offset);
             offset += nread;
         }

@@ -11,6 +11,7 @@
 #include <map>
 #include <algorithm>
 #include <cstdarg>
+#include <cctype>
 
 /** \name Container iterators */
 //@{
@@ -54,7 +55,7 @@ Ts& operator >> (Ts& is, std::pair<T1,T2>& p) {
 /** std::vector I/O*/
 template <class T, typename Ts>
 Ts& operator << (Ts& os, const std::vector<T>& p) {
-    os << p.size() << "\n{\n";
+    os << Int(p.size()) << "\n{\n";
     forEach(p,i)
         os << p[i] << "\n";
     os << "}\n";
@@ -126,15 +127,23 @@ namespace Util{
                 os.mos.write((char*)&p, sizeof(p));                                         \
                 return os;                                                                  \
             }
-            friend Util::ofstream_bin& operator << (Util::ofstream_bin& os, const std::string& p) { 
-                unsigned char size = p.size();
-                os.mos.write((char*)&size, sizeof(size));
-                os.mos.write((char*)p.c_str(), size);
+            friend Util::ofstream_bin& operator << (Util::ofstream_bin& os, const char& p) {
+                unsigned char size = 1;
+                os.mos.write((char*)&size, 1);
+                os.mos.write((char*)&p, size);
                 return os;
             }
-            AddB(char);
+            friend Util::ofstream_bin& operator << (Util::ofstream_bin& os, const std::string& p) { 
+                std::string s = p;
+                s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+                unsigned char size = s.size();
+                if(size > 0) {
+                    os.mos.write((char*)&size, 1);
+                    os.mos.write((char*)&s[0], size);
+                }
+                return os;
+            }
             AddB(Int);
-            AddB(size_t);
             AddB(Scalar);
 #undef AddB
     };
@@ -151,16 +160,20 @@ namespace Util{
                 is.mos.read((char*)&p, sizeof(p));                                          \
                 return is;                                                                  \
             }
+            friend Util::ifstream_bin& operator >> (Util::ifstream_bin& is, char& p) {
+                unsigned char size = 1;
+                is.mos.read((char*)&size, 1);
+                is.mos.read((char*)&p, size);
+                return is;
+            }
             friend Util::ifstream_bin& operator >> (Util::ifstream_bin& is, std::string& p) {
                 unsigned char size;
-                is.mos.read((char*)&size, sizeof(size));
+                is.mos.read((char*)&size, 1);
                 p.resize(size);
                 is.mos.read((char*)&p[0], size);
                 return is;
             }
-            AddB(char);
             AddB(Int);
-            AddB(size_t);
             AddB(Scalar);
 #undef AddB
     };

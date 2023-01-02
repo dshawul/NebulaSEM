@@ -5,6 +5,7 @@
 #include <cstdarg>
 #ifdef _MSC_VER
 #    include <windows.h>
+#    include <io.h>
 #    include <process.h>
 #    include <sys/timeb.h>
 #else
@@ -55,6 +56,14 @@ namespace System {
         return ::GetCurrentDirectory(len,(LPTSTR)path);
 #else
         return !::getcwd(path, len);
+#endif
+    }
+    /** Check if file exists */
+    inline int exists(std::string path) {
+#ifdef _MSC_VER
+        return (_access(path.c_str(), 0) == 0);
+#else
+        return (access(path.c_str(), F_OK) == 0);
 #endif
     }
     /** Gets time in milli-seconds */

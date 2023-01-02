@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 #set case file
 case=examples/cavity/
@@ -26,16 +26,25 @@ cd $rundir
 #run
 run $grid $1
 
+
 #merge
-if [[ $1 -gt 1 ]]; then
+if [ $1 -gt 1 ]; then
     t=1
-    while [ -f "./grid0/U$t" ]; do
-	    mpirun -n $1 ../bin/prepare ./controls -merge -start $t
+    file=(./grid0/U$t.*)
+    while [ -f "$file" ]; do
+        mpirun -n $1 ../bin/prepare ./controls -merge -start $t
         t=$((t+1))
+        file=(./grid0/U$t.*)
     done
 fi
 
 #vtk
-../bin/prepare ./controls -vtk
+t=0
+file=(./U$t.*)
+while [ -f "$file" ]; do
+    ../bin/prepare ./controls -vtk -start $t
+    t=$((t+1))
+    file=(./U$t.*)
+done
 
 cd ..
