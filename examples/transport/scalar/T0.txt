@@ -1,0 +1,13 @@
+size 1
+0 uniform 0
+2
+{
+inlet {
+	type DIRICHLET 
+	value 1
+}
+outlet {
+	type DIRICHLET 
+	value 0
+}
+}

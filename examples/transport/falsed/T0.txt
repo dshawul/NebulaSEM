@@ -1,0 +1,21 @@
+size 1
+0 uniform 0
+4
+{
+left {
+   type DIRICHLET 
+   value 100
+}
+bottom {
+   type DIRICHLET 
+   value 0
+}
+right {
+   type  NEUMANN 
+   value 0
+}
+top {
+   type NEUMANN 
+   value 0
+}
+}

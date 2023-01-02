@@ -1,0 +1,20 @@
+size 1
+0 uniform 0.348
+4
+{
+inlet {
+	type DIRICHLET 
+	value 0.348
+}
+outlet {
+	type NEUMANN 
+	value 0
+}
+top {
+	type SYMMETRY
+}
+WALLS {
+	type NEUMANN 
+	value 0
+}
+}

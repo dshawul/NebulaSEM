@@ -1,0 +1,15 @@
+size 1
+#0 uniform 101325
+0 hydrostatic 101325 3.31783902509e-06 3.47432306256
+3
+{
+top {
+	type CALC_NEUMANN
+}
+bottom {
+	type CALC_NEUMANN
+}
+sides {
+	type NEUMANN
+}
+}

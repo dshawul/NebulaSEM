@@ -1,0 +1,3 @@
+size 3
+0 uniform 2 2 0
+0 {}
