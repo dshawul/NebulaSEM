@@ -102,8 +102,6 @@ namespace Mesh {
 
         /*functions*/
         void clear();
-        void writeTextMesh(std::ostream&) const;
-        bool readTextMesh(std::istream&);
         void writeMshMesh(std::ostream&);
         void readMshMesh(std::istream&);
         void addBoundaryCells();
@@ -138,6 +136,67 @@ namespace Mesh {
         friend Ts& operator >> (Ts& is, MeshObject& p) {
             p.readTextMesh(is);
             return is;
+        }
+        /**
+          Read mesh from file in text format
+         */
+        template<typename Ts>
+        bool readTextMesh(Ts& is) {
+            Int size;
+            char symbol;
+            /*clear*/
+            clear();
+            /*read*/
+            is >> mVertices;
+            is >> mFacets;
+            is >> mCells;
+            is >> size >> symbol;
+            for(Int i = 0; i < size; i++) {
+                IntVector index;
+                std::string str;
+                is >> str;
+                is >> index;
+
+                IntVector& gB = mBoundaries[str];
+                gB.insert(gB.begin(),index.begin(),index.end());
+
+                /*internal mesh boundaries*/
+                if(str.find("interMesh") != std::string::npos) {
+                    interBoundary b;
+                    b.f = &mBoundaries[str];
+                    std::replace(str.begin(), str.end(), '_', ' ');
+                    std::stringstream ss(str);
+                    ss >> str >> b.from >> b.to;
+                    mInterMesh.push_back(b);
+                }
+            }
+            is >> symbol;
+            /*start of buffer*/ 
+            Int buffer_index = 0;
+            forEach(mInterMesh,i) {
+                interBoundary& b = mInterMesh[i];
+                b.buffer_index = buffer_index;
+                buffer_index += b.f->size();
+            }
+            return true;
+        }
+        /**
+          Write mesh to file in text format
+         */
+        template<typename Ts>
+        void writeTextMesh(Ts& os) const {
+            os.precision(12);
+            os << mVertices;
+            os.precision(6);
+            os << mFacets;
+            /*cells*/
+            Int size = mBCS;
+            os << size << "\n{\n";
+            for(Int i = 0; i < size; i++)
+                os << mCells[i] << "\n";
+            os << "}\n";
+            /*boundaries*/
+            os << mBoundaries;
         }
     };
 

@@ -76,7 +76,8 @@ static int findLastRefinedGrid(Int step_) {
         stringstream path;
         path << Mesh::gMeshName << "_" << step;
         string str = path.str();
-        if(System::exists(str))
+        if(System::exists(str+".txt") ||
+           System::exists(str+".bin"))
             break;
     }
     if(step < 0) step = step_;
@@ -89,20 +90,31 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
     /*load refined mesh*/
     int step = findLastRefinedGrid(step_);
 
-    /*open file*/
+    /*open grid file*/
     stringstream path;
     path << gMesh.name << "_" << step;
     string str = path.str();
-    ifstream is(str);
-    if(is.fail()) {
+
+    bool loaded = false, found = false;
+    Int iter = 0;
+    do {
+        if(System::exists(str + ".txt")) {
+            std::ifstream is(str + ".txt");
+            loaded = gMesh.readTextMesh(is);
+            found = true;
+        } else if(System::exists(str + ".bin")) {
+            Util::ifstream_bin is(str + ".bin");
+            loaded = gMesh.readTextMesh(is);
+            found = true;
+        }
         path.clear();
         path << gMesh.name << "_" << 0;
         str = path.str();
-        is.open(str.c_str());
-    }
+        iter++;
+    } while(found == false && iter == 1);
 
     /*load mesh*/
-    if(gMesh.readTextMesh(is)) {
+    if(loaded) {
         /*clear bc and probing points list*/
         Mesh::clearBC();
         Mesh::probePoints.clear();
@@ -625,12 +637,10 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     {
         stringstream path;
         int stepn = findLastRefinedGrid(step);
-        path << "amrTree" << "_" << stepn;
-        ifstream is(path.str());
-        if(!is.fail()) {
-            is >> hex;
+        path << "amrTree" << "_" << stepn << ".bin";
+        if(System::exists(path.str())) {
+            Util::ifstream_bin is(path.str());
             is >> gAmrTree;
-            is >> dec;
         } else {
             gAmrTree.resize(gCells.size());
             forEach(gCells,i)
@@ -648,18 +658,16 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     /*Write amrTree*/
     {
         stringstream path;
-        path << "amrTree" << "_" << step;
-        ofstream os(path.str());
-        os << hex;
+        path << "amrTree" << "_" << step << ".bin";
+        Util::ofstream_bin os(path.str());
         os << gAmrTree;
-        os << dec;
     }
 
     /*Write mesh*/
     {
         stringstream path;
-        path << gMeshName << "_" << step;
-        ofstream os(path.str());
+        path << gMeshName << "_" << step << ".bin";
+        Util::ofstream_bin os(path.str());
         os << gMesh;
     }
 
@@ -956,9 +964,9 @@ int Prepare::decomposeMesh(Int step) {
                 gCells[i] = reordered[i];
             /*write mesh*/
             stringstream path;
-            path << gMeshName << "_" << step;
-            ofstream of(path.str());
-            of << gMesh;
+            path << gMeshName << "_" << step << ".bin";
+            Util::ofstream_bin os(path.str());
+            os << gMesh;
         }
 
         /* write slave grids*/
@@ -972,9 +980,9 @@ int Prepare::decomposeMesh(Int step) {
 
             /*mesh*/
             stringstream path1;
-            path1 << path.str() << "/" << gMeshName << "_" << step;
-            ofstream of(path1.str());
-            of << *pmesh << "\n";
+            path1 << path.str() << "/" << gMeshName << "_" << step << ".bin";
+            Util::ofstream_bin os(path1.str());
+            os << *pmesh << "\n";
         }
 
         /***************************

@@ -43,69 +43,6 @@ void Mesh::MeshObject::clear() {
     mAmrTree.clear();
 }
 /**
-  Read mesh from file in text format
- */
-bool Mesh::MeshObject::readTextMesh(istream& is) {
-    Int size;
-    char symbol;
-    /*clear*/
-    clear();
-    /*read*/
-    is >> hex;
-    is >> mVertices;
-    is >> mFacets;
-    is >> mCells;
-    is >> size >> symbol;
-    for(Int i = 0; i < size; i++) {
-        IntVector index;
-        string str;
-        is >> str;
-        is >> index;
-
-        IntVector& gB = mBoundaries[str];
-        gB.insert(gB.begin(),index.begin(),index.end());
-
-        /*internal mesh boundaries*/
-        if(str.find("interMesh") != string::npos) {
-            interBoundary b;
-            b.f = &mBoundaries[str];
-            std::replace(str.begin(), str.end(), '_', ' ');
-            stringstream ss(str);
-            ss >> str >> b.from >> b.to;
-            mInterMesh.push_back(b);
-        }
-    }
-    is >> symbol;
-    /*start of buffer*/ 
-    Int buffer_index = 0;
-    forEach(mInterMesh,i) {
-        interBoundary& b = mInterMesh[i];
-        b.buffer_index = buffer_index;
-        buffer_index += b.f->size();
-    }
-    is >> dec;
-    return true;
-}
-/**
-  Write mesh to file in text format
- */
-void Mesh::MeshObject::writeTextMesh(ostream& os) const {
-    os << hex;
-    os.precision(12);
-    os << mVertices;
-    os.precision(6);
-    os << mFacets;
-    /*cells*/
-    Int size = mBCS;
-    os << size << "\n{\n";
-    for(Int i = 0; i < size; i++)
-        os << mCells[i] << "\n";
-    os << "}\n";
-    /*boundaries*/
-    os << mBoundaries;
-    os << dec;
-}
-/**
   Add boundary cells around mesh
  */
 void Mesh::MeshObject::addBoundaryCells() {
@@ -424,7 +361,7 @@ void Mesh::MeshObject::breakEdges(Int ivBegin) {
             }
 
             if(order.size()) {
-                sort(order.begin(), order.end(), compare_pair_second<>());
+                sort(order.begin(), order.end(), Util::compare_pair_second<>());
 
                 forEach(order,i)
                     nf.push_back(order[i].first);

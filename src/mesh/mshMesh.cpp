@@ -12,6 +12,8 @@ void Mesh::MeshObject::readMshMesh(std::istream& is) {
         node_start = 0,facet_start = 0;
     map<int,string> bnames;
 
+    is >> hex;
+
     /*read id*/
     while((c = Util::nextc(is)) != 0) {
         int braces = 1;
@@ -141,11 +143,14 @@ void Mesh::MeshObject::readMshMesh(std::istream& is) {
         if(cn != Constants::MAX_INT)
             mCells[cn].push_back(i);
     }
+
+    is >> dec;
 }
 /**
   Write ANSYS ascii mesh (.msh format)
  */
 void Mesh::MeshObject::writeMshMesh(std::ostream& os) {
+    os << hex;
     os << "(0 \"ASCII msh file\")" << endl << endl;
     os << "(0 \"Dimension:\")" << endl;
     os << "(2 3)" << endl << endl;
@@ -231,4 +236,6 @@ void Mesh::MeshObject::writeMshMesh(std::ostream& os) {
     for(Int i = 0;i < mBCS;i++)
         os << "4 ";
     os << endl << ")())" << endl;
+
+    os << dec;
 }

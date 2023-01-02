@@ -93,7 +93,7 @@ Ts& operator << (Ts& os, const std::vector<Int>& p) {
 /** std::map I/O */
 template <class T1, class T2, typename Ts>
 Ts& operator << (Ts& os, const std::map<T1,T2>& p) {
-    os << p.size() << "\n{\n";
+    os << Int(p.size()) << "\n{\n";
     forEachIt(p,it)
         os << it->first << " " << it->second << "\n";
     os << "}\n";
@@ -146,6 +146,9 @@ namespace Util{
             AddB(Int);
             AddB(Scalar);
 #undef AddB
+            void precision(int p) {
+                mos.precision(p);
+            }
     };
 
     class ifstream_bin {
@@ -219,19 +222,9 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
     data = temp;
 }
 
-/** Compare pair using second value */
-template<template <typename> class P = std::less >
-struct compare_pair_second {
-    template<class T1, class T2> bool operator()(
-            const std::pair<T1, T2>& left, 
-            const std::pair<T1, T2>& right
-            ) {
-        return P<T2>()(left.second, right.second);
-    }
-};
-
 /** Class for some utililty functions */
 namespace Util {
+
     Int hash_function(std::string s);
     int nextc(std::istream&);
     void cleanup();
@@ -243,6 +236,17 @@ namespace Util {
         std::transform(t2.begin(),t2.end(),t2.begin(),toupper);
         return (t1 != t2);
     }
+
+    /** Compare pair using second value */
+    template<template <typename> class P = std::less >
+    struct compare_pair_second {
+        template<class T1, class T2> bool operator()(
+                const std::pair<T1, T2>& left, 
+                const std::pair<T1, T2>& right
+                ) {
+            return P<T2>()(left.second, right.second);
+        }
+    };
 
     /** General string option list*/
     struct Option {
@@ -364,6 +368,7 @@ namespace Util {
         }
     };
     /*end*/
+
 }
 
 #endif
