@@ -972,11 +972,19 @@ int Prepare::decomposeMesh(Int step) {
             }
             for(i = 0;i < gBCS;i++)
                 gCells[i] = reordered[i];
+
             /*write mesh*/
             stringstream path;
-            path << gMeshName << "_" << step << ".bin";
-            Util::ofstream_bin os(path.str());
-            os << gMesh;
+            path << gMeshName << "_" << step;
+            string str = path.str();
+
+            if(System::exists(str + ".txt")) {
+                ofstream os(str + ".txt");
+                os << gMesh;
+            } else if(System::exists(str + ".bin")) {
+                Util::ofstream_bin os(str + ".bin");
+                os << gMesh;
+            }
         }
 
         /* write slave grids*/
@@ -1045,14 +1053,19 @@ int Prepare::decomposeMesh(Int step) {
                 cLocAll[count++] = cLoc[ID][i];
         }
         forEach(fields,i) {
-            stringstream path;
-            path << fields[i] << step << ".txt";
-            string str = path.str();
-            ofstream of(str);
-
-            /*fields*/
             BaseField* pf = BaseField::findField(fields[i]);
-            pf->write(of, &cLocAll);
+
+            stringstream path;
+            path << fields[i] << step;
+            string str = path.str();
+
+            if(System::exists(str + ".txt")) {
+                ofstream os(str + ".txt");
+                pf->write(os, &cLocAll);
+            } else if(System::exists(str + ".bin")) {
+                Util::ofstream_bin os(str + ".bin");
+                pf->write(os, &cLocAll);
+            }
         }
 
         /*destroy*/ 
