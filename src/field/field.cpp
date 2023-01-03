@@ -219,6 +219,9 @@ void Mesh::initGeomMeshFields() {
             isGhostFace[faceid] = 1;
         }
     }
+    /*finish comm*/
+    commv.recv();
+    commc.recv();
     /* Facet interpolation factor to the owner of the face.
      * Neighbor takes (1 - f) */
     forEach(gFacets,faceid) {
@@ -238,9 +241,6 @@ void Mesh::initGeomMeshFields() {
                     dot(cC[c2] - cC[c1],fN[k]);
         }
     }
-    /*finish comm*/
-    commv.recv();
-    commc.recv();
     /*construct diffusivity factor*/
     if(DG::NPMAT) {
         using namespace DG;
