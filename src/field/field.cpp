@@ -1038,6 +1038,12 @@ int Prepare::decomposeMesh(Int step) {
         }
 
         /*master fields*/
+        IntVector cLocAll(gBCS * DG::NP);
+        count = 0;
+        for(ID = 0;ID < total;ID++) {
+            forEach(cLoc[ID], i)
+                cLocAll[count++] = cLoc[ID][i];
+        }
         forEach(fields,i) {
             stringstream path;
             path << fields[i] << step << ".txt";
@@ -1045,12 +1051,6 @@ int Prepare::decomposeMesh(Int step) {
             ofstream of(str);
 
             /*fields*/
-            IntVector cLocAll(gBCS);
-            count = 0;
-            for(ID = 0;ID < total;ID++) {
-                forEach(cLoc[ID], i)
-                    cLocAll[count++] = cLoc[ID][i];
-            }
             BaseField* pf = BaseField::findField(fields[i]);
             pf->write(of, &cLocAll);
         }
