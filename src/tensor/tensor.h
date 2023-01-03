@@ -534,37 +534,37 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 /** \name Tensor array expressions */
 
 //@{
-#define DEFINE_UNARY_TOP_PART1_A(DApOpp,func,type,rtype)		                \
-	class DApOpp {												                \
-	public:														                \
-		DApOpp() { }											                \
-		static inline rtype apply(type a)						                \
-		{ return func(a); }										                \
-	};
-#define DEFINE_UNARY_TOP_PART1_B(DApOpp,$,type,rtype)		                    \
-	class DApOpp {												                \
-	public:														                \
-		DApOpp() { }											                \
-		static inline rtype apply(type a)						                \
-		{ return ($ a); }										                \
-	};
+#define DEFINE_UNARY_TOP_PART1_A(DApOpp,func,type,rtype)                        \
+    class DApOpp {                                                              \
+    public:                                                                     \
+        DApOpp() { }                                                            \
+        static inline rtype apply(type a)                                       \
+        { return func(a); }                                                     \
+    };
+#define DEFINE_UNARY_TOP_PART1_B(DApOpp,$,type,rtype)                           \
+    class DApOpp {                                                              \
+    public:                                                                     \
+        DApOpp() { }                                                            \
+        static inline rtype apply(type a)                                       \
+        { return ($ a); }                                                       \
+    };
 #define DEFINE_UNARY_TOP_PART2(DApOpp,func,type,rtype)                          \
-	DVExpr<rtype,DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> >		                \
-	func(const DVExpr<type,A>& a) {						                        \
-		typedef DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> ExprT;	                \
-		return DVExpr<rtype,ExprT>(ExprT(a));					                \
-	}
+    DVExpr<rtype,DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> >                     \
+    func(const DVExpr<type,A>& a) {                                             \
+        typedef DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> ExprT;                 \
+        return DVExpr<rtype,ExprT>(ExprT(a));                                   \
+    }
 
 #define DEFINE_UNARY_OP(x,func,type)                                            \
     template<class type>                                                        \
     DEFINE_UNARY_TOP_PART1_A(x,func,type,type)                                  \
-    template<class type, class A>								                \
+    template<class type, class A>                                               \
     DEFINE_UNARY_TOP_PART2(x<type>,func,type,type)
         
 #define DEFINE_UNARY_OP2(x,$,func,type)                                         \
     template<class type>                                                        \
     DEFINE_UNARY_TOP_PART1_B(x,$,type,type)                                     \
-    template<class type, class A>								                \
+    template<class type, class A>                                               \
     DEFINE_UNARY_TOP_PART2(x<type>,func,type,type)
         
 #define DEFINE_UNARY_SOP(x,func,type,rtype)                                     \
@@ -572,90 +572,90 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
     DEFINE_UNARY_TOP_PART1_A(x,func,type,rtype)                                 \
     template<class type, class A>                                               \
     DEFINE_UNARY_TOP_PART2(x<type>,func,type,rtype)
-	
+    
 
-#define DEFINE_BINARY_TOP_PART1_A(DApOpp,$,func,type1,type2,rtype)		        \
-	class DApOpp {												                \
-	public:														                \
-		DApOpp() { }											                \
-		static inline rtype apply(type1 a, type2 b)				                \
-		{ return (a $ b); }				                                        \
-	};
-#define DEFINE_BINARY_TOP_PART1_B(DApOpp,$,func,type1,type2,rtype)		        \
-	class DApOpp {												                \
-	public:														                \
-		DApOpp() { }											                \
-		static inline rtype apply(type1 a, type2 b)				                \
-		{ return func(a, b); }				                                    \
-	};	
-#define DEFINE_BINARY_TOP_PART2(DApOpp,$,func,type1,type2,rtype)	            \
-	DVExpr<rtype,DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> >	    \
-	func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {		            \
-		typedef DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> ExprT;	\
-		return DVExpr<rtype,ExprT>(ExprT(a,b));					                \
-	}
-	
+#define DEFINE_BINARY_TOP_PART1_A(DApOpp,$,func,type1,type2,rtype)              \
+    class DApOpp {                                                              \
+    public:                                                                     \
+        DApOpp() { }                                                            \
+        static inline rtype apply(type1 a, type2 b)                             \
+        { return (a $ b); }                                                     \
+    };
+#define DEFINE_BINARY_TOP_PART1_B(DApOpp,$,func,type1,type2,rtype)              \
+    class DApOpp {                                                              \
+    public:                                                                     \
+        DApOpp() { }                                                            \
+        static inline rtype apply(type1 a, type2 b)                             \
+        { return func(a, b); }                                                  \
+    };  
+#define DEFINE_BINARY_TOP_PART2(DApOpp,$,func,type1,type2,rtype)                \
+    DVExpr<rtype,DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> >      \
+    func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {                  \
+        typedef DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> ExprT;  \
+        return DVExpr<rtype,ExprT>(ExprT(a,b));                                 \
+    }
+    
 #define DEFINE_BINARY_OP(x,$,func,type)                                         \
     template<class type>                                                        \
     DEFINE_BINARY_TOP_PART1_A(x,$,func,type,type,type)                          \
     template<class type, class A, class B>                                      \
-    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,type)	
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,type)  
 
 #define DEFINE_BINARY_OP2(x,func,type)                                          \
     template<class type>                                                        \
     DEFINE_BINARY_TOP_PART1_B(x,$,func,type,type,type)                          \
     template<class type, class A, class B>                                      \
-    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,type)	
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,type)  
    
 #define DEFINE_BINARY_OP_A(x,$,func,type,rtype)                                 \
     template<class type>                                                        \
     DEFINE_BINARY_TOP_PART1_A(x,$,func,type,type,rtype)                         \
     template<class type, class A, class B>                                      \
-    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,rtype)	
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,rtype) 
 
 #define DEFINE_BINARY_OP2_A(x,func,type,rtype)                                  \
     template<class type>                                                        \
     DEFINE_BINARY_TOP_PART1_B(x,$,func,type,type,rtype)                         \
     template<class type, class A, class B>                                      \
-    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,rtype)	
+    DEFINE_BINARY_TOP_PART2(x<type>,$,func,type,type,rtype) 
              
 #define DEFINE_BINARY_OP_O(x,$,func,type1,type2,rtype)                          \
     DEFINE_BINARY_TOP_PART1_A(x,$,func,type1,type2,rtype)                       \
-    template<class A, class B>									                \
+    template<class A, class B>                                                  \
     DEFINE_BINARY_TOP_PART2(x,$,func,type1,type2,rtype)
 
 #define DEFINE_BINARY_OP2_O(x,func,type1,type2,rtype)                           \
     DEFINE_BINARY_TOP_PART1_B(x,$,func,type1,type2,rtype)                       \
-    template<class A, class B>									                \
+    template<class A, class B>                                                  \
     DEFINE_BINARY_TOP_PART2(x,$,func,type1,type2,rtype)
 
 #define DEFINE_BINARY_TSOP_PART1_A(DApOpp,$,func,type,type1,type2)              \
-	class DApOpp {												                \
-	public:														                \
-		DApOpp() { }											                \
-		static inline type apply(type1 a, type2 b)				                \
-		{ return (a $ b); }				                                        \
-	};
+    class DApOpp {                                                              \
+    public:                                                                     \
+        DApOpp() { }                                                            \
+        static inline type apply(type1 a, type2 b)                              \
+        { return (a $ b); }                                                     \
+    };
 #define DEFINE_BINARY_TSOP_PART1_B(DApOpp,$,func,type,type1,type2)              \
-	class DApOpp {												                \
-	public:														                \
-		DApOpp() { }											                \
-		static inline type apply(type1 a, type2 b)				                \
-		{ return func(a, b); }				                                    \
-	};	
-#define DEFINE_BINARY_TSOP_PART2_I(DApOpp,$,func,type,type2)		            \
-	DVExpr<type,DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> >	            \
-	func(const DVExpr<type,A>& a, const type2& b) {			                    \
-		typedef DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> ExprT;	        \
-		return DVExpr<type,ExprT>(ExprT(a,b));						            \
-	}
-#define DEFINE_BINARY_TSOP_PART2_II(DApOpp,$,func,type,type2)		            \
-	DVExpr<type,DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> >	            \
-	func(const type2& a, const DVExpr<type,A>& b) {			                    \
-		typedef DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> ExprT;	    \
-		return DVExpr<type,ExprT>(ExprT(a,b));						            \
-	}
-					
+    class DApOpp {                                                              \
+    public:                                                                     \
+        DApOpp() { }                                                            \
+        static inline type apply(type1 a, type2 b)                              \
+        { return func(a, b); }                                                  \
+    };  
+#define DEFINE_BINARY_TSOP_PART2_I(DApOpp,$,func,type,type2)                    \
+    DVExpr<type,DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> >                \
+    func(const DVExpr<type,A>& a, const type2& b) {                             \
+        typedef DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> ExprT;           \
+        return DVExpr<type,ExprT>(ExprT(a,b));                                  \
+    }
+#define DEFINE_BINARY_TSOP_PART2_II(DApOpp,$,func,type,type2)                   \
+    DVExpr<type,DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> >             \
+    func(const type2& a, const DVExpr<type,A>& b) {                             \
+        typedef DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> ExprT;        \
+        return DVExpr<type,ExprT>(ExprT(a,b));                                  \
+    }
+                    
 #define DEFINE_BINARY_SOP(x,$,func,type,type2)                                  \
     template<class type>                                                        \
     DEFINE_BINARY_TSOP_PART1_A(x,$,func,type,type,type2)                        \
@@ -685,7 +685,7 @@ public:
         : iter_(a)
     { }
     C operator[](Int i) const { 
-    	return Op::apply(iter_[i]); 
+        return Op::apply(iter_[i]); 
     }
 };
 
@@ -698,8 +698,8 @@ public:
     DVBinExpr(const A& a, const B& b)
         : iter1_(a), iter2_(b)
     { }
-	C operator[](Int i) const { 
-    	return Op::apply(iter1_[i], iter2_[i]); 
+    C operator[](Int i) const { 
+        return Op::apply(iter1_[i], iter2_[i]); 
     }
 };
 
@@ -712,8 +712,8 @@ public:
     DVBinScaExpr(const A& a, const B& b)
         : iter1_(a), iter2_(b)
     { }
-	C operator[](Int i) const { 
-    	return Op::apply(iter1_[i], iter2_); 
+    C operator[](Int i) const { 
+        return Op::apply(iter1_[i], iter2_); 
     }
 };
 
@@ -726,8 +726,8 @@ public:
     DVBinScaInvExpr(const A& a, const B& b)
         : iter1_(a), iter2_(b)
     { }
-	C operator[](Int i) const { 
-    	return Op::apply(iter1_, iter2_[i]); 
+    C operator[](Int i) const { 
+        return Op::apply(iter1_, iter2_[i]); 
     }
 };
 
@@ -738,9 +738,9 @@ protected:
 public:
     DVExpr()
     { }
-	DVExpr(const C& a)
-		: P(a)
-	{ }
+    DVExpr(const C& a)
+        : P(a)
+    { }
     type operator[](Int i) const
     { return P[i]; }
 };

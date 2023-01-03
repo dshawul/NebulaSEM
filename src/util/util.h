@@ -122,7 +122,7 @@ namespace Util{
             ofstream_bin(const std::string& filename) {
                 mos = std::ofstream(filename, std::ios::out | std::ios::binary);
             }
-#define AddB(T) \
+#define AddB(T)                                                                             \
             friend Util::ofstream_bin& operator << (Util::ofstream_bin& os, const T& p) {   \
                 os.mos.write((char*)&p, sizeof(p));                                         \
                 return os;                                                                  \
@@ -158,7 +158,7 @@ namespace Util{
             ifstream_bin(const std::string& filename) {
                 mos = std::ifstream(filename, std::ios::in | std::ios::binary);
             }
-#define AddB(T) \
+#define AddB(T)                                                                             \
             friend Util::ifstream_bin& operator >> (Util::ifstream_bin& is, T& p) {         \
                 is.mos.read((char*)&p, sizeof(p));                                          \
                 return is;                                                                  \
