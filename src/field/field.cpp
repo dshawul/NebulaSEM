@@ -1026,13 +1026,14 @@ int Prepare::decomposeMesh(Int step) {
             pmesh = &meshes[ID];
 
             forEach(fields,i) {
+                BaseField* pf = BaseField::findField(fields[i]);
+                if(!pf) continue;
+
                 stringstream path;
                 path << gMeshName << ID << "/" << fields[i] << step << ".bin";
                 string str = path.str();
-                Util::ofstream_bin os(str);
 
-                /*fields*/
-                BaseField* pf = BaseField::findField(fields[i]);
+                Util::ofstream_bin os(str);
                 pf->write(os, &cLoc[ID]);
 
                 /*inter mesh boundaries*/
@@ -1054,6 +1055,7 @@ int Prepare::decomposeMesh(Int step) {
         }
         forEach(fields,i) {
             BaseField* pf = BaseField::findField(fields[i]);
+            if(!pf) continue;
 
             stringstream path;
             path << fields[i] << step;
@@ -1106,6 +1108,8 @@ int Prepare::mergeFields(Int step) {
     /*read and merge fields*/
     forEach(fields,i) {
         BaseField* pf = BaseField::findField(fields[i]);
+        if(!pf) continue;
+
         Int offset = 0;
         for(Int ID = 0;ID < total;ID++) {
             stringstream fpath;
