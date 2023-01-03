@@ -1,3 +1,21 @@
 size 3
 0 uniform 2 2 0
-0 {}
+4
+{
+left {
+   type DIRICHLET 
+   value 2 2 0
+}
+bottom {
+   type DIRICHLET 
+   value 2 2 0
+}
+right {
+   type DIRICHLET 
+   value 2 2 0
+}
+top {
+   type DIRICHLET 
+   value 2 2 0
+}
+}
