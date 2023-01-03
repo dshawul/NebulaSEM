@@ -117,6 +117,7 @@ void Vtk::write_vtk(Int step) {
         }
     } else {
         using namespace DG;
+        Int ncells;
         /*vertices*/
         {
             of << "POINTS " << gBCSfield << " double" << endl;
@@ -129,7 +130,7 @@ void Vtk::write_vtk(Int step) {
         {
             //points
             if(NPX == 1 && NPY == 1 && NPZ == 1) {
-                Int ncells = gBCS;
+                ncells = gBCS;
                 of << "CELLS " << ncells << " " << ncells * 2 << endl;
                 Int r = 0, s = 0, t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -143,7 +144,7 @@ void Vtk::write_vtk(Int step) {
                     of << "1" << endl;
             //lines
             } else if(NPX == 1 && NPY == 1) {
-                Int ncells = gBCS * (NPZ - 1);
+                ncells = gBCS * (NPZ - 1);
                 of << "CELLS " << ncells << " " << ncells * 3 << endl;
                 Int r = 0, s = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -158,7 +159,7 @@ void Vtk::write_vtk(Int step) {
                 for(i = 0;i < ncells;i++)
                     of << "3" << endl;
             } else if(NPX == 1 && NPZ == 1) {
-                Int ncells = gBCS * (NPY - 1);
+                ncells = gBCS * (NPY - 1);
                 of << "CELLS " << ncells << " " << ncells * 3 << endl;
                 Int r = 0, t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -173,7 +174,7 @@ void Vtk::write_vtk(Int step) {
                 for(i = 0;i < ncells;i++)
                     of << "3" << endl;
             } else  if(NPY == 1 && NPZ == 1) {
-                Int ncells = gBCS * (NPX - 1);
+                ncells = gBCS * (NPX - 1);
                 of << "CELLS " << ncells << " " << ncells * 3 << endl;
                 Int s = 0, t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -189,7 +190,7 @@ void Vtk::write_vtk(Int step) {
                     of << "3" << endl;
             //polygons
             } else if(NPX == 1) {
-                Int ncells = gBCS * (NPY - 1) * (NPZ - 1);
+                ncells = gBCS * (NPY - 1) * (NPZ - 1);
                 of << "CELLS " << ncells << " " << ncells * 5 << endl;
                 Int r = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -207,7 +208,7 @@ void Vtk::write_vtk(Int step) {
                 for(i = 0;i < ncells;i++)
                     of << "9" << endl;
             } else if(NPY == 1) {
-                Int ncells = gBCS * (NPX - 1) * (NPZ - 1);
+                ncells = gBCS * (NPX - 1) * (NPZ - 1);
                 of << "CELLS " << ncells << " " << ncells * 5 << endl;
                 Int s = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -225,7 +226,7 @@ void Vtk::write_vtk(Int step) {
                 for(i = 0;i < ncells;i++)
                     of << "9" << endl;
             } else if(NPZ == 1) {
-                Int ncells = gBCS * (NPX - 1) * (NPY - 1);
+                ncells = gBCS * (NPX - 1) * (NPY - 1);
                 of << "CELLS " << ncells << " " << ncells * 5 << endl;
                 Int t = 0;
                 for(Int ci = 0;ci < gBCS;ci++)
@@ -244,7 +245,7 @@ void Vtk::write_vtk(Int step) {
                     of << "9" << endl;
             //cells
             } else {
-                Int ncells = gBCS * (NPX - 1) * (NPY - 1) * (NPZ - 1);
+                ncells = gBCS * (NPX - 1) * (NPY - 1) * (NPZ - 1);
                 of << "CELLS " << ncells << " " << ncells * 9 << endl;
                 for(Int ci = 0;ci < gBCS;ci++)
                     for(Int r = 0;r < NPX - 1;r++)
@@ -272,6 +273,13 @@ void Vtk::write_vtk(Int step) {
             VectorCellField::count_writable() +
             STensorCellField::count_writable() +
             TensorCellField::count_writable();
+        /*cells*/
+        if(write_cell_value) {
+            of << "CELL_DATA " << ncells << endl;
+            of << "FIELD attributes "<< 1 << endl;
+            of << "cellID  1 " << ncells << " int" << endl;
+            for(Int i = 0;i < ncells;i++) of << i << endl;
+        }
         /*vertices*/
         {
             of << "POINT_DATA " << gBCSfield << endl;
