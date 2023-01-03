@@ -1,6 +1,6 @@
 size 1
 0 uniform 0.0264
-5
+3
 {
 inlet {
 	type INVERSE 
@@ -11,12 +11,6 @@ inlet {
 outlet {
 	type NEUMANN 
 	value 0
-}
-sides {
-	type SYMMETRY
-}
-top {
-	type SYMMETRY
 }
 WALLS {
 	type NEUMANN

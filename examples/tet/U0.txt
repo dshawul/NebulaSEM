@@ -1,6 +1,6 @@
 size 3
 0 uniform 16.75 0 0
-5
+3
 {
 inlet {
 	type LOG 
@@ -11,10 +11,6 @@ inlet {
 outlet {
 	type NEUMANN 
 	value 0 0 0
-}
-top {
-	type DIRICHLET
-	value 16.75 0 0
 }
 WALLS {
 	type DIRICHLET 

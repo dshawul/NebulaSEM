@@ -1,6 +1,6 @@
 size 1
 0 uniform 0
-5
+3
 {
 inlet {
 	type NEUMANN 
@@ -9,9 +9,6 @@ inlet {
 outlet {
 	type DIRICHLET 
 	value 0
-}
-top {
-	type SYMMETRY
 }
 WALLS {
 	type NEUMANN 
