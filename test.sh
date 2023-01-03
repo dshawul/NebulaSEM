@@ -2,9 +2,35 @@
 
 set -e
 
-#set case file
-case=examples/cavity/
-grid=cavity
+#display help
+usage() {
+    echo "Usage: $0 [options]" >&2
+    echo
+    echo "   -n,--np       Number of processors to use."
+    echo "   -c,--case     Path to grid name under a test case directory."
+    echo "   -h,--help     Display this help message."
+    echo
+    exit 0
+}
+
+#default test case
+case=examples/cavity/cavity
+nprocs=1
+
+#process command line args
+while :; do
+    case $1 in
+        --help|-h) usage; exit 0;;
+        --np|-n) shift; nprocs=$1;; 
+        --case|-c) shift; case=$1;; 
+        *) break
+    esac
+    shift
+done
+
+#get base and dir names
+grid=$(basename $case)
+case=$(dirname $case)
 
 #run solver
 run() {
@@ -18,33 +44,38 @@ run() {
 }
 
 #prepare directory
-rundir=run$1
+rundir=run$nprocs
 rm -rf $rundir
 cp -r $case $rundir
 cd $rundir
 
 #run
-run $grid $1
+run $grid $nprocs
 
+#find the control field
+fields=$(cat controls | grep fields)
+fields="${fields//\{/ }"
+fields="${fields//\}/ }"
+field=$(echo $fields | awk '{print $3}')
 
 #merge
-if [ $1 -gt 1 ]; then
+if [ $nprocs -gt 1 ]; then
     t=1
-    file=(./grid0/U$t.*)
+    file=(./grid0/$field$t.*)
     while [ -f "$file" ]; do
-        mpirun -n $1 ../bin/prepare ./controls -merge -start $t
+        mpirun -n $nprocs ../bin/prepare ./controls -merge -start $t
         t=$((t+1))
-        file=(./grid0/U$t.*)
+        file=(./grid0/$field$t.*)
     done
 fi
 
 #vtk
 t=0
-file=(./U$t.*)
+file=(./$field$t.*)
 while [ -f "$file" ]; do
     ../bin/prepare ./controls -vtk -start $t
     t=$((t+1))
-    file=(./U$t.*)
+    file=(./$field$t.*)
 done
 
 cd ..
