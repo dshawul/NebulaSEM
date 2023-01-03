@@ -35,3 +35,12 @@ different test case.
 
 This will generate a `run1` directory in which you can find the results including VTK
 files needed for visualization by paraview.
+
+Here are images of the decompostion using METIS with 12 mpi ranks, and the magnitude of
+velocity plots.
+
+<p align="center">
+  <img width="500px" src="./images/decomp.png"/>
+  <img width="500px" src="./images/U.png"/>
+</p>
+
