@@ -65,7 +65,7 @@ namespace Controls {
     Int print_time = 0;
     CommMethod parallel_method = BLOCKED;
     Vector gravity = Vector(0,0,-9.860616);
-    FILE_FORMAT field_format = BINARY;
+    FILE_FORMAT write_format = BINARY;
 }
 /**
   Find the last refined grid
@@ -480,6 +480,8 @@ void Mesh::enroll(Util::ParamList& params) {
     params.enroll("state",op);
     op = new Option(&parallel_method,2,"BLOCKED","ASYNCHRONOUS");
     params.enroll("parallel_method",op);
+    op = new Option(&write_format,2,"TEXT","BINARY");
+    params.enroll("write_format",op);
     op = new Util::BoolOption(&save_average);
     params.enroll("average",op);
     params.enroll("print_time",&print_time);
@@ -998,9 +1000,16 @@ int Prepare::decomposeMesh(Int step) {
 
             /*mesh*/
             stringstream path1;
-            path1 << path.str() << "/" << gMeshName << "_" << step << ".bin";
-            Util::ofstream_bin os(path1.str());
-            os << *pmesh << "\n";
+            path1 << path.str() << "/" << gMeshName << "_" << step;
+            string str = path1.str();
+
+            if(Controls::write_format == Controls::TEXT) {
+                ofstream os(str + ".txt");
+                os << *pmesh << "\n";
+            } else {
+                Util::ofstream_bin os(str + ".bin");
+                os << *pmesh << "\n";
+            }
         }
 
         /***************************
@@ -1030,19 +1039,27 @@ int Prepare::decomposeMesh(Int step) {
                 if(!pf) continue;
 
                 stringstream path;
-                path << gMeshName << ID << "/" << fields[i] << step << ".bin";
+                path << gMeshName << ID << "/" << fields[i] << step;
                 string str = path.str();
 
-                Util::ofstream_bin os(str);
-                pf->write(os, &cLoc[ID]);
-
-                /*inter mesh boundaries*/
-                forEachIt(pmesh->mBoundaries,it) {
-                    if(it->first.find("interMesh") != string::npos) {
-                       os << it->first << " "
-                           << "{\n\ttype GHOST\n}\n";
+                if(Controls::write_format == Controls::TEXT) {
+                    std::ofstream os(str + ".txt");
+                    pf->write(os, &cLoc[ID]);
+                    /*inter mesh boundaries*/
+                    forEachIt(pmesh->mBoundaries,it) {
+                        if(it->first.find("interMesh") != string::npos)
+                           os << it->first << " " << "{\n\ttype GHOST\n}\n";
+                    }
+                } else {
+                    Util::ofstream_bin os(str + ".bin");
+                    pf->write(os, &cLoc[ID]);
+                    /*inter mesh boundaries*/
+                    forEachIt(pmesh->mBoundaries,it) {
+                        if(it->first.find("interMesh") != string::npos)
+                           os << it->first << " " << "{\n\ttype GHOST\n}\n";
                     }
                 }
+
             }
         }
 
@@ -1113,13 +1130,19 @@ int Prepare::mergeFields(Int step) {
         Int offset = 0;
         for(Int ID = 0;ID < total;ID++) {
             stringstream fpath;
-            fpath << gMeshName << ID << "/" << fields[i] << step << ".bin";
+            fpath << gMeshName << ID << "/" << fields[i] << step;
             string str = fpath.str();
-            if(!System::exists(str))
+
+            Int nread;
+            if(System::exists(str + ".txt")) {
+                std::ifstream is(str + ".txt");
+                nread = pf->readInternal(is,offset);
+            } else if(System::exists(str + ".bin")) {
+                Util::ifstream_bin is(str + ".bin");
+                nread = pf->readInternal(is,offset);
+            } else {
                 continue;
-            /*read*/
-            Util::ifstream_bin is(str);
-            Int nread = pf->readInternal(is,offset);
+            }
             offset += nread;
         }
     }

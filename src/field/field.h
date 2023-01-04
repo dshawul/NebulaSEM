@@ -361,7 +361,7 @@ namespace Controls {
 
     extern Vector gravity;
 
-    extern FILE_FORMAT field_format;
+    extern FILE_FORMAT write_format;
 }
 
 /** Read/Write access for field */
@@ -1243,7 +1243,7 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
     std::stringstream path;
     path << fName << step;
 
-    if(Controls::field_format == Controls::TEXT) {
+    if(Controls::write_format == Controls::TEXT) {
         std::ofstream of(path.str() + ".txt");
         this->write(of, cMap);
     } else {
