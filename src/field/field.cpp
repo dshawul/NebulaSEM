@@ -313,6 +313,7 @@ void Mesh::initGeomMeshFields() {
                 bc->cname = "DIRICHLET";
                 bc->value = Scalar(0);
             } else if(bname.find("interMesh") != std::string::npos) {
+                bc->cname = "GHOST";
             } else {
                 bc->cname = "NEUMANN";
                 bc->value = Scalar(0);
