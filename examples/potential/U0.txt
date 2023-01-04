@@ -3,16 +3,16 @@ size 3
 4
 {
 inlet {
-	type DIRICHLET
-	value 1 0 0 
+    type DIRICHLET
+    value 1 0 0 
 }
 outlet {
-	type NEUMANN
+    type NEUMANN
 }
 top {
-	type SYMMETRY
+    type SYMMETRY
 }
 WALLS {
-	type SYMMETRY
+    type SYMMETRY
 }
 }

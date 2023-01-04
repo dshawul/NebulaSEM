@@ -11,7 +11,7 @@ general
 ######################################
     rho                          1.177
     viscosity                    1.5
-	
+    
 #############################
 #  Time increment
 #############################
@@ -29,8 +29,8 @@ general
 
     convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-	time_scheme                  BDF1
-	runge_kutta                  1
+    time_scheme                  BDF1
+    runge_kutta                  1
     implicit_factor              0
     blend_factor                 0
     parallel_method              BLOCKED

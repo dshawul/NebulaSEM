@@ -3,18 +3,18 @@ size 1
 5
 {
 inlet1 {
-	type NONE
+    type NONE
 }
 inlet2 {
-	type NONE
+    type NONE
 }
 outlet {
-	type NONE
+    type NONE
 }
 topbot {
-	type NONE
+    type NONE
 }
 WALLS {
-	type WALL
+    type WALL
 }
 }

@@ -3,9 +3,9 @@ size 1
 2
 {
 top_WALL {
-	type NONE
+    type NONE
 }
 all_WALL {
-	type NONE
+    type NONE
 }
 }

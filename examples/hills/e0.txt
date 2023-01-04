@@ -3,22 +3,22 @@ size 1
 5
 {
 inlet {
-	type INVERSE 
-	value 3.02
-	shape 0.024
+    type INVERSE 
+    value 3.02
+    shape 0.024
 }
 outlet {
-	type NEUMANN 
-	value 0
+    type NEUMANN 
+    value 0
 }
 sides {
-	type SYMMETRY
+    type SYMMETRY
 }
 top {
-	type SYMMETRY
+    type SYMMETRY
 }
 WALLS {
-	type NEUMANN
-	value 0
+    type NEUMANN
+    value 0
 }
 }

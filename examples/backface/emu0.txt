@@ -3,15 +3,15 @@ size 1
 4
 {
 inlet {
-	type NONE
+    type NONE
 }
 outlet {
-	type NONE
+    type NONE
 }
 top {
-	type NONE
+    type NONE
 }
 WALLS {
-	type ROUGHWALL
+    type ROUGHWALL
 }
 }

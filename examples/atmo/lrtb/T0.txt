@@ -3,12 +3,12 @@ size 1
 3
 {
 top {
-	type NEUMANN
+    type NEUMANN
 }
 bottom {
-	type NEUMANN
+    type NEUMANN
 }
 sides {
-	type NEUMANN
+    type NEUMANN
 }
 }

@@ -3,12 +3,12 @@ size 1
 3
 {
 inlet {
-	type NONE
+    type NONE
 }
 outlet {
-	type NONE
+    type NONE
 }
 WALLS {
-	type ROUGHWALL
+    type ROUGHWALL
 }
 }

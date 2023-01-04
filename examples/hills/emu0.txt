@@ -3,18 +3,18 @@ size 1
 5
 {
 inlet {
-	type NONE
+    type NONE
 }
 outlet {
-	type NONE
+    type NONE
 }
 sides {
-	type NONE
+    type NONE
 }
 top {
-	type NONE
+    type NONE
 }
 WALLS {
-	type ROUGHWALL
+    type ROUGHWALL
 }
 }

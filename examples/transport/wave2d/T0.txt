@@ -3,9 +3,9 @@ size 1
 2
 {
 inout {
-	type CYCLIC
+    type CYCLIC
 }
 topbot {
-	type NEUMANN
+    type NEUMANN
 }
 }

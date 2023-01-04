@@ -3,6 +3,6 @@ size 3
 1
 {
 inout {
-	type CYCLIC
+    type CYCLIC
 }
 }

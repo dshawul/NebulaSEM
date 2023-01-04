@@ -3,9 +3,9 @@ size 3
 2
 {
 inout {
-	type NEUMANN
+    type NEUMANN
 }
 topbot {
-	type NEUMANN
+    type NEUMANN
 }
 }

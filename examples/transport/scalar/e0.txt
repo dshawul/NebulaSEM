@@ -3,11 +3,11 @@ size 1
 2
 {
 inlet {
-	type DIRICHLET 
-	value 0.003
+    type DIRICHLET 
+    value 0.003
 }
 outlet {
-	type NEUMANN 
-	value 0
+    type NEUMANN 
+    value 0
 }
 }
