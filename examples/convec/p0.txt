@@ -2,16 +2,16 @@ size 1
 0 uniform 0
 3
 {
-top {
-    type NEUMANN 
-    value 0
-}
-bottom {
-    type NEUMANN 
-    value 0
-}
-sides {
-    type NEUMANN 
-    value 0
-}
+    top {
+        type NEUMANN 
+            value 0
+    }
+    bottom {
+        type NEUMANN 
+            value 0
+    }
+    sides {
+        type NEUMANN 
+            value 0
+    }
 }

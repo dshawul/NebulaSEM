@@ -2,16 +2,16 @@ size 1
 0 uniform 300
 3
 {
-top {
-    type DIRICHLET
-    value 200
-}
-bottom {
-    type DIRICHLET 
-    value 300
-}
-sides {
-    type NEUMANN 
-    value 0
-}
+    top {
+        type DIRICHLET
+            value 200
+    }
+    bottom {
+        type DIRICHLET 
+            value 300
+    }
+    sides {
+        type NEUMANN 
+            value 0
+    }
 }

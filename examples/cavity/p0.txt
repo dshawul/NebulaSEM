@@ -2,12 +2,12 @@ size 1
 0 uniform 101325
 2
 {
-top_WALL {
-    type NEUMANN 
-    value 0
-}
-all_WALL {
-    type NEUMANN 
-    value 0
-}
+    top_WALL {
+        type NEUMANN 
+            value 0
+    }
+    all_WALL {
+        type NEUMANN 
+            value 0
+    }
 }

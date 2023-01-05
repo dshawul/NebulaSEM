@@ -2,24 +2,24 @@ size 1
 0 uniform 0
 5
 {
-inlet1 {
-    type NEUMANN
-    value 0
-}
-inlet2 {
-    type NEUMANN
-    value 0
-}
-outlet {
-    type DIRICHLET
-    value 0
-}
-topbot {
-    type NEUMANN
-    value 0
-}
-WALLS {
-    type NEUMANN
-    value 0
-}
+    inlet1 {
+        type NEUMANN
+            value 0
+    }
+    inlet2 {
+        type NEUMANN
+            value 0
+    }
+    outlet {
+        type DIRICHLET
+            value 0
+    }
+    topbot {
+        type NEUMANN
+            value 0
+    }
+    WALLS {
+        type NEUMANN
+            value 0
+    }
 }

@@ -2,13 +2,13 @@ size 1
 0 elliptic 300 2    5000 500 3000   2000 10000 2000
 3
 {
-top {
-    type NEUMANN
-}
-bottom {
-    type NEUMANN
-}
-sides {
-    type NEUMANN
-}
+    top {
+        type NEUMANN
+    }
+    bottom {
+        type NEUMANN
+    }
+    sides {
+        type NEUMANN
+    }
 }

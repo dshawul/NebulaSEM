@@ -2,17 +2,17 @@ size 1
 0 uniform 0
 4
 {
-inlet {
-    type DIRICHLET
-    value 100
-}
-outlet {
-    type DIRICHLET 
-}
-top {
-    type  NEUMANN
-}
-WALLS {
-    type NEUMANN
-}
+    inlet {
+        type DIRICHLET
+            value 100
+    }
+    outlet {
+        type DIRICHLET 
+    }
+    top {
+        type  NEUMANN
+    }
+    WALLS {
+        type NEUMANN
+    }
 }

@@ -2,16 +2,16 @@ size 1
 0 uniform 14.855
 3
 {
-inlet {
-    type DIRICHLET 
-    value 14.855
-}
-outlet {
-    type NEUMANN 
-    value 0
-}
-WALLS {
-    type NEUMANN
-    value 0
-}
+    inlet {
+        type DIRICHLET 
+            value 14.855
+    }
+    outlet {
+        type NEUMANN 
+            value 0
+    }
+    WALLS {
+        type NEUMANN
+            value 0
+    }
 }

@@ -2,22 +2,22 @@ size 1
 0 uniform 4.02
 5
 {
-inlet {
-    type DIRICHLET 
-    value 4.02
-}
-outlet {
-    type NEUMANN 
-    value 0
-}
-sides {
-    type SYMMETRY
-}
-top {
-    type SYMMETRY
-}
-WALLS {
-    type NEUMANN 
-    value 0
-}
+    inlet {
+        type DIRICHLET 
+            value 4.02
+    }
+    outlet {
+        type NEUMANN 
+            value 0
+    }
+    sides {
+        type SYMMETRY
+    }
+    top {
+        type SYMMETRY
+    }
+    WALLS {
+        type NEUMANN 
+            value 0
+    }
 }

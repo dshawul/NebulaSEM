@@ -2,7 +2,7 @@ size 3
 0 uniform 2 0 0
 1
 {
-inout {
-    type CYCLIC
-}
+    inout {
+        type CYCLIC
+    }
 }

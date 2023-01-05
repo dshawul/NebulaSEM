@@ -2,16 +2,16 @@ size 1
 0 uniform 0
 4
 {
-inlet {
-    type NONE
-}
-outlet {
-    type NONE
-}
-top {
-    type NONE
-}
-WALLS {
-    type ROUGHWALL
-}
+    inlet {
+        type NONE
+    }
+    outlet {
+        type NONE
+    }
+    top {
+        type NONE
+    }
+    WALLS {
+        type ROUGHWALL
+    }
 }
