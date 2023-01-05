@@ -56,7 +56,7 @@ general
 ############################
 prepare
 {
-    fields    5 { U p T k e }
+    fields    3 { U p T }
 }
 
 decomposition
