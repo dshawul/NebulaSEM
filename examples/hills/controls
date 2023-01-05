@@ -35,6 +35,7 @@ general
 ############################
 
     method                       PCG
+    preconditioner               DIAG
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
