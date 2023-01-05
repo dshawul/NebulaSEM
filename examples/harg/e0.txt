@@ -1,6 +1,6 @@
 size 1
 0 uniform 0.0032
-5
+4
 {
 inlet {
     type INVERSE 

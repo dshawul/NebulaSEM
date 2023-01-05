@@ -1,6 +1,6 @@
 size 3
 0 uniform 18.085 0 0
-5
+4
 {
 inlet {
     type LOG 

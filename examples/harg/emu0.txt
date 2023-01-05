@@ -17,6 +17,6 @@ top {
 WALLS {
     type ROUGHWALL
     ks   0.47
-     cs   0.5
+    cs   0.5
 }
 }
