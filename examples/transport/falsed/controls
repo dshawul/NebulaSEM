@@ -3,7 +3,7 @@ general
 ######################################
 #  mesh file name and solver type  
 ######################################
-    solver                       transport
+    solver                       convection
     mesh                         grid
 
 ######################################
@@ -25,7 +25,7 @@ general
 #  Discretization schemes
 ############################
 
-    convection_scheme            HYBRID
+    convection_scheme            UDS
     nonortho_scheme              OVER_RELAXED
     implicit_factor              1
     blend_factor                 0
@@ -51,8 +51,8 @@ general
 ############################
 #  DG polynomial order
 ############################
-    npx       4
-    npy       4
+    npx       0
+    npy       0
     npz       0
 }
 ############################
