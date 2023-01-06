@@ -3,21 +3,21 @@ size 3
 4
 {
     inlet {
-        type LOG 
-            value 18.085 0 0 
-            shape 0.024
-            zMax  500
+        type LOG
+        value 18.085 0 0
+        shape 0.024
+        zMax  500
     }
     outlet {
-        type NEUMANN 
-            value 0 0 0
+        type NEUMANN
+        value 0 0 0
     }
     top {
         type DIRICHLET
-            value 18.085 0 0
+        value 18.085 0 0
     }
     WALLS {
-        type DIRICHLET 
-            value 0 0 0
+        type DIRICHLET
+        value 0 0 0
     }
 }

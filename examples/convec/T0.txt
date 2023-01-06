@@ -4,14 +4,14 @@ size 1
 {
     top {
         type DIRICHLET
-            value 200
+        value 200
     }
     bottom {
-        type DIRICHLET 
-            value 300
+        type DIRICHLET
+        value 300
     }
     sides {
-        type NEUMANN 
-            value 0
+        type NEUMANN
+        value 0
     }
 }

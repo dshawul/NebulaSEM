@@ -3,15 +3,15 @@ size 3
 3
 {
     top {
-        type DIRICHLET 
-            value 0 0 0
+        type DIRICHLET
+        value 0 0 0
     }
     bottom {
-        type DIRICHLET 
-            value 0 0 0
+        type DIRICHLET
+        value 0 0 0
     }
     sides {
-        type DIRICHLET 
-            value 0 0 0
+        type DIRICHLET
+        value 0 0 0
     }
 }

@@ -4,22 +4,22 @@ size 1
 {
     inlet1 {
         type NEUMANN
-            value 0
+        value 0
     }
     inlet2 {
         type NEUMANN
-            value 0
+        value 0
     }
     outlet {
         type DIRICHLET
-            value 0
+        value 0
     }
     topbot {
         type NEUMANN
-            value 0
+        value 0
     }
     WALLS {
         type NEUMANN
-            value 0
+        value 0
     }
 }

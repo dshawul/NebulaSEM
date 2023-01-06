@@ -3,12 +3,12 @@ size 1
 5
 {
     inlet {
-        type DIRICHLET 
-            value 1.85
+        type DIRICHLET
+        value 1.85
     }
     outlet {
-        type NEUMANN 
-            value 0
+        type NEUMANN
+        value 0
     }
     sides {
         type SYMMETRY
@@ -17,7 +17,7 @@ size 1
         type SYMMETRY
     }
     WALLS {
-        type NEUMANN 
-            value 0
+        type NEUMANN
+        value 0
     }
 }

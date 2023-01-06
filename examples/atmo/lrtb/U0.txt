@@ -3,15 +3,15 @@ size 3
 3
 {
     top {
-        type SYMMETRY 
-            value 0 0 0
+        type SYMMETRY
+        value 0 0 0
     }
     bottom {
         type SYMMETRY
-            value 0 0 0
+        value 0 0 0
     }
     sides {
         type SYMMETRY
-            value 0 0 0
+        value 0 0 0
     }
 }

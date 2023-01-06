@@ -1,7 +1,7 @@
 general
 {
 ######################################
-#  mesh file name and solver type  
+#  mesh file name and solver type
 ######################################
     solver                       piso
     mesh                         grid

@@ -895,7 +895,7 @@ namespace Mesh {
     void   getProbeFaces(IntVector&);
     void   calc_courant(const VectorCellField& U, Scalar dt);
     template <class type>
-        void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
+    void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
 }
 
 namespace Prepare {
@@ -1502,13 +1502,13 @@ class ASYNC_COMM {
             forEachLglY(j) if(j != jj) {                                    \
                 Int index2 = INDEX4(ci,ii,j,kk);                            \
                 Int indexm = ci * NPMAT +                                   \
-                (tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));          \
+                    (tr ? INDEX_TY(ii,jj,kk,j) : INDEX_Y(ii,jj,kk,j));      \
                 val += Q[index2] * P.adg[indexm];                           \
             }                                                               \
             forEachLglZ(k) if(k != kk) {                                    \
                 Int index2 = INDEX4(ci,ii,jj,k);                            \
                 Int indexm = ci * NPMAT +                                   \
-                (tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));          \
+                    (tr ? INDEX_TZ(ii,jj,kk,k) : INDEX_Z(ii,jj,kk,k));      \
                 val += Q[index2] * P.adg[indexm];                           \
             }                                                               \
                                                                             \
@@ -2013,7 +2013,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             m.ap[FO[i]] += m.an[0][i];
             m.ap[FN[i]] += m.an[1][i];
         }
-        /*deferred correction*/
+    /*deferred correction*/
     } else {
         forEach(flux,i) {
             F = flux[i];

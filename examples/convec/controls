@@ -1,7 +1,7 @@
 general
 {
 ######################################
-#  mesh file name and solver type  
+#  mesh file name and solver type
 ######################################
     solver                       piso
     mesh                         grid
@@ -10,7 +10,7 @@ general
 ######################################
     rho                          1
     viscosity                    1e-5
-    
+
 #############################
 #  Time increment
 #############################

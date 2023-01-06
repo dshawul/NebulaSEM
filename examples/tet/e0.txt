@@ -3,17 +3,17 @@ size 1
 3
 {
     inlet {
-        type INVERSE 
-            value 1.3229
-            shape 0.024
-            zMax 100
+        type INVERSE
+        value 1.3229
+        shape 0.024
+        zMax 100
     }
     outlet {
-        type NEUMANN 
-            value 0
+        type NEUMANN
+        value 0
     }
     WALLS {
         type NEUMANN
-            value 0
+        value 0
     }
 }

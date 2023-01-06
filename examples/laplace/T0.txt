@@ -4,10 +4,10 @@ size 1
 {
     inlet {
         type DIRICHLET
-            value 100
+        value 100
     }
     outlet {
-        type DIRICHLET 
+        type DIRICHLET
     }
     top {
         type  NEUMANN

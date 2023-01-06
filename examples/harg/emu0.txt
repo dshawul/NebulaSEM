@@ -16,7 +16,7 @@ size 1
     }
     WALLS {
         type ROUGHWALL
-            ks   0.47
-            cs   0.5
+        ks   0.47
+        cs   0.5
     }
 }

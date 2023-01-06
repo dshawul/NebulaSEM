@@ -1,7 +1,7 @@
 general
 {
 ######################################
-#  mesh file name and solver type  
+#  mesh file name and solver type
 ######################################
     solver                       diffusion
     mesh                         grid
@@ -44,8 +44,8 @@ general
 #  Probe locations
 ############################
     probe 2 {
-      0.1 0 0
-      0.2 0 0
+        0.1 0 0
+        0.2 0 0
     }
     gravity   0 0 0
 ############################

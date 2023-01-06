@@ -3,14 +3,14 @@ size 3
 5
 {
     inlet {
-        type LOG 
-            value 16.75 0 0 
-            shape 0.024 
-            zG 240
+        type LOG
+        value 16.75 0 0
+        shape 0.024
+        zG 240
     }
     outlet {
-        type NEUMANN 
-            value 0 0 0
+        type NEUMANN
+        value 0 0 0
     }
     sides {
         type SYMMETRY
@@ -19,7 +19,7 @@ size 3
         type SYMMETRY
     }
     WALLS {
-        type DIRICHLET 
-            value 0 0 0
+        type DIRICHLET
+        value 0 0 0
     }
 }

@@ -1,7 +1,7 @@
 general
 {
 ######################################
-#  mesh file name and solver type  
+#  mesh file name and solver type
 ######################################
     solver                       euler
     mesh                         grid
@@ -11,7 +11,7 @@ general
 ######################################
     rho                          1.177
     viscosity                    1.5
-    
+
 #############################
 #  Time increment
 #############################
