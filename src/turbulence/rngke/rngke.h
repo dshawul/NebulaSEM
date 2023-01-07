@@ -11,7 +11,7 @@ struct RNG_KE_Model : public KE_Model {
     ScalarCellField C2eStar;
 
     /*constructor*/
-    RNG_KE_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
+    RNG_KE_Model(VectorCellField&,VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
 
     virtual void enroll();
     virtual void solve();

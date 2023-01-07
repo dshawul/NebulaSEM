@@ -333,8 +333,9 @@ void piso(istream& input) {
             T.construct("T",READWRITE);
 
         /*turbulence model*/
+        VectorCellField Fc;
         ScalarFacetField F;
-        Turbulence_Model* turb = Turbulence_Model::Select(U, F, rho, mu);
+        Turbulence_Model* turb = Turbulence_Model::Select(U, Fc, F, rho, mu);
 
         /*read parameters*/
         if(ait.start()) {
@@ -350,10 +351,9 @@ void piso(istream& input) {
         Iteration it(ait.get_step());
         ScalarCellField po = p;
         VectorCellField gP = -gradf(p);
-        VectorCellField Fc;
 
-        Fc = rho * U;
-        F = flx(Fc);
+        Fc = flxc(rho * U);
+        F = flx(rho * U);
 
         for (; !it.end(); it.next()) {
             /*
@@ -418,8 +418,8 @@ void piso(istream& input) {
 
             /*update fluctuations*/
             applyExplicitBCs(U, true, true);
-            Fc = rho * U;
-            F = flx(Fc);
+            Fc = flxc(rho * U);
+            F = flx(rho * U);
 
             /*solve turbulence transport equations*/
             turb->solve();
@@ -496,6 +496,7 @@ void euler(istream& input) {
 
         /*Read fields*/
         Iteration it(ait.get_step());
+        VectorCellField Fc;
         ScalarFacetField F;
         ScalarCellField mu;
 
@@ -516,11 +517,12 @@ void euler(istream& input) {
         /*Time loop*/
         for (; !it.end(); it.next()) {
             /*fluxes*/
+            Fc = flxc(rho * U);
             F = flx(rho * U);
             /*rho-equation*/
             {
                 ScalarCellMatrix M;
-                M = convection(rho, U, flx(U), pressure_UR);
+                M = convection(rho, flxc(U), flx(U), pressure_UR);
                 Solve(M);
             }
             /*artificial viscosity*/
@@ -529,7 +531,7 @@ void euler(istream& input) {
             /*T-equation*/
             {
                 ScalarCellMatrix M,Mt;
-                M = transport(T, rho * U, F, mu * iPr, t_UR, &rho);
+                M = transport(T, Fc, F, mu * iPr, t_UR, &rho);
                 Solve(M);
             }
             /*calculate p*/
@@ -542,7 +544,7 @@ void euler(istream& input) {
                     Sc += rho * VectorCellField(Controls::gravity);
                 /*solve*/
                 VectorCellMatrix M;
-                M = transport(U, rho * U, F, mu, velocity_UR, Sc, Scalar(0), &rho);
+                M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho);
                 Solve(M == -gradf(p));
             }
             /*courant number*/
@@ -579,10 +581,11 @@ void convection(istream& input) {
 
         /*Time loop*/
         Iteration it(ait.get_step());
+        VectorCellField Fc = flxc(U);
         ScalarFacetField F = flx(U);
         for (; !it.end(); it.next()) {
             ScalarCellMatrix M;
-            M = convection(T, U, F, t_UR);
+            M = convection(T, Fc, F, t_UR);
             Solve(M);
         }
     }
@@ -652,11 +655,12 @@ void transport(istream& input) {
 
         /*Time loop*/
         Iteration it(ait.get_step());
+        VectorCellField Fc = flxc(U);
         ScalarFacetField F = flx(U);
         ScalarCellField mu = DT;
         for (; !it.end(); it.next()) {
             ScalarCellMatrix M;
-            M = transport(T, U, F, mu, t_UR);
+            M = transport(T, Fc, F, mu, t_UR);
             Solve(M);
         }
     }

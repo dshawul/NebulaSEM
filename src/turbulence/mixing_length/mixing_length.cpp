@@ -27,8 +27,8 @@ Description:
         lm = min(Cs * Delta, kappa * y_wall)
 \endverbatim
 */
-MixingLength_Model::MixingLength_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
-    EddyViscosity_Model(tU,tF,trho,tmu),
+MixingLength_Model::MixingLength_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+    EddyViscosity_Model(tU,tFc,tF,trho,tmu),
     mixingLength(0),
     C(0.55),
     wallDamping(1),

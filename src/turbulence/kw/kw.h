@@ -5,7 +5,7 @@
 
 struct KW_Model : public KX_Model {
     /*constructor*/
-    KW_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
+    KW_Model(VectorCellField&,VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
 
     /*others*/
     virtual void enroll();

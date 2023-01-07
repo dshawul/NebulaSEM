@@ -14,7 +14,7 @@ struct MixingLength_Model : public EddyViscosity_Model {
     Scalar kappa;
 
     /*constructor*/
-    MixingLength_Model(VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
+    MixingLength_Model(VectorCellField&,VectorCellField&,ScalarFacetField&,ScalarCellField&,ScalarCellField&);
 
     /*others*/
     virtual void enroll();

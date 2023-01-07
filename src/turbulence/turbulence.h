@@ -59,6 +59,7 @@
 struct Turbulence_Model {
 
     VectorCellField& U;
+    VectorCellField& Fc;
     ScalarFacetField& F;
     ScalarCellField& rho;
     ScalarCellField& mu;
@@ -66,8 +67,9 @@ struct Turbulence_Model {
     Util::ParamList params;
     bool writeStress;
     /*constructor*/
-    Turbulence_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+    Turbulence_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
         U(tU),
+        Fc(tFc),
         F(tF),
         rho(trho),
         mu(tmu),
@@ -108,7 +110,7 @@ struct Turbulence_Model {
     static bool bneedWallDist;
     static bool needWallDist() { return bneedWallDist;}
     static void RegisterTable(Util::ParamList& params);
-    static Turbulence_Model* Select(VectorCellField& U,ScalarFacetField& F,
+    static Turbulence_Model* Select(VectorCellField& U,VectorCellField& Fc,ScalarFacetField& F,
         ScalarCellField& rho,ScalarCellField& mu);
 };
 /**
@@ -127,8 +129,8 @@ struct EddyViscosity_Model : public Turbulence_Model {
     WallModel wallModel;
     
     /*constructor*/
-    EddyViscosity_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
-        Turbulence_Model(tU,tF,trho,tmu),
+    EddyViscosity_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+        Turbulence_Model(tU,tFc,tF,trho,tmu),
         eddy_mu("emu",READWRITE),
         modelType(SMAGORNSKY),
         wallModel(STANDARD)
@@ -237,8 +239,8 @@ struct KX_Model : public EddyViscosity_Model {
     ScalarCellField Pk;       
 
     /*constructor*/
-    KX_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu,const char* xname) :
-        EddyViscosity_Model(tU,tF,trho,tmu),
+    KX_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu,const char* xname) :
+        EddyViscosity_Model(tU,tFc,tF,trho,tmu),
         k_UR(0.7),
         x_UR(0.7),
         k("k",READWRITE),

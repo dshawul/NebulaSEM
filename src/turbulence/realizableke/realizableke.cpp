@@ -5,8 +5,8 @@ References:
     http://www.cfd-online.com/Wiki/Realisable_k-epsilon_model
     http://www.laturbolenza.com/?p=92
  */
-REALIZABLE_KE_Model::REALIZABLE_KE_Model(VectorCellField& tU,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
-    KX_Model(tU,tF,trho,tmu,"e"),
+REALIZABLE_KE_Model::REALIZABLE_KE_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+    KX_Model(tU,tFc,tF,trho,tmu,"e"),
     CmuF(Scalar(0.09)),
     A0(4.04)
 {
@@ -49,7 +49,7 @@ void REALIZABLE_KE_Model::solve() {
 
     /*turbulent dissipation*/
     eff_mu = eddy_mu / SigmaX + mu;
-    M = transport<Scalar>(x, U, F, eff_mu, x_UR,
+    M = transport<Scalar>(x, Fc, F, eff_mu, x_UR,
             (C1 * rho * magS * x),
             -(C2x * rho * x / (k + sqrt(mu * x / rho))), &rho);
     FixNearWallValues(M);
@@ -58,7 +58,7 @@ void REALIZABLE_KE_Model::solve() {
 
     /*turbulent kinetic energy*/
     eff_mu = eddy_mu / SigmaK + mu;
-    M = transport<Scalar>(k, U, F, eff_mu, k_UR,
+    M = transport<Scalar>(k, Fc, F, eff_mu, k_UR,
             Pk,
             -(rho * x / k), &rho);
     if(wallModel == STANDARD)

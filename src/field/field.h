@@ -1916,7 +1916,9 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
  * Gradient field operation.
  ***********************************************/
 
-/*Explicit*/
+/**
+  Explicit gradient operator
+ */
 #define GRADD(im,jm,km) {                           \
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
@@ -1957,9 +1959,9 @@ GRAD(Tensor,Vector);
 
 #define gradi(x) (gradf(x)  / Mesh::cV)
 
-/**
-  Compute numerical flux
- */
+/* *******************************
+ * Compute numerical flux
+ * *******************************/
 template<class T1, class T2, class T3, class T4>
 void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
     using namespace Controls;
@@ -2118,7 +2120,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
   Implicit gradient operator
  */
 template<class T1, class T2>
-MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_cell,
+MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         const MeshField<T2,FACET>& flux) {
     using namespace Mesh;
     using namespace DG;
@@ -2135,7 +2137,7 @@ MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
                 Tensor Jr = Jinv[index];
-                T1 F = flux_cell[index] * cV[index];
+                T1 F = fluxc[index];
 
 #define GRADD(im,jm,km) {                                   \
     Int index2 = INDEX4(ci,im,jm,km);                       \
@@ -2175,7 +2177,19 @@ MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& flux_
  * Divergence field operation
  * ***************************************************/ 
 
-/* Explicit */
+//volumetric flux
+template<typename T>
+inline MeshField<T,CELL> flxc(const MeshField<T,CELL>& p) {
+    return p * Mesh::cV;
+}
+template<typename T, typename A>
+MeshField<T,CELL> flxc(const DVExpr<T,A>& expr) {
+    return flxc(MeshField<T,CELL>(expr));
+}
+
+/** 
+  Explicit divergence operator
+ */
 #define DIVD(im,jm,km) {                            \
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
@@ -2223,7 +2237,7 @@ DIV(Vector,Tensor);
   Implicit divergence operator
  */
 template<class type>
-MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
+MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
 
     using namespace Mesh;
@@ -2240,7 +2254,7 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
-                Vector Jr = dot(Jinv[index],flux_cell[index]) * cV[index];
+                Vector Jr = dot(Jinv[index],fluxc[index]);
 
 #define DIVD(im,jm,km) {                                    \
     Int index2 = INDEX4(ci,im,jm,km);                       \
@@ -2283,7 +2297,9 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& flux_cell,
  *    the laplacian operation for a nonconstant mu
  * ***********************************************************/
 
-/*Explicit*/
+/**
+  Explicit laplacian operator
+ */
 template<class type, ENTITY entity>
 MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
     return divf(mu * gradi(cF));
