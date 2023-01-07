@@ -278,6 +278,7 @@ void Mesh::initGeomMeshFields() {
                 forEachLglX(i) PSID(i,jj,kk);
                 forEachLglY(j) if(j != jj) PSID(ii,j,kk);
                 forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
+#undef PSID
             }
         }
 

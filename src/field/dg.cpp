@@ -16,7 +16,16 @@ namespace DG {
     TensorCellField Jinv(false);
 }
 /** 
-  Compute legendre polynomial and its first & second derivatives, given p and x
+  Compute the orthogonal legendre polynomial and its first & second derivatives, given p and x
+  They are computed using the recurrence relation
+    phi_0(x) = 1 -> 0th degree legendre polynomial
+    phi_1(x) = x -> 1st degree ...
+    phi_n(x) = a * x * phi_{n-1}(x)  - b * phi_{n-2}(x)
+  where
+    a = (2n - 1) / n
+    b = (n - 1) /n
+  The first and second derivative can be obtained similarily applying product rule
+  of derivaties on the recurrence relation.
  */
 void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
     Scalar a,b;                
@@ -25,11 +34,11 @@ void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
     L1 = 0; L1_1 = 0; L1_2 = 0;
     L0 = 1; L0_1 = 0; L0_2 = 0;
 
-    for(int i = 1;i <= p;i++) {
+    for(int i = 1; i <= p; i++) {
         L2 = L1; L2_1 = L1_1; L2_2 = L1_2;
         L1 = L0; L1_1 = L0_1; L1_2 = L0_2;
-        a = (2 * i - 1.0)/i;
-        b = (i - 1.0)/i;
+        a = (2 * i - 1.0) / i;
+        b = (i - 1.0) / i;
         L0 = a * x * L1 - b * L2;
         L0_1 = a * (L1 + x * L1_1) - b * L2_1;
         L0_2 = a * (2 * L1_1 + x * L1_2) - b * L2_2;
@@ -41,17 +50,24 @@ void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
 void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
     Scalar L0,L0_1,L0_2;
     int p = N - 1; 
-    int ph = floor( (p+1)/2 );
+    int ph = N / 2;
     Scalar x,dx;
 
+    //quick exit for 0th order polynomial
     if(N == 1) {
         xgl[0] = 0;
         wgl[0] = 2;
         return;
     }
 
+    //compute first half of roots
     for(int i = 0; i < ph; i++) {
-        x = cos((2 * i + 1) * Constants::PI / (2 * p + 1));
+
+        //use roots of Chebyshev polynomial as initial guess for LGL points
+        x = cos((2 * i + 1) * Constants::PI / (2 * N));
+
+        //use Newton's method to compute LGL points by computing the roots of (1 - x^2)P'(x)
+        //where P'(x) is the derivative of the legendre polynomial.
         for(int k = 1; k <= 20; k++) {
             legendre(p,x,L0,L0_1,L0_2);
             dx = -(1 - x * x) * L0_1 / (-2 * x * L0_1 + (1 - x * x) * L0_2);
@@ -59,128 +75,37 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
             if(fabs(dx) < 1.0e-20) 
                 break;
         }
+
+        //assign interpolation/integration point and associated weight
         xgl[p - i] = x;
         wgl[p - i] = 2 / (p * (p + 1) * L0 * L0);
     }
 
-    if (p+1 != 2*ph) {
+    //Add 0th point for odd N
+    if (N != 2*ph) {
         x = 0;
         legendre(p,x,L0,L0_1,L0_2);
         xgl[ph] = x;
         wgl[ph] = 2 / (p * (p + 1) * L0 * L0);
     }
 
+    //mirror second half of the roots
     for(int i = 0; i < ph; i++) {
         xgl[i] = -xgl[p - i];
         wgl[i] = +wgl[p - i];
     }
 }
 /**
-  Compute Legendre-Gauss interpolation points and weights
+  Compute lagrange basis functions
  */
-void DG::legendre_gauss(int N, Scalar* xgl, Scalar* wgl) {
-    Scalar L0,L0_1,L0_2;
-    int p = N - 1; 
-    int ph = floor( (p+1)/2 );
-    Scalar x,dx;
-
-    if(N == 1) {
-        xgl[0] = 0;
-        wgl[0] = 2;
-        return;
-    }
-
-    for(int i = 0; i < ph; i++) {
-        x = cos((2 * i + 1) * Constants::PI / (2 * p + 1));
-        for(int k = 1; k <= 20; k++) {
-            legendre(p + 1,x,L0,L0_1,L0_2);
-            dx = -L0/L0_1;
-            x += dx;
-            if(fabs(dx) < 1.0e-20) 
-                break;
-        }
-        xgl[p - i] = x;
-        wgl[p - i] = 2 / ((1 - x * x) * L0_1 * L0_1);
-    }
-
-    if (p+1 != 2*ph) {
-        x = 0;
-        legendre(p + 1,x,L0,L0_1,L0_2);
-        xgl[ph] = x;
-        wgl[ph] = 2 / ((1 - x * x) * L0_1 * L0_1);
-    }
-
-    for(int i = 0; i < ph; i++) {
-        xgl[i] = -xgl[p - i];
-        wgl[i] = +wgl[p - i];
-    }
-}
-/**
-  Compute equispaced newton-cotes interpolation points and weights
- */
-void DG::newton_cotes(int N, Scalar* xgl, Scalar* wgl) {
-    int p = N - 1; 
-    int ph = floor( (p+1)/2 );
-
-    if(N == 1) {
-        xgl[0] = 0;
-        wgl[0] = 2;
-        return;
-    }
-
-    for(int i = 0; i < N; i++)
-        xgl[i] = -1 + (2.0 * i) / p;
-
-    switch(N) {
-        case 2:
-            wgl[0] = 1;
-            break;
-        case 3:
-            wgl[0] = 1.0/3; wgl[1] = 4.0/3;
-            break;
-        case 4:
-            wgl[0] = 1.0/4; wgl[1] = 3.0/4;
-            break;
-        case 5:
-            wgl[0] = 7.0/45; wgl[1] = 32.0/45; wgl[2] = 12.0/45;
-            break;
-        case 6:
-            wgl[0] = 19.0/144; wgl[1] = 75.0/144; wgl[2] = 50.0/144;
-            break;
-        case 7:
-            wgl[0] = 41.0/420; wgl[1] = 216.0/420; wgl[2] = 27.0/420; wgl[3]=272.0/420;
-            break;
-        case 8:
-            wgl[0] = 751.0/8640; wgl[1] = 3577.0/8640; wgl[2] = 1323.0/8640; wgl[3]=2989.0/8640;
-            break;
-        case 9:
-            wgl[0] = 989.0/14175; wgl[1] = 5888.0/14175; wgl[2] = -928.0/14175; wgl[3]=10496.0/14175; 
-            wgl[4] = -4540.0/14175;
-            break;
-        case 10:
-            wgl[0] = 2857.0/44800; wgl[1] = 15741.0/44800; wgl[2] = 1080.0/44800; wgl[3]=19344.0/44800; 
-            wgl[4] = 5778.0/44800;
-            break;
-        case 11:
-            wgl[0] = 16067.0/299376; wgl[1] = 106300.0/299376; wgl[2] = -48525.0/299376; wgl[3]=272400.0/299376; 
-            wgl[4] = -260550.0/299376; wgl[5] = 427368.0/299376;
-            break;
-    }
-
-    for(int i = 0; i < ph; i++)
-        wgl[p - i] = +wgl[i];
-}
-/**
-  Compute cardinal basis functions
- */
-void DG::cardinal_basis(int v, int N, Scalar* xgl, Scalar* psi) {
+void DG::lagrange_basis(int v, int N, Scalar* xgl, Scalar* psi) {
     for(int i = 0;i < N;i++) {
         if(i != v) psi[i] = 0;
         else psi[i] = 1;
     }
 }
 /**
-  Compute lagrange basis function derivatives at given point x, given interpolation points
+  Compute lagrange basis derivatives at given point x, given interpolation points
  */
 void DG::lagrange_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
     Scalar xi,xj,xk,prod;
@@ -201,39 +126,6 @@ void DG::lagrange_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
             }
         }
     }
-}
-/**
-  Compute legendre basis function derivatives at given point x, given LGL points
- */
-void DG::legendre_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
-    Scalar xi,xj;
-    Scalar x = xgl[v];
-
-    Scalar* bb = new Scalar[N];
-    for(int j = 0;j < N;j++) {
-        bb[j] = 0;
-        xj = xgl[j];
-        for(int i = 0;i < N;i++) {
-            if(i != j) {
-                xi = xgl[i];
-                bb[j] += log(fabs(xj - xi));
-            }
-        }
-    }
-
-    Scalar cc = 0;
-    for(int i = 0;i < N;i++) {
-        if(i != v) {
-            xi = xgl[i];
-            Scalar val = exp(bb[v] - bb[i]) / (x - xi);
-            if((v + i + 2) & 1) val = -val;
-            dpsi[i] = val;
-            cc += val;
-        }
-    }
-    dpsi[v] = -cc;
-
-    delete[] bb;
 }
 /**
   Initialize polynomial order
@@ -368,6 +260,7 @@ void DG::init_geom() {
 #undef ADDC
 #undef ADD
 
+    //compute face properties of of control voluemes formed by LGL nodes
     for(Int ci = 0; ci < gBCS;ci++) {
         Cell& c = gCells[ci];
         forEach(c,mm) {
@@ -444,7 +337,7 @@ void DG::init_basis() {
         for(Int j = 0;j < ngl;j++) {
             psi[i][j] = new Scalar[ngl];
             dpsi[i][j] = new Scalar[ngl];
-            cardinal_basis(j,ngl,xgl[i],psi[i][j]);
+            lagrange_basis(j,ngl,xgl[i],psi[i][j]);
             lagrange_basis_derivative(j,ngl,xgl[i],dpsi[i][j]);
         }
     }

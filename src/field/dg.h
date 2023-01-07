@@ -82,12 +82,9 @@ namespace DG {
     extern Scalar Penalty;
 
     void legendre(int p, Scalar x,Scalar& L0,Scalar& L0_1,Scalar& L0_2);
-    void newton_cotes(int N, Scalar* xgl, Scalar* wgl);
-    void legendre_gauss(int N, Scalar* xgl, Scalar* wgl);
     void legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl);
-    void cardinal_basis(int i,int N, Scalar* xgl,Scalar* psi);
+    void lagrange_basis(int i,int N, Scalar* xgl,Scalar* psi);
     void lagrange_basis_derivative(int i,int N, Scalar* xgl,Scalar* dpsi);
-    void legendre_basis_derivative(int i,int N, Scalar* xgl,Scalar* dpsi);
     void init_poly();
     void init_basis();
     void init_geom();
