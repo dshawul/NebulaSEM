@@ -260,7 +260,7 @@ void DG::init_geom() {
 #undef ADDC
 #undef ADD
 
-    //compute face properties of of control voluemes formed by LGL nodes
+    //compute face properties of control volumes formed by LGL nodes
     for(Int ci = 0; ci < gBCS;ci++) {
         Cell& c = gCells[ci];
         forEach(c,mm) {
@@ -277,6 +277,7 @@ void DG::init_geom() {
         Vector dir = unit(fN[indf]);                        \
         Scalar d = dot(fC[indf] - cC[index0],dir);          \
         cC[index1] = cC[index0] + d * dir;                  \
+        cV[index1] = cV[index0];                            \
     }                                                       \
     Scalar d;                                               \
     if(equal(cC[index0],cC[index1])) d = 0.5;               \

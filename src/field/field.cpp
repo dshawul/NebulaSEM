@@ -201,7 +201,6 @@ void Mesh::initGeomMeshFields() {
         DG::expand(cV);
         DG::expand(fC);
         DG::expand(fN);
-        DG::expand(fI);
         DG::init_basis();
     }
     /*Start communicating cV and cC*/
@@ -232,8 +231,6 @@ void Mesh::initGeomMeshFields() {
             Int c2 = FN[k];
             if(c2 >= gBCSfield && !isGhostFace[faceid]) {
                 fI[k] = 0;
-                cV[c2] = cV[c1];
-                cC[c2] = fC[k];
             } else if(equal(cC[c1],fC[k]))  
                 fI[k] = 0.5;
             else 
