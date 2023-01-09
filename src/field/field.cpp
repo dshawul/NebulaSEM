@@ -246,6 +246,7 @@ void Mesh::initGeomMeshFields() {
         Scalar k = (NPX > NPY) ? NPX : 
             ((NPY > NPZ) ? NPY : NPZ);
         Scalar num;
+        Scalar alpha = 1.0;
 
         if(NP == k)
             num = (k + 1) * (k + 1) / 1;
@@ -255,8 +256,10 @@ void Mesh::initGeomMeshFields() {
             num = (k + 1) * (k + 3) / 3;
 
         fD = cds(cV);
-        forEach(fN,i)
-            fD[i] = -num * mag(fN[i]) / (fD[i]);
+        forEach(fN,i) {
+            Scalar h = fD[i] / mag(fN[i]);
+            fD[i] = alpha * num / h;
+        }
 
         //diffusivity
         VectorCellField grad_psi = Vector(0);
