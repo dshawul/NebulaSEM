@@ -8,6 +8,7 @@ usage() {
     echo
     echo "   -n,--np       Number of processors to use."
     echo "   -c,--case     Path to grid name under a test case directory."
+    echo "   -b,--bin-path Path to biary files mesh, prepare and solvers."
     echo "   -h,--help     Display this help message."
     echo
     exit 0
@@ -16,6 +17,7 @@ usage() {
 #default test case
 case=examples/cavity/cavity
 nprocs=1
+bin_path=../bin/
 
 #process command line args
 while :; do
@@ -23,6 +25,7 @@ while :; do
         --help|-h) usage; exit 0;;
         --np|-n) shift; nprocs=$1;; 
         --case|-c) shift; case=$1;; 
+        --bin-path|-b) shift; bin_path=$1;; 
         *) break
     esac
     shift
@@ -37,10 +40,10 @@ run() {
 	echo "Starting job with " $2 " processors"
 
 	#generate grid
-	../bin/mesh $1 -o grid_0.bin
+	${bin_path}mesh $1 -o grid_0.bin
 
 	#solve
-	mpirun -n $2  ../bin/solver ./controls
+	mpirun -n $2  ${bin_path}solvers ./controls
 }
 
 #prepare directory
@@ -63,7 +66,7 @@ if [ $nprocs -gt 1 ]; then
     t=1
     file=(./grid0/$field$t.*)
     while [ -f "$file" ]; do
-        mpirun -n $nprocs ../bin/prepare ./controls -merge -start $t
+        mpirun -n $nprocs ${bin_path}prepare ./controls -merge -start $t
         t=$((t+1))
         file=(./grid0/$field$t.*)
     done
@@ -73,7 +76,7 @@ fi
 t=0
 file=(./$field$t.*)
 while [ -f "$file" ]; do
-    ../bin/prepare ./controls -vtk -start $t
+    ${bin_path}prepare ./controls -vtk -start $t
     t=$((t+1))
     file=(./$field$t.*)
 done

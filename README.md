@@ -5,13 +5,11 @@ for solving partial differential equations.
 
 ### Build
 
-To build Solver type
+To build and install Solver
 
-    make
-
-followed by
-
-    make install
+    mkdir build && cd build
+    cmake -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=.. ..
+    make && make install
 
 This will install three tools for pre-processing, solution and post-processing.
 The tool 'mesh' generates the grid, 'solver' does the solution and 'prepare' does
@@ -28,6 +26,7 @@ different test case.
     
        -n,--np       Number of processors to use.
        -c,--case     Path to grid name under a test case directory.
+       -b,--bin-path Path to biary files mesh, prepare and solvers.
        -h,--help     Display this help message.
 
 #### Lid-driven cavity flow
