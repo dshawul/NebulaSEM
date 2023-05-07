@@ -885,7 +885,6 @@ namespace Mesh {
 
     bool   LoadMesh(Int = 0, bool = true);
     void   initGeomMeshFields();
-    void   calc_walldist(Int,Int = 1);
     void   write_fields(Int);
     void   read_fields(Int);
     void   remove_fields();
