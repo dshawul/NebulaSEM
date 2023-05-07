@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "my_types.h"
+#include "types.h"
 
 /**************************
  * scalars

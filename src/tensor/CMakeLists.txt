@@ -3,5 +3,5 @@ target_include_directories(solver PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_
 target_sources(solver PRIVATE
     tensor.cpp
     tensor.h 
-    my_types.h
+    types.h
 )

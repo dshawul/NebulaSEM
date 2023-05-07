@@ -2,7 +2,7 @@
 #define __WALLDIST_H
 
 #include <istream>
-#include "my_types.h"
+#include "types.h"
 
 namespace Mesh {
     void calc_walldist(Int,Int = 1);

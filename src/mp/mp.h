@@ -2,7 +2,7 @@
 #define __MP_H
 
 #include "mpi.h"
-#include "my_types.h"
+#include "types.h"
 
 #if defined __DOUBLE
 #   define MPI_SCALAR  MPI_DOUBLE
