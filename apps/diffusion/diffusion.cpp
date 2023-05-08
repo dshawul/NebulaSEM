@@ -1,8 +1,6 @@
-#include "diffusion.h"
 #include "solve.h"
 #include "iteration.h"
-
-using namespace std;
+#include "wrapper.h"
 
 /**
   \verbatim
@@ -12,7 +10,7 @@ using namespace std;
         dT/dt = lap(T,DT)
   \endverbatim
  */
-void diffusion(istream& input) {
+void diffusion(std::istream& input) {
     /*Solver specific parameters*/
     Scalar DT = Scalar(1);
     Scalar t_UR = Scalar(1);
@@ -38,4 +36,17 @@ void diffusion(istream& input) {
             Solve(M);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for diffusion solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   diffusion(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    transport.cpp
-    transport.h
-)
+add_executable(transport transport.cpp)
+target_link_libraries(transport PRIVATE solver)
+install(TARGETS transport)

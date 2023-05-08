@@ -1,8 +1,6 @@
-#include "wave.h"
 #include "solve.h"
 #include "iteration.h"
-
-using namespace std;
+#include "wrapper.h"
 
 /**
   \verbatim
@@ -12,7 +10,7 @@ using namespace std;
         d2T/dt2 = c^2 * lap(T)
   \endverbatim
  */
-void wave(istream& input) {
+void wave(std::istream& input) {
     /*Solver specific parameters*/
     Scalar C2 = Scalar(1);
     Scalar t_UR = Scalar(1);
@@ -39,4 +37,17 @@ void wave(istream& input) {
             Solve(M);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for wave solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   wave(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

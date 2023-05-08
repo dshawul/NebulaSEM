@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    potential.cpp
-    potential.h
-)
+add_executable(potential potential.cpp)
+target_link_libraries(potential PRIVATE solver)
+install(TARGETS potential)

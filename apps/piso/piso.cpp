@@ -1,9 +1,9 @@
-#include "piso.h"
 #include "solve.h"
 #include "iteration.h"
 #include "properties.h"
 #include "turbulence.h"
-#include "walldist.h"
+#include "calc_walldist.h"
+#include "wrapper.h"
 
 using namespace std;
 
@@ -47,7 +47,7 @@ using namespace std;
      For steady state problems once is enough.
      \endverbatim
  */
-void piso(istream& input) {
+void piso(std::istream& input) {
     /*Solver specific parameters*/
     Scalar velocity_UR = Scalar(0.8);
     Scalar pressure_UR = Scalar(0.5);
@@ -220,4 +220,17 @@ void piso(istream& input) {
 
         delete turb;
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for piso solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   piso(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

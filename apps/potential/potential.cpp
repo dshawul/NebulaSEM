@@ -1,8 +1,6 @@
-#include "potential.h"
 #include "solve.h"
 #include "iteration.h"
-
-using namespace std;
+#include "wrapper.h"
 
 /**
   \verbatim
@@ -40,7 +38,7 @@ using namespace std;
   where U = grad(phi) such that phi = phia - p.
   \endverbatim
  */
-void potential(istream& input) {
+void potential(std::istream& input) {
     /*Solver specific parameters*/
     Int n_ORTHO = 0;
 
@@ -71,4 +69,16 @@ void potential(istream& input) {
             applyExplicitBCs(U, true);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for potential solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   Solver::Initialize(argc, argv);
+   potential(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

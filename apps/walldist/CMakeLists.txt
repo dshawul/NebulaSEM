@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    walldist.cpp
-    walldist.h
-)
+add_executable(walldist walldist.cpp)
+target_link_libraries(walldist PRIVATE solver)
+install(TARGETS walldist)

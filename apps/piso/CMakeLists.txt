@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    piso.cpp
-    piso.h
-)
+add_executable(piso piso.cpp)
+target_link_libraries(piso PRIVATE solver)
+install(TARGETS piso)

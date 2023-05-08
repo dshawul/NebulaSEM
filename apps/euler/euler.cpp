@@ -1,9 +1,7 @@
-#include "euler.h"
 #include "solve.h"
 #include "iteration.h"
+#include "wrapper.h"
 #include "properties.h"
-
-using namespace std;
 
 /**
   \verbatim
@@ -14,7 +12,7 @@ using namespace std;
   d(rho*(T))/dt + div(T,F,0) = 0
   \endverbatim
  */
-void euler(istream& input) {
+void euler(std::istream& input) {
     /*Solver specific parameters*/
     Scalar pressure_UR = Scalar(0.5);
     Scalar velocity_UR = Scalar(0.8);
@@ -109,4 +107,17 @@ void euler(istream& input) {
                 Mesh::calc_courant(U,Controls::dt);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for euler solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   euler(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

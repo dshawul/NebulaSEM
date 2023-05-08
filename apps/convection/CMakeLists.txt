@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    convection.cpp
-    convection.h
-)
+add_executable(convection convection.cpp)
+target_link_libraries(convection PRIVATE solver)
+install(TARGETS convection)

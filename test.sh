@@ -43,7 +43,8 @@ run() {
 	${bin_path}mesh $1 -o grid_0.bin
 
 	#solve
-	mpirun -n $2  ${bin_path}solvers ./controls
+	solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
+	mpirun -n $2  ${bin_path}${solver} ./controls
 }
 
 #prepare directory

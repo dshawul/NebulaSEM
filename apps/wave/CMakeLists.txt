@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    wave.cpp
-    wave.h
-)
+add_executable(wave wave.cpp)
+target_link_libraries(wave PRIVATE solver)
+install(TARGETS wave)

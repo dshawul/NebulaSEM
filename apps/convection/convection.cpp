@@ -1,8 +1,6 @@
-#include "convection.h"
 #include "solve.h"
 #include "iteration.h"
-
-using namespace std;
+#include "wrapper.h"
 
 /**
   \verbatim
@@ -13,7 +11,7 @@ using namespace std;
      dT/dt + div(T,F,0) = 0
   \endverbatim
  */
-void convection(istream& input) {
+void convection(std::istream& input) {
     /*Solver specific parameters*/
     Scalar t_UR = Scalar(1);
 
@@ -40,4 +38,17 @@ void convection(istream& input) {
             Solve(M);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for convection solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   convection(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

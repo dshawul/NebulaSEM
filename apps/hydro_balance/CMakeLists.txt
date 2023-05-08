@@ -1,6 +1,3 @@
-target_include_directories(solvers PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>)
-
-target_sources(solvers PRIVATE
-    hydro_balance.cpp
-    hydro_balance.h
-)
+add_executable(hydro_balance hydro_balance.cpp)
+target_link_libraries(hydro_balance PRIVATE solver)
+install(TARGETS hydro_balance)

@@ -1,8 +1,6 @@
-#include "transport.h"
 #include "solve.h"
 #include "iteration.h"
-
-using namespace std;
+#include "wrapper.h"
 
 /**
   \verbatim
@@ -13,7 +11,7 @@ using namespace std;
      dT/dt + div(T,F,DT) = lap(T,DT)
   \endverbatim
  */
-void transport(istream& input) {
+void transport(std::istream& input) {
     /*Solver specific parameters*/
     Scalar DT = Scalar(1.0e-4);
     Scalar t_UR = Scalar(1);
@@ -43,4 +41,17 @@ void transport(istream& input) {
             Solve(M);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for transport solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   transport(Solver::input);
+   Solver::Finalize();
+   return 0;
 }

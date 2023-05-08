@@ -1,9 +1,7 @@
-#include "hydro_balance.h"
 #include "solve.h"
 #include "iteration.h"
 #include "properties.h"
-
-using namespace std;
+#include "wrapper.h"
 
 /**
   \verbatim
@@ -15,7 +13,7 @@ using namespace std;
         div(grad(p)) = div(-rho*g)
   \endverbatim
 */
-void hydro_balance(istream& input) {
+void hydro_balance(std::istream& input) {
     /*Solver specific parameters*/
     Int n_ORTHO = 0;
 
@@ -49,4 +47,17 @@ void hydro_balance(istream& input) {
                 Solve(lap(p, one, true) == ndivRhoG);
         }
     }
+}
+
+/**
+  \verbatim
+  Main application entry point for hydrostatic balance solver.
+  \endverbatim
+ */
+int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
+   Solver::Initialize(argc, argv);
+   hydro_balance(Solver::input);
+   Solver::Finalize();
+   return 0;
 }
