@@ -14,6 +14,7 @@ Scalar getResidual(const MeshField<type,entity>& r,
     type res[2];
     res[0] = type(0);
     res[1] = type(0); 
+    #pragma omp parallel for reduction(+:res)
     for(Int i = 0;i < Mesh::gBCSfield;i++) {
         res[0] += (r[i] * r[i]);
         res[1] += (cF[i] * cF[i]);
@@ -104,9 +105,11 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
 #define ForwardSweep(X,B) {                         \
     ASYNC_COMM<T1> comm(&X[0]);                     \
     comm.send();                                    \
+    _Pragma("omp parallel for")                     \
     for(Int ci = 0;ci < gBCSI;ci++)                 \
         Sweep_(X,B,ci);                             \
     comm.recv();                                    \
+    _Pragma("omp parallel for")                     \
     for(Int ci = gBCSI;ci < gBCS;ci++)              \
         Sweep_(X,B,ci);                             \
 }
@@ -168,6 +171,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     X[index1] = ncF;                                \
 }
 #define ForwardSub(X,B,TR) {                        \
+    _Pragma("omp parallel for")                     \
     for(Int ci = 0;ci < gBCS;ci++)  {               \
         Cell& c = gCells[ci];                       \
         forEachLgl(ii,jj,kk)                        \
@@ -175,13 +179,15 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     }                                               \
 }
 #define BackwardSub(X,B,TR) {                       \
-    for(Int ci = gBCS;ci-- > 0;)    {               \
+    _Pragma("omp parallel for")                     \
+    for(int ci = gBCS - 1; ci >= 0; ci--)    {      \
         Cell& c = gCells[ci];                       \
         forEachLglR(ii,jj,kk)                       \
             Substitute_(X,B,ci,false,TR);           \
     }                                               \
 }
 #define DiagSub(X,B) {                              \
+    _Pragma("omp parallel for")                     \
     for(Int i = 0;i < gBCSfield;i++)                \
         X[i] = B[i] * iD[i];                        \
 }
@@ -208,13 +214,16 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
      *  SAXPY and DOT operations
      ***********************************/
 #define Taxpy(Y,I,X,alpha_) {                       \
+    _Pragma("omp parallel for")                     \
     for(Int i = 0;i < gBCSfield;i++)                \
         Y[i] = I[i] + X[i] * alpha_;                \
 }
-#define Tdot(X,Y,sum) {                             \
-    sum = T3(0);                                    \
+#define Tdot(X,Y,sumt) {                            \
+    T3 sum = T3(0);                                 \
+    _Pragma("omp parallel for reduction(+:sum)")    \
     for(Int i = 0;i < gBCSfield;i++)                \
         sum += X[i] * Y[i];                         \
+    sumt = sum;                                     \
 }
     /***********************************
      *  Synchronized sum
@@ -229,9 +238,11 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
      ***********************************/
 #define CALC_RESID() {                              \
     r = M.Su - mul(M,cF);                           \
+    _Pragma("omp parallel for")                     \
     forEachS(r,k,gBCSfield)                         \
         r[k] = T3(0);                               \
     precondition(r,AP);                             \
+    _Pragma("omp parallel for")                     \
     forEachS(AP,k,gBCSfield)                        \
         AP[k] = T3(0);                              \
     res = getResidual(AP,cF,sync);                  \
@@ -261,6 +272,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                 D *=  (2.0 / Controls::SOR_omega - 1.0);    
             } else if(Controls::Preconditioner == Controls::DILU) {
                 /*D-ILU(0) pre-conditioner*/
+                #pragma omp parallel for
                 for(Int ci = 0;ci < gBCS;ci++) {
                     Cell& c = gCells[ci];
                     forEachLgl(ii,jj,kk) {
@@ -363,6 +375,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                 ForwardSweep(cF,M.Su);
             }
             /*residual*/
+            #pragma omp parallel for
             for(Int i = 0;i < gBCSfield;i++)
                 AP[i] = cF[i] - p[i];
         } else if(M.flags & M.SYMMETRIC) {

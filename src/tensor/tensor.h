@@ -393,6 +393,19 @@ typedef TTensor<6> STensor;
 typedef TTensor<9> Tensor;
 //@}
 
+/** OpenMP sum reductions */
+#pragma omp declare	\
+reduction(+ : Vector : omp_out += omp_in )	\
+initializer( omp_priv = omp_orig )
+
+#pragma omp declare	\
+reduction(+ : STensor : omp_out += omp_in )	\
+initializer( omp_priv = omp_orig )
+
+#pragma omp declare	\
+reduction(+ : Tensor : omp_out += omp_in )	\
+initializer( omp_priv = omp_orig )
+
 /*Tensor operations*/
 Vector operator ^ (const Vector& p,const Vector& q);
 STensor mul(const Vector& p);
