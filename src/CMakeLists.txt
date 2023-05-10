@@ -10,6 +10,10 @@ add_subdirectory(util)
 add_subdirectory(vtk)
 add_subdirectory(turbulence)
 
+if(OpenMP_FOUND)
+    target_link_libraries(solver PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 if(MPI_FOUND)
     target_link_libraries(solver PUBLIC MPI::MPI_CXX)
 endif()

@@ -1,10 +1,16 @@
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required (VERSION 3.16)
 set (CMAKE_CXX_STANDARD 17) 
 project (solver)
+
+# options
+option( USE_OMP "Build with OpenMP enabled" OFF )
 
 # find required packages
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+if(USE_OMP)
+    find_package(OpenMP COMPONENTS CXX)
+endif()
 find_package(MPI COMPONENTS CXX REQUIRED)
 find_package(METIS COMPONENTS CXX REQUIRED)
 
