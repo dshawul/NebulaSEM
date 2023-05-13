@@ -14,6 +14,12 @@ if(OpenMP_FOUND)
     target_link_libraries(solver PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
+if(OpenACC_CXX_FOUND)
+    target_link_libraries(solver PUBLIC OpenACC::OpenACC_CXX)
+    target_compile_options(solver PUBLIC ${OpenACC_CXX_OPTIONS} "-Minfo=accel")
+    target_link_options(solver PUBLIC ${OpenACC_CXX_OPTIONS})
+endif()
+
 if(MPI_FOUND)
     target_link_libraries(solver PUBLIC MPI::MPI_CXX)
 endif()

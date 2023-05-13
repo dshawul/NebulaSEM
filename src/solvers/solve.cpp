@@ -14,11 +14,15 @@ Scalar getResidual(const MeshField<type,entity>& r,
     type res0, res1;
     res0 = type(0);
     res1 = type(0); 
+    Scalar *CP0 = addr(res0), *CP1 = addr(res1);
+    constexpr Int TYPE_SIZE = sizeof(type) / sizeof(Scalar);
     #pragma omp parallel for reduction(+:res0,res1)
+    #pragma acc parallel loop copyin(r,cF) reduction(+:CP0[0:TYPE_SIZE],CP1[0:TYPE_SIZE])
     for(Int i = 0;i < Mesh::gBCSfield;i++) {
         res0 += (r[i] * r[i]);
         res1 += (cF[i] * cF[i]);
     }
+    (void)CP0; (void)CP1; (void)TYPE_SIZE;
     if(sync) {
         type global_res0, global_res1;
         MP::allreduce(&res0,&global_res0,1,MP::OP_SUM);
@@ -56,74 +60,74 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     /****************************
      * Jacobi sweep
      ***************************/
-#define JacobiSweep() {                             \
-    cF = iD * getRHS(M,sync);                       \
+#define JacobiSweep() {                                                         \
+    cF = iD * getRHS(M,sync);                                                   \
 }
     /****************************
      *  Forward/backward GS sweeps
      ****************************/
-#define Sweep_(X,B,ci) {                            \
-    forEachLgl(ii,jj,kk) {                          \
-        Int index1 = INDEX4(ci,ii,jj,kk);           \
-        T3 ncF = B[index1];                         \
-        if(NPMAT) {                                 \
-            T3 val(Scalar(0));                      \
-            forEachLglX(i) {                                                \
-                Int index2 = INDEX4(ci,i,jj,kk);                            \
-                Int indexm = ci * NPMAT + INDEX_X(ii,jj,kk,i);              \
-                val += X[index2] * M.adg[indexm];                           \
-            }                                                               \
-            forEachLglY(j) if(j != jj) {                                    \
-                Int index2 = INDEX4(ci,ii,j,kk);                            \
-                Int indexm = ci * NPMAT + INDEX_Y(ii,jj,kk,j);              \
-                val += X[index2] * M.adg[indexm];                           \
-            }                                                               \
-            forEachLglZ(k) if(k != kk) {                                    \
-                Int index2 = INDEX4(ci,ii,jj,k);                            \
-                Int indexm = ci * NPMAT + INDEX_Z(ii,jj,kk,k);              \
-                val += X[index2] * M.adg[indexm];                           \
-            }                                                               \
-            ncF += val;                             \
-        }                                           \
-        if(isBoundary(ii,jj,kk)) {                  \
-            Cell& c = gCells[ci];                   \
-            forEach(c,j) {                          \
-                Int faceid = c[j];                  \
-                for(Int n = 0; n < NPF;n++) {       \
-                    Int k = faceid * NPF + n;       \
-                    Int c1 = FO[k];                 \
-                    Int c2 = FN[k];                 \
-                    if(index1 == c1)                \
-                        ncF += X[c2] * M.ann[k];    \
-                    else if(index1 == c2)           \
-                        ncF += X[c1] * M.ano[k];    \
-                }                                   \
-            }                                       \
-        }                                           \
-        ncF *= iD[index1];                                  \
-        X[index1] = X[index1] * (1 - Controls::SOR_omega) + \
-            ncF * (Controls::SOR_omega);                    \
-    }                                                       \
+#define Sweep_(X,B,ci) {                                                        \
+    forEachLgl(ii,jj,kk) {                                                      \
+        Int index1 = INDEX4(ci,ii,jj,kk);                                       \
+        T3 ncF = B[index1];                                                     \
+        if(NPMAT) {                                                             \
+            T3 val(Scalar(0));                                                  \
+            forEachLglX(i) {                                                    \
+                Int index2 = INDEX4(ci,i,jj,kk);                                \
+                Int indexm = ci * NPMAT + INDEX_X(ii,jj,kk,i);                  \
+                val += X[index2] * M.adg[indexm];                               \
+            }                                                                   \
+            forEachLglY(j) if(j != jj) {                                        \
+                Int index2 = INDEX4(ci,ii,j,kk);                                \
+                Int indexm = ci * NPMAT + INDEX_Y(ii,jj,kk,j);                  \
+                val += X[index2] * M.adg[indexm];                               \
+            }                                                                   \
+            forEachLglZ(k) if(k != kk) {                                        \
+                Int index2 = INDEX4(ci,ii,jj,k);                                \
+                Int indexm = ci * NPMAT + INDEX_Z(ii,jj,kk,k);                  \
+                val += X[index2] * M.adg[indexm];                               \
+            }                                                                   \
+            ncF += val;                                                         \
+        }                                                                       \
+        if(isBoundary(ii,jj,kk)) {                                              \
+            for(Int f = faceIndices[0][ci]; f < faceIndices[1][ci]; f++) {      \
+                for(Int n = 0; n < NPF;n++) {                                   \
+                    Int k = allFaces[f] * NPF + n;                              \
+                    Int c1 = FO[k];                                             \
+                    Int c2 = FN[k];                                             \
+                    if(index1 == c1)                                            \
+                        ncF += X[c2] * M.ann[k];                                \
+                    else if(index1 == c2)                                       \
+                        ncF += X[c1] * M.ano[k];                                \
+                }                                                               \
+            }                                                                   \
+        }                                                                       \
+        ncF *= iD[index1];                                                      \
+        X[index1] = X[index1] * (1 - Controls::SOR_omega) +                     \
+            ncF * (Controls::SOR_omega);                                        \
+    }                                                                           \
 }
-#define ForwardSweep(X,B) {                         \
-    ASYNC_COMM<T1> comm(&X[0]);                     \
-    comm.send();                                    \
-    _Pragma("omp parallel for")                     \
-    for(Int ci = 0;ci < gBCSI;ci++)                 \
-        Sweep_(X,B,ci);                             \
-    comm.recv();                                    \
-    _Pragma("omp parallel for")                     \
-    for(Int ci = gBCSI;ci < gBCS;ci++)              \
-        Sweep_(X,B,ci);                             \
+#define ForwardSweep(X,B) {                                                     \
+    ASYNC_COMM<T1> comm(&X[0]);                                                 \
+    comm.send();                                                                \
+    _Pragma("omp parallel for")                                                 \
+    _Pragma("acc parallel loop copyin(gBCSI,M)")                                \
+    for(Int ci = 0;ci < gBCSI;ci++)                                             \
+        Sweep_(X,B,ci);                                                         \
+    comm.recv();                                                                \
+    _Pragma("omp parallel for")                                                 \
+    _Pragma("acc parallel loop copyin(gBCS,gBCSI,M)")                           \
+    for(Int ci = gBCSI;ci < gBCS;ci++)                                          \
+        Sweep_(X,B,ci);                                                         \
 }
     /***********************************
      *  Forward/backward substitution
      ***********************************/
-#define Substitute_(X,B,ci,forw,tr) {           \
-    const Int index1 = INDEX4(ci,ii,jj,kk);     \
-    T3 ncF = B[index1];                         \
-    if(NPMAT) {                                 \
-        T3 val(Scalar(0));                      \
+#define Substitute_(X,B,ci,forw,tr) {                                           \
+    const Int index1 = INDEX4(ci,ii,jj,kk);                                     \
+    T3 ncF = B[index1];                                                         \
+    if(NPMAT) {                                                                 \
+        T3 val(Scalar(0));                                                      \
         forEachLglX(i) {                                                        \
             Int index2 = INDEX4(ci,i,jj,kk);                                    \
             if((forw && (index2 < index1)) ||   (!forw && (index1 < index2))) { \
@@ -148,119 +152,125 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                 val += X[index2] * M.adg[indexm];                               \
             }                                                                   \
         }                                                                       \
-        ncF += val;                                 \
-    }                                               \
-    if(isBoundary(ii,jj,kk)) {                      \
-        Cell& c = gCells[ci];                       \
-        forEach(c,j) {                              \
-            Int faceid = c[j];                      \
-            for(Int n = 0; n < NPF;n++) {           \
-                Int k = faceid * NPF + n;           \
-                Int c1 = FO[k];                     \
-                Int c2 = FN[k];                     \
-                if(index1 == c1) {                  \
-                    if((forw && (c2 < c1)) ||       \
-                      (!forw && (c1 < c2))) {       \
-                        if(tr == 0)                 \
-                           ncF += X[c2] * M.ann[k]; \
-                        else                        \
-                           ncF += X[c2] * M.ano[k]; \
-                    }                               \
-                } else if(index1 == c2) {           \
-                    if((forw && (c2 > c1)) ||       \
-                      (!forw && (c1 > c2)))         \
-                        if(tr == 0)                 \
-                          ncF += X[c1] * M.ano[k];  \
-                        else                        \
-                          ncF += X[c1] * M.ann[k];  \
-                }                                   \
-            }                                       \
-        }                                           \
-    }                                               \
-    ncF *= iD[index1];                              \
-    X[index1] = ncF;                                \
+        ncF += val;                                                             \
+    }                                                                           \
+    if(isBoundary(ii,jj,kk)) {                                                  \
+        for(Int f = faceIndices[0][ci]; f < faceIndices[1][ci]; f++) {          \
+            for(Int n = 0; n < NPF;n++) {                                       \
+                Int k = allFaces[f] * NPF + n;                                  \
+                Int c1 = FO[k];                                                 \
+                Int c2 = FN[k];                                                 \
+                if(index1 == c1) {                                              \
+                    if((forw && (c2 < c1)) ||                                   \
+                      (!forw && (c1 < c2))) {                                   \
+                        if(tr == 0)                                             \
+                           ncF += X[c2] * M.ann[k];                             \
+                        else                                                    \
+                           ncF += X[c2] * M.ano[k];                             \
+                    }                                                           \
+                } else if(index1 == c2) {                                       \
+                    if((forw && (c2 > c1)) ||                                   \
+                      (!forw && (c1 > c2)))                                     \
+                        if(tr == 0)                                             \
+                          ncF += X[c1] * M.ano[k];                              \
+                        else                                                    \
+                          ncF += X[c1] * M.ann[k];                              \
+                }                                                               \
+            }                                                                   \
+        }                                                                       \
+    }                                                                           \
+    ncF *= iD[index1];                                                          \
+    X[index1] = ncF;                                                            \
 }
-#define ForwardSub(X,B,TR) {                        \
-    for(Int ci = 0;ci < gBCS;ci++)  {               \
-        forEachLgl(ii,jj,kk)                        \
-            Substitute_(X,B,ci,true,TR);            \
-    }                                               \
+#define ForwardSub(X,B,TR) {                                                    \
+    for(Int ci = 0;ci < gBCS;ci++)  {                                           \
+        forEachLgl(ii,jj,kk)                                                    \
+            Substitute_(X,B,ci,true,TR);                                        \
+    }                                                                           \
 }
-#define BackwardSub(X,B,TR) {                       \
-    for(int ci = gBCS - 1; ci >= 0; ci--)    {      \
-        forEachLglR(ii,jj,kk)                       \
-            Substitute_(X,B,ci,false,TR);           \
-    }                                               \
+#define BackwardSub(X,B,TR) {                                                   \
+    for(int ci = gBCS - 1; ci >= 0; ci--)    {                                  \
+        forEachLglR(ii,jj,kk)                                                   \
+            Substitute_(X,B,ci,false,TR);                                       \
+    }                                                                           \
 }
-#define DiagSub(X,B) {                              \
-    _Pragma("omp parallel for")                     \
-    for(Int i = 0;i < gBCSfield;i++)                \
-        X[i] = B[i] * iD[i];                        \
+#define DiagSub(X,B) {                                                          \
+    _Pragma("omp parallel for")                                                 \
+    _Pragma("acc parallel loop")                                                \
+    for(Int i = 0;i < gBCSfield;i++)                                            \
+        X[i] = B[i] * iD[i];                                                    \
 }
     /***********************************
      *  Preconditioners
      ***********************************/
-#define precondition_(R,Z,TR) {                     \
-    using namespace Controls;                       \
-    if(Preconditioner == Controls::NOPR) {          \
-        Z = R;                                      \
-    } else if(Preconditioner == Controls::DIAG) {   \
-        DiagSub(Z,R);                               \
-    } else {                                        \
-        if(Controls::Solver == Controls::PCG) {     \
-            ForwardSub(Z,R,TR);                     \
-            Z = Z * D;                              \
-            BackwardSub(Z,Z,TR);                    \
-        }                                           \
-    }                                               \
+#define precondition_(R,Z,TR) {                                                 \
+    using namespace Controls;                                                   \
+    if(Preconditioner == Controls::NOPR) {                                      \
+        Z = R;                                                                  \
+    } else if(Preconditioner == Controls::DIAG) {                               \
+        DiagSub(Z,R);                                                           \
+    } else {                                                                    \
+        if(Controls::Solver == Controls::PCG) {                                 \
+            ForwardSub(Z,R,TR);                                                 \
+            Z = Z * D;                                                          \
+            BackwardSub(Z,Z,TR);                                                \
+        }                                                                       \
+    }                                                                           \
 }
 #define precondition(R,Z) precondition_(R,Z,0)
 #define preconditionT(R,Z) precondition_(R,Z,1)
     /***********************************
      *  SAXPY and DOT operations
      ***********************************/
-#define Taxpy(Y,I,X,alpha_) {                       \
-    _Pragma("omp parallel for")                     \
-    for(Int i = 0;i < gBCSfield;i++)                \
-        Y[i] = I[i] + X[i] * alpha_;                \
+#define Taxpy(Y,I,X,alpha_) {                                                   \
+    _Pragma("omp parallel for")                                                 \
+    _Pragma("acc parallel loop copyin(cF)")                                     \
+    for(Int i = 0;i < gBCSfield;i++)                                            \
+        Y[i] = I[i] + X[i] * alpha_;                                            \
 }
-#define Tdot(X,Y,sumt) {                            \
-    T3 sum = T3(0);                                 \
-    _Pragma("omp parallel for reduction(+:sum)")    \
-    for(Int i = 0;i < gBCSfield;i++)                \
-        sum += X[i] * Y[i];                         \
-    sumt = sum;                                     \
+#define Tdot(X,Y,sumt) {                                                        \
+    T3 sum = T3(0);                                                             \
+    Scalar* CP = addr(sum);                                                     \
+    constexpr Int TYPE_SIZE = sizeof(T3) / sizeof(Scalar);                      \
+    (void)TYPE_SIZE;                                                            \
+    _Pragma("omp parallel for reduction(+:sum)")                                \
+    _Pragma("acc parallel loop reduction(+:CP[0:TYPE_SIZE])")                   \
+    for(Int i = 0;i < gBCSfield;i++)                                            \
+        sum += X[i] * Y[i];                                                     \
+    sumt = sum;                                                                 \
 }
     /***********************************
      *  Synchronized sum
      ***********************************/
-#define REDUCE(typ,var) if(sync) {                  \
-    typ t;                                          \
-    MP::allreduce(&var,&t,1,MP::OP_SUM);            \
-    var = t;                                        \
+#define REDUCE(typ,var) if(sync) {                                              \
+    typ t;                                                                      \
+    MP::allreduce(&var,&t,1,MP::OP_SUM);                                        \
+    var = t;                                                                    \
 }
     /***********************************
      *  Residual
      ***********************************/
-#define CALC_RESID() {                              \
-    r = M.Su - mul(M,cF);                           \
-    _Pragma("omp parallel for")                     \
-    forEachS(r,k,gBCSfield)                         \
-        r[k] = T3(0);                               \
-    precondition(r,AP);                             \
-    _Pragma("omp parallel for")                     \
-    forEachS(AP,k,gBCSfield)                        \
-        AP[k] = T3(0);                              \
-    res = getResidual(AP,cF,sync);                  \
-    if(Controls::Solver == Controls::PCG) {         \
-        Tdot(r,AP,o_rr);                            \
-        REDUCE(T1,o_rr);                            \
-        p = AP;                                     \
-        if(!(M.flags & M.SYMMETRIC)) {              \
-            r1 = r;                                 \
-            p1 = p;                                 \
-        }                                           \
-    }                                               \
+#define CALC_RESID() {                                                          \
+    r = M.Su - mul(M,cF);                                                       \
+    _Pragma("omp parallel for")                                                 \
+    _Pragma("acc parallel loop")                                                \
+    forEachS(r,k,gBCSfield)                                                     \
+        r[k] = T3(0);                                                           \
+    precondition(r,AP);                                                         \
+    _Pragma("omp parallel for")                                                 \
+    _Pragma("acc parallel loop")                                                \
+    forEachS(AP,k,gBCSfield)                                                    \
+        AP[k] = T3(0);                                                          \
+    res = getResidual(AP,cF,sync);                                              \
+    if(Controls::Solver == Controls::PCG) {                                     \
+        Tdot(r,AP,o_rr);                                                        \
+        REDUCE(T1,o_rr);                                                        \
+        p = AP;                                                                 \
+        if(!(M.flags & M.SYMMETRIC)) {                                          \
+            r1 = r;                                                             \
+            p1 = p;                                                             \
+        }                                                                       \
+    }                                                                           \
 }
     /****************************
      * Initialization
@@ -279,6 +289,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
             } else if(Controls::Preconditioner == Controls::DILU) {
                 /*D-ILU(0) pre-conditioner*/
                 #pragma omp parallel for
+                #pragma acc parallel loop copyin(gBCS)
                 for(Int ci = 0;ci < gBCS;ci++) {
                     forEachLgl(ii,jj,kk) {
                         Int index1 = INDEX4(ci,ii,jj,kk);
@@ -311,13 +322,11 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                             D[index1] -= val;
                         }   
                         if(isBoundary(ii,jj,kk)) {
-                            Cell& c = gCells[ci];
-                            forEach(c,j) {                              
-                                Int faceid = c[j];
+                            for(Int f = faceIndices[0][ci]; f < faceIndices[1][ci]; f++) {
                                 for(Int n = 0; n < NPF;n++) {
-                                    Int k = faceid * NPF + n;                           
+                                    Int k = allFaces[f] * NPF + n; 
                                     Int c1 = FO[k];                     
-                                    Int c2 = FN[k];                     
+                                    Int c2 = FN[k]; 
                                     if(index1 == c1) {
                                         if(c2 > c1) D[c2] -= 
                                             (M.ano[k] * M.ann[k] * iD[c1]); 
@@ -382,6 +391,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
             }
             /*residual*/
             #pragma omp parallel for
+            #pragma acc parallel loop copyin(cF)
             for(Int i = 0;i < gBCSfield;i++)
                 AP[i] = cF[i] - p[i];
         } else if(M.flags & M.SYMMETRIC) {

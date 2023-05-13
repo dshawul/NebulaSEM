@@ -415,6 +415,8 @@ void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
     ScalarCellField Courant;
     Courant = mag(U) * dt / pow(cV,1.0/3);
     Scalar minc = 1.0e200, maxc = 0.0;
+    #pragma omp parallel for reduction(min:minc) reduction(max:maxc)
+    #pragma acc parallel loop reduction(min:minc) reduction(max:maxc)
     forEach(Courant,i) {
         if(Courant[i] < minc) minc = Courant[i];
         if(Courant[i] > maxc) maxc = Courant[i];

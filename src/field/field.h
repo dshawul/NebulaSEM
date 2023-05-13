@@ -463,6 +463,7 @@ class BaseField {
     auto func(const MeshField<type,A>& a) {                                     \
         MeshField<rtype,A> r;                                                   \
         _Pragma("omp parallel for")                                             \
+        _Pragma("acc parallel loop copyin(a)")                                  \
         forEach(r,i)                                                            \
             r[i] = DApOpp::apply(a[i]);                                         \
         return r;                                                               \
@@ -510,6 +511,7 @@ class BaseField {
     auto func(const MeshField<type1,A>& a, const MeshField<type2,B>& b) {       \
         MeshField<rtype,A> r;                                                   \
         _Pragma("omp parallel for")                                             \
+        _Pragma("acc parallel loop copyin(a,b)")                                \
         forEach(r,i)                                                            \
             r[i] = DApOpp::apply(a[i], b[i]);                                   \
         return r;                                                               \
@@ -554,6 +556,7 @@ class BaseField {
     auto func(const MeshField<type,A>& a, const type2& b) {                     \
         MeshField<type,A> r;                                                    \
         _Pragma("omp parallel for")                                             \
+        _Pragma("acc parallel loop copyin(a)")                                  \
         forEach(r,i)                                                            \
             r[i] = DApOpp::apply(a[i], b);                                      \
         return r;                                                               \
@@ -563,6 +566,7 @@ class BaseField {
     auto func(const type2& a, const MeshField<type,A>& b) {                     \
         MeshField<type,A> r;                                                    \
         _Pragma("omp parallel for")                                             \
+        _Pragma("acc parallel loop copyin(b)")                                  \
         forEach(r,i)                                                            \
             r[i] = DApOpp::apply(a, b[i]);                                      \
         return r;                                                               \
@@ -608,6 +612,7 @@ class BaseField {
     auto func(const MeshField<type1,A>& a, const MeshField<type2,B>& b) {       \
         MeshField<rtype,A> r;                                                   \
         _Pragma("omp parallel for")                                             \
+        _Pragma("acc parallel loop copyin(a,b)")                                \
         forEach(r,i)                                                            \
             r[i] = DApOpp::apply(a[i], b[i]);                                   \
         return r;                                                               \
@@ -702,7 +707,7 @@ public:
   defined on entity (vertex,face or cell)
  */
 template <class type,ENTITY entity> 
-class CACHE_ALIGN MeshField : public BaseField
+class MeshField : public BaseField
 #ifdef EXPR_TMPL
    , public DVExpr<type,type*>  
 #endif
@@ -749,12 +754,14 @@ class CACHE_ALIGN MeshField : public BaseField
         MeshField(const MeshField& p) : allocated(0) {
             allocate(); 
             #pragma omp parallel for
+            #pragma acc parallel loop copyin(p)
             forEach(*this,i)
                 P[i] = p[i];
         }
         MeshField(const type& p) : allocated(0) {
             allocate(); 
             #pragma omp parallel for
+            #pragma acc parallel loop
             forEach(*this,i)
                 P[i] = p;
         }
@@ -806,7 +813,6 @@ class CACHE_ALIGN MeshField : public BaseField
                     fields_.remove(this);
                     allFields.remove(this);
                 }
-
             }
         }
         void construct(const char* str = "", ACCESS a = NO, bool recycle = true) {
@@ -826,12 +832,10 @@ class CACHE_ALIGN MeshField : public BaseField
                 deallocate();
         }
         /*accessors*/
-        #pragma acc routine seq
-        Int size() const {
+        FORCEINLINE Int size() const {
             return SIZE;
         }
-        #pragma acc routine seq
-        type& operator [] (Int i) const {
+        FORCEINLINE type& operator [] (Int i) const {
             return P[i];
         }
 
@@ -839,6 +843,7 @@ class CACHE_ALIGN MeshField : public BaseField
 #define Op($)                                                           \
         MeshField& operator $(const MeshField& q) {                     \
             _Pragma("omp parallel for")                                 \
+            _Pragma("acc parallel loop copyin(q)")                      \
             forEach(*this,i)                                            \
                 P[i] $ q[i];                                            \
             return *this;                                               \
@@ -846,6 +851,7 @@ class CACHE_ALIGN MeshField : public BaseField
 #define SOp($)                                                          \
         MeshField& operator $(const Scalar& q) {                        \
             _Pragma("omp parallel for")                                 \
+            _Pragma("acc parallel loop")                                \
             forEach(*this,i)                                            \
                 P[i] $ q;                                               \
             return *this;                                               \
@@ -866,6 +872,7 @@ class CACHE_ALIGN MeshField : public BaseField
         MeshField(const DVExpr<type,A>& p) {
             allocate();
             #pragma omp parallel for
+            #pragma acc parallel loop copyin(p)
             forEach(*this,i)
                 P[i] = p[i];
         }
@@ -874,6 +881,7 @@ class CACHE_ALIGN MeshField : public BaseField
         template <class A>                                              \
         MeshField& operator $(const DVExpr<type,A>& q) {                \
             _Pragma("omp parallel for")                                 \
+            _Pragma("acc parallel loop copyin(q)")                      \
             forEach(*this,i)                                            \
                 P[i] $ q[i];                                            \
             return *this;                                               \
@@ -891,6 +899,7 @@ class CACHE_ALIGN MeshField : public BaseField
         template <ENTITY E>                                             \
         MeshField& operator $(const MeshField<type,E>& q) {             \
             _Pragma("omp parallel for")                                 \
+            _Pragma("acc parallel loop copyin(q)")                      \
             forEach(*this,i)                                            \
                 P[i] $ q[i];                                            \
             return *this;                                               \
@@ -1068,7 +1077,6 @@ class CACHE_ALIGN MeshField : public BaseField
         }
         /*refine/unrefine field*/
         void refineField(Int step,IntVector& refineMap,IntVector& coarseMap) {
-            #pragma omp parallel for
             forEach(coarseMap,i) {
                 Int nchildren = coarseMap[i];
                 Int id = coarseMap[i + 1];
@@ -1296,6 +1304,7 @@ auto cds(const MeshField<type,CELL>& cF) {
     using namespace Mesh;
     MeshField<type,FACET> fF;
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(cF)
     forEach(fF,i) {
         fF[i] =  (cF[FO[i]] * (fI[i])) + (cF[FN[i]] * (1 - fI[i]));
     }
@@ -1315,6 +1324,7 @@ auto uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
     using namespace Mesh;
     MeshField<type,FACET> fF;
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(cF,flux)
     forEach(fF,i) {
         if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[FO[i]];
         else fF[i] = cF[FN[i]];
@@ -1358,6 +1368,7 @@ auto cds(const MeshField<type,FACET>& fF) {
     }
 
     #pragma omp parallel for
+    #pragma acc parallel loop
     forEach(vF,i) {
         vF[i] /= cnt[i];
         if(mag(vF[i]) < Constants::MachineEpsilon)
@@ -1374,6 +1385,7 @@ auto sum(const MeshField<type,FACET>& fF) {
     MeshField<type,CELL> cF;
     cF = type(0);
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(fF)
     for(Int i = 0; i < gNCells; i++) {
         for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
             for(Int n = 0; n < DG::NPF; n++) {
@@ -1437,11 +1449,12 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
         /*calculate slope*/
         T slope = T(0);
         Int sz = bc->bdry->size();
-        #pragma omp parallel for reduction(+:slope)
+        Scalar* CP = addr(slope);
+        #pragma omp parallel for collapse(2) reduction(+:slope)
+        #pragma acc parallel loop collapse(2) reduction(+:CP[0:TYPE_SIZE])
         for(Int j = 0;j < sz;j++) {
-            Int faceid = (*bc->bdry)[j];
             for(Int n = 0; n < DG::NPF;n++) {
-                Int k = faceid * DG::NPF + n;
+                Int k = (*bc->bdry)[j] * DG::NPF + n;
                 Int c1 = FO[k];
                 Int c2 = FN[k];
                 if(!equal(cC[c1],cC[c2])) {
@@ -1450,6 +1463,7 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
                 }
             }
         }
+        (void)CP;
         slope /= sz;
         /*set to neumann*/
         bc->cname = "NEUMANN";
@@ -1669,7 +1683,7 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
   Matrix defined on Mesh
  */
 template <class T1, class T2 = Scalar, class T3 = T1> 
-struct CACHE_ALIGN MeshMatrix {
+struct MeshMatrix {
     MeshField<T1,CELL>*   cF;    /**< Solution field X */
     MeshField<T2,CELL>    ap;    /**< Diagonal of the matrix */
     MeshField<T2,FACET>   ano;   /**< Off-diagonals defined by owner of face */
@@ -1864,14 +1878,16 @@ class ASYNC_COMM {
                 interBoundary& b = gInterMesh[i];
                 IntVector& f = *(b.f);
                 Int buf_size = f.size() * NPF;
+                Int bidx = b.buffer_index;
 
                 //--fill send buffer
-                #pragma omp parallel for
-                forEach(f,j) {
-                    Int faceid = f[j];
+                Int sz = f.size();
+                #pragma omp parallel for collapse(2)
+                #pragma acc parallel loop collapse(2) copyin(P)
+                for(Int j = 0; j < sz; j++) {
                     for(Int n = 0; n < NPF;n++) {
-                        Int k = faceid * NPF + n;
-                        sendbuf[(b.buffer_index + j) * NPF + n] = P[FO[k]]; 
+                        Int k = f[j] * NPF + n;
+                        sendbuf[(bidx + j) * NPF + n] = P[FO[k]]; 
                     }                                                           
                 }   
 
@@ -1894,13 +1910,15 @@ class ASYNC_COMM {
             forEach(gInterMesh,i) {
                 interBoundary& b = gInterMesh[i];
                 IntVector& f = *(b.f);
+                Int bidx = b.buffer_index;
 
-                #pragma omp parallel for
-                forEach(f,j) {
-                    Int faceid = f[j];
+                Int sz = f.size();
+                #pragma omp parallel for collapse(2)
+                #pragma acc parallel loop collapse(2) copyout(P)
+                for(Int j = 0; j < sz; j++) {
                     for(Int n = 0; n < NPF;n++) {
-                        Int k = faceid * NPF + n;
-                        P[FN[k]] = recvbuf[(b.buffer_index + j) * NPF + n]; 
+                        Int k = f[j] * NPF + n;
+                        P[FN[k]] = recvbuf[(bidx + j) * NPF + n]; 
                     }                                                           
                 }
             }
@@ -1911,6 +1929,7 @@ class ASYNC_COMM {
  * ********************************/
 #define TensorProduct_(Q,P,tr,$) {                                          \
     _Pragma("omp parallel for")                                             \
+    _Pragma("acc parallel loop copyin(p,q,gBCS)")                           \
     for(Int ci = 0;ci < gBCS;ci++) {                                        \
         forEachLgl(ii,jj,kk) {                                              \
             Int index1 = INDEX4(ci,ii,jj,kk);                               \
@@ -1954,7 +1973,6 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
     using namespace Mesh;
     using namespace DG;
     MeshField<T3,CELL> r;
-    Int c1,c2;
     ASYNC_COMM<T1> comm(&q[0]);
 
     if(sync) comm.send();
@@ -1969,18 +1987,19 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
         for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
             for(Int n = 0; n < DG::NPF; n++) {                          \
                 Int k = allFaces[f] * DG::NPF + n;                      \
-                c1 = FO[k];                                             \
-                c2 = FN[k];                                             \
+                Int c1 = FO[k];                                         \
+                Int c2 = FN[k];                                         \
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] -= q[c2] * p.ann[k];                        \
+                    r[c1] -= q[c2] * p.ann[k];                          \
                 else                                                    \
-                    r[c2] -= q[c1] * p.ano[k];                        \
+                    r[c2] -= q[c1] * p.ano[k];                          \
             }                                                           \
         }                                                               \
 }
 
     //compute internal cell values
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(p,q,gBCSI)
     for(Int i = 0; i < gBCSI; i++) {
         MUL();
     }
@@ -1989,6 +2008,7 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
 
     //compute boundary cell values
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(p,q,gBCS,gBCSI)
     for(Int i = gBCSI; i < gBCS; i++) {
         MUL();
     }
@@ -2011,7 +2031,6 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
     using namespace Mesh;
     using namespace DG;
     MeshField<T3,CELL> r;
-    Int c1,c2;
     ASYNC_COMM<T1> comm(&q[0]);
 
     if(sync) comm.send();
@@ -2026,18 +2045,19 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
         for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
             for(Int n = 0; n < DG::NPF; n++) {                          \
                 Int k = allFaces[f] * DG::NPF + n;                      \
-                c1 = FO[k];                                             \
-                c2 = FN[k];                                             \
+                Int c1 = FO[k];                                         \
+                Int c2 = FN[k];                                         \
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] -= q[c2] * p.ano[k];                        \
+                    r[c1] -= q[c2] * p.ano[k];                          \
                 else                                                    \
-                    r[c2] -= q[c1] * p.ann[k];                        \
+                    r[c2] -= q[c1] * p.ann[k];                          \
             }                                                           \
         }                                                               \
 }
 
     //compute internal cell values
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(p,q,gBCSI)
     for(Int i = 0; i < gBCSI; i++) {
         MUL();
     }
@@ -2046,6 +2066,7 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
 
     //compute boundary cell values
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(p,q,gBCS,gBCSI)
     for(Int i = gBCSI; i < gBCS; i++) {
         MUL();
     }
@@ -2061,7 +2082,6 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
     using namespace DG;
     MeshField<T3,CELL> r;
     MeshField<T1,CELL>& q = (*p.cF);
-    Int c1,c2;
     ASYNC_COMM<T1> comm(&q[0]);
 
     if(sync) comm.send();
@@ -2076,18 +2096,19 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
         for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
             for(Int n = 0; n < DG::NPF; n++) {                          \
                 Int k = allFaces[f] * DG::NPF + n;                      \
-                c1 = FO[k];                                             \
-                c2 = FN[k];                                             \
+                Int c1 = FO[k];                                         \
+                Int c2 = FN[k];                                         \
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] += q[c2] * p.ann[k];                        \
+                    r[c1] += q[c2] * p.ann[k];                          \
                 else                                                    \
-                    r[c2] += q[c1] * p.ano[k];                        \
+                    r[c2] += q[c1] * p.ano[k];                          \
             }                                                           \
         }                                                               \
 }
 
     //compute internal cell values
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(p,q,gBCSI)
     for(Int i = 0; i < gBCSI; i++) {
         MUL();
     }
@@ -2096,6 +2117,7 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
 
     //compute boundary cell values
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(p,q,gBCS,gBCSI)
     for(Int i = gBCSI; i < gBCS; i++) {
         MUL();
     }
@@ -2130,7 +2152,6 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
 
             for(Int j = 0;j < sz;j++) {
                 Int faceid = (*bc->bdry)[j];
-                #pragma omp parallel for
                 for(Int n = 0; n < DG::NPF;n++) {
                     Int k = faceid * DG::NPF + n;
 
@@ -2233,7 +2254,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
                     }
                 }
             }
-            #pragma omp parallel for
+
             for(Int j = 0;j < sz;j++) {
                 Int faceid = (*bc->bdry)[j];
                 for(Int n = 0; n < DG::NPF;n++) {
@@ -2312,6 +2333,7 @@ template<class T>
 auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
     using namespace Mesh;
     #pragma omp parallel for
+    #pragma acc parallel loop copyin(cF,gBCS,gNCells)
     for(Int i = gBCS; i < gNCells; i++) {
         Int f = faceIndices[0][i];
         for(Int n = 0; n < DG::NPF;n++) {
@@ -2327,11 +2349,11 @@ auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bi
             if(bbc->fIndex == bind) {
                 BCondition<T>* bc = static_cast<BCondition<T>*> (bbc);
                 Int sz = bc->bdry->size();
-                #pragma omp parallel for
+                #pragma omp parallel for collapse(2)
+                #pragma acc parallel loop collapse(2) copyin(cF)
                 for(Int j = 0;j < sz;j++) {
-                    Int faceid = (*bc->bdry)[j];
                     for(Int n = 0; n < DG::NPF;n++) {
-                        Int k = faceid * DG::NPF + n;
+                        Int k = (*bc->bdry)[j] * DG::NPF + n;
                         Int c2 = FN[k];
                         if(bc->cIndex == NEUMANN) {
                             cF[c2] = bc->value;
@@ -2403,6 +2425,7 @@ auto srcf(const MeshField<type,CELL>& Su) {
                                                                                                 \
         if(NPMAT) {                                                                             \
             _Pragma("omp parallel for")                                                         \
+            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
             for(Int ci = 0; ci < gBCS;ci++) {                                                   \
                 forEachLgl(ii,jj,kk) {                                                          \
                     Int index = INDEX4(ci,ii,jj,kk);                                            \
@@ -2459,6 +2482,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
         else if(convection_scheme == HYBRID) {
             MeshField<T4,FACET> mu = cds(*muc);
             #pragma omp parallel for
+            #pragma acc parallel loop copyin(m,flux)
             for(Int faceid = 0; faceid < gNFacets; faceid++) {
                 for(Int n = 0; n < NPF;n++) {
                     Int k = faceid * NPF + n;
@@ -2476,6 +2500,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             }
         }
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(m,flux)
         forEach(flux,i) {
             F = flux[i];
             G = gamma[i];
@@ -2483,6 +2508,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             m.ann[i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
         }
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(m,flux)
         for(Int i = 0; i < gNCells; i++) {
             for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
@@ -2499,12 +2525,14 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
     /*deferred correction*/
     } else {
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(m,flux)
         forEach(flux,i) {
             F = flux[i];
             m.ano[i] = -max( F,T4(0));
             m.ann[i] = -max(-F,T4(0));
         }
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(m,flux)
         for(Int i = 0; i < gNCells; i++) {
             for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
@@ -2554,6 +2582,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                 MeshField<T4,FACET> nflux = T4(0)-flux;
                 phiDC = uds(cF,nflux) - uds(cF,flux);
                 #pragma omp parallel for
+                #pragma acc parallel loop
                 forEach(phiDC,i) {
                     if(dot(flux[i],T4(1)) >= 0) G = fI[i];
                     else G = 1 - fI[i];
@@ -2571,6 +2600,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             }
             r = (phiCU / phiDC) * (uFI / (1 - uFI));
             #pragma omp parallel for
+            #pragma acc parallel loop
             forEach(phiDC,i) {
                 if(equal(phiDC[i] * (1 - uFI[i]),T1(0)))
                     r[i] = T1(0);
@@ -2630,6 +2660,7 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
     /*compute volume integral*/
     if(NPMAT) {
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(flux,fluxc,gBCS)
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
@@ -2711,6 +2742,7 @@ auto flxc(const DVExpr<T,A>& expr) {
                                                                                                 \
         if(NPMAT) {                                                                             \
             _Pragma("omp parallel for")                                                         \
+            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
             for(Int ci = 0; ci < gBCS;ci++) {                                                   \
                 forEachLgl(ii,jj,kk) {                                                          \
                     Int index = INDEX4(ci,ii,jj,kk);                                            \
@@ -2753,6 +2785,7 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
     /*compute volume integral*/
     if(NPMAT) {
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(flux,fluxc,gBCS)
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
@@ -2831,6 +2864,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
         ScalarFacetField mu = cds(muc);
 
         #pragma omp parallel for
+        #pragma acc parallel loop
         forEach(fN,i) {
             if(penalty || !NPMAT) {
                 m.ano[i] = fD[i] * mu[i];
@@ -2840,7 +2874,9 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
                 m.ann[i] = mu[i];
             }
         }
+
         #pragma omp parallel for
+        #pragma acc parallel loop
         for(Int i = 0; i < gNCells; i++) {
             for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
@@ -2860,6 +2896,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
 
         /*compute volume integral*/
         #pragma omp parallel for
+        #pragma acc parallel loop copyin(muc,gBCS)
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
@@ -2919,6 +2956,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
         if(nonortho_scheme != NONE) {
             VectorFacetField K;
             #pragma omp parallel for
+            #pragma acc parallel loop
             forEach(fN,i) {
                 Int c1 = FO[i];
                 Int c2 = FN[i];
@@ -2928,6 +2966,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
     
             MeshField<type,FACET> r = dot(cds(muc * gradi(cF)),K);
             #pragma omp parallel for
+            #pragma acc parallel loop
             forEach(r,i) {
                 Int c1 = FO[i];
                 Int c2 = FN[i];

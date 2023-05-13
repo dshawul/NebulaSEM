@@ -11,6 +11,12 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 if(USE_OMP)
     find_package(OpenMP COMPONENTS CXX)
 endif()
+
+if(USE_ACC)
+    set( OpenACC_ACCEL_TARGET tesla:managed )
+    find_package(OpenACC COMPONENTS CXX REQUIRED)
+endif()
+
 find_package(MPI COMPONENTS CXX REQUIRED)
 find_package(METIS COMPONENTS CXX REQUIRED)
 

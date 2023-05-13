@@ -62,6 +62,12 @@
 
 /** \name Other operations on scalars*/
 //@{
+FORCEINLINE Scalar* addr(Int& p) { 
+    return (Scalar*) &p; 
+}
+FORCEINLINE Scalar* addr(Scalar& p) { 
+    return &p; 
+}
 FORCEINLINE Scalar mag(const Scalar& p) { 
     return fabs(p); 
 }
@@ -264,6 +270,9 @@ public:
         if(SIZE == 6) r += Unroll<3>::dot(&p.P[3],&q.P[3]);
         return r;
     }
+    friend Scalar* addr(TTensor& p) {
+        return p.P;
+    } 
     /*unrolled operations*/
 #define Op(name,$)                                                  \
     TTensor& operator $(const TTensor& q) {                         \
@@ -407,18 +416,31 @@ reduction(+ : Tensor : omp_out += omp_in )	\
 initializer( omp_priv = omp_orig )
 
 /*Tensor operations*/
+#pragma acc routine seq
 Vector operator ^ (const Vector& p,const Vector& q);
+#pragma acc routine seq
 STensor mul(const Vector& p);
+#pragma acc routine seq
 Tensor mul(const Vector& p,const Vector& q);
+#pragma acc routine seq
 Tensor mul(const Tensor& p,const Tensor& q);
+#pragma acc routine seq
 STensor mul(const STensor& p,const STensor& q);
+#pragma acc routine seq
 Vector dot(const Tensor&,const Vector&);
+#pragma acc routine seq
 Vector dot(const STensor&,const Vector&);
+#pragma acc routine seq
 STensor sym(const Tensor& p);
+#pragma acc routine seq
 Tensor skw(const Tensor& p);
+#pragma acc routine seq
 Tensor trn(const Tensor& p);
+#pragma acc routine seq
 Scalar det(const Tensor& p);
+#pragma acc routine seq
 Tensor inv(const Tensor& p);
+#pragma acc routine seq
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta); 
 
 /**
@@ -442,6 +464,7 @@ namespace Constants {
     const Vector I_V(1,1,1);
     const Tensor I_T(1,1,1);
     const STensor I_ST(1,1,1);
+#pragma acc declare create(I_V,I_T,I_ST)
 }
 /** Checks if two scalars are equal within machine epsilon */
 FORCEINLINE  bool equal(const Scalar& p,const Scalar& q) { 

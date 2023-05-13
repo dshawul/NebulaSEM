@@ -351,6 +351,8 @@ void DG::init_basis() {
     //Compute Jacobian matrix
     Jinv.deallocate(false);
     Jinv.construct();
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(gBCS)
     for(Int ci = 0; ci < gBCS;ci++) {
         forEachLgl(ii,jj,kk) {
             Tensor Ji(Scalar(0));
