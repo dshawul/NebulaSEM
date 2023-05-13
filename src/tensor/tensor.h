@@ -432,11 +432,16 @@ namespace Constants {
     const Int MAX_INT = Int(1 << 31);
     const Scalar PI = Scalar(3.14159265358979323846264);
     const Scalar E  = Scalar(2.71828182845904523536028);
-    const Scalar MachineEpsilon = (sizeof(Scalar) == 4) ? Scalar(1e-8) : Scalar(1e-15);
-    const Scalar EqualEpsilon = (Constants::MachineEpsilon * pow(10.0,double(sizeof(Scalar))));
-    const Vector I_V = Vector(1,1,1);
-    const Tensor I_T = Tensor(1,1,1);
-    const STensor I_ST = STensor(1,1,1);
+#ifdef _DOUBLE
+    const Scalar MachineEpsilon = Scalar(1e-15);
+    const Scalar EqualEpsilon = Scalar(1e-7);
+#else
+    const Scalar MachineEpsilon = Scalar(1e-8);
+    const Scalar EqualEpsilon = Scalar(1e-4);
+#endif
+    const Vector I_V(1,1,1);
+    const Tensor I_T(1,1,1);
+    const STensor I_ST(1,1,1);
 }
 /** Checks if two scalars are equal within machine epsilon */
 FORCEINLINE  bool equal(const Scalar& p,const Scalar& q) { 
