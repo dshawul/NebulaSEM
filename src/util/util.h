@@ -39,82 +39,122 @@
 #define eraseValue(field,val)                           \
     (field).erase(std::remove((field).begin(),(field).end(),val),(field).end());
 
-/** std::pair I/O*/
-template <class T1, class T2, typename Ts>
-Ts& operator << (Ts& os, const std::pair<T1,T2>& p) {
-    os << p.first << " " << p.second;
-    return os;
-}
+/** Erase indices from a vector. It assumes the indices are already sorted */
+template<typename T>
+void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete) {
+    if(indicesToDelete.size() == 0)
+        return;
 
-template <class T1, class T2, typename Ts>
-Ts& operator >> (Ts& is, std::pair<T1,T2>& p) {
-    is >> p.first >> p.second;
-    return is;
-}
+    std::vector<T> temp;
+    temp.reserve(data.size() - indicesToDelete.size());
 
-/** std::vector I/O*/
-template <class T, typename Ts>
-Ts& operator << (Ts& os, const std::vector<T>& p) {
-    os << Int(p.size()) << "\n{\n";
-    forEach(p,i)
-        os << p[i] << "\n";
-    os << "}\n";
-    return os;
-}
-
-template <class T, typename Ts>
-Ts& operator >> (Ts& is, std::vector<T>& p) {
-    Int size;
-    char symbol;
-    is >> size >> symbol;
-    p.resize(size);
-    forEach(p,i)
-        is >> p[i];
-    is >> symbol;
-    return is;
-}
-
-template<typename Ts>
-Ts& operator << (Ts& os, const std::vector<Int>& p) {
-    Int sz = p.size();
-    if(sz >= 16) os << sz << "\n{ ";
-    else os << sz << "{ ";
-    for(Int i = 0;i < sz;i++) {
-        if(sz >= 16 && (i % 16) == 0)
-            os << "\n";
-        os << p[i] << " ";
+    auto itBlockBegin = data.begin();
+    forEachIt(indicesToDelete,it) {
+        auto itBlockEnd = data.begin() + *it;
+        if(itBlockBegin != itBlockEnd)
+            std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
+        itBlockBegin = itBlockEnd + 1;
     }
-    if(sz >= 16) os << "\n}";
-    else os << "}";
-    return os;
+    auto itBlockEnd = data.end();
+    if(itBlockBegin != itBlockEnd) 
+        std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
+
+    data = temp;
 }
 
-
-/** std::map I/O */
-template <class T1, class T2, typename Ts>
-Ts& operator << (Ts& os, const std::map<T1,T2>& p) {
-    os << Int(p.size()) << "\n{\n";
-    forEachIt(p,it)
-        os << it->first << " " << it->second << "\n";
-    os << "}\n";
-    return os;
+/** Test if two Int vectors are equal. O(n^2) complexity but arrays
+  are small since it is used for edges/faces/cells*/
+FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
+    forEach(v1,i) {
+        bool found = false;
+        forEach(v2,j) {
+            if(v1[i] == v2[j]) {
+                found = true;
+                break;
+            }
+        }
+        if(!found)
+            return false;
+    }
+    return true;
 }
 
-template <class T1, class T2, typename Ts>
-Ts& operator >> (Ts& is, std::map<T1,T2>& p) {
-    Int size;
-    char symbol;
-    is >> size >> symbol;
-    p.resize(size);
-    forEachIt(p,it)
-        is >> it->first >> it->second;
-    is >> symbol;
-    return is;
-}
+namespace Util {
 
-/** Binary output file stream */
-namespace Util{
+    /** std::pair I/O*/
+    template <class T1, class T2, typename Ts>
+    Ts& operator << (Ts& os, const std::pair<T1,T2>& p) {
+        os << p.first << " " << p.second;
+        return os;
+    }
+    
+    template <class T1, class T2, typename Ts>
+    Ts& operator >> (Ts& is, std::pair<T1,T2>& p) {
+        is >> p.first >> p.second;
+        return is;
+    }
+    
+    /** std::vector I/O*/
+    template <class T, typename Ts>
+    Ts& operator << (Ts& os, const std::vector<T>& p) {
+        os << Int(p.size()) << "\n{\n";
+        forEach(p,i)
+            os << p[i] << "\n";
+        os << "}\n";
+        return os;
+    }
+    
+    template <class T, typename Ts>
+    Ts& operator >> (Ts& is, std::vector<T>& p) {
+        Int size;
+        char symbol;
+        is >> size >> symbol;
+        p.resize(size);
+        forEach(p,i)
+            is >> p[i];
+        is >> symbol;
+        return is;
+    }
+    
+    template<typename Ts>
+    Ts& operator << (Ts& os, const std::vector<Int>& p) {
+        Int sz = p.size();
+        if(sz >= 16) os << sz << "\n{ ";
+        else os << sz << "{ ";
+        for(Int i = 0;i < sz;i++) {
+            if(sz >= 16 && (i % 16) == 0)
+                os << "\n";
+            os << p[i] << " ";
+        }
+        if(sz >= 16) os << "\n}";
+        else os << "}";
+        return os;
+    }
+    
+    
+    /** std::map I/O */
+    template <class T1, class T2, typename Ts>
+    Ts& operator << (Ts& os, const std::map<T1,T2>& p) {
+        os << Int(p.size()) << "\n{\n";
+        forEachIt(p,it)
+            os << it->first << " " << it->second << "\n";
+        os << "}\n";
+        return os;
+    }
+    
+    template <class T1, class T2, typename Ts>
+    Ts& operator >> (Ts& is, std::map<T1,T2>& p) {
+        Int size;
+        char symbol;
+        is >> size >> symbol;
+        p.resize(size);
+        forEachIt(p,it)
+            is >> it->first >> it->second;
+        is >> symbol;
+        return is;
+    }
 
+    /** Binary output file stream */
     class ofstream_bin {
         private:
             std::ofstream mos;
@@ -181,50 +221,7 @@ namespace Util{
 #undef AddB
     };
 
-}
-/** Test if two Int vectors are equal. O(n^2) complexity but arrays
-  are small since it is used for edges/faces/cells*/
-FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
-    forEach(v1,i) {
-        bool found = false;
-        forEach(v2,j) {
-            if(v1[i] == v2[j]) {
-                found = true;
-                break;
-            }
-        }
-        if(!found)
-            return false;
-    }
-    return true;
-}
-
-/** Erase indices from a vector. It assumes the indices are already sorted */
-template<typename T>
-void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete) {
-    if(indicesToDelete.size() == 0)
-        return;
-
-    std::vector<T> temp;
-    temp.reserve(data.size() - indicesToDelete.size());
-
-    auto itBlockBegin = data.begin();
-    forEachIt(indicesToDelete,it) {
-        auto itBlockEnd = data.begin() + *it;
-        if(itBlockBegin != itBlockEnd)
-            std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
-        itBlockBegin = itBlockEnd + 1;
-    }
-    auto itBlockEnd = data.end();
-    if(itBlockBegin != itBlockEnd) 
-        std::copy(itBlockBegin, itBlockEnd, std::back_inserter(temp));
-
-    data = temp;
-}
-
-/** Class for some utililty functions */
-namespace Util {
-
+    /** More utililty functions */
     Int hash_function(std::string s);
     int nextc(std::istream&);
     void cleanup();
@@ -368,7 +365,6 @@ namespace Util {
         }
     };
     /*end*/
-
 }
 
 #endif

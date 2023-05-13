@@ -173,6 +173,7 @@ struct BCondition : public BasicBCondition {
     /** Write boundary conditions */
     template <typename Ts> 
     friend Ts& operator << (Ts& os, const BCondition<type>& p) {
+        using namespace Util;
         os << p.bname << "\n{\n";
         os << "\ttype " << p.cname << "\n";
         if(!equal(mag(p.value),Scalar(0)))
