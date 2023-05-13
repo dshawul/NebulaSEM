@@ -9,8 +9,8 @@ namespace DG {
     Int NP, NPI, NPMAT, NPF;
     Scalar Penalty;
 
-    Scalar **psi[3];
-    Scalar **dpsi[3];
+    Scalar *psi[3];
+    Scalar *dpsi[3];
     Scalar *xgl[3];
     Scalar *wgl[3];
     TensorCellField Jinv(false);
@@ -332,14 +332,12 @@ void DG::init_basis() {
         Int ngl = Nop[i] + 1;
         xgl[i] = new Scalar[ngl];
         wgl[i] = new Scalar[ngl];
+        psi[i] = new Scalar[ngl*ngl];
+        dpsi[i] = new Scalar[ngl*ngl];
         legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
-        psi[i] = new Scalar*[ngl];
-        dpsi[i] = new Scalar*[ngl];
         for(Int j = 0;j < ngl;j++) {
-            psi[i][j] = new Scalar[ngl];
-            dpsi[i][j] = new Scalar[ngl];
-            lagrange_basis(j,ngl,xgl[i],psi[i][j]);
-            lagrange_basis_derivative(j,ngl,xgl[i],dpsi[i][j]);
+            lagrange_basis(j,ngl,xgl[i],&psi[i][j*ngl]);
+            lagrange_basis_derivative(j,ngl,xgl[i],&dpsi[i][j*ngl]);
         }
     }
 

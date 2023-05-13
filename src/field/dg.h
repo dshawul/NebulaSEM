@@ -62,19 +62,19 @@
 #define INDEX_TZ(i_,j_,k_,m_) \
     (INDEX3(i_,j_,m_) * NPI + (k_) + NPX + NPY)
     
-#define DPSI_(dij,i,j,k,ii,jj,kk)   {                                       \
-    Scalar dpsi_ij_0 = dpsi[0][ii][i] *   psi[1][jj][j] *   psi[2][kk][k];  \
-    Scalar dpsi_ij_1 =  psi[0][ii][i] *  dpsi[1][jj][j] *   psi[2][kk][k];  \
-    Scalar dpsi_ij_2 =  psi[0][ii][i] *   psi[1][jj][j] *  dpsi[2][kk][k];  \
-    dij = Vector(dpsi_ij_0,dpsi_ij_1,dpsi_ij_2);                            \
+#define DPSI_(dij,i,j,k,ii,jj,kk)   {                                                   \
+    Scalar dpsi_ij_0 = dpsi[0][ii*NPX+i] *   psi[1][jj*NPY+j] *   psi[2][kk*NPZ+k];     \
+    Scalar dpsi_ij_1 =  psi[0][ii*NPX+i] *  dpsi[1][jj*NPY+j] *   psi[2][kk*NPZ+k];     \
+    Scalar dpsi_ij_2 =  psi[0][ii*NPX+i] *   psi[1][jj*NPY+j] *  dpsi[2][kk*NPZ+k];     \
+    dij = Vector(dpsi_ij_0,dpsi_ij_1,dpsi_ij_2);                                        \
 }
 
 #define DPSI(dij,i,j,k)  DPSI_(dij,i,j,k,ii,jj,kk)
 #define DPSIR(dij,i,j,k) DPSI_(dij,ii,jj,kk,i,j,k)
             
 namespace DG {
-    extern Scalar **psi[3];
-    extern Scalar **dpsi[3];
+    extern Scalar *psi[3];
+    extern Scalar *dpsi[3];
     extern Scalar *xgl[3];
     extern Scalar *wgl[3];
     extern TensorCellField Jinv;
