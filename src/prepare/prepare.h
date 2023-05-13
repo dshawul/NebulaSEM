@@ -5,8 +5,8 @@
 #include "vtk.h"
 
 namespace Prepare {
-    int convertVTK(std::vector<std::string>&,Int);
-    int probe(std::vector<std::string>&,Int);
+    void convertVTK(std::vector<std::string>&,Int,Int);
+    void probe(std::vector<std::string>&,Int,Int);
 }
 
 #endif

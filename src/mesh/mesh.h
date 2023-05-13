@@ -142,7 +142,7 @@ namespace Mesh {
          */
         template<typename Ts>
         bool readTextMesh(Ts& is) {
-            using namespace Util;
+            using Util::operator>>;
             Int size;
             char symbol;
             /*clear*/
@@ -186,7 +186,7 @@ namespace Mesh {
          */
         template<typename Ts>
         void writeTextMesh(Ts& os) const {
-            using namespace Util;
+            using Util::operator<<;
             os.precision(12);
             os << mVertices;
             os.precision(6);

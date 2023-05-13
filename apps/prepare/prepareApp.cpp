@@ -19,7 +19,7 @@ int main(int argc,char* argv[]) {
     MP::printOn = (MP::host_id == 0);
     /*cmd line*/
     int work = 0;
-    Int start_index = 0;
+    Int start_index = 0, stop_index = 0;
     for(int i = 1;i < argc;i++) {
         if(!strcmp(argv[i],"-merge")) {
             work = 1;
@@ -34,6 +34,10 @@ int main(int argc,char* argv[]) {
         } else if(!strcmp(argv[i],"-start")) {
             i++;
             start_index = atoi(argv[i]);
+            stop_index = start_index + 1;
+        } else if(!strcmp(argv[i],"-stop")) {
+            i++;
+            stop_index = atoi(argv[i]);
         } else if(!strcmp(argv[i],"-h")) {
             std::cout << "Usage:\n"
                 << "  ./prepare <inputfile> <Options>\n"
@@ -102,10 +106,10 @@ int main(int argc,char* argv[]) {
         }
     } else if(work == 2) {
         cout << "Converting result to VTK format.\n";
-        Prepare::convertVTK(fields,start_index);
+        Prepare::convertVTK(fields,start_index,stop_index);
     } else if(work == 3) {
         cout << "Probing result at specified locations.\n";
-        Prepare::probe(fields,start_index);
+        Prepare::probe(fields,start_index,stop_index);
     } else if(work == 4) {
         if(MP::host_id == 0) {
             cout << "Refining grid.\n";

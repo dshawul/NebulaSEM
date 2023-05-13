@@ -6,24 +6,25 @@ using namespace Mesh;
 /**
   Convert to VTK format
  */
-int Prepare::convertVTK(vector<string>& fields,Int step) {
-    if(LoadMesh(step,false))
-        createFields(fields,step);
-    readFields(fields,step);
-    /*write vtk*/
-    Vtk::write_vtk(step);
-    return 0;
+void Prepare::convertVTK(vector<string>& fields, Int start_index, Int stop_index) {
+    for(Int step = start_index; step < stop_index; step++) {
+        if(LoadMesh(step,false))
+            createFields(fields,step);
+        readFields(fields,step);
+        /*write vtk*/
+        Vtk::write_vtk(step);
+    }
 }
 /**
   Probe values at specified locations
  */
-int Prepare::probe(vector<string>& fields,Int start_index) {
+void Prepare::probe(vector<string>& fields, Int start_index, Int stop_index) {
     /*probe points*/
     IntVector probes;
     ofstream of("probes");
 
     /*probe at each time step*/
-    for(Int step = start_index;;step++) {
+    for(Int step = start_index; step < stop_index; step++) {
         if(LoadMesh(step,true)) {
             createFields(fields,step);
             probes.clear();
@@ -84,8 +85,6 @@ int Prepare::probe(vector<string>& fields,Int start_index) {
 #undef SUM
 #undef ADD
     }
-
-    return 0;
 }
 
 

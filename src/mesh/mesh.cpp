@@ -1537,7 +1537,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         newc.push_back(mCells[ci]);
         ncrefineF.push_back(crefineF[i]);
 
-        Int node_index = -1;
+        int node_index = -1;
         forEach(mAmrTree,j) {
             Node& n = mAmrTree[j];
             if((n.id == ci) && (n.nchildren == 0)) {

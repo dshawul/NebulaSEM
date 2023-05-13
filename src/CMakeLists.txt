@@ -19,6 +19,7 @@ if(MPI_FOUND)
 endif()
 
 if(METIS_FOUND)
+    target_include_directories(solver PUBLIC ${METIS_INCLUDE_DIRS})
     target_link_libraries(solver PUBLIC ${METIS_LIBRARIES})
 endif()
 
