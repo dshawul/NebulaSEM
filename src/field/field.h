@@ -970,7 +970,6 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
     forEach(fF,i) {
         Facet& f = gFacets[i];
         if(FN[i] < gBCSfield) {
-            #pragma omp parallel for
             forEach(f,j) {
                 Int v = f[j];
                 Scalar dist = Scalar(1.0) / magSq(gVertices[v] - fC[i]);
@@ -978,7 +977,6 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
                 cnt[v] += dist;
             }
         } else {
-            #pragma omp parallel for
             forEach(f,j) {
                 Int v = f[j];
                 vF[v] += Scalar(10e30) * fF[i];
@@ -1815,9 +1813,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
                         zmin = Scalar(10e30);
                         zmax = -Scalar(10e30);
                         C = Vector(0);
-                        #pragma omp parallel for reduction(+:C)
                         for(Int j = 0;j < sz;j++) {
-                            Facet& f = gFacets[j];
+                            Facet& f = gFacets[(*bc->bdry)[j]];
                             Vector fc(Scalar(0));
                             forEach(f,k) {
                                 fc += vC[f[k]];
@@ -1835,7 +1832,6 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
                         if(bc->cIndex == PARABOLIC) {
                             Int vi = gFacets[(*bc->bdry)[0]][0];
                             zR = magSq(vC[vi] - C);
-                            #pragma omp parallel for reduction(min:zR)
                             for(Int j = 1;j < sz;j++) {
                                 vi = gFacets[(*bc->bdry)[j]][0];
                                 Scalar r = magSq(vC[vi] - C);

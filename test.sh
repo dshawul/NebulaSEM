@@ -77,7 +77,7 @@ fi
 t=0
 file=(./$field$t.*)
 while [ -f "$file" ]; do
-    ${bin_path}prepare ./controls -vtk -start $t
+    mpirun -n 1 ${bin_path}prepare ./controls -vtk -start $t
     t=$((t+1))
     file=(./$field$t.*)
 done
