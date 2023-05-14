@@ -18,10 +18,15 @@ namespace Mesh {
     ScalarCellField   yWall(false);
     IntFacetField     FO(false);
     IntFacetField     FN(false);
-    IntVector  probeCells;
+    Int*              allFaces;
+    Int*              faceIndices[2];
+    IntVector   probeCells;
     Int         gBCSfield;
     Int         gBCSIfield;
     Int         gBFSfield;
+    Int         gNCells;
+    Int         gNFacets;
+    Int         gNVertices;
 
     Vertices                 probePoints;
     vector<BasicBCondition*> AllBConditions;
@@ -158,8 +163,27 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
   Initialize geometric mesh fields
  */
 void Mesh::initGeomMeshFields(bool remove_empty) {
+    gNCells = gCells.size();
+    gNFacets = gFacets.size();
+    gNVertices = gVertices.size();
     gBCSfield = gBCS * DG::NP;
     gBCSIfield = gBCSI * DG::NP;
+    /* Allocate faces*/
+    Int nfaces = 0;
+    forEach(gCells,i)
+        nfaces += gCells[i].size();
+    allFaces = new Int[nfaces];
+    faceIndices[0] = new Int[gCC.size()];
+    faceIndices[1] = new Int[gCC.size()];
+
+    nfaces = 0;
+    forEach(gCells,i) {
+        faceIndices[0][i] = nfaces;
+        Cell& c = gCells[i];
+        forEach(c,j)
+            allFaces[nfaces++] = c[j];
+        faceIndices[1][i] = nfaces;
+    } 
     /* Allocate fields*/
     FO.deallocate(false);
     FO.allocate();

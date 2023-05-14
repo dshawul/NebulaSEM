@@ -221,6 +221,9 @@ namespace Mesh {
     extern  VectorVector&     gCC;
     extern  VectorVector&     gFN;
     extern  ScalarVector&     gCV;
+    extern  Int               gNCells;
+    extern  Int               gNFacets;
+    extern  Int               gNVertices;
     //@}
 
     extern  Vector amr_direction; /**< Direction of AMR */

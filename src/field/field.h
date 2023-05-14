@@ -895,6 +895,8 @@ namespace Mesh {
     extern ScalarCellField   yWall;
     extern IntFacetField     FO;
     extern IntFacetField     FN; 
+    extern Int*              allFaces;
+    extern Int*              faceIndices[2];
 
     bool   LoadMesh(Int = 0, bool = true);
     void   initGeomMeshFields(bool);
@@ -1002,16 +1004,13 @@ MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
     MeshField<type,CELL> cF;
     cF = type(0);
     #pragma omp parallel for
-    forEach(gCells,i_) {
-        Cell& c = gCells[i_];
-        Int i = i_ * DG::NP;
-        forEach(c,j) {
-            Int faceid = c[j];
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
             for(Int n = 0; n < DG::NPF; n++) {
-                Int k = faceid * DG::NPF + n;
+                Int k = allFaces[f] * DG::NPF + n;
                 Int c1 = FO[k];
                 Int c2 = FN[k];
-                if(c1 >= i && c1 < i + DG::NP)
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                     cF[c1] += fF[k];
                 else
                     cF[c2] -= fF[k];
@@ -1578,26 +1577,23 @@ MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& 
         TensorProduct(q,p);
     }
 
-#define MUL() {                                     \
-        Cell& c = gCells[i_];                       \
-        Int i = i_ * DG::NP;                        \
-        forEach(c,j) {                              \
-            Int faceid = c[j];                      \
-            for(Int n = 0; n < DG::NPF; n++) {      \
-                Int k = faceid * DG::NPF + n;       \
-                c1 = FO[k];                         \
-                c2 = FN[k];                         \
-                if(c1 >= i && c1 < i + DG::NP)      \
-                    r[c1] -= q[c2] * p.an[1][k];    \
-                else                                \
-                    r[c2] -= q[c1] * p.an[0][k];    \
-            }                                       \
-        }                                           \
+#define MUL() {                                                         \
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
+            for(Int n = 0; n < DG::NPF; n++) {                          \
+                Int k = allFaces[f] * DG::NPF + n;                      \
+                c1 = FO[k];                                             \
+                c2 = FN[k];                                             \
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
+                    r[c1] -= q[c2] * p.an[1][k];                        \
+                else                                                    \
+                    r[c2] -= q[c1] * p.an[0][k];                        \
+            }                                                           \
+        }                                                               \
 }
 
     //compute internal cell values
     #pragma omp parallel for
-    for(Int i_ = 0; i_ < gBCSI; i_++) {
+    for(Int i = 0; i < gBCSI; i++) {
         MUL();
     }
 
@@ -1605,7 +1601,7 @@ MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& 
 
     //compute boundary cell values
     #pragma omp parallel for
-    for(Int i_ = gBCSI; i_ < gBCS; i_++) {
+    for(Int i = gBCSI; i < gBCS; i++) {
         MUL();
     }
 
@@ -1636,26 +1632,23 @@ MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>&
         TensorProductT(q,p);
     }
 
-#define MUL() {                                     \
-        Cell& c = gCells[i_];                       \
-        Int i = i_ * DG::NP;                        \
-        forEach(c,j) {                              \
-            Int faceid = c[j];                      \
-            for(Int n = 0; n < DG::NPF; n++) {      \
-                Int k = faceid * DG::NPF + n;       \
-                c1 = FO[k];                         \
-                c2 = FN[k];                         \
-                if(c1 >= i && c1 < i + DG::NP)      \
-                    r[c1] -= q[c2] * p.an[0][k];    \
-                else                                \
-                    r[c2] -= q[c1] * p.an[1][k];    \
-            }                                       \
-        }                                           \
+#define MUL() {                                                         \
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
+            for(Int n = 0; n < DG::NPF; n++) {                          \
+                Int k = allFaces[f] * DG::NPF + n;                      \
+                c1 = FO[k];                                             \
+                c2 = FN[k];                                             \
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
+                    r[c1] -= q[c2] * p.an[0][k];                        \
+                else                                                    \
+                    r[c2] -= q[c1] * p.an[1][k];                        \
+            }                                                           \
+        }                                                               \
 }
 
     //compute internal cell values
     #pragma omp parallel for
-    for(Int i_ = 0; i_ < gBCSI; i_++) {
+    for(Int i = 0; i < gBCSI; i++) {
         MUL();
     }
 
@@ -1663,7 +1656,7 @@ MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>&
 
     //compute boundary cell values
     #pragma omp parallel for
-    for(Int i_ = gBCSI; i_ < gBCS; i_++) {
+    for(Int i = gBCSI; i < gBCS; i++) {
         MUL();
     }
 
@@ -1689,26 +1682,23 @@ MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false
         TensorProductM(q,p);
     }
 
-#define MUL() {                                     \
-        Cell& c = gCells[i_];                       \
-        Int i = i_ * DG::NP;                        \
-        forEach(c,j) {                              \
-            Int faceid = c[j];                      \
-            for(Int n = 0; n < DG::NPF; n++) {      \
-                Int k = faceid * DG::NPF + n;       \
-                c1 = FO[k];                         \
-                c2 = FN[k];                         \
-                if(c1 >= i && c1 < i + DG::NP)      \
-                    r[c1] += q[c2] * p.an[1][k];    \
-                else                                \
-                    r[c2] += q[c1] * p.an[0][k];    \
-            }                                       \
-        }                                           \
+#define MUL() {                                                         \
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
+            for(Int n = 0; n < DG::NPF; n++) {                          \
+                Int k = allFaces[f] * DG::NPF + n;                      \
+                c1 = FO[k];                                             \
+                c2 = FN[k];                                             \
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
+                    r[c1] += q[c2] * p.an[1][k];                        \
+                else                                                    \
+                    r[c2] += q[c1] * p.an[0][k];                        \
+            }                                                           \
+        }                                                               \
 }
 
     //compute internal cell values
     #pragma omp parallel for
-    for(Int i_ = 0; i_ < gBCSI; i_++) {
+    for(Int i = 0; i < gBCSI; i++) {
         MUL();
     }
 
@@ -1716,7 +1706,7 @@ MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false
 
     //compute boundary cell values
     #pragma omp parallel for
-    for(Int i_ = gBCSI; i_ < gBCS; i_++) {
+    for(Int i = gBCSI; i < gBCS; i++) {
         MUL();
     }
 
@@ -1934,10 +1924,10 @@ template<class T>
 const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
     using namespace Mesh;
     #pragma omp parallel for
-    forEachS(gCells,i,gBCS) {
-        Int faceid = gCells[i][0];
+    for(Int i = gBCS; i < gNCells; i++) {
+        Int f = faceIndices[0][i];
         for(Int n = 0; n < DG::NPF;n++) {
-            Int k = faceid * DG::NPF + n;
+            Int k = allFaces[f] * DG::NPF + n;
             cF[FN[k]] = cF[FO[k]];
         }
     }
@@ -2081,7 +2071,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
         else if(convection_scheme == HYBRID) {
             MeshField<T4,FACET> mu = cds(*muc);
             #pragma omp parallel for
-            forEach(gFacets,faceid) {
+            for(Int faceid = 0; faceid < gNFacets; faceid++) {
                 for(Int n = 0; n < NPF;n++) {
                     Int k = faceid * NPF + n;
                     //compare F and D
@@ -2105,16 +2095,13 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
         }
         #pragma omp parallel for
-        forEach(gCells,i_) {
-            Cell& c = gCells[i_];
-            Int i = i_ * DG::NP;
-            forEach(c,j) {
-                Int faceid = c[j];
+        for(Int i = 0; i < gNCells; i++) {
+            for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
-                    Int k = faceid * DG::NPF + n;
+                    Int k = allFaces[f] * DG::NPF + n;
                     Int c1 = FO[k];
                     Int c2 = FN[k];
-                    if(c1 >= i && c1 < i + DG::NP)
+                    if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                         m.ap[c1] += m.an[0][k];
                     else
                         m.ap[c2] += m.an[1][k];
@@ -2130,16 +2117,13 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             m.an[1][i] = -max(-F,T4(0));
         }
         #pragma omp parallel for
-        forEach(gCells,i_) {
-            Cell& c = gCells[i_];
-            Int i = i_ * DG::NP;
-            forEach(c,j) {
-                Int faceid = c[j];
+        for(Int i = 0; i < gNCells; i++) {
+            for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
-                    Int k = faceid * DG::NPF + n;
+                    Int k = allFaces[f] * DG::NPF + n;
                     Int c1 = FO[k];
                     Int c2 = FN[k];
-                    if(c1 >= i && c1 < i + DG::NP)
+                    if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                         m.ap[c1] += m.an[0][k];
                     else
                         m.ap[c2] += m.an[1][k];
@@ -2466,16 +2450,13 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
             }
         }
         #pragma omp parallel for
-        forEach(gCells,i_) {
-            Cell& c = gCells[i_];
-            Int i = i_ * DG::NP;
-            forEach(c,j) {
-                Int faceid = c[j];
+        for(Int i = 0; i < gNCells; i++) {
+            for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
-                    Int k = faceid * DG::NPF + n;
+                    Int k = allFaces[f] * DG::NPF + n;
                     Int c1 = FO[k];
                     Int c2 = FN[k];
-                    if(c1 >= i && c1 < i + DG::NP)
+                    if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                         m.ap[c1] += m.an[0][k];
                     else
                         m.ap[c2] += m.an[1][k];
