@@ -487,7 +487,9 @@ class MeshField : public BaseField, public DVExpr<type,type*>
             forEach(*this,i)
                 P[i] = p;
         }
-        explicit MeshField(const bool) : allocated(0) {
+        explicit MeshField(const bool) : allocated(0), access(NO) {
+            P = 0;
+            fName = "";
         }
         /*allocators*/
         void allocate(bool recycle = true) {
@@ -832,6 +834,9 @@ class MeshField : public BaseField, public DVExpr<type,type*>
 }
 /** \name Typedef common mesh field types */
 //@{
+typedef MeshField<Int,CELL>       IntCellField;
+typedef MeshField<Int,FACET>      IntFacetField;
+typedef MeshField<Int,VERTEX>     IntVertexField;
 typedef MeshField<Scalar,CELL>    ScalarCellField;
 typedef MeshField<Scalar,FACET>   ScalarFacetField;
 typedef MeshField<Scalar,VERTEX>  ScalarVertexField;
@@ -888,11 +893,11 @@ namespace Mesh {
     extern ScalarFacetField  fI;
     extern ScalarFacetField  fD;
     extern ScalarCellField   yWall;
-    extern IntVector         FO;
-    extern IntVector         FN; 
+    extern IntFacetField     FO;
+    extern IntFacetField     FN; 
 
     bool   LoadMesh(Int = 0, bool = true);
-    void   initGeomMeshFields();
+    void   initGeomMeshFields(bool);
     void   write_fields(Int);
     void   read_fields(Int);
     void   remove_fields();

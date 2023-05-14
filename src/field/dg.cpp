@@ -155,8 +155,8 @@ void DG::init_geom() {
     using namespace Constants;
 
     //compute coordinates of nodes via transfinite interpolation
-    FO.assign(gFacets.size() * NPF,gCells.size() * NP);
-    FN.assign(gFacets.size() * NPF,gCells.size() * NP);
+    FO = gCells.size() * NP;
+    FN = gCells.size() * NP;
     for(Int ci = 0; ci < gBCS;ci++) {
         Cell& c = gCells[ci];
         Facet& f1 = gFacets[c[0]];

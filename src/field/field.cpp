@@ -16,8 +16,8 @@ namespace Mesh {
     ScalarFacetField  fI(false);
     ScalarFacetField  fD(false);
     ScalarCellField   yWall(false);
-    IntVector         FO;
-    IntVector         FN;
+    IntFacetField     FO(false);
+    IntFacetField     FN(false);
     IntVector  probeCells;
     Int         gBCSfield;
     Int         gBCSIfield;
@@ -147,17 +147,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
         }
         /*geometric mesh fields*/
         remove_fields();
-        initGeomMeshFields();
-        /*Adjust interpolation factor for "delete" faces*/
-        if(!remove_empty) {
-            auto it = gBoundaries.find("delete");
-            if(it != gBoundaries.end()) {
-                IntVector& fs = gBoundaries["delete"];
-                forEach(fs,i) {
-                    fI[fs[i]] = 1;
-                }
-            }
-        }
+        initGeomMeshFields(remove_empty);
         if(MP::printOn) 
             cout << "--------------------------------------------\n";
         return true;
@@ -167,12 +157,14 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
 /**
   Initialize geometric mesh fields
  */
-void Mesh::initGeomMeshFields() {
-    FO = gFOC;
-    FN = gFNC;
+void Mesh::initGeomMeshFields(bool remove_empty) {
     gBCSfield = gBCS * DG::NP;
     gBCSIfield = gBCSI * DG::NP;
     /* Allocate fields*/
+    FO.deallocate(false);
+    FO.allocate();
+    FN.deallocate(false);
+    FN.allocate();
     vC.deallocate(false);
     vC.allocate(gVertices);
     fC.deallocate(false);
@@ -195,12 +187,16 @@ void Mesh::initGeomMeshFields() {
     forEach(gFC,i) {
         fC[i] = gFC[i];
         fN[i] = gFN[i];
+        FO[i] = gFOC[i];
+        FN[i] = gFNC[i];
     }
     if(DG::NPMAT) {
         DG::expand(cC);
         DG::expand(cV);
         DG::expand(fC);
         DG::expand(fN);
+        DG::expand(FO);
+        DG::expand(FN);
         DG::init_basis();
     }
     /*Start communicating cV and cC*/
@@ -296,6 +292,16 @@ void Mesh::initGeomMeshFields() {
                 fD[i] = ((fN[i] & dv) / (dv & dv));
             } else {
                 fD[i] = sqrt((fN[i] & fN[i]) / (dv & dv));
+            }
+        }
+    }
+    /*Adjust interpolation factor for "delete" faces*/
+    if(!remove_empty) {
+        auto it = gBoundaries.find("delete");
+        if(it != gBoundaries.end()) {
+            IntVector& fs = gBoundaries["delete"];
+            forEach(fs,i) {
+                fI[fs[i]] = 1;
             }
         }
     }
