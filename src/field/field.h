@@ -438,7 +438,7 @@ class BaseField {
   defined on entity (vertex,face or cell)
  */
 template <class type,ENTITY entity> 
-class MeshField : public BaseField, public DVExpr<type,type*>  
+class CACHE_ALIGN MeshField : public BaseField, public DVExpr<type,type*>  
 {
     private:
         using DVExpr<type,type*>::P;
@@ -493,6 +493,7 @@ class MeshField : public BaseField, public DVExpr<type,type*>
         }
         /*allocators*/
         void allocate(bool recycle = true) {
+            allocated = 1;
             if(!recycle || mem_pool.empty()) {
                 switch(entity) {
                     case CELL:   SIZE = Mesh::gCells.size() * DG::NP;    break;
@@ -505,8 +506,8 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                     sz += 1;
                 else if(entity == CELLMAT) 
                     sz += DG::NP;
-                P = new type[sz];
 
+                aligned_reserve<type>(P,sz);
                 n_alloc++;
                 if(n_alloc > n_alloc_max)
                     n_alloc_max = n_alloc;
@@ -514,12 +515,10 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                 P = mem_pool.front();
                 mem_pool.pop_front();
             }
-
-            allocated = 1;
         }
         void allocate(std::vector<type>& q) {
             SIZE = q.size();
-            P = &q[0];
+            P = q.data();
             allocated = 0;
         }
         void deallocate(bool recycle = true) {
@@ -528,9 +527,9 @@ class MeshField : public BaseField, public DVExpr<type,type*>
                 if(recycle) {
                     mem_pool.push_front(P);
                 } else {
-                    delete[] P;
-                    P = 0;
+                    aligned_free<type>(P);
                     n_alloc--;
+                    P = 0;
                 }
                 if(fIndex) {
                     fields_.remove(this);
@@ -1295,7 +1294,7 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
   Matrix defined on Mesh
  */
 template <class T1, class T2 = Scalar, class T3 = T1> 
-struct MeshMatrix {
+struct CACHE_ALIGN MeshMatrix {
     MeshField<T1,CELL>*   cF;    /**< Solution field X */
     MeshField<T2,CELL>    ap;    /**< Diagonal of the matrix */
     MeshField<T2,FACET>   an[2]; /**< Off-diagonals defined by owner/neighbor of face */
