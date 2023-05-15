@@ -19,7 +19,7 @@ namespace Mesh {
     IntFacetField     FO(false);
     IntFacetField     FN(false);
     Int*              allFaces;
-    Int*              faceIndices[2];
+    Int**             faceIndices;
     IntVector   probeCells;
     Int         gBCSfield;
     Int         gBCSIfield;
@@ -173,6 +173,7 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
     forEach(gCells,i)
         nfaces += gCells[i].size();
     allFaces = new Int[nfaces];
+    faceIndices = new Int*[2];
     faceIndices[0] = new Int[gCC.size()];
     faceIndices[1] = new Int[gCC.size()];
 

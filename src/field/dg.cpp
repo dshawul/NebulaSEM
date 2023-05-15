@@ -9,10 +9,10 @@ namespace DG {
     Int NP, NPI, NPMAT, NPF;
     Scalar Penalty;
 
-    Scalar *psi[3];
-    Scalar *dpsi[3];
-    Scalar *xgl[3];
-    Scalar *wgl[3];
+    Scalar **psi;
+    Scalar **dpsi;
+    Scalar **xgl;
+    Scalar **wgl;
     TensorCellField Jinv(false);
 }
 /** 
@@ -328,6 +328,10 @@ void DG::init_basis() {
     using namespace Constants;
 
     //directional LGL
+    xgl = new Scalar*[3];
+    wgl = new Scalar*[3];
+    psi = new Scalar*[3];
+    dpsi = new Scalar*[3];
     for(Int i = 0;i < 3;i++) {
         Int ngl = Nop[i] + 1;
         xgl[i] = new Scalar[ngl];

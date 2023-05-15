@@ -896,7 +896,7 @@ namespace Mesh {
     extern IntFacetField     FO;
     extern IntFacetField     FN; 
     extern Int*              allFaces;
-    extern Int*              faceIndices[2];
+    extern Int**             faceIndices;
 
     bool   LoadMesh(Int = 0, bool = true);
     void   initGeomMeshFields(bool);

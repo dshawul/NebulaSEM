@@ -73,10 +73,10 @@
 #define DPSIR(dij,i,j,k) DPSI_(dij,ii,jj,kk,i,j,k)
             
 namespace DG {
-    extern Scalar *psi[3];
-    extern Scalar *dpsi[3];
-    extern Scalar *xgl[3];
-    extern Scalar *wgl[3];
+    extern Scalar **psi;
+    extern Scalar **dpsi;
+    extern Scalar **xgl;
+    extern Scalar **wgl;
     extern TensorCellField Jinv;
     extern Int NPX, NPY, NPZ;
     extern Scalar Penalty;
