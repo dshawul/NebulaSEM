@@ -442,7 +442,7 @@ class CACHE_ALIGN MeshField : public BaseField, public DVExpr<type,type*>
 {
     private:
         using DVExpr<type,type*>::P;
-        static Int   SIZE;
+        Int          SIZE;
         int          allocated;
         //------------
         template<typename Ts>
@@ -463,7 +463,7 @@ class CACHE_ALIGN MeshField : public BaseField, public DVExpr<type,type*>
         Int          fIndex;
 
         /*common*/
-        static const Int TYPE_SIZE = sizeof(type) / sizeof(Scalar);
+        static constexpr Int TYPE_SIZE = sizeof(type) / sizeof(Scalar);
         static std::list<MeshField*> fields_;
         static std::list<type*> mem_pool;
         static Int n_alloc, n_alloc_max;
@@ -494,13 +494,13 @@ class CACHE_ALIGN MeshField : public BaseField, public DVExpr<type,type*>
         /*allocators*/
         void allocate(bool recycle = true) {
             allocated = 1;
+            switch(entity) {
+                case CELL:   SIZE = Mesh::gCells.size() * DG::NP;    break;
+                case FACET:  SIZE = Mesh::gFacets.size() * DG::NPF;  break;
+                case VERTEX: SIZE = Mesh::gVertices.size();          break;
+                case CELLMAT:SIZE = Mesh::gCells.size() * DG::NPMAT; break;
+            }
             if(!recycle || mem_pool.empty()) {
-                switch(entity) {
-                    case CELL:   SIZE = Mesh::gCells.size() * DG::NP;    break;
-                    case FACET:  SIZE = Mesh::gFacets.size() * DG::NPF;  break;
-                    case VERTEX: SIZE = Mesh::gVertices.size();          break;
-                    case CELLMAT:SIZE = Mesh::gCells.size() * DG::NPMAT; break;
-                }
                 Int sz = SIZE;
                 if(entity == CELL) 
                     sz += 1;
@@ -555,9 +555,11 @@ class CACHE_ALIGN MeshField : public BaseField, public DVExpr<type,type*>
                 deallocate();
         }
         /*accessors*/
+        #pragma acc routine seq
         Int size() const {
             return SIZE;
         }
+        #pragma acc routine seq
         type& operator [] (Int i) const {
             return P[i];
         }
@@ -863,9 +865,6 @@ Int MeshField<T,E>::n_alloc;
 
 template <class T,ENTITY E> 
 Int MeshField<T,E>::n_alloc_max;
-
-template <class T,ENTITY E>
-Int MeshField<T,E>::SIZE;
 
 template <class T,ENTITY E>
 std::vector<std::ofstream*> MeshField<T,E>::tseries;
