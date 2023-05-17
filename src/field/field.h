@@ -453,16 +453,14 @@ class BaseField {
 #ifdef EXPR_TMPL
 #define DEFINE_UNARY_TOP_PART2(DApOpp,func,type,rtype)                          \
     template<class type, class A>                                               \
-    DVExpr<rtype,DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> >                     \
-    func(const DVExpr<type,A>& a) {                                             \
+    auto func(const DVExpr<type,A>& a) {                                        \
         typedef DVUnaryExpr<rtype,DVExpr<type,A>,DApOpp> ExprT;                 \
         return DVExpr<rtype,ExprT>(ExprT(a));                                   \
     }
 #else
 #define DEFINE_UNARY_TOP_PART2(DApOpp,func,type,rtype)                          \
     template<class type, ENTITY A>                                              \
-    MeshField<rtype,A>                                                          \
-    func(const MeshField<type,A>& a) {                                          \
+    auto func(const MeshField<type,A>& a) {                                     \
         MeshField<rtype,A> r;                                                   \
         _Pragma("omp parallel for")                                             \
         forEach(r,i)                                                            \
@@ -502,16 +500,14 @@ class BaseField {
 #ifdef EXPR_TMPL
 #define DEFINE_BINARY_TOP_PART2(DApOpp,$,func,type1,type2,rtype)                \
     template<class type, class A, class B>                                      \
-    DVExpr<rtype,DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> >      \
-    func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {                  \
+    auto func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {             \
         typedef DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> ExprT;  \
         return DVExpr<rtype,ExprT>(ExprT(a,b));                                 \
     }
 #else
 #define DEFINE_BINARY_TOP_PART2(DApOpp,$,func,type1,type2,rtype)                \
     template<class type, ENTITY A, ENTITY B>                                    \
-    MeshField<rtype,A>                                                          \
-    func(const MeshField<type1,A>& a, const MeshField<type2,B>& b) {            \
+    auto func(const MeshField<type1,A>& a, const MeshField<type2,B>& b) {       \
         MeshField<rtype,A> r;                                                   \
         _Pragma("omp parallel for")                                             \
         forEach(r,i)                                                            \
@@ -542,23 +538,20 @@ class BaseField {
 #ifdef EXPR_TMPL
 #define DEFINE_BINARY_TSOP_PART2_I(DApOpp,$,func,type,type2)                    \
     template<class type,class A>                                                \
-    DVExpr<type,DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> >                \
-    func(const DVExpr<type,A>& a, const type2& b) {                             \
+    auto func(const DVExpr<type,A>& a, const type2& b) {                        \
         typedef DVBinScaExpr<type,DVExpr<type,A>,type2,DApOpp> ExprT;           \
         return DVExpr<type,ExprT>(ExprT(a,b));                                  \
     }
 #define DEFINE_BINARY_TSOP_PART2_II(DApOpp,$,func,type,type2)                   \
     template<class type,class A>                                                \
-    DVExpr<type,DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> >             \
-    func(const type2& a, const DVExpr<type,A>& b) {                             \
+    auto func(const type2& a, const DVExpr<type,A>& b) {                        \
         typedef DVBinScaInvExpr<type,type2,DVExpr<type,A>,DApOpp> ExprT;        \
         return DVExpr<type,ExprT>(ExprT(a,b));                                  \
     }
 #else
 #define DEFINE_BINARY_TSOP_PART2_I(DApOpp,$,func,type,type2)                    \
     template<class type,ENTITY A>                                               \
-    MeshField<type,A>                                                           \
-    func(const MeshField<type,A>& a, const type2& b) {                          \
+    auto func(const MeshField<type,A>& a, const type2& b) {                     \
         MeshField<type,A> r;                                                    \
         _Pragma("omp parallel for")                                             \
         forEach(r,i)                                                            \
@@ -567,8 +560,7 @@ class BaseField {
     }
 #define DEFINE_BINARY_TSOP_PART2_II(DApOpp,$,func,type,type2)                   \
     template<class type,ENTITY A>                                               \
-    MeshField<type,A>                                                           \
-    func(const type2& a, const MeshField<type,A>& b) {                          \
+    auto func(const type2& a, const MeshField<type,A>& b) {                     \
         MeshField<type,A> r;                                                    \
         _Pragma("omp parallel for")                                             \
         forEach(r,i)                                                            \
@@ -606,16 +598,14 @@ class BaseField {
 #ifdef EXPR_TMPL
 #define DEFINE_BINARY_TOP_PART3(DApOpp,$,func,type1,type2,rtype)                \
     template<class A, class B>                                                  \
-    DVExpr<rtype,DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> >      \
-    func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {                  \
+    auto func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {             \
         typedef DVBinExpr<rtype,DVExpr<type1,A>,DVExpr<type2,B>,DApOpp> ExprT;  \
         return DVExpr<rtype,ExprT>(ExprT(a,b));                                 \
     }
 #else
 #define DEFINE_BINARY_TOP_PART3(DApOpp,$,func,type1,type2,rtype)                \
     template<ENTITY A, ENTITY B>                                                \
-    MeshField<rtype,A>                                                          \
-    func(const MeshField<type1,A>& a, const MeshField<type2,B>& b) {            \
+    auto func(const MeshField<type1,A>& a, const MeshField<type2,B>& b) {       \
         MeshField<rtype,A> r;                                                   \
         _Pragma("omp parallel for")                                             \
         forEach(r,i)                                                            \
@@ -1302,7 +1292,7 @@ namespace Prepare {
 
 /** central difference scheme */
 template<class type>
-MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
+auto cds(const MeshField<type,CELL>& cF) {
     using namespace Mesh;
     MeshField<type,FACET> fF;
     #pragma omp parallel for
@@ -1314,14 +1304,14 @@ MeshField<type,FACET> cds(const MeshField<type,CELL>& cF) {
 
 #ifdef EXPR_TMPL
 template<class type, class A>
-MeshField<type,FACET> cds(const DVExpr<type,A>& expr) {
+auto cds(const DVExpr<type,A>& expr) {
     return cds(MeshField<type,CELL>(expr));
 }
 #endif
 
 /** upwind differencing scheme */
 template<class type,class T3>
-MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
+auto uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
     using namespace Mesh;
     MeshField<type,FACET> fF;
     #pragma omp parallel for
@@ -1334,14 +1324,14 @@ MeshField<type,FACET> uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACE
 
 #ifdef EXPR_TMPL
 template<class type, class T3, class A>
-MeshField<type,FACET> uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
+auto uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
     return uds(MeshField<type,CELL>(expr),flux);
 }
 #endif
 
 /** interpolate facet data to vertex data */
 template<class type>
-MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
+auto cds(const MeshField<type,FACET>& fF) {
     using namespace Mesh;
     MeshField<type,VERTEX> vF;
     ScalarVertexField cnt;
@@ -1379,7 +1369,7 @@ MeshField<type,VERTEX> cds(const MeshField<type,FACET>& fF) {
 
 /** Integrate field operation */
 template<class type>
-MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
+auto sum(const MeshField<type,FACET>& fF) {
     using namespace Mesh;
     MeshField<type,CELL> cF;
     cF = type(0);
@@ -1402,7 +1392,7 @@ MeshField<type,CELL> sum(const MeshField<type,FACET>& fF) {
 
 #ifdef EXPR_TMPL
 template<class type, class A>
-MeshField<type,CELL> sum(const DVExpr<type,A>& expr) {
+auto sum(const DVExpr<type,A>& expr) {
     return sum(MeshField<type,FACET>(expr));
 }
 #endif
@@ -1959,7 +1949,7 @@ class ASYNC_COMM {
 
 /** matrix - vector product = A * x */
 template <class T1, class T2, class T3> 
-MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
+auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
     using namespace Mesh;
     using namespace DG;
     MeshField<T3,CELL> r;
@@ -2016,7 +2006,7 @@ MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const DVExpr<T1,A>& q, con
 
 /** matrix transopose - vector product = A^T * x */
 template <class T1, class T2, class T3> 
-MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
+auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool sync = false) {
     using namespace Mesh;
     using namespace DG;
     MeshField<T3,CELL> r;
@@ -2065,7 +2055,7 @@ MeshField<T1,CELL> mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>&
 }
 /** calculate right-hand-side sum = b - (L + U) * x */
 template <class T1, class T2, class T3> 
-MeshField<T1,CELL> getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
+auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
     using namespace Mesh;
     using namespace DG;
     MeshField<T3,CELL> r;
@@ -2318,7 +2308,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
 
 /** Fill boundary values from internals */
 template<class T>
-const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
+auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
     using namespace Mesh;
     #pragma omp parallel for
     for(Int i = gBCS; i < gNCells; i++) {
@@ -2366,7 +2356,7 @@ const MeshField<T,CELL>& fillBCs(const MeshField<T,CELL>& cF, const bool sync = 
 
 /** Add implicit source terms*/
 template <class T1, class T2, class T3> 
-MeshMatrix<T1,T2,T3> src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2,CELL>& Sp) {
+auto src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2,CELL>& Sp) {
     MeshMatrix<T1,T2,T3> m;
     m.cF = &cF;
     m.flags |= (m.SYMMETRIC | m.DIAGONAL);
@@ -2381,7 +2371,7 @@ MeshMatrix<T1,T2,T3> src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, co
 
 /** Add explicit source term */
 template<class type>
-MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
+auto srcf(const MeshField<type,CELL>& Su) {
     return (Su * Mesh::cV);
 }
 
@@ -2403,7 +2393,7 @@ MeshField<type,CELL> srcf(const MeshField<type,CELL>& Su) {
 }
 
 #define GRAD(T1,T2)                                                                             \
-    inline MeshField<T1,CELL> gradf(const MeshField<T2,CELL>& p) {                              \
+    inline auto gradf(const MeshField<T2,CELL>& p) {                                            \
         using namespace Mesh;                                                                   \
         using namespace DG;                                                                     \
         MeshField<T1,CELL> r;                                                                   \
@@ -2625,7 +2615,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
   Implicit gradient operator
  */
 template<class T1, class T2>
-MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
+auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         const MeshField<T2,FACET>& flux) {
     using namespace Mesh;
     using namespace DG;
@@ -2685,13 +2675,13 @@ MeshMatrix<T1,T2,T2> grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc
 
 //volumetric flux
 template<typename T>
-inline MeshField<T,CELL> flxc(const MeshField<T,CELL>& p) {
+inline auto flxc(const MeshField<T,CELL>& p) {
     return p * Mesh::cV;
 }
 
 #ifdef EXPR_TMPL
 template<typename T, typename A>
-MeshField<T,CELL> flxc(const DVExpr<T,A>& expr) {
+auto flxc(const DVExpr<T,A>& expr) {
     return flxc(MeshField<T,CELL>(expr));
 }
 #endif
@@ -2708,10 +2698,10 @@ MeshField<T,CELL> flxc(const DVExpr<T,A>& expr) {
 }
 
 #define DIV(T1,T2)                                                                              \
-    inline MeshField<T1,FACET> flx(const MeshField<T2,CELL>& p) {                               \
+    inline auto flx(const MeshField<T2,CELL>& p) {                                              \
         return dot(cds(p),Mesh::fN);                                                            \
     }                                                                                           \
-    inline MeshField<T1,CELL> divf(const MeshField<T2,CELL>& p) {                               \
+    inline auto divf(const MeshField<T2,CELL>& p) {                                             \
         using namespace Mesh;                                                                   \
         using namespace DG;                                                                     \
         MeshField<T1,CELL> r;                                                                   \
@@ -2747,7 +2737,7 @@ DIV(Vector,Tensor);
   Implicit divergence operator
  */
 template<class type>
-MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
+auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
 
     using namespace Mesh;
@@ -2812,7 +2802,7 @@ MeshMatrix<type> div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
   Explicit laplacian operator
  */
 template<class type, ENTITY entity>
-MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
+auto lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
     return divf(mu * gradi(cF));
 }
 
@@ -2822,7 +2812,7 @@ MeshField<type,entity> lapf(MeshField<type,entity>& cF,const MeshField<Scalar,en
   Implicit laplacian operator
  */
 template<class type>
-MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
+auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
 
     using namespace Controls;
     using namespace Mesh;
@@ -2959,7 +2949,7 @@ MeshMatrix<type> lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const 
 
 /** First derivative with respect to time */
 template<class type>
-MeshMatrix<type> ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
+auto ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
     MeshMatrix<type> m;
     m.cF = &cF;
     m.flags |= (m.SYMMETRIC | m.DIAGONAL);
@@ -2996,7 +2986,7 @@ MeshMatrix<type> ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
 
 /** Second derivative with respect to time */
 template<class type>
-MeshMatrix<type> ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
+auto ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
     MeshMatrix<type> m;
     m.cF = &cF;
     m.flags |= (m.SYMMETRIC | m.DIAGONAL);
@@ -3072,7 +3062,7 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
  * Form transport equation
  *************************************************/
 template<class type>
-MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
+auto diffusion(MeshField<type,CELL>& cF,
         const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
     MeshMatrix<type> M = -lap(cF,mu,true);
     M.cF = &cF;
@@ -3080,7 +3070,7 @@ MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
     return M;
 }
 template<class type>
-MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
+auto diffusion(MeshField<type,CELL>& cF,
         const ScalarCellField& mu, Scalar cF_UR, 
         const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
     MeshMatrix<type> M = -lap(cF,mu,true) - src(cF,Su,Sp);
@@ -3089,14 +3079,14 @@ MeshMatrix<type> diffusion(MeshField<type,CELL>& cF,
     return M;
 }
 template<class type>
-MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
+auto convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F, Scalar cF_UR, ScalarCellField* rho = 0) {
     MeshMatrix<type> M = div(cF,Fc,F);
     addTemporal<1>(M,cF_UR,rho);
     return M;
 }
 template<class type>
-MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
+auto convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F, Scalar cF_UR, 
         const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
     MeshMatrix<type> M = div(cF,Fc,F) - src(cF,Su,Sp);
@@ -3104,14 +3094,14 @@ MeshMatrix<type> convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
     return M;
 }
 template<class type>
-MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
+auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
         const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
     MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu);
     addTemporal<1>(M,cF_UR,rho);
     return M;
 }
 template<class type>
-MeshMatrix<type> transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
+auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
         const ScalarCellField& mu, Scalar cF_UR, 
         const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
     MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu) - src(cF,Su,Sp);
