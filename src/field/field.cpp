@@ -259,6 +259,16 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
                     dot(cC[c2] - cC[c1],fN[k]);
         }
     }
+    /*Adjust interpolation factor for "delete" faces*/
+    if(!remove_empty) {
+        auto it = gBoundaries.find("delete");
+        if(it != gBoundaries.end()) {
+            IntVector& fs = gBoundaries["delete"];
+            forEach(fs,i) {
+                fI[fs[i]] = 1;
+            }
+        }
+    }
     /*construct diffusivity factor*/
     if(DG::NPMAT) {
         using namespace DG;
@@ -317,16 +327,6 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
                 fD[i] = ((fN[i] & dv) / (dv & dv));
             } else {
                 fD[i] = sqrt((fN[i] & fN[i]) / (dv & dv));
-            }
-        }
-    }
-    /*Adjust interpolation factor for "delete" faces*/
-    if(!remove_empty) {
-        auto it = gBoundaries.find("delete");
-        if(it != gBoundaries.end()) {
-            IntVector& fs = gBoundaries["delete"];
-            forEach(fs,i) {
-                fI[fs[i]] = 1;
             }
         }
     }
