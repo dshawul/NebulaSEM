@@ -91,7 +91,7 @@ namespace DG {
 
     /** Expand fields originally defined on elements to nodes*/
     template<class type, ENTITY entity>
-    void expand(const MeshField<type,entity>& cF) {
+    void expand(MeshField<type,entity>& cF) {
         if(DG::NPMAT) {
             Int block;
             if(entity == CELL) 

@@ -11,21 +11,22 @@ template<class type, ENTITY entity>
 Scalar getResidual(const MeshField<type,entity>& r,
         const MeshField<type,entity>& cF,
         bool sync) {
-    type res[2];
-    res[0] = type(0);
-    res[1] = type(0); 
-    #pragma omp parallel for reduction(+:res)
+    type res0, res1;
+    res0 = type(0);
+    res1 = type(0); 
+    #pragma omp parallel for reduction(+:res0,res1)
     for(Int i = 0;i < Mesh::gBCSfield;i++) {
-        res[0] += (r[i] * r[i]);
-        res[1] += (cF[i] * cF[i]);
+        res0 += (r[i] * r[i]);
+        res1 += (cF[i] * cF[i]);
     }
     if(sync) {
-        type global_res[2];
-        MP::allreduce(res,global_res,2,MP::OP_SUM);
-        res[0] = global_res[0];
-        res[1] = global_res[1];
+        type global_res0, global_res1;
+        MP::allreduce(&res0,&global_res0,1,MP::OP_SUM);
+        MP::allreduce(&res1,&global_res1,1,MP::OP_SUM);
+        res0 = global_res0;
+        res1 = global_res1;
     }
-    return sqrt(sdiv(mag(res[0]), mag(res[1])));
+    return sqrt(sdiv(mag(res0), mag(res1)));
 }
 /**
   Solve a system of linear equations Ax=B
