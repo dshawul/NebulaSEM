@@ -92,9 +92,9 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                 Int c1 = FO[k];                     \
                 Int c2 = FN[k];                     \
                 if(index1 == c1)                    \
-                    ncF += X[c2] * M.an[1][k];      \
+                    ncF += X[c2] * M.ann[k];        \
                 else if(index1 == c2)               \
-                    ncF += X[c1] * M.an[0][k];      \
+                    ncF += X[c1] * M.ano[k];        \
             }                                       \
         }                                           \
         ncF *= iD[index1];                                  \
@@ -157,12 +157,18 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                 if(index1 == c1) {                  \
                     if((forw && (c2 < c1)) ||       \
                       (!forw && (c1 < c2))) {       \
-                        ncF += X[c2] * M.an[1 - tr][k]; \
+                        if(tr == 0)                 \
+                           ncF += X[c2] * M.ann[k]; \
+                        else                        \
+                           ncF += X[c2] * M.ano[k]; \
                     }                               \
                 } else if(index1 == c2) {           \
                     if((forw && (c2 > c1)) ||       \
                       (!forw && (c1 > c2)))         \
-                    ncF += X[c1] * M.an[0 + tr][k]; \
+                        if(tr == 0)                 \
+                          ncF += X[c1] * M.ano[k];  \
+                        else                        \
+                          ncF += X[c1] * M.ann[k];  \
                 }                                   \
             }                                       \
         }                                           \
@@ -314,10 +320,10 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                                     Int c2 = FN[k];                     
                                     if(index1 == c1) {
                                         if(c2 > c1) D[c2] -= 
-                                            (M.an[0][k] * M.an[1][k] * iD[c1]); 
+                                            (M.ano[k] * M.ann[k] * iD[c1]); 
                                     } else if(index1 == c2) {
                                         if(c1 > c2) D[c1] -= 
-                                            (M.an[0][k] * M.an[1][k] * iD[c2]);     
+                                            (M.ano[k] * M.ann[k] * iD[c2]);     
                                     }       
                                 }                               
                             }

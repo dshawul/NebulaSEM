@@ -1672,7 +1672,8 @@ template <class T1, class T2 = Scalar, class T3 = T1>
 struct CACHE_ALIGN MeshMatrix {
     MeshField<T1,CELL>*   cF;    /**< Solution field X */
     MeshField<T2,CELL>    ap;    /**< Diagonal of the matrix */
-    MeshField<T2,FACET>   an[2]; /**< Off-diagonals defined by owner/neighbor of face */
+    MeshField<T2,FACET>   ano;   /**< Off-diagonals defined by owner of face */
+    MeshField<T2,FACET>   ann;   /**< Off-diagonals defined by neighbor of face */
     MeshField<T2,CELLMAT> adg;   /**< In DG this is an NxN matrix tying the nodes in an element */
     MeshField<T3,CELL>    Su;    /**< Source field B */
     Int flags;                   /**< Flags for special matrix */
@@ -1690,8 +1691,8 @@ struct CACHE_ALIGN MeshMatrix {
         cF = p.cF;
         flags = p.flags;
         ap = p.ap;
-        an[0] = p.an[0];
-        an[1] = p.an[1];
+        ano = p.ano;
+        ann = p.ann;
         Su = p.Su;
         adg = p.adg;
     }
@@ -1699,8 +1700,8 @@ struct CACHE_ALIGN MeshMatrix {
         cF = pcF;
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
-        an[0] = T2(0);
-        an[1] = T2(0);
+        ano = T2(0);
+        ann = T2(0);
         Su = T3(0);
         adg = T2(0);
     }
@@ -1710,8 +1711,8 @@ struct CACHE_ALIGN MeshMatrix {
         cF = 0;
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
-        an[0] = T2(0);
-        an[1] = T2(0);
+        ano = T2(0);
+        ann = T2(0);
         Su = p;
         adg = T2(0);
     }
@@ -1720,8 +1721,8 @@ struct CACHE_ALIGN MeshMatrix {
         cF = 0;
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
-        an[0] = T2(0);
-        an[1] = T2(0);
+        ano = T2(0);
+        ann = T2(0);
         Su = p;
         adg = T2(0);
     }
@@ -1735,8 +1736,8 @@ struct CACHE_ALIGN MeshMatrix {
         r.cF = cF;
         r.flags = flags;
         r.ap = -ap;
-        r.an[0] = -an[0];
-        r.an[1] = -an[1];
+        r.ano = -ano;
+        r.ann = -ann;
         r.Su = -Su;
         r.adg = -adg;
         return r;
@@ -1745,8 +1746,8 @@ struct CACHE_ALIGN MeshMatrix {
         cF = q.cF;
         flags = q.flags;
         ap = q.ap;
-        an[0] = q.an[0];
-        an[1] = q.an[1];
+        ano = q.ano;
+        ann = q.ann;
         Su = q.Su;
         adg = q.adg;
         return *this;
@@ -1754,8 +1755,8 @@ struct CACHE_ALIGN MeshMatrix {
     MeshMatrix& operator += (const MeshMatrix& q) {
         flags &= q.flags;
         ap += q.ap;
-        an[0] += q.an[0];
-        an[1] += q.an[1];
+        ano += q.ano;
+        ann += q.ann;
         Su += q.Su;
         adg += q.adg;
         return *this;
@@ -1763,24 +1764,24 @@ struct CACHE_ALIGN MeshMatrix {
     MeshMatrix& operator -= (const MeshMatrix& q) {
         flags &= q.flags;
         ap -= q.ap;
-        an[0] -= q.an[0];
-        an[1] -= q.an[1];
+        ano -= q.ano;
+        ann -= q.ann;
         Su -= q.Su;
         adg -= q.adg;
         return *this;
     }
     MeshMatrix& operator *= (const Scalar& q) {
         ap *= q;
-        an[0] *= q;
-        an[1] *= q;
+        ano *= q;
+        ann *= q;
         Su *= q;
         adg *= q;
         return *this;
     }
     MeshMatrix& operator /= (const Scalar& q) {
         ap /= q;
-        an[0] /= q;
-        an[1] /= q;
+        ano /= q;
+        ann /= q;
         Su /= q;
         adg /= q;
         return *this;
@@ -1810,8 +1811,8 @@ struct CACHE_ALIGN MeshMatrix {
     template<typename Ts>
     friend Ts& operator << (Ts& os, const MeshMatrix& p) {
         os << p.ap << "\n";
-        os << p.an[0] << "\n";
-        os << p.an[1] << "\n";
+        os << p.ano << "\n";
+        os << p.ann << "\n";
         os << p.Su << "\n";
         os << p.adg << "\n";
         return os;
@@ -1819,8 +1820,8 @@ struct CACHE_ALIGN MeshMatrix {
     template<typename Ts>
     friend Ts& operator >> (Ts& is, MeshMatrix& p) {
         is >> p.ap;
-        is >> p.an[0];
-        is >> p.an[1];
+        is >> p.ano;
+        is >> p.ann;
         is >> p.Su;
         is >> p.adg;
         return is;
@@ -1971,9 +1972,9 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
                 c1 = FO[k];                                             \
                 c2 = FN[k];                                             \
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] -= q[c2] * p.an[1][k];                        \
+                    r[c1] -= q[c2] * p.ann[k];                        \
                 else                                                    \
-                    r[c2] -= q[c1] * p.an[0][k];                        \
+                    r[c2] -= q[c1] * p.ano[k];                        \
             }                                                           \
         }                                                               \
 }
@@ -2028,9 +2029,9 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
                 c1 = FO[k];                                             \
                 c2 = FN[k];                                             \
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] -= q[c2] * p.an[0][k];                        \
+                    r[c1] -= q[c2] * p.ano[k];                        \
                 else                                                    \
-                    r[c2] -= q[c1] * p.an[1][k];                        \
+                    r[c2] -= q[c1] * p.ann[k];                        \
             }                                                           \
         }                                                               \
 }
@@ -2078,9 +2079,9 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
                 c1 = FO[k];                                             \
                 c2 = FN[k];                                             \
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] += q[c2] * p.an[1][k];                        \
+                    r[c1] += q[c2] * p.ann[k];                        \
                 else                                                    \
-                    r[c2] += q[c1] * p.an[0][k];                        \
+                    r[c2] += q[c1] * p.ano[k];                        \
             }                                                           \
         }                                                               \
 }
@@ -2138,17 +2139,17 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
                     /*break connection with boundary cells*/
                     if(bc->cIndex == NEUMANN || bc->cIndex == SYMMETRY ||
                             bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
-                        M.ap[c1] -= M.an[1][k];
-                        M.Su[c1] += M.an[1][k] * (cF[c2] - cF[c1]);
+                        M.ap[c1] -= M.ann[k];
+                        M.Su[c1] += M.ann[k] * (cF[c2] - cF[c1]);
                     } else if(bc->cIndex == ROBIN) {
                         Vector dv = cC[c2] - cC[c1];
-                        M.ap[c1] -= (1 - bc->shape) * M.an[1][k];
-                        M.Su[c1] += M.an[1][k] * (bc->shape * bc->value + 
+                        M.ap[c1] -= (1 - bc->shape) * M.ann[k];
+                        M.Su[c1] += M.ann[k] * (bc->shape * bc->value + 
                                 (1 - bc->shape) * bc->tvalue * mag(dv));
                     } else {
-                        M.Su[c1] += M.an[1][k] * cF[c2];
+                        M.Su[c1] += M.ann[k] * cF[c2];
                     }
-                    M.an[1][k] = 0;
+                    M.ann[k] = 0;
                 }
             }
         }
@@ -2364,8 +2365,8 @@ auto src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2
     m.Su = (Su * Mesh::cV);
     //others
     m.adg = Scalar(0);
-    m.an[0] = Scalar(0);
-    m.an[1] = Scalar(0);
+    m.ano = Scalar(0);
+    m.ann = Scalar(0);
     return m;
 }
 
@@ -2478,8 +2479,8 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
         forEach(flux,i) {
             F = flux[i];
             G = gamma[i];
-            m.an[0][i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,T4(0))));
-            m.an[1][i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
+            m.ano[i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,T4(0))));
+            m.ann[i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
         }
         #pragma omp parallel for
         for(Int i = 0; i < gNCells; i++) {
@@ -2489,9 +2490,9 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                     Int c1 = FO[k];
                     Int c2 = FN[k];
                     if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                        m.ap[c1] += m.an[0][k];
+                        m.ap[c1] += m.ano[k];
                     else
-                        m.ap[c2] += m.an[1][k];
+                        m.ap[c2] += m.ann[k];
                 }
             }
         }
@@ -2500,8 +2501,8 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
         #pragma omp parallel for
         forEach(flux,i) {
             F = flux[i];
-            m.an[0][i] = -max( F,T4(0));
-            m.an[1][i] = -max(-F,T4(0));
+            m.ano[i] = -max( F,T4(0));
+            m.ann[i] = -max(-F,T4(0));
         }
         #pragma omp parallel for
         for(Int i = 0; i < gNCells; i++) {
@@ -2511,9 +2512,9 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                     Int c1 = FO[k];
                     Int c2 = FN[k];
                     if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                        m.ap[c1] += m.an[0][k];
+                        m.ap[c1] += m.ano[k];
                     else
-                        m.ap[c2] += m.an[1][k];
+                        m.ap[c2] += m.ann[k];
                 }
             }
         }
@@ -2832,11 +2833,11 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
         #pragma omp parallel for
         forEach(fN,i) {
             if(penalty || !NPMAT) {
-                m.an[0][i] = fD[i] * mu[i];
-                m.an[1][i] = fD[i] * mu[i];
+                m.ano[i] = fD[i] * mu[i];
+                m.ann[i] = fD[i] * mu[i];
             } else{
-                m.an[0][i] = mu[i];
-                m.an[1][i] = mu[i];
+                m.ano[i] = mu[i];
+                m.ann[i] = mu[i];
             }
         }
         #pragma omp parallel for
@@ -2847,9 +2848,9 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
                     Int c1 = FO[k];
                     Int c2 = FN[k];
                     if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                        m.ap[c1] += m.an[0][k];
+                        m.ap[c1] += m.ano[k];
                     else
-                        m.ap[c2] += m.an[1][k];
+                        m.ap[c2] += m.ann[k];
                 }
             }
         }
@@ -2930,7 +2931,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
             forEach(r,i) {
                 Int c1 = FO[i];
                 Int c2 = FN[i];
-                type res = m.an[0][i] * (cF[c2] - cF[c1]);
+                type res = m.ano[i] * (cF[c2] - cF[c1]);
                 if(mag(r[i]) > Scalar(0.5) * mag(res)) 
                     r[i] = Scalar(0.5) * res;
             }
@@ -2978,8 +2979,8 @@ auto ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
 
     //others
     m.adg = Scalar(0);
-    m.an[0] = Scalar(0);
-    m.an[1] = Scalar(0);
+    m.ano = Scalar(0);
+    m.ann = Scalar(0);
 
     return m;
 }
@@ -3003,8 +3004,8 @@ auto ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
 
     //others
     m.adg = Scalar(0);
-    m.an[0] = Scalar(0);
-    m.an[1] = Scalar(0);
+    m.ano = Scalar(0);
+    m.ann = Scalar(0);
 
     return m;
 }   
