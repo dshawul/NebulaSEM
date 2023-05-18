@@ -63,7 +63,6 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
      *  Forward/backward GS sweeps
      ****************************/
 #define Sweep_(X,B,ci) {                            \
-    Cell& c = gCells[ci];                           \
     forEachLgl(ii,jj,kk) {                          \
         Int index1 = INDEX4(ci,ii,jj,kk);           \
         T3 ncF = B[index1];                         \
@@ -86,16 +85,19 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
             }                                                               \
             ncF += val;                             \
         }                                           \
-        forEach(c,j) {                              \
-            Int faceid = c[j];                      \
-            for(Int n = 0; n < NPF;n++) {           \
-                Int k = faceid * NPF + n;           \
-                Int c1 = FO[k];                     \
-                Int c2 = FN[k];                     \
-                if(index1 == c1)                    \
-                    ncF += X[c2] * M.ann[k];        \
-                else if(index1 == c2)               \
-                    ncF += X[c1] * M.ano[k];        \
+        if(isBoundary(ii,jj,kk)) {                  \
+            Cell& c = gCells[ci];                   \
+            forEach(c,j) {                          \
+                Int faceid = c[j];                  \
+                for(Int n = 0; n < NPF;n++) {       \
+                    Int k = faceid * NPF + n;       \
+                    Int c1 = FO[k];                 \
+                    Int c2 = FN[k];                 \
+                    if(index1 == c1)                \
+                        ncF += X[c2] * M.ann[k];    \
+                    else if(index1 == c2)           \
+                        ncF += X[c1] * M.ano[k];    \
+                }                                   \
             }                                       \
         }                                           \
         ncF *= iD[index1];                                  \
@@ -149,6 +151,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
         ncF += val;                                 \
     }                                               \
     if(isBoundary(ii,jj,kk)) {                      \
+        Cell& c = gCells[ci];                       \
         forEach(c,j) {                              \
             Int faceid = c[j];                      \
             for(Int n = 0; n < NPF;n++) {           \
@@ -178,17 +181,13 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     X[index1] = ncF;                                \
 }
 #define ForwardSub(X,B,TR) {                        \
-    _Pragma("omp parallel for")                     \
     for(Int ci = 0;ci < gBCS;ci++)  {               \
-        Cell& c = gCells[ci];                       \
         forEachLgl(ii,jj,kk)                        \
             Substitute_(X,B,ci,true,TR);            \
     }                                               \
 }
 #define BackwardSub(X,B,TR) {                       \
-    _Pragma("omp parallel for")                     \
     for(int ci = gBCS - 1; ci >= 0; ci--)    {      \
-        Cell& c = gCells[ci];                       \
         forEachLglR(ii,jj,kk)                       \
             Substitute_(X,B,ci,false,TR);           \
     }                                               \
@@ -281,7 +280,6 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                 /*D-ILU(0) pre-conditioner*/
                 #pragma omp parallel for
                 for(Int ci = 0;ci < gBCS;ci++) {
-                    Cell& c = gCells[ci];
                     forEachLgl(ii,jj,kk) {
                         Int index1 = INDEX4(ci,ii,jj,kk);
                         if(NPMAT) {
@@ -313,6 +311,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                             D[index1] -= val;
                         }   
                         if(isBoundary(ii,jj,kk)) {
+                            Cell& c = gCells[ci];
                             forEach(c,j) {                              
                                 Int faceid = c[j];
                                 for(Int n = 0; n < NPF;n++) {
