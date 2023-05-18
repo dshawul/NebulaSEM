@@ -139,8 +139,8 @@ struct EddyViscosity_Model : public Turbulence_Model {
     /*Register options*/
     virtual void enroll() {
         using namespace Util;
-        Option* op = new Option(&modelType,3,
-            "SMAGORNSKY","BALDWIN","KATO");
+        Option* op = new Option(&modelType,
+            {"SMAGORNSKY","BALDWIN","KATO"});
         params.enroll("modelType",op);
         Turbulence_Model::enroll();
     }

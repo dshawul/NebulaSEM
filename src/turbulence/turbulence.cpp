@@ -11,8 +11,8 @@ bool Turbulence_Model::bneedWallDist = false;
 /** Register type of turbulence model desired */
 void Turbulence_Model::RegisterTable(Util::ParamList& params) {
     Util::Option* op;
-    op = new Util::Option(&turb_model,7,
-            "NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES");
+    op = new Util::Option(&turb_model,
+            {"NONE","MIXING_LENGTH","KE","RNG_KE","REALIZABLE_KE","KW","LES"});
     params.enroll("turbulence_model",op);
 }
 

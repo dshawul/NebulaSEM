@@ -71,9 +71,9 @@ void piso(std::istream& input) {
 
     /*piso options*/
     Util::ParamList params("piso");
-    Util::Option* op = new Util::Option(&buoyancy, 5, 
-            "NONE", "BOUSSINESQ_T1","BOUSSINESQ_T2",
-            "BOUSSINESQ_THETA1","BOUSSINESQ_THETA2");
+    Util::Option* op = new Util::Option(&buoyancy,
+            {"NONE", "BOUSSINESQ_T1","BOUSSINESQ_T2",
+            "BOUSSINESQ_THETA1","BOUSSINESQ_THETA2"});
     params.enroll("buoyancy", op);
     params.enroll("velocity_UR", &velocity_UR);
     params.enroll("pressure_UR", &pressure_UR);

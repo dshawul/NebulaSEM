@@ -249,17 +249,9 @@ namespace Util {
     struct Option {
         Int* val;
         std::vector<std::string> list;
-        Option(void* v,Int N, ...) {
+        Option(void* v, std::initializer_list<std::string> strings) {
             val = (Int*)v;
-            std::string str;
-            list.assign(N,"");
-            va_list ap;
-            va_start(ap, N);
-            for(Int i = 0;i < N;i++) {
-                str = va_arg(ap,char*);
-                list[i] = str;
-            }
-            va_end(ap);
+            list = strings;
         }
         Int getID(std::string str) {
             forEach(list,i) {
@@ -286,7 +278,7 @@ namespace Util {
     /** Special boolean option as a YES/NO */
     struct BoolOption : public Option {
         BoolOption(void* v) :
-            Option(v,2,"NO","YES")
+            Option(v,{"NO","YES"})
         {
         }
     };

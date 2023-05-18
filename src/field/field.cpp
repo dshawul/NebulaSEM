@@ -464,8 +464,8 @@ void Controls::enrollRefine(Util::ParamList& params) {
 void Controls::enrollDecompose(Util::ParamList& params) {
     params.enroll("n",&decompose_params.n);
     params.enroll("axis",&decompose_params.axis);
-    Util::Option* op = new Util::Option(&decompose_params.type, 4, 
-            "METIS","XYZ","CELLID","NONE");
+    Util::Option* op = new Util::Option(&decompose_params.type,
+            {"METIS","XYZ","CELLID","NONE"});
     params.enroll("type",op);
 }
 /**
@@ -493,27 +493,27 @@ void Mesh::enroll(Util::ParamList& params) {
     params.enroll("gravity", &gravity);
 
     Option* op;
-    op = new Option(&convection_scheme,17,
-            "CDS","UDS","HYBRID","BLENDED","LUD","CDSS","MUSCL","QUICK",
+    op = new Option(&convection_scheme,
+            {"CDS","UDS","HYBRID","BLENDED","LUD","CDSS","MUSCL","QUICK",
             "VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST",
-            "DDS","FROMM");
+            "DDS","FROMM"});
     params.enroll("convection_scheme",op);
     op = new BoolOption(&TVDbruner);
     params.enroll("tvd_bruner",op);
-    op = new Option(&nonortho_scheme,4,"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED");
+    op = new Option(&nonortho_scheme, {"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED"});
     params.enroll("nonortho_scheme",op);
-    op = new Option(&time_scheme,6,"BDF1","BDF2","BDF3","BDF4","BDF5","BDF6");
+    op = new Option(&time_scheme,{"BDF1","BDF2","BDF3","BDF4","BDF5","BDF6"});
     params.enroll("time_scheme",op);
     params.enroll("runge_kutta",&runge_kutta);
-    op = new Option(&Solver,3,"JAC","SOR","PCG");
+    op = new Option(&Solver,{"JAC","SOR","PCG"});
     params.enroll("method",op);
-    op = new Option(&Preconditioner,4,"NONE","DIAG","SSOR","DILU");
+    op = new Option(&Preconditioner,{"NONE","DIAG","SSOR","DILU"});
     params.enroll("preconditioner",op);
-    op = new Option(&state,2,"STEADY","TRANSIENT");
+    op = new Option(&state,{"STEADY","TRANSIENT"});
     params.enroll("state",op);
-    op = new Option(&parallel_method,2,"BLOCKED","ASYNCHRONOUS");
+    op = new Option(&parallel_method,{"BLOCKED","ASYNCHRONOUS"});
     params.enroll("parallel_method",op);
-    op = new Option(&write_format,2,"TEXT","BINARY");
+    op = new Option(&write_format,{"TEXT","BINARY"});
     params.enroll("write_format",op);
     op = new Util::BoolOption(&save_average);
     params.enroll("average",op);
