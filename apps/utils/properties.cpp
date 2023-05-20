@@ -20,6 +20,7 @@ namespace Fluid {
         T0 = 300;
         P0 = 101325;
         cp = 1004.67;
+        cv = 715.5;
     
         params.enroll("rho", &density);
         params.enroll("viscosity", &viscosity);
