@@ -155,6 +155,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
         ncF += val;                                                             \
     }                                                                           \
     if(isBoundary(ii,jj,kk)) {                                                  \
+        T3 val(Scalar(0));                                                      \
         for(Int f = faceIndices[0][ci]; f < faceIndices[1][ci]; f++) {          \
             for(Int n = 0; n < NPF;n++) {                                       \
                 Int k = allFaces[f] * NPF + n;                                  \
@@ -164,31 +165,34 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
                     if((forw && (c2 < c1)) ||                                   \
                       (!forw && (c1 < c2))) {                                   \
                         if(tr == 0)                                             \
-                           ncF += X[c2] * M.ann[k];                             \
+                           val += X[c2] * M.ann[k];                             \
                         else                                                    \
-                           ncF += X[c2] * M.ano[k];                             \
+                           val += X[c2] * M.ano[k];                             \
                     }                                                           \
                 } else if(index1 == c2) {                                       \
                     if((forw && (c2 > c1)) ||                                   \
                       (!forw && (c1 > c2)))                                     \
                         if(tr == 0)                                             \
-                          ncF += X[c1] * M.ano[k];                              \
+                          val += X[c1] * M.ano[k];                              \
                         else                                                    \
-                          ncF += X[c1] * M.ann[k];                              \
+                          val += X[c1] * M.ann[k];                              \
                 }                                                               \
             }                                                                   \
         }                                                                       \
+        ncF += val;                                                             \
     }                                                                           \
     ncF *= iD[index1];                                                          \
     X[index1] = ncF;                                                            \
 }
 #define ForwardSub(X,B,TR) {                                                    \
+    _Pragma("acc loop seq")                                                     \
     for(Int ci = 0;ci < gBCS;ci++)  {                                           \
         forEachLgl(ii,jj,kk)                                                    \
             Substitute_(X,B,ci,true,TR);                                        \
     }                                                                           \
 }
 #define BackwardSub(X,B,TR) {                                                   \
+    _Pragma("acc loop seq")                                                     \
     for(int ci = gBCS - 1; ci >= 0; ci--)    {                                  \
         forEachLglR(ii,jj,kk)                                                   \
             Substitute_(X,B,ci,false,TR);                                       \
