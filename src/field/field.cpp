@@ -24,6 +24,7 @@ namespace Mesh {
     Int         gBCSfield;
     Int         gBCSIfield;
     Int         gBFSfield;
+    Int         gALLfield;
     Int         gNCells;
     Int         gNFacets;
     Int         gNVertices;
@@ -168,6 +169,7 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
     gNVertices = gVertices.size();
     gBCSfield = gBCS * DG::NP;
     gBCSIfield = gBCSI * DG::NP;
+    gALLfield = gNCells * DG::NP;
     /* Allocate faces*/
     Int nfaces = 0;
     forEach(gCells,i)

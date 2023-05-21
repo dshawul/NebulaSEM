@@ -383,6 +383,7 @@ namespace Mesh {
     extern IntVector  probeCells;
     extern Int  gBCSfield; 
     extern Int  gBCSIfield;
+    extern Int  gALLfield;
 };
 
 /* *****************************************************************************
@@ -778,11 +779,10 @@ class MeshField : public BaseField
             }
             if(!recycle || mem_pool.empty()) {
                 Int sz = SIZE;
-                if(entity == CELL) 
-                    sz += 1;
-                else if(entity == CELLMAT) 
+                if(entity == CELL)
                     sz += DG::NP;
-
+                else if(entity == CELLMAT)
+                    sz += DG::NPMAT;
                 aligned_reserve<type>(P,sz);
                 n_alloc++;
                 if(n_alloc > n_alloc_max)
@@ -1392,7 +1392,7 @@ auto sum(const MeshField<type,FACET>& fF) {
                 Int c2 = FN[k];
                 if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                     cF[c1] += fF[k];
-                else
+                else if(c2 < gALLfield)
                     cF[c2] -= fF[k];
             }
         }
@@ -1455,7 +1455,8 @@ void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
                 Int k = (*bc->bdry)[j] * DG::NPF + n;
                 Int c1 = FO[k];
                 Int c2 = FN[k];
-                if(!equal(cC[c1],cC[c2])) {
+                if(c2 >= gALLfield) continue;
+                if((DG::NP == 1) && !equal(cC[c1],cC[c2])) {
                     slope += ((*this)[c2] - (*this)[c1]) / 
                         mag(cC[c2] - cC[c1]);
                 }
@@ -1981,18 +1982,18 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
         TensorProduct(q,p);
     }
 
-#define MUL() {                                                         \
-        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
-            for(Int n = 0; n < DG::NPF; n++) {                          \
-                Int k = allFaces[f] * DG::NPF + n;                      \
-                Int c1 = FO[k];                                         \
-                Int c2 = FN[k];                                         \
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] -= q[c2] * p.ann[k];                          \
-                else                                                    \
-                    r[c2] -= q[c1] * p.ano[k];                          \
-            }                                                           \
-        }                                                               \
+#define MUL() {                                                     \
+    for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
+        for(Int n = 0; n < DG::NPF; n++) {                          \
+            Int k = allFaces[f] * DG::NPF + n;                      \
+            Int c1 = FO[k];                                         \
+            Int c2 = FN[k];                                         \
+            if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
+                r[c1] -= q[c2] * p.ann[k];                          \
+            else if(c2 < gALLfield)                                 \
+                r[c2] -= q[c1] * p.ano[k];                          \
+        }                                                           \
+    }                                                               \
 }
 
     //compute internal cell values
@@ -2039,18 +2040,18 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
         TensorProductT(q,p);
     }
 
-#define MUL() {                                                         \
-        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
-            for(Int n = 0; n < DG::NPF; n++) {                          \
-                Int k = allFaces[f] * DG::NPF + n;                      \
-                Int c1 = FO[k];                                         \
-                Int c2 = FN[k];                                         \
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] -= q[c2] * p.ano[k];                          \
-                else                                                    \
-                    r[c2] -= q[c1] * p.ann[k];                          \
-            }                                                           \
-        }                                                               \
+#define MUL() {                                                     \
+    for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
+        for(Int n = 0; n < DG::NPF; n++) {                          \
+            Int k = allFaces[f] * DG::NPF + n;                      \
+            Int c1 = FO[k];                                         \
+            Int c2 = FN[k];                                         \
+            if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
+                r[c1] -= q[c2] * p.ano[k];                          \
+            else if(c2 < gALLfield)                                 \
+                r[c2] -= q[c1] * p.ann[k];                          \
+        }                                                           \
+    }                                                               \
 }
 
     //compute internal cell values
@@ -2090,18 +2091,18 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
         TensorProductM(q,p);
     }
 
-#define MUL() {                                                         \
-        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
-            for(Int n = 0; n < DG::NPF; n++) {                          \
-                Int k = allFaces[f] * DG::NPF + n;                      \
-                Int c1 = FO[k];                                         \
-                Int c2 = FN[k];                                         \
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
-                    r[c1] += q[c2] * p.ann[k];                          \
-                else                                                    \
-                    r[c2] += q[c1] * p.ano[k];                          \
-            }                                                           \
-        }                                                               \
+#define MUL() {                                                     \
+    for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {    \
+        for(Int n = 0; n < DG::NPF; n++) {                          \
+            Int k = allFaces[f] * DG::NPF + n;                      \
+            Int c1 = FO[k];                                         \
+            Int c2 = FN[k];                                         \
+            if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)           \
+                r[c1] += q[c2] * p.ann[k];                          \
+            else if(c2 < gALLfield)                                 \
+                r[c2] += q[c1] * p.ano[k];                          \
+        }                                                           \
+    }                                                               \
 }
 
     //compute internal cell values
@@ -2152,9 +2153,10 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
                 Int faceid = (*bc->bdry)[j];
                 for(Int n = 0; n < DG::NPF;n++) {
                     Int k = faceid * DG::NPF + n;
-
                     Int c1 = FO[k];
                     Int c2 = FN[k];
+                    if(c2 >= gALLfield) continue;
+
                     /*break connection with boundary cells*/
                     if(bc->cIndex == NEUMANN || bc->cIndex == SYMMETRY ||
                             bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
@@ -2259,6 +2261,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
                     Int k = faceid * DG::NPF + n;
                     Int c1 = FO[k];
                     Int c2 = FN[k];
+                    if(c2 >= gALLfield) continue;
+
                     if(bc->cIndex == NEUMANN) {
                         Vector dv = cC[c2] - cC[c1];
                         cF[c2] = cF[c1] + bc->value * mag(dv);
@@ -2336,7 +2340,9 @@ auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bi
         Int f = faceIndices[0][i];
         for(Int n = 0; n < DG::NPF;n++) {
             Int k = allFaces[f] * DG::NPF + n;
-            cF[FN[k]] = cF[FO[k]];
+            Int c2 = FN[k];
+            if(c2 < gALLfield)
+                cF[FN[k]] = cF[FO[k]];
         }
     }
 
@@ -2353,6 +2359,8 @@ auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bi
                     for(Int n = 0; n < DG::NPF;n++) {
                         Int k = (*bc->bdry)[j] * DG::NPF + n;
                         Int c2 = FN[k];
+                        if(c2 >= gALLfield) continue;
+
                         if(bc->cIndex == NEUMANN) {
                             cF[c2] = bc->value;
                         } else if(bc->cIndex == SYMMETRY) {
@@ -2515,7 +2523,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                     Int c2 = FN[k];
                     if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                         m.ap[c1] += m.ano[k];
-                    else
+                    else if(c2 < gALLfield)
                         m.ap[c2] += m.ann[k];
                 }
             }
@@ -2539,7 +2547,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                     Int c2 = FN[k];
                     if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                         m.ap[c1] += m.ano[k];
-                    else
+                    else if(c2 < gALLfield)
                         m.ap[c2] += m.ann[k];
                 }
             }
@@ -2883,7 +2891,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
                     Int c2 = FN[k];
                     if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
                         m.ap[c1] += m.ano[k];
-                    else
+                    else if(c2 < gALLfield)
                         m.ap[c2] += m.ann[k];
                 }
             }
