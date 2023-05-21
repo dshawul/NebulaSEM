@@ -9,7 +9,7 @@
 /**************************
  * scalars
  *************************/
-#if defined __DOUBLE
+#if defined USE_DOUBLE
 #   define Scalar  double
 #else
 #   define Scalar  float
@@ -454,7 +454,7 @@ namespace Constants {
     const Int MAX_INT = Int(1 << 31);
     const Scalar PI = Scalar(3.14159265358979323846264);
     const Scalar E  = Scalar(2.71828182845904523536028);
-#ifdef _DOUBLE
+#ifdef USE_DOUBLE
     const Scalar MachineEpsilon = Scalar(1e-15);
     const Scalar EqualEpsilon = Scalar(1e-7);
 #else

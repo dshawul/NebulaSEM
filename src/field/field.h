@@ -433,8 +433,6 @@ class BaseField {
         }
 };
 
-//#define EXPR_TMPL
-
 /** \name Unary operations */
 //@{
 #define DEFINE_UNARY_TOP_PART1_A(DApOpp,func,type,rtype)                        \
@@ -450,7 +448,7 @@ class BaseField {
         { return ($ a); }                                                       \
     };
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 #define DEFINE_UNARY_TOP_PART2(DApOpp,func,type,rtype)                          \
     template<class type, class A>                                               \
     auto func(const DVExpr<type,A>& a) {                                        \
@@ -498,7 +496,7 @@ class BaseField {
         { return func(a, b); }                                                  \
     };  
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 #define DEFINE_BINARY_TOP_PART2(DApOpp,$,func,type1,type2,rtype)                \
     template<class type, class A, class B>                                      \
     auto func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {             \
@@ -537,7 +535,7 @@ class BaseField {
 
 /** \name Binary operations with Scalar */
 //@{
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 #define DEFINE_BINARY_TSOP_PART2_I(DApOpp,$,func,type,type2)                    \
     template<class type,class A>                                                \
     auto func(const DVExpr<type,A>& a, const type2& b) {                        \
@@ -599,7 +597,7 @@ class BaseField {
         { return func(a, b); }                                                  \
     };  
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 #define DEFINE_BINARY_TOP_PART3(DApOpp,$,func,type1,type2,rtype)                \
     template<class A, class B>                                                  \
     auto func(const DVExpr<type1,A>& a, const DVExpr<type2,B>& b) {             \
@@ -629,7 +627,7 @@ class BaseField {
 
 //@}
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 
 template<class C, class A, class Op>
 class DVUnaryExpr {
@@ -708,12 +706,12 @@ public:
  */
 template <class type,ENTITY entity> 
 class MeshField : public BaseField
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
    , public DVExpr<type,type*>  
 #endif
 {
     private:
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
         using DVExpr<type,type*>::P;
 #else
         type* P;
@@ -866,7 +864,7 @@ class MeshField : public BaseField
 #undef SOp
 
         /*Assignment from expressions*/
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 
         template <class A>
         MeshField(const DVExpr<type,A>& p) {
@@ -1311,7 +1309,7 @@ auto cds(const MeshField<type,CELL>& cF) {
     return fF;
 }
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 template<class type, class A>
 auto cds(const DVExpr<type,A>& expr) {
     return cds(MeshField<type,CELL>(expr));
@@ -1332,7 +1330,7 @@ auto uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
     return fF;
 }
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 template<class type, class T3, class A>
 auto uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
     return uds(MeshField<type,CELL>(expr),flux);
@@ -1402,7 +1400,7 @@ auto sum(const MeshField<type,FACET>& fF) {
     return cF;
 }
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 template<class type, class A>
 auto sum(const DVExpr<type,A>& expr) {
     return sum(MeshField<type,FACET>(expr));
@@ -1719,7 +1717,7 @@ struct MeshMatrix {
         Su = T3(0);
         adg = T2(0);
     }
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
     template<class A>
     MeshMatrix(const DVExpr<T1,A>& p) {
         cF = 0;
@@ -2018,7 +2016,7 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
     return r;
 }
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 template <class T1, class T2, class T3, class A> 
 MeshField<T1,CELL> mul (const MeshMatrix<T1,T2,T3>& p,const DVExpr<T1,A>& q, const bool sync = false) {
     return mul(p,MeshField<T1,CELL>(q),sync);
@@ -2711,7 +2709,7 @@ inline auto flxc(const MeshField<T,CELL>& p) {
     return p * Mesh::cV;
 }
 
-#ifdef EXPR_TMPL
+#ifdef USE_EXPR_TMPL
 template<typename T, typename A>
 auto flxc(const DVExpr<T,A>& expr) {
     return flxc(MeshField<T,CELL>(expr));

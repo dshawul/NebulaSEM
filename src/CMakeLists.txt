@@ -29,5 +29,13 @@ if(METIS_FOUND)
     target_link_libraries(solver PUBLIC ${METIS_LIBRARIES})
 endif()
 
+if(NOT USE_SINGLE)
+    target_compile_definitions(solver PUBLIC -DUSE_DOUBLE)
+endif()
+
+if(USE_EXPR_TMPL)
+    target_compile_definitions(solver PUBLIC -DUSE_EXPR_TMPL)
+endif()
+
 install(TARGETS solver)
 

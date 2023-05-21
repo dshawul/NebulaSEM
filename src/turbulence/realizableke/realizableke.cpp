@@ -29,16 +29,16 @@ void REALIZABLE_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
         ScalarCellField Ustar = sqrt((S & S) + (O & O));
         ScalarCellField Sbar = sqrt(S & S);
         ScalarCellField W = ((mul(S,S) & S) / pow(Sbar,3.0)) * sqrt(6.0);
-        W = min(max(W,-1.0),1.0);
+        W = min(max(W,Scalar(-1.0)),Scalar(1.0));
         ScalarCellField As = sqrt(6.0) * cos(acos(W) / 3.0);
         CmuF = 1.0 / (A0 + As * Ustar * k / x);
-        CmuF = min(CmuF,0.09);
+        CmuF = min(CmuF, Scalar(0.09));
     }
     /*calculate C1*/
     magS = sqrt((S & S) * 2.0);
     {
         ScalarCellField eta = magS * (k / x);
-        C1 = max(eta/(eta + 5.0),0.43);
+        C1 = max(eta/(eta + Scalar(5.0)),Scalar(0.43));
     }
     /*calculate viscosity*/
     KX_Model::calcEddyViscosity(gradU);

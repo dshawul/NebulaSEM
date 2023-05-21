@@ -4,6 +4,14 @@ project (solver)
 
 # options
 option( USE_OMP "Build with OpenMP enabled" OFF )
+option( USE_ACC "Build with OpenACC enabled" OFF )
+option( USE_SINGLE "Use single precision" OFF )
+option( USE_EXPR_TMPL "Use expression templates" ON )
+
+message(STATUS "USE_OMP ............. ${USE_OMP}")
+message(STATUS "USE_ACC ............. ${USE_ACC}")
+message(STATUS "USE_SINGLE .......... ${USE_SINGLE}")
+message(STATUS "USE_EXPR_TMPL ....... ${USE_EXPR_TMPL}")
 
 # find required packages
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)

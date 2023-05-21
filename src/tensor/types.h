@@ -5,9 +5,6 @@
 #    pragma warning (disable: 4996)
 #endif
 
-/** Defines double precision */
-#define __DOUBLE
-
 /** Unsigned integer type*/
 typedef unsigned int  Int;
 

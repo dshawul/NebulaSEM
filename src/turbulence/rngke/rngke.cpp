@@ -26,7 +26,7 @@ void RNG_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
         ScalarCellField eta = sqrt(getS2(gradU)) * (k / x);
         C2eStar = C2x + Cmu * pow(eta,3.0) * (1 - eta / eta0) / 
             (1 + beta * pow(eta,3.0));
-        C2eStar = max(C2eStar,0.0);
+        C2eStar = max(C2eStar,Scalar(0.0));
     }
     /*calculate viscosity*/
     KE_Model::calcEddyViscosity(gradU);

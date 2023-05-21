@@ -4,7 +4,7 @@
 #include "mpi.h"
 #include "types.h"
 
-#if defined __DOUBLE
+#if defined USE_DOUBLE
 #   define MPI_SCALAR  MPI_DOUBLE
 #else
 #   define MPI_SCALAR  MPI_FLOAT
