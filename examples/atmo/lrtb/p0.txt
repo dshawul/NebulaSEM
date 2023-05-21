@@ -3,10 +3,10 @@ size 1
 3
 {
     top {
-        type CALC_NEUMANN
+        type NEUMANN
     }
     bottom {
-        type CALC_NEUMANN
+        type NEUMANN
     }
     sides {
         type NEUMANN

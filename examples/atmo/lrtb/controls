@@ -82,20 +82,15 @@ refinement
 }
 
 ######################################
-#  PISO options
+#  euler options
 ######################################
-piso
+euler
 {
-    turbulence_model             NONE
-    velocity_UR                  0.7
-    pressure_UR                  0.3
+    velocity_UR                  0.5
+    pressure_UR                  0.8
+    t_UR                         0.8
     n_PISO                       2
-    n_ORTHO                      0
-    buoyancy                     BOUSSINESQ_T1
+    diffusion                    YES
+    buoyancy                     YES
 }
 
-turbulence
-{
-    k_UR                         0.5
-    x_UR                         0.5
-}

@@ -56,16 +56,15 @@ void euler(std::istream& input) {
         ScalarCellField mu;
 
         /*gas constants*/
-        Scalar p_factor, p_gamma, R, psi, iPr;
         using namespace Fluid;
+        Scalar p_gamma, R, psi, iPr;
         R = cp - cv;
         p_gamma = cp / cv;
-        p_factor = P0 * pow(R / P0, p_gamma);
         psi = 1 / (R * T0);
         iPr = 1 / Pr;
 
         /*calculate rho*/
-        rho = pow(p / p_factor, 1 / p_gamma) / T;
+        rho = (P0 / (R*T)) * pow(p / P0, 1 / p_gamma);
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         rho.write(0);
 
@@ -90,7 +89,7 @@ void euler(std::istream& input) {
                 Solve(M);
             }
             /*calculate p*/
-            p = p_factor * pow(rho * T, p_gamma);
+            p = P0 * pow((rho*T*R) / P0, p_gamma);
             /*U-equation*/
             {
                 VectorCellField Sc = Vector(0);

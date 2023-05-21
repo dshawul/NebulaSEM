@@ -1,15 +1,15 @@
 #include "properties.h"
 
 namespace Fluid {
-    Scalar density;
-    Scalar viscosity;
-    Scalar Pr;
-    Scalar Prt;
-    Scalar beta;
-    Scalar T0;
-    Scalar P0;
-    Scalar cp;
-    Scalar cv;
+    Scalar density;    /**< Density */
+    Scalar viscosity;  /**< Viscosity */
+    Scalar Pr;         /**< Prandtl number */
+    Scalar Prt;        /**< Turbulent Prandtly number */
+    Scalar T0;         /**< Reference temperature */
+    Scalar P0;         /**< Reference pressure */
+    Scalar cp;         /**< Specific heat at constant pressure */
+    Scalar cv;         /**< Specific heat at constant volume */
+    Scalar beta;       /**< Coefficient of thermal expansion (1/T0) */
     
     void enroll(Util::ParamList& params) {
         density = 1.177;
