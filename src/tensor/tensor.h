@@ -253,51 +253,51 @@ public:
         Unroll<SIZE - 3>::equ(&P[3],Scalar(0));
     }
     /*accessors*/
-    Scalar& operator [] (Int i) {
+    FORCEINLINE Scalar& operator [] (Int i) {
         return P[i];
     }
-    const Scalar& operator [] (Int i) const {
+    FORCEINLINE const Scalar& operator [] (Int i) const {
         return P[i];
     }
     /*unary ops*/
-    TTensor operator - () {
+    FORCEINLINE TTensor operator - () {
         TTensor r;
         Unroll<SIZE>::neg(r.P,P);
         return r;
     }
-    friend Scalar operator & (const TTensor& p,const TTensor& q) {
+    FORCEINLINE friend Scalar operator & (const TTensor& p,const TTensor& q) {
         Scalar r = Unroll<SIZE>::dot(p.P,q.P);
         if(SIZE == 6) r += Unroll<3>::dot(&p.P[3],&q.P[3]);
         return r;
     }
-    friend Scalar* addr(TTensor& p) {
+    FORCEINLINE friend Scalar* addr(TTensor& p) {
         return p.P;
     } 
     /*unrolled operations*/
 #define Op(name,$)                                                  \
-    TTensor& operator $(const TTensor& q) {                         \
+    FORCEINLINE TTensor& operator $(const TTensor& q) {             \
         Unroll<SIZE>::name(P,q.P);                                  \
         return *this;                                               \
     }
 #define SOp(name,$)                                                 \
-    TTensor& operator $(const Scalar& q) {                          \
+    FORCEINLINE TTensor& operator $(const Scalar& q) {              \
         Unroll<SIZE>::name(P,q);                                    \
         return *this;                                               \
     }
 #define Fp(name)                                                    \
-    friend TTensor name(const TTensor& p,const TTensor& s) {        \
+    FORCEINLINE friend TTensor name(const TTensor& p,const TTensor& s) { \
         TTensor r;                                                  \
         Unroll<SIZE>::name(r.P,p.P,s.P);                            \
         return r;                                                   \
     }
 #define Fp1(name)                                                   \
-    friend TTensor name(const TTensor& p,const Scalar& s) {         \
+    FORCEINLINE friend TTensor name(const TTensor& p,const Scalar& s) { \
         TTensor r;                                                  \
         Unroll<SIZE>::name(r.P,p.P,s);                              \
         return r;                                                   \
     }
 #define Fp2(name)                                                   \
-    friend TTensor name(const TTensor& p) {                         \
+    FORCEINLINE friend TTensor name(const TTensor& p) {             \
         TTensor r;                                                  \
         Unroll<SIZE>::name(r.P,p.P);                                \
         return r;                                                   \
@@ -343,28 +343,28 @@ public:
     AddOperators(TTensor)
     AddScalarOperators(TTensor)
     /*others*/
-    friend Scalar dot(const TTensor& p,const TTensor& q) {
+    FORCEINLINE friend Scalar dot(const TTensor& p,const TTensor& q) {
         return p & q;
     }
-    friend TTensor mul(const TTensor& p,const Scalar& q) {
+    FORCEINLINE friend TTensor mul(const TTensor& p,const Scalar& q) {
         return p * q;
     }
-    friend Scalar magSq(const TTensor& p) {
+    FORCEINLINE friend Scalar magSq(const TTensor& p) {
         return p & p;
     }
-    friend Scalar mag(const TTensor& p) {
+    FORCEINLINE friend Scalar mag(const TTensor& p) {
         return sqrt(magSq(p));
     }
-    friend TTensor unit(const TTensor& p) {
+    FORCEINLINE friend TTensor unit(const TTensor& p) {
         TTensor r = p;
         Scalar mg = mag(r);
         r /= mg;
         return r;
     }
-    friend Scalar tr(const TTensor& p) {
+    FORCEINLINE friend Scalar tr(const TTensor& p) {
         return p[0] + p[1] + p[2];
     }
-    friend TTensor dev(const TTensor& p,const Scalar& factor) {
+    FORCEINLINE friend TTensor dev(const TTensor& p,const Scalar& factor) {
         TTensor r = p;
         Scalar t = tr(p) * factor / 3;
         r[0] -= t;
@@ -372,7 +372,7 @@ public:
         r[2] -= t;
         return r;
     }
-    friend TTensor hyd(const TTensor& p,const Scalar& factor) {
+    FORCEINLINE friend TTensor hyd(const TTensor& p,const Scalar& factor) {
         TTensor r(1,1,1);
         Scalar t = tr(p) * factor / 3;
         r[0] = t;
