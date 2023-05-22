@@ -252,9 +252,9 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
             Int k = faceid * DG::NPF + n;
             Int c1 = FO[k];
             Int c2 = FN[k];
-            if(c2 >= gBCSfield && !isGhostFace[faceid]) {
+            if(c2 >= gBCSfield && !isGhostFace[faceid])
                 fI[k] = 0;
-            } else if(equal(cC[c1],fC[k]))  
+            else if(equal(cC[c1],cC[c2]))  
                 fI[k] = 0.5;
             else 
                 fI[k] = 1 - dot(v0 - cC[c1],fN[k]) / 

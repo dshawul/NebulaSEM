@@ -1496,7 +1496,7 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
             Vector center,radius;
             T perterb;
             is >> value >> perterb >> center >> radius;
-            for(Int i = 0;i < gBCSfield;i++) {
+            for(Int i = 0;i < gALLfield;i++) {
                 Scalar R = mag((cC[i] - center) / radius);
                 R = min(1.0,R);
                 T val = value;
@@ -1507,7 +1507,7 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
             Vector center,radius;
             T perterb;
             is >> value >> perterb >> center >> radius;
-            for(Int i = 0;i < gBCSfield;i++) {
+            for(Int i = 0;i < gALLfield;i++) {
                 Scalar R = mag((cC[i] - center) / radius);
                 Scalar v = exp(-R*R);
                 if(equal(v,Scalar(0))) v = 0;
@@ -1519,7 +1519,7 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
             T p0;
             Scalar scale, expon;
             is >> p0 >> scale >> expon;
-            for(Int i = 0;i < gBCSfield;i++) {
+            for(Int i = 0;i < gALLfield;i++) {
                 Scalar gz = dot(cC[i],Controls::gravity);
                 (*this)[i] = (p0) * pow(Scalar(1.0) + scale * gz, expon);
             }
@@ -2477,13 +2477,14 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
 
     if(isImplicit) {
         ScalarFacetField gamma;
+
         if(convection_scheme == CDS) 
             gamma = Scalar(1);
         else if(convection_scheme == UDS) 
             gamma = Scalar(0);
         else if(convection_scheme == BLENDED) 
             gamma = Scalar(blend_factor);
-        else if(!muc)
+        else if(muc == 0)
             gamma = Scalar(1);
         else if(convection_scheme == HYBRID) {
             MeshField<T4,FACET> mu = cds(*muc);
@@ -2505,6 +2506,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                 }
             }
         }
+
         #pragma omp parallel for
         #pragma acc parallel loop copyin(m,flux)
         forEach(flux,i) {

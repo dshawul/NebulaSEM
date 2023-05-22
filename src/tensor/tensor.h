@@ -459,7 +459,7 @@ namespace Constants {
     const Scalar EqualEpsilon = Scalar(1e-7);
 #else
     const Scalar MachineEpsilon = Scalar(1e-8);
-    const Scalar EqualEpsilon = Scalar(1e-4);
+    const Scalar EqualEpsilon = Scalar(1e-3);
 #endif
     const Vector I_V(1,1,1);
     const Tensor I_T(1,1,1);
