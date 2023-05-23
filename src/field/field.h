@@ -1720,7 +1720,7 @@ struct MeshMatrix {
         Su = p.Su;
         adg = p.adg;
     }
-    MeshMatrix(MeshField<T1,CELL>* pcF) {
+    MeshMatrix(MeshField<T3,CELL>* pcF) {
         cF = pcF;
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
@@ -1731,8 +1731,7 @@ struct MeshMatrix {
     }
 #ifdef USE_EXPR_TMPL
     template<class A>
-    MeshMatrix(const DVExpr<T1,A>& p) {
-        cF = 0;
+    MeshMatrix(const DVExpr<T3,A>& p) {
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
         ano = T2(0);
@@ -1741,8 +1740,7 @@ struct MeshMatrix {
         adg = T2(0);
     }
 #else
-    MeshMatrix(const MeshField<T1,CELL>& p) {
-        cF = 0;
+    MeshMatrix(const MeshField<T3,CELL>& p) {
         flags = (SYMMETRIC | DIAGONAL);
         ap = T2(0);
         ano = T2(0);
@@ -3084,30 +3082,29 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
         //Multistage Runge-Kutta for linearized (constant jacobian)
         if(!equal(implicit_factor,1)) {
             MeshField<type, CELL> k1 = M.Su - mul(M,  M.cF->tstore[0]);
+            MeshField<type, CELL> val;
             if(runge_kutta == 1) {
-                MeshField<type, CELL> val = k1  * (1 - implicit_factor);
-                M = M * (implicit_factor) + val;
+                val = k1;
             } else {
                 ScalarCellField mdt = Controls::dt / (Mesh::cV);
                 if (runge_kutta == 2) {
                     MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt);
-                    MeshField<type, CELL> val = ((k2 + k1) / 2) * (1 - implicit_factor);
-                    M = M * (implicit_factor) + val;
+                    val = ((k2 + k1) / 2);
                 } else if (runge_kutta == 3) {
                     MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
                     MeshField<type, CELL> k3 = k1 - mul(M, (2 * k2 - k1) * mdt);
-                    MeshField<type, CELL> val = ((k3 + 4 * k2 + k1) / 6) * (1 - implicit_factor);
-                    M = M * (implicit_factor) + val;
+                    val = ((k3 + 4 * k2 + k1) / 6);
                 } else if (runge_kutta == 4) {
                     MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
                     MeshField<type, CELL> k3 = k1 - mul(M, k2 * mdt / 2);
                     MeshField<type, CELL> k4 = k1 - mul(M, k3 * mdt);
-                    MeshField<type, CELL> val = ((k4 + 2 * k3 + 2 * k2 + k1) / 6) * (1 - implicit_factor);
-                    M = M * (implicit_factor) + val;
+                    val = ((k4 + 2 * k3 + 2 * k2 + k1) / 6);
                 }
             }
-            if(equal(implicit_factor,0))
-                M.flags |= (M.SYMMETRIC | M.DIAGONAL);
+            if(equal(implicit_factor,0)) {
+                M = M * 0 + val;
+            } else
+                M = M * (implicit_factor) + val * (1 - implicit_factor);
         }
 
         //first or second derivative

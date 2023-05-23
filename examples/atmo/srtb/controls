@@ -18,9 +18,9 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     100000
-    write_interval               2500
-    dt                           0.01
+    end_step                     50000
+    write_interval               1250
+    dt                           0.02
     n_deferred                   0
 
 ############################
@@ -89,7 +89,6 @@ euler
     velocity_UR                  0.5
     pressure_UR                  0.8
     t_UR                         0.8
-    n_PISO                       2
     diffusion                    YES
     buoyancy                     YES
 }

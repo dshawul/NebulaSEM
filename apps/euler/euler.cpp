@@ -84,7 +84,7 @@ void euler(std::istream& input) {
             else mu = Scalar(0);
             /*T-equation*/
             {
-                ScalarCellMatrix M,Mt;
+                ScalarCellMatrix M;
                 M = transport(T, Fc, F, mu * iPr, t_UR, &rho);
                 Solve(M);
             }
