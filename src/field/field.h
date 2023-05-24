@@ -1492,7 +1492,7 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
         if(str == "uniform") {
             is >> value;
             *this = value;
-        } else if(str == "elliptic") {
+        } else if(str == "cosine") {
             Vector center,radius;
             T perterb;
             is >> value >> perterb >> center >> radius;
@@ -1513,6 +1513,17 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
                 if(equal(v,Scalar(0))) v = 0;
                 T val = value;
                 val += perterb *  v;
+                (*this)[i] = val;
+            }
+        } else if(str == "linear") {
+            Vector center,radius;
+            T perterb;
+            is >> value >> perterb >> center >> radius;
+            for(Int i = 0;i < gALLfield;i++) {
+                Scalar R = mag((cC[i] - center) / radius);
+                R = min(1.0,R);
+                T val = value;
+                val += (perterb) * (Scalar(1.0) - R);
                 (*this)[i] = val;
             }
         } else if(str == "hydrostatic") {
