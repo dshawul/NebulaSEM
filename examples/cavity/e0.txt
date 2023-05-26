@@ -1,6 +1,9 @@
 size 1
-0 uniform 7.65e-4
-2
+internal 1
+{
+    uniform 7.65e-4
+}
+boundary 2
 {
     top_WALL {
         type NONE

@@ -1,6 +1,9 @@
 size 1
-0 uniform 0
-4
+internal 1
+{
+    uniform 0
+}
+boundary 4
 {
     inlet {
         type NEUMANN

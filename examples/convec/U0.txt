@@ -1,6 +1,9 @@
 size 3
-0 uniform 0 0 0
-3
+internal 1
+{
+    uniform 0 0 0
+}
+boundary 3
 {
     top {
         type DIRICHLET

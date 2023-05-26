@@ -1486,62 +1486,90 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
     is >> str >> size;
 
     /*internal field*/
-    is >> size;
-    if(size == 0) {
-        is >> str;
+    char symbol;
+    std::string name;
+    is >> name >> size >> symbol;
+    if(name != "internal") {
+        std::cerr << "Internal field not found" << std::endl;
+        exit(0);
+    }
+    if(size <= 4) {
         T value = T(0);
-        if(str == "uniform") {
-            is >> value;
-            *this = value;
-        } else if(str == "cosine") {
-            Vector center,radius;
-            T perterb;
-            is >> value >> perterb >> center >> radius;
-            for(Int i = 0;i < gALLfield;i++) {
-                Scalar R = mag((cC[i] - center) / radius);
-                R = min(1.0,R);
-                T val = value;
-                val += (perterb / 2) * (Scalar(1.0) + cos(R * Constants::PI));
-                (*this)[i] = val;
+        *this = value;
+        for(Int idx = 0; idx < size; idx++) {
+            is >> str;
+            if(str == "uniform") {
+                is >> value;
+                *this += MeshField<T,E>(value);
+            } else if(str == "cosine") {
+                Vector center,radius;
+                T perterb;
+                is >> value >> perterb >> center >> radius;
+                for(Int i = 0;i < gALLfield;i++) {
+                    Scalar R = mag((cC[i] - center) / radius);
+                    R = min(1.0,R);
+                    T val = value;
+                    val += (perterb / 2) * (Scalar(1.0) + cos(R * Constants::PI));
+                    (*this)[i] += val;
+                }
+            } else if(str == "gaussian") {
+                Vector center,radius;
+                T perterb;
+                is >> value >> perterb >> center >> radius;
+                for(Int i = 0;i < gALLfield;i++) {
+                    Scalar R = mag((cC[i] - center) / radius);
+                    Scalar v = exp(-R*R);
+                    if(equal(v,Scalar(0))) v = 0;
+                    T val = value;
+                    val += perterb *  v;
+                    (*this)[i] += val;
+                }
+            } else if(str == "gaussian-outside") {
+                Vector center;
+                Scalar radius, radius2;
+                T perterb;
+                is >> value >> perterb >> center >> radius >> radius2;
+                for(Int i = 0;i < gALLfield;i++) {
+                    Scalar R = mag(cC[i] - center);
+                    R = (R - radius) / radius2;
+                    T val = value;
+                    if(R <= 0)
+                        val += perterb;
+                    else {
+                        Scalar v = exp(-R*R);
+                        if(equal(v,Scalar(0))) v = 0;
+                        val += perterb *  v;
+                    }
+                    (*this)[i] += val;
+                }
+            } else if(str == "linear") {
+                Vector center,radius;
+                T perterb;
+                is >> value >> perterb >> center >> radius;
+                for(Int i = 0;i < gALLfield;i++) {
+                    Scalar R = mag((cC[i] - center) / radius);
+                    R = min(1.0,R);
+                    T val = value;
+                    val += (perterb) * (Scalar(1.0) - R);
+                    (*this)[i] += val;
+                }
+            } else if(str == "hydrostatic") {
+                T p0;
+                Scalar scale, expon;
+                is >> p0 >> scale >> expon;
+                for(Int i = 0;i < gALLfield;i++) {
+                    Scalar gz = dot(cC[i],Controls::gravity);
+                    (*this)[i] += (p0) * pow(Scalar(1.0) + scale * gz, expon);
+                }
+            } else {
+                std::cerr << "Unknown initialization name: " << str << std::endl;
+                exit(1);
             }
-        } else if(str == "gaussian") {
-            Vector center,radius;
-            T perterb;
-            is >> value >> perterb >> center >> radius;
-            for(Int i = 0;i < gALLfield;i++) {
-                Scalar R = mag((cC[i] - center) / radius);
-                Scalar v = exp(-R*R);
-                if(equal(v,Scalar(0))) v = 0;
-                T val = value;
-                val += perterb *  v;
-                (*this)[i] = val;
-            }
-        } else if(str == "linear") {
-            Vector center,radius;
-            T perterb;
-            is >> value >> perterb >> center >> radius;
-            for(Int i = 0;i < gALLfield;i++) {
-                Scalar R = mag((cC[i] - center) / radius);
-                R = min(1.0,R);
-                T val = value;
-                val += (perterb) * (Scalar(1.0) - R);
-                (*this)[i] = val;
-            }
-        } else if(str == "hydrostatic") {
-            T p0;
-            Scalar scale, expon;
-            is >> p0 >> scale >> expon;
-            for(Int i = 0;i < gALLfield;i++) {
-                Scalar gz = dot(cC[i],Controls::gravity);
-                (*this)[i] = (p0) * pow(Scalar(1.0) + scale * gz, expon);
-            }
-        } else
-            *this = value;
+        };
+        is >> symbol;
         return this->size();
     } else {
         T temp;
-        char symbol;
-        is >> symbol;
         for(Int i = 0;i < size;i++) {
             is >> temp;
             (*this)[offset + i] = temp;
@@ -1558,10 +1586,11 @@ void MeshField<T,E>::readBoundary_(Ts& is) {
     using namespace Mesh;
 
     /*boundary field*/
+    std::string name;
     Int size;
     char symbol;
     BCondition<T>* bc;
-    is >> size >> symbol;
+    is >> name >> size >> symbol;
     for(Int i = 0; i < size; i++) {
         bc = new BCondition<T>(this->fName);
         is >> *bc;
@@ -1619,7 +1648,7 @@ void MeshField<T,E>::writeInternal_(Ts& os, IntVector* cMap) {
         size = cMap->size();
     else
         size = (SIZE == gCells.size() * DG::NP) ? gBCSfield : SIZE;
-    os << size << "\n{\n";
+    os << "internal " << size << "\n{\n";
     for(Int i = 0;i < size;i++) {
         if(cMap)
             os << (*this)[(*cMap)[i]] << "\n";
@@ -1648,7 +1677,7 @@ void MeshField<T,E>::writeBoundary_(Ts& os) {
     }
 
     //write
-    os << size << "\n{\n";
+    os << "boundary " << size << "\n{\n";
     forEach(AllBConditions,i) {
         bbc = AllBConditions[i];
         if(bbc->fIndex == this->fIndex) {

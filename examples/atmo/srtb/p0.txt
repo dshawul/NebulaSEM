@@ -1,6 +1,9 @@
 size 1
-0 hydrostatic 101325 3.31783902509e-06 3.47432306256
-3
+internal 1
+{
+    hydrostatic 101325 3.31783902509e-06 3.47432306256
+}
+boundary 3
 {
     top {
         type NEUMANN

@@ -1,6 +1,9 @@
 size 3
-0 uniform 8.8 0 0
-4
+internal 1
+{
+    uniform 8.8 0 0
+}
+boundary 4
 {
     inlet {
         type DIRICHLET

@@ -1,6 +1,9 @@
 size 1
-0 uniform 101325
-2
+internal 1
+{
+    uniform 101325
+}
+boundary 2
 {
     top_WALL {
         type NEUMANN

@@ -1,6 +1,9 @@
 size 1
-0 cosine 300 2    5000 500 3000   2000 10000 2000
-3
+internal 1
+{
+    cosine 300 2    5000 500 3000   2000 10000 2000
+}
+boundary 3
 {
     top {
         type NEUMANN

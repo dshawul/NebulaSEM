@@ -1,6 +1,9 @@
 size 1
-0 uniform 0
-5
+internal 1
+{
+    uniform 0
+}
+boundary 5
 {
     inlet {
         type NONE

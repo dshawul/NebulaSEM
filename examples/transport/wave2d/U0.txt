@@ -1,6 +1,9 @@
 size 3
-0 uniform 0.1 0 0
-2
+internal 1
+{
+    uniform 0.1 0 0
+}
+boundary 2
 {
     inout {
         type NEUMANN

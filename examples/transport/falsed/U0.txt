@@ -1,6 +1,9 @@
 size 3
-0 uniform 2 2 0
-4
+internal 1
+{
+    uniform 2 2 0
+}
+boundary 4
 {
     left {
         type DIRICHLET

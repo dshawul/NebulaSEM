@@ -1,6 +1,9 @@
 size 3
-0 uniform 16.75 0 0
-5
+internal 1
+{
+    uniform 16.75 0 0
+}
+boundary 5
 {
     inlet {
         type LOG
