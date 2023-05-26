@@ -1,0 +1,14 @@
+size 1
+0 cosine 300 -15    12800 500 2000   4000 100000 2000
+3
+{
+    top {
+        type NEUMANN
+    }
+    bottom {
+        type NEUMANN
+    }
+    sides {
+        type NEUMANN
+    }
+}
