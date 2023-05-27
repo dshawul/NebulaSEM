@@ -166,7 +166,7 @@ void piso(std::istream& input) {
             /*PISO loop*/
             for (Int j = 0; j < n_PISO; j++) {
                 /* Ua = H(U) / ap*/
-                U = getRHS(M) * api;
+                U = getRHS(M,*M.cF) * api;
                 applyExplicitBCs(U, true);
 
                 /*solve pressure poisson equation to satisfy continuity*/

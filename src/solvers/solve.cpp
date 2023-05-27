@@ -61,7 +61,7 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
      * Jacobi sweep
      ***************************/
 #define JacobiSweep() {                                                         \
-    cF = iD * getRHS(M,sync);                                                   \
+    cF = iD * getRHS(M,*(M.cF),sync);                                           \
 }
     /****************************
      *  Forward/backward GS sweeps

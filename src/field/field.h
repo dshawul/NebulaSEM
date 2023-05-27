@@ -2115,11 +2115,10 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
 }
 /** calculate right-hand-side sum = b - (L + U) * x */
 template <class T1, class T2, class T3> 
-auto getRHS(const MeshMatrix<T1,T2,T3>& p, const bool sync = false) {
+auto getRHS(const MeshMatrix<T1,T2,T3>& p, const MeshField<T1,CELL>& q, const bool sync = false) {
     using namespace Mesh;
     using namespace DG;
     MeshField<T3,CELL> r;
-    MeshField<T1,CELL>& q = (*p.cF);
     ASYNC_COMM<T1> comm(&q[0]);
 
     if(sync) comm.send();
