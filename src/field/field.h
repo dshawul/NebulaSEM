@@ -2505,8 +2505,6 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
 
     /*compute surface integral*/
     MeshField<T1,CELL>& cF = *m.cF;
-    T4 F;
-    Scalar G;
 
     bool isImplicit = (
             convection_scheme == CDS ||
@@ -2532,9 +2530,12 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             for(Int faceid = 0; faceid < gNFacets; faceid++) {
                 for(Int n = 0; n < NPF;n++) {
                     Int k = faceid * NPF + n;
+                    Int c2 = FN[k];
+                    if(c2 >= gALLfield) continue;
+
                     //compare F and D
                     T4 D = fD[k] * mu[k];
-                    F = flux[k];
+                    T4 F = flux[k];
                     if(dot(F,T4(1)) < 0) {
                         if(dot(F * fI[k] + D,T4(1)) >= 0) gamma[k] = 1;
                         else gamma[k] = 0;
@@ -2549,8 +2550,8 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
         #pragma omp parallel for
         #pragma acc parallel loop copyin(m,flux)
         forEach(flux,i) {
-            F = flux[i];
-            G = gamma[i];
+            T4 F = flux[i];
+            Scalar G = gamma[i];
             m.ano[i] = ((G) * (-F * (  fI[i]  )) + (1 - G) * (-max( F,T4(0))));
             m.ann[i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
         }
@@ -2574,7 +2575,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
         #pragma omp parallel for
         #pragma acc parallel loop copyin(m,flux)
         forEach(flux,i) {
-            F = flux[i];
+            T4 F = flux[i];
             m.ano[i] = -max( F,T4(0));
             m.ann[i] = -max(-F,T4(0));
         }
@@ -2631,6 +2632,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                 #pragma omp parallel for
                 #pragma acc parallel loop
                 forEach(phiDC,i) {
+                    Scalar G;
                     if(dot(flux[i],T4(1)) >= 0) G = fI[i];
                     else G = 1 - fI[i];
                     uFI[i] = G;
