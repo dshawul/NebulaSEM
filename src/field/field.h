@@ -1348,8 +1348,9 @@ auto cds(const MeshField<type,FACET>& fF) {
     cnt = Scalar(0);
 
     forEach(fF,i) {
-        Facet& f = gFacets[i];
-        if(FN[i] < gBCSfield) {
+        Facet& f = gFacets[(i / DG::NP)];
+        if(FN[i] >= gALLfield) {
+        } else if(FN[i] < gBCSfield) {
             forEach(f,j) {
                 Int v = f[j];
                 Scalar dist = Scalar(1.0) / magSq(gVertices[v] - fC[i]);
