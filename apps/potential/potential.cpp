@@ -77,6 +77,7 @@ void potential(std::istream& input) {
   \endverbatim
  */
 int main(int argc, char* argv[]) {
+   MP mp(argc, argv);
    Solver::Initialize(argc, argv);
    potential(Solver::input);
    Solver::Finalize();

@@ -1,0 +1,18 @@
+size 1
+internal 2
+{
+    gaussian-outside 150  0.5    500 50 300   150 50
+    gaussian-outside 150 -0.15   560 50 640     0 50
+}
+boundary 3
+{
+    top {
+        type NEUMANN
+    }
+    bottom {
+        type NEUMANN
+    }
+    sides {
+        type NEUMANN
+    }
+}
