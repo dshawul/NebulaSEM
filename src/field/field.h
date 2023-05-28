@@ -1011,7 +1011,7 @@ class MeshField : public BaseField
             access = ACCESS(int(access) | STOREPREV);
             for(Int i = 0;i < nstore;i++)
                 tstore[i] = *this;
-            nstored = 0;
+            nstored = 1;
         }
         void updateStore() {
             for(Int i = 0;i < nstore - 1;i++)
@@ -3043,24 +3043,24 @@ auto ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
     m.flags |= (m.SYMMETRIC | m.DIAGONAL);
 
     //BDF methods
-    if(Controls::time_scheme == Controls::BDF1) {
-        m.ap = (-1.0 / Controls::dt) * Mesh::cV;
-        m.Su = (PREV(0)) * m.ap;
-    } else if(Controls::time_scheme == Controls::BDF2) {
-        m.ap = (-3.0 / (2.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((4.0 * PREV(0) - PREV(1)) / 3.0) * m.ap;
-    } else if(Controls::time_scheme == Controls::BDF3) {
-        m.ap = (-11.0 / (6.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((18.0 * PREV(0) - 9.0 * PREV(1) + 2.0 * PREV(2)) / 11.0) * m.ap;
-    } else if(Controls::time_scheme == Controls::BDF4) {
-        m.ap = (-25.0 / (12.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((48.0 * PREV(0) - 36.0 * PREV(1) + 16.0 * PREV(2) - 3.0 * PREV(3)) / 25.0) * m.ap;
-    } else if(Controls::time_scheme == Controls::BDF5) {
-        m.ap = (-137.0 / (60.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((300.0 * PREV(0) - 300.0 * PREV(1) + 200.0 * PREV(2) - 75.0 * PREV(3) + 12.0 * PREV(4)) / 137.0) * m.ap;
-    } else if(Controls::time_scheme == Controls::BDF6) {
+    if(Controls::time_scheme >= Controls::BDF6 && cF.nstored >= 6) {
         m.ap = (-147.0 / (60.0 * Controls::dt)) * Mesh::cV;
         m.Su = ((360.0 * PREV(0) - 450.0 * PREV(1) + 400.0 * PREV(2) - 225.0 * PREV(3) + 72.0 * PREV(4) - 10.0 * PREV(5)) / 147.0) * m.ap;
+    } else if(Controls::time_scheme >= Controls::BDF5 && cF.nstored >= 5) {
+        m.ap = (-137.0 / (60.0 * Controls::dt)) * Mesh::cV;
+        m.Su = ((300.0 * PREV(0) - 300.0 * PREV(1) + 200.0 * PREV(2) - 75.0 * PREV(3) + 12.0 * PREV(4)) / 137.0) * m.ap;
+    } else if(Controls::time_scheme >= Controls::BDF4 && cF.nstored >= 4) {
+        m.ap = (-25.0 / (12.0 * Controls::dt)) * Mesh::cV;
+        m.Su = ((48.0 * PREV(0) - 36.0 * PREV(1) + 16.0 * PREV(2) - 3.0 * PREV(3)) / 25.0) * m.ap;
+    } else if(Controls::time_scheme >= Controls::BDF3 && cF.nstored >= 3) {
+        m.ap = (-11.0 / (6.0 * Controls::dt)) * Mesh::cV;
+        m.Su = ((18.0 * PREV(0) - 9.0 * PREV(1) + 2.0 * PREV(2)) / 11.0) * m.ap;
+    } else if(Controls::time_scheme >= Controls::BDF2 && cF.nstored >= 2) {
+        m.ap = (-3.0 / (2.0 * Controls::dt)) * Mesh::cV;
+        m.Su = ((4.0 * PREV(0) - PREV(1)) / 3.0) * m.ap;
+    } else if(Controls::time_scheme >= Controls::BDF1 && cF.nstored >= 1) {
+        m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+        m.Su = (PREV(0)) * m.ap;
     }
     if(rho) m.ap *= (*rho);
 
@@ -3080,12 +3080,12 @@ auto ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
     m.flags |= (m.SYMMETRIC | m.DIAGONAL);
 
     //BDF method
-    if(Controls::time_scheme == Controls::BDF2) {
-        m.ap = (-1.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
-        m.Su = (2.0 * PREV(0) - PREV(1)) * m.ap;
-    } else if(Controls::time_scheme == Controls::BDF3) {
+    if(Controls::time_scheme >= Controls::BDF3 && cF.nstored >= 3) {
         m.ap = (-2.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
         m.Su = ((5.0 * PREV(0) - 4.0 * PREV(1) + PREV(2)) / 2.0) * m.ap;
+    } else if(Controls::time_scheme >= Controls::BDF2 && cF.nstored >= 2) {
+        m.ap = (-1.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
+        m.Su = (2.0 * PREV(0) - PREV(1)) * m.ap;
     }
     if(rho) m.ap *= (*rho);
 
