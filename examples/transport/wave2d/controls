@@ -27,7 +27,7 @@ general
 
     convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-    implicit_factor              0
+    time_scheme                  BDF1
     blend_factor                 0.6
 
 ############################

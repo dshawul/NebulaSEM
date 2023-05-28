@@ -528,24 +528,30 @@ PROBE:
      * Iteration info
      ***************************/
     if(MP::printOn) {
+        std::string info;
         if(M.flags & M.SYMMETRIC)
-            MP::printH("SYMM-");
+            info = "SYMM-";
         else
-            MP::printH("ASYM-");
+            info = "ASYM-";
+        if(M.flags & M.DIAGONAL)
+            info += "DIAG-";
+        else
+            info += "FULL-";
         if(Controls::Solver == Controls::JACOBI)
-            MP::print("JAC :");
+            info += "JAC :";
         else if(Controls::Solver == Controls::SOR)
-            MP::print("SOR :");
+            info += "SOR :";
         else {
             switch(Controls::Preconditioner) {
-                case Controls::NOPR: MP::print("NONE-PCG :"); break;
-                case Controls::DIAG: MP::print("DIAG-PCG :"); break;
-                case Controls::SSOR: MP::print("SSOR-PCG :"); break;
-                case Controls::DILU: MP::print("DILU-PCG :"); break;
+                case Controls::NOPR: info += "NONE-PCG :"; break;
+                case Controls::DIAG: info += "DIAG-PCG :"; break;
+                case Controls::SSOR: info += "SSOR-PCG :"; break;
+                case Controls::DILU: info += "DILU-PCG :"; break;
             }
         }
-        MP::print("Iterations %d Initial Residual "
-                "%.5e Final Residual %.5e\n",iterations,ires,res);
+        MP::printH("%sIterations %d Initial Residual "
+                "%.5e Final Residual %.5e\n",
+                info.c_str(),iterations,ires,res);
     }
 }
 /**
@@ -555,7 +561,7 @@ template<class T1,class T2,class T3>
 void SolveTexplicit(const MeshMatrix<T1,T2,T3>& M) {
     *M.cF = M.Su / M.ap;
     if(MP::printOn) {
-        MP::printH("DIAG-DIAG:");
+        MP::printH("SYMM-DIAG-DIAG-JAC:");
         MP::print("Iterations %d Initial Residual "
                 "%.5e Final Residual %.5e\n",1,0.0,0.0);
     }

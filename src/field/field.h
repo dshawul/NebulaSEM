@@ -302,14 +302,32 @@ namespace Controls {
         ORTHOGONAL,     /**< Orthogonal correction */
         OVER_RELAXED    /**< Over-relaxed correction (default) */
     };
-    /** Backward differencing formula */
+    /** Time difference schemes
+        - Implicit backward differencing
+        - Implicit Adams-Moulton method
+        - explicit Adams-Bashforth method
+        - explicit Runge-Kutta */
     enum TimeScheme {
-        BDF1,   /**< First order */
-        BDF2,   /**< Second order */
-        BDF3,   /**< Third order */
-        BDF4,   /**< Fourth order */
-        BDF5,   /**< Fifth order */
-        BDF6    /**< Sixth order */
+        BDF1,   /**< First order BDF */
+        BDF2,   /**< Second order BDF */
+        BDF3,   /**< Third order BDF */
+        BDF4,   /**< Fourth order BDF */
+        BDF5,   /**< Fifth order BDF */
+        BDF6,   /**< Sixth order BDF */
+        AM1,    /**< First order AM */
+        AM2,    /**< Second order AM */
+        AM3,    /**< Third order AM */
+        AM4,    /**< Fourth order AM */
+        AM5,    /**< Fifth order AM */
+        AB1,    /**< First order AB */
+        AB2,    /**< Second order AB */
+        AB3,    /**< Third order AB */
+        AB4,    /**< Fourth order AB */
+        AB5,    /**< Fifth order AB */
+        RK1,    /**< First order RK */
+        RK2,    /**< Second order RK */
+        RK3,    /**< Third order RK */
+        RK4     /**< Fourth order RK */
     };
     /** Iterative solvers */
     enum Solvers {
@@ -347,15 +365,14 @@ namespace Controls {
     extern Scalar SOR_omega;
     extern Scalar tolerance;
     extern Scalar blend_factor;
-    extern Scalar implicit_factor;
     extern Scalar dt;
-    extern Int runge_kutta;
 
     extern Int max_iterations;
     extern Int write_interval;
     extern Int start_step;
     extern Int end_step;
     extern Int amr_step;
+    extern Int current_step;
     extern Int n_deferred;
     extern Int save_average;
     extern Int print_time;
@@ -1005,18 +1022,18 @@ class MeshField : public BaseField
         MeshField* tstore;
         Int nstore;
         Int nstored;
-        void initStore() {
-            nstore = Controls::time_scheme - Controls::BDF1 + 1;
+        void initStore(Int nstore_, const MeshField& vF) {
+            nstore = nstore_;
             tstore = new MeshField[nstore];
             access = ACCESS(int(access) | STOREPREV);
             for(Int i = 0;i < nstore;i++)
-                tstore[i] = *this;
+                tstore[i] = vF;
             nstored = 1;
         }
-        void updateStore() {
+        void updateStore(const MeshField& vF) {
             for(Int i = 0;i < nstore - 1;i++)
                 tstore[nstore - i - 1] = tstore[nstore - i - 2];
-            tstore[0] = *this;
+            tstore[0] = vF;
             nstored++;
         }
         /*Time history*/
@@ -1066,10 +1083,6 @@ class MeshField : public BaseField
                         std += (*pf) * (*pf);
                         count++;
                     }
-                }
-                //update store
-                if(pf->access & STOREPREV) {
-                    pf->updateStore();
                 }
             }
         }
@@ -3033,34 +3046,102 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
 /* *******************************
  * Temporal derivative
  * *******************************/
-#define PREV(k) (rho ? (cF.tstore[k] * rho->tstore[k]) : cF.tstore[k])
+#define PREV(k)  (M.cF->tstore[k])
+#define cFR(k) (rho0 ? ((*M.cF) * (*rho0)) : (*M.cF))
 
 /** First derivative with respect to time */
 template<class type>
-auto ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
+auto ddt(MeshMatrix<type>& M, const MeshField<type,CELL>& rhs, ScalarCellField* rho, ScalarCellField* rho0) {
     MeshMatrix<type> m;
-    m.cF = &cF;
-    m.flags |= (m.SYMMETRIC | m.DIAGONAL);
+    m.cF = M.cF;
+    m.flags = (m.SYMMETRIC | m.DIAGONAL);
 
-    //BDF methods
-    if(Controls::time_scheme >= Controls::BDF6 && cF.nstored >= 6) {
-        m.ap = (-147.0 / (60.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((360.0 * PREV(0) - 450.0 * PREV(1) + 400.0 * PREV(2) - 225.0 * PREV(3) + 72.0 * PREV(4) - 10.0 * PREV(5)) / 147.0) * m.ap;
-    } else if(Controls::time_scheme >= Controls::BDF5 && cF.nstored >= 5) {
-        m.ap = (-137.0 / (60.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((300.0 * PREV(0) - 300.0 * PREV(1) + 200.0 * PREV(2) - 75.0 * PREV(3) + 12.0 * PREV(4)) / 137.0) * m.ap;
-    } else if(Controls::time_scheme >= Controls::BDF4 && cF.nstored >= 4) {
-        m.ap = (-25.0 / (12.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((48.0 * PREV(0) - 36.0 * PREV(1) + 16.0 * PREV(2) - 3.0 * PREV(3)) / 25.0) * m.ap;
-    } else if(Controls::time_scheme >= Controls::BDF3 && cF.nstored >= 3) {
-        m.ap = (-11.0 / (6.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((18.0 * PREV(0) - 9.0 * PREV(1) + 2.0 * PREV(2)) / 11.0) * m.ap;
-    } else if(Controls::time_scheme >= Controls::BDF2 && cF.nstored >= 2) {
-        m.ap = (-3.0 / (2.0 * Controls::dt)) * Mesh::cV;
-        m.Su = ((4.0 * PREV(0) - PREV(1)) / 3.0) * m.ap;
-    } else if(Controls::time_scheme >= Controls::BDF1 && cF.nstored >= 1) {
-        m.ap = (-1.0 / Controls::dt) * Mesh::cV;
-        m.Su = (PREV(0)) * m.ap;
+    //BDF methods - implicit
+    if(Controls::time_scheme <= Controls::BDF6) {
+        if(Controls::time_scheme >= Controls::BDF6 && m.cF->nstored >= 6) {
+            m.ap = (-147.0 / (60.0 * Controls::dt)) * Mesh::cV;
+            m.Su = ((360.0 * PREV(0) - 450.0 * PREV(1) + 400.0 * PREV(2) - 225.0 * PREV(3) + 72.0 * PREV(4) - 10.0 * PREV(5)) / 147.0) * m.ap;
+        } else if(Controls::time_scheme >= Controls::BDF5 && m.cF->nstored >= 5) {
+            m.ap = (-137.0 / (60.0 * Controls::dt)) * Mesh::cV;
+            m.Su = ((300.0 * PREV(0) - 300.0 * PREV(1) + 200.0 * PREV(2) - 75.0 * PREV(3) + 12.0 * PREV(4)) / 137.0) * m.ap;
+        } else if(Controls::time_scheme >= Controls::BDF4 && m.cF->nstored >= 4) {
+            m.ap = (-25.0 / (12.0 * Controls::dt)) * Mesh::cV;
+            m.Su = ((48.0 * PREV(0) - 36.0 * PREV(1) + 16.0 * PREV(2) - 3.0 * PREV(3)) / 25.0) * m.ap;
+        } else if(Controls::time_scheme >= Controls::BDF3 && m.cF->nstored >= 3) {
+            m.ap = (-11.0 / (6.0 * Controls::dt)) * Mesh::cV;
+            m.Su = ((18.0 * PREV(0) - 9.0 * PREV(1) + 2.0 * PREV(2)) / 11.0) * m.ap;
+        } else if(Controls::time_scheme >= Controls::BDF2 && m.cF->nstored >= 2) {
+            m.ap = (-3.0 / (2.0 * Controls::dt)) * Mesh::cV;
+            m.Su = ((4.0 * PREV(0) - PREV(1)) / 3.0) * m.ap;
+        } else if(Controls::time_scheme >= Controls::BDF1 && m.cF->nstored >= 1) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = (PREV(0)) * m.ap;
+        }
+    //AM methods - implicit
+    } else if(Controls::time_scheme <= Controls::AM5) {
+        if(Controls::time_scheme >= Controls::AB5 && m.cF->nstored >= 4) {
+            m.ap = (-720.0 / (251.0 * Controls::dt)) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (646 * PREV(0) - 264 * PREV(1) + 106 * PREV(2) - 19 * PREV(3)) / 251.0;
+        } else if(Controls::time_scheme >= Controls::AM4 && m.cF->nstored >= 3) {
+            m.ap = (-24.0 / (9.0 * Controls::dt)) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (19 * PREV(0) - 5 * PREV(1) + PREV(2)) / 9.0;
+        } else if(Controls::time_scheme >= Controls::AM3 && m.cF->nstored >= 2) {
+            m.ap = (-12.0 / (5.0 * Controls::dt)) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (8 * PREV(0) - PREV(1)) / 5.0;
+        } else if(Controls::time_scheme >= Controls::AM2 && m.cF->nstored >= 1) {
+            m.ap = (-2.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + PREV(0);
+        } else if(Controls::time_scheme >= Controls::AM1 && m.cF->nstored >= 0) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap;
+        }
+    //AB methods - explicit
+    } else if(Controls::time_scheme <= Controls::AB5) {
+        if(Controls::time_scheme >= Controls::AB5 && m.cF->nstored >= 5) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (1901 * PREV(0) - 2774 * PREV(1) + 2616 * PREV(2) - 1274 * PREV(3) + 251 * PREV(4)) / 720.0;
+        } else if(Controls::time_scheme >= Controls::AB4 && m.cF->nstored >= 4) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (55 * PREV(0) - 59 * PREV(1) + 37 * PREV(2) - 9 * PREV(3)) / 24.0;
+        } else if(Controls::time_scheme >= Controls::AB3 && m.cF->nstored >= 3) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (23 * PREV(0) - 16 * PREV(1) + 5 * PREV(2)) / 12.0;
+        } else if(Controls::time_scheme >= Controls::AB2 && m.cF->nstored >= 2) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (3 * PREV(0) - PREV(1)) / 2.0;
+        } else if(Controls::time_scheme >= Controls::AB1 && m.cF->nstored >= 1) {
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + PREV(0);
+        }
+    //RK methods - explicit
+    // assumes linearized (constant jacobian)
+    } else {
+        if(Controls::time_scheme >= Controls::RK4) {
+            ScalarCellField mdt = Controls::dt / (Mesh::cV);
+            const MeshField<type, CELL>& k1 = rhs;
+            MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
+            MeshField<type, CELL> k3 = k1 - mul(M, k2 * mdt / 2);
+            MeshField<type, CELL> k4 = k1 - mul(M, k3 * mdt);
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+        } else if(Controls::time_scheme >= Controls::RK3) {
+            ScalarCellField mdt = Controls::dt / (Mesh::cV);
+            const MeshField<type, CELL>& k1 = rhs;
+            MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
+            MeshField<type, CELL> k3 = k1 - mul(M, (2 * k2 - k1) * mdt);
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (k1 + 4 * k2 + k3) / 6;
+        } else if(Controls::time_scheme >= Controls::RK2) {
+            ScalarCellField mdt = Controls::dt / (Mesh::cV);
+            const MeshField<type, CELL>& k1 = rhs;
+            MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt);
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + (k1 + k2) / 2;
+        } else if(Controls::time_scheme >= Controls::RK1) {
+            const MeshField<type, CELL>& k1 = rhs;
+            m.ap = (-1.0 / Controls::dt) * Mesh::cV;
+            m.Su = cFR(0) * m.ap + k1;
+        }
     }
     if(rho) m.ap *= (*rho);
 
@@ -3074,18 +3155,20 @@ auto ddt(MeshField<type,CELL>& cF,ScalarCellField* rho) {
 
 /** Second derivative with respect to time */
 template<class type>
-auto ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
+auto ddt2(MeshMatrix<type>& M, const MeshField<type,CELL>& rhs, ScalarCellField* rho, ScalarCellField* rho0) {
     MeshMatrix<type> m;
-    m.cF = &cF;
-    m.flags |= (m.SYMMETRIC | m.DIAGONAL);
+    m.cF = M.cF;
+    m.flags = (m.SYMMETRIC | m.DIAGONAL);
 
-    //BDF method
-    if(Controls::time_scheme >= Controls::BDF3 && cF.nstored >= 3) {
-        m.ap = (-2.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
-        m.Su = ((5.0 * PREV(0) - 4.0 * PREV(1) + PREV(2)) / 2.0) * m.ap;
-    } else if(Controls::time_scheme >= Controls::BDF2 && cF.nstored >= 2) {
-        m.ap = (-1.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
-        m.Su = (2.0 * PREV(0) - PREV(1)) * m.ap;
+    //BDF methods - implicit
+    if(Controls::time_scheme <= Controls::BDF6) {
+        if(Controls::time_scheme >= Controls::BDF3 && m.cF->nstored >= 3) {
+            m.ap = (-2.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
+            m.Su = ((5.0 * PREV(0) - 4.0 * PREV(1) + PREV(2)) / 2.0) * m.ap;
+        } else if(Controls::time_scheme >= Controls::BDF2 && m.cF->nstored >= 2) {
+            m.ap = (-1.0 / (Controls::dt * Controls::dt)) * Mesh::cV;
+            m.Su = (2.0 * PREV(0) - PREV(1)) * m.ap;
+        }
     }
     if(rho) m.ap *= (*rho);
 
@@ -3098,51 +3181,54 @@ auto ddt2(MeshField<type,CELL>& cF, ScalarCellField* rho) {
 }   
 
 #undef PREV
+#undef cFR
 
 /** Time stepper */
 template<int order, class type>
-void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
+void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     using namespace Controls;
     if(state == STEADY)
         M.Relax(cF_UR);
     else {
-        //store previous values
-        if(!(M.cF->access & STOREPREV)) 
-            M.cF->initStore();
+        //compute rhs
+        MeshField<type, CELL> rhs = M.Su - mul(M,  *(M.cF));
 
-        //Multistage Runge-Kutta for linearized (constant jacobian)
-        if(!equal(implicit_factor,1)) {
-            MeshField<type, CELL> k1 = M.Su - mul(M,  M.cF->tstore[0]);
-            MeshField<type, CELL> val;
-            if(runge_kutta == 1) {
-                val = k1;
-            } else {
-                ScalarCellField mdt = Controls::dt / (Mesh::cV);
-                if (runge_kutta == 2) {
-                    MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt);
-                    val = ((k2 + k1) / 2);
-                } else if (runge_kutta == 3) {
-                    MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
-                    MeshField<type, CELL> k3 = k1 - mul(M, (2 * k2 - k1) * mdt);
-                    val = ((k3 + 4 * k2 + k1) / 6);
-                } else if (runge_kutta == 4) {
-                    MeshField<type, CELL> k2 = k1 - mul(M, k1 * mdt / 2);
-                    MeshField<type, CELL> k3 = k1 - mul(M, k2 * mdt / 2);
-                    MeshField<type, CELL> k4 = k1 - mul(M, k3 * mdt);
-                    val = ((k4 + 2 * k3 + 2 * k2 + k1) / 6);
-                }
+        //store previous values
+        if(!(M.cF->access & STOREPREV)) { 
+            if(Controls::time_scheme <= Controls::BDF6) {
+                Int nstore = Controls::time_scheme - Controls::BDF1 + 1;
+                MeshField<type,CELL> cFR = (rho0 ? ((*M.cF) * (*rho0)) : (*M.cF));
+                M.cF->initStore(nstore,cFR);
+            } else if(Controls::time_scheme <= Controls::AM5) {
+                Int nstore = Controls::time_scheme - Controls::AM1 + 1;
+                M.cF->initStore(nstore,rhs);
+            } else if(Controls::time_scheme <= Controls::AB5) {
+                Int nstore = Controls::time_scheme - Controls::AB1 + 1;
+                M.cF->initStore(nstore,rhs);
             }
-            if(equal(implicit_factor,0)) {
-                M = M * 0 + val;
-            } else
-                M = M * (implicit_factor) + val * (1 - implicit_factor);
+        } else if(Controls::current_step > M.cF->nstored - 1) {
+            if(Controls::time_scheme <= Controls::BDF6) {
+                MeshField<type,CELL> cFR = (rho0 ? ((*M.cF) * (*rho0)) : (*M.cF));
+                M.cF->updateStore(cFR);
+            } else if(Controls::time_scheme <= Controls::AM5) {
+                M.cF->updateStore(rhs);
+            } else if(Controls::time_scheme <= Controls::AB5) {
+                M.cF->updateStore(rhs);
+            }
         }
 
         //first or second derivative
-        if(order == 1)
-            M += ddt(*M.cF,rho);
-        else
-            M += ddt2(*M.cF,rho);
+        if(Controls::time_scheme <= Controls::AM5) {
+            if constexpr (order == 1)
+                M += ddt(M,rhs,rho,rho0);
+            else
+                M += ddt2(M,rhs,rho,rho0);
+        } else {
+            if constexpr (order == 1)
+                M = ddt(M,rhs,rho,rho0);
+            else
+                M = ddt2(M,rhs,rho,rho0);
+        }
     }
 }
 /* ************************************************
@@ -3150,49 +3236,55 @@ void addTemporal(MeshMatrix<type>& M,Scalar cF_UR,ScalarCellField* rho = 0) {
  *************************************************/
 template<class type>
 auto diffusion(MeshField<type,CELL>& cF,
-        const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
+        const ScalarCellField& mu, Scalar cF_UR,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     MeshMatrix<type> M = -lap(cF,mu,true);
     M.cF = &cF;
-    addTemporal<1>(M,cF_UR,rho);
+    addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 template<class type>
 auto diffusion(MeshField<type,CELL>& cF,
         const ScalarCellField& mu, Scalar cF_UR, 
-        const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
+        const MeshField<type,CELL>& Su,const ScalarCellField& Sp,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     MeshMatrix<type> M = -lap(cF,mu,true) - src(cF,Su,Sp);
     M.cF = &cF;
-    addTemporal<1>(M,cF_UR,rho);
+    addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 template<class type>
 auto convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
-        const ScalarFacetField& F, Scalar cF_UR, ScalarCellField* rho = 0) {
+        const ScalarFacetField& F, Scalar cF_UR,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     MeshMatrix<type> M = div(cF,Fc,F);
-    addTemporal<1>(M,cF_UR,rho);
+    addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 template<class type>
 auto convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F, Scalar cF_UR, 
-        const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
+        const MeshField<type,CELL>& Su,const ScalarCellField& Sp,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     MeshMatrix<type> M = div(cF,Fc,F) - src(cF,Su,Sp);
-    addTemporal<1>(M,cF_UR,rho);
+    addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 template<class type>
-auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
-        const ScalarCellField& mu, Scalar cF_UR, ScalarCellField* rho = 0) {
+auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,
+        const ScalarFacetField& F, const ScalarCellField& mu, Scalar cF_UR,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu);
-    addTemporal<1>(M,cF_UR,rho);
+    addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 template<class type>
-auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,const ScalarFacetField& F,
-        const ScalarCellField& mu, Scalar cF_UR, 
-        const MeshField<type,CELL>& Su,const ScalarCellField& Sp, ScalarCellField* rho = 0) {
+auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,
+        const ScalarFacetField& F,const ScalarCellField& mu, Scalar cF_UR, 
+        const MeshField<type,CELL>& Su, const ScalarCellField& Sp,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
     MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu) - src(cF,Su,Sp);
-    addTemporal<1>(M,cF_UR,rho);
+    addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 /* ********************

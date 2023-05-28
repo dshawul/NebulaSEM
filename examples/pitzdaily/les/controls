@@ -27,7 +27,6 @@ general
 
     convection_scheme            CDS
     nonortho_scheme              OVER_RELAXED
-    implicit_factor              0.5
     blend_factor                 0.2
 
 ############################

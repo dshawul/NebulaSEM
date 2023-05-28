@@ -53,6 +53,7 @@ void euler(std::istream& input) {
         Iteration it(ait.get_step());
         VectorCellField Fc;
         ScalarFacetField F;
+        ScalarCellField rhof;
         ScalarCellField mu;
 
         /*gas constants*/
@@ -71,6 +72,7 @@ void euler(std::istream& input) {
         /*Time loop*/
         for (; !it.end(); it.next()) {
             /*fluxes*/
+            rhof = rho;
             Fc = flxc(rho * U);
             F = flx(rho * U);
             /*rho-equation*/
@@ -85,7 +87,7 @@ void euler(std::istream& input) {
             /*T-equation*/
             {
                 ScalarCellMatrix M;
-                M = transport(T, Fc, F, mu * iPr, t_UR, &rho);
+                M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
                 Solve(M);
             }
             /*calculate p*/
@@ -98,7 +100,7 @@ void euler(std::istream& input) {
                     Sc += rho * VectorCellField(Controls::gravity);
                 /*solve*/
                 VectorCellMatrix M;
-                M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho);
+                M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho, &rhof);
                 Solve(M == -gradf(p));
             }
             /*courant number*/

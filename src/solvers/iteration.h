@@ -19,6 +19,7 @@ class Iteration {
             if(endi > Controls::end_step) endi = Controls::end_step;
             n_deferred = Controls::n_deferred;
             i = starti;
+            Controls::current_step = i;
             idf = 0;
             if(MP::printOn)
                 std::cout << "--------------------------------------------\n";
@@ -66,8 +67,12 @@ class Iteration {
 
             /*increment*/
             i++;
+            Controls::current_step = i;
         }
         ~Iteration() {
+        }
+        Int get_step() {
+            return i;
         }
 };
 /**

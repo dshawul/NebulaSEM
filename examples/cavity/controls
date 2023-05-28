@@ -27,7 +27,6 @@ general
 
     convection_scheme            HYBRID
     nonortho_scheme              OVER_RELAXED
-    implicit_factor              1
     blend_factor                 0.2
 
 ############################

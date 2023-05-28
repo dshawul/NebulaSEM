@@ -52,8 +52,6 @@ namespace Controls {
     Int TVDbruner = 0;
     NonOrthoScheme nonortho_scheme = OVER_RELAXED;
     TimeScheme time_scheme = BDF1;
-    Scalar implicit_factor = 1;
-    Int runge_kutta = 1;
     Scalar blend_factor = Scalar(0.2);
     Scalar tolerance = Scalar(1e-5f);
     Scalar dt = Scalar(.1);
@@ -65,6 +63,7 @@ namespace Controls {
     Int write_interval = 20;
     Int start_step = 0;
     Int end_step = 2;
+    Int current_step = 0;
     Int amr_step = 0;
     Int n_deferred = 0;
     Int save_average = 0;
@@ -490,7 +489,6 @@ void Mesh::enroll(Util::ParamList& params) {
     params.enroll("tolerance",&tolerance);
     params.enroll("dt",&dt);
     params.enroll("SOR_omega",&SOR_omega);
-    params.enroll("implicit_factor",&implicit_factor);
 
     params.enroll("probe",&Mesh::probePoints);
 
@@ -506,9 +504,12 @@ void Mesh::enroll(Util::ParamList& params) {
     params.enroll("tvd_bruner",op);
     op = new Option(&nonortho_scheme, {"NONE","MINIMUM","ORTHOGONAL","OVER_RELAXED"});
     params.enroll("nonortho_scheme",op);
-    op = new Option(&time_scheme,{"BDF1","BDF2","BDF3","BDF4","BDF5","BDF6"});
+    op = new Option(&time_scheme,
+            {"BDF1","BDF2","BDF3","BDF4","BDF5","BDF6",
+             "AM1", "AM2", "AM3", "AM4", "AM5",
+             "AB1", "AB2", "AB3", "AB4", "AB5",
+             "RK1", "RK2", "RK3", "RK4"});
     params.enroll("time_scheme",op);
-    params.enroll("runge_kutta",&runge_kutta);
     op = new Option(&Solver,{"JAC","SOR","PCG"});
     params.enroll("method",op);
     op = new Option(&Preconditioner,{"NONE","DIAG","SSOR","DILU"});

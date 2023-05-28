@@ -30,8 +30,6 @@ general
     convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
     time_scheme                  BDF1
-    runge_kutta                  1
-    implicit_factor              0
     blend_factor                 0.3
     parallel_method              BLOCKED
     print_time                   1000
