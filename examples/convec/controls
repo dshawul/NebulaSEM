@@ -82,7 +82,7 @@ piso
     pressure_UR                  0.3
     n_PISO                       2
     n_ORTHO                      0
-    buoyancy                     BOUSSINESQ_THETA1
+    buoyancy                     BOUSSINESQ_THETA2
 }
 
 turbulence

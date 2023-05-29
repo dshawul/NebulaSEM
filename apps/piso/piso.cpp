@@ -129,9 +129,32 @@ void piso(std::istream& input) {
             {
                 VectorCellField Sc = turb->getExplicitStresses();
                 const ScalarCellField eddy_mu = turb->getTurbVisc();
-                /* Add buoyancy in two ways
-                 *  1. pm = p - rho*g*h
-                 *  2. pm = p - rho_m*g*h
+                /*  Add buoyancy using Boussinesq approximation, that states density variations are important
+                 *  only in the buoyancy term, rho*g. This is a reasonable assumption when density variations
+                 *  delta_rho << rho0 in:
+                 *
+                 *     rho = rho_0 + delta_rho
+                 *         = rho_0 - rho_0 * beta * (T - T0)
+                 *
+                 *  Two flavours based on the modified pressure (pm) that is solved for.
+                 *
+                 *  Method 1)  pm = p - rho_0*g*h
+                 *  Substituting into pressure gradient + buoyancy terms
+                 *
+                 *  -grad(p) + rho*g = -grad(pm + rho_0*g*h) + rho*g
+                 *                   = -grad(pm) - rho_0*g + rho*g
+                 *                   = -grad(pm) + (rho - rho_0)*g
+                 *                   = -grad(pm) - rho_0*beta*(T - T0)*g
+                 *
+                 *  Method 2) pm = p - rho*g*h
+                 *  where the perturbed density (rho) is used instead of rho_0
+                 *
+                 *  -grad(p) + rho*g = -grad(pm + rho*g*h) + rho*g
+                 *                   = -grad(pm) - g*h*grad(rho) - rho*grad(gh) + rho*g
+                 *                   = -grad(pm) - g*h*grad(rho) - rho*g + rho*g
+                 *                   = -grad(pm) - g*h*grad(rho)
+                 *                   = -grad(pm) + g*h*rho_0*beta*grad(T)
+                 *
                  */
                 if (buoyancy != NONE) {
                     Scalar beta;
@@ -140,11 +163,11 @@ void piso(std::istream& input) {
                     else
                         beta = 1 / Fluid::T0;
                     if (buoyancy == BOUSSINESQ_T1 || buoyancy == BOUSSINESQ_THETA1) {  
-                        ScalarCellField rhok = rho * (0 - beta * (T - Fluid::T0));
-                        Sc += (rhok * VectorCellField(Controls::gravity));
+                        ScalarCellField drho = -rho * beta * (T - Fluid::T0);
+                        Sc += (drho * VectorCellField(Controls::gravity));
                     } else if(buoyancy == BOUSSINESQ_T2 || buoyancy == BOUSSINESQ_THETA2) {
-                        ScalarCellField gz = dot(Mesh::cC,VectorCellField(Controls::gravity));
-                        Sc += gz * (rho * beta) * gradi(T);
+                        ScalarCellField gh = dot(Mesh::cC,VectorCellField(Controls::gravity));
+                        Sc += gh * (rho * beta) * gradi(T);
                     }
                 }
                 /*momentum prediction*/
