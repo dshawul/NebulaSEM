@@ -91,3 +91,15 @@ euler
     buoyancy                     YES
 }
 
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             NONE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       2
+    n_ORTHO                      0
+    buoyancy                     BOUSSINESQ_THETA2
+}
