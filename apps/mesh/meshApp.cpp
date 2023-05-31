@@ -16,7 +16,7 @@ struct Bdry {
 int main(int argc,char* argv[]) {
     using namespace Mesh;
     using namespace Util;
-    Vertices corners;
+    Vertices key_points;
     vector<Bdry> patches;
     MergeObject bMerge;
     string str;
@@ -67,18 +67,18 @@ int main(int argc,char* argv[]) {
 
         /*read key points*/
         if(Util::nextc(input))
-            input >> corners;
+            input >> key_points;
 
         while((c = Util::nextc(input)) != 0) {
             char symbol;
             if(isdigit(c)) {
-                /*read indices to corners*/
+                /*read indices to key points*/
                 IntVector index;
                 input >> index;
 
-                Vertices v(index.size(),Vector(0));
-                forEach(v,i)
-                    v[i] = corners[index[i]];
+                Vertices corners(index.size(),Vector(0));
+                forEach(corners,i)
+                    corners[i] = key_points[index[i]];
 
                 IntVector n;
                 Int type;
@@ -151,12 +151,14 @@ int main(int argc,char* argv[]) {
                     {0,4}, {1,5}, {2,6}, {3,7}
                 };
                 vector<Edge> edges(12);
+                Sphere sphere;
+                bool has_sphere = false;
                 for(Int i = 0;i < 12;i++) {
-                    edges[i].v[0] = v[sides[i][0]];
-                    edges[i].v[1] = v[sides[i][1]];
+                    edges[i].v[0] = corners[sides[i][0]];
+                    edges[i].v[1] = corners[sides[i][1]];
                 }
 
-                if((c = Util::nextc(input)) && (c == 'e')) {
+                if((c = Util::nextc(input)) && (c == 'e' || c == 's')) {
                     Int sz,side,key;
                     input >> str;
                     if(!compare(str,"edges")) {
@@ -164,7 +166,7 @@ int main(int argc,char* argv[]) {
                         for(Int i = 0;i < sz;i++) {
                             input >> str >> side >> key;    
                             Edge& e = edges[side];
-                            e.v[2] = corners[key];
+                            e.v[2] = key_points[key];
                             if(!compare(str,"arc")) {
                                 e.type = ARC;
                             } else if(!compare(str,"cosine")) {
@@ -176,6 +178,13 @@ int main(int argc,char* argv[]) {
                             }
                         }
                         input >> symbol;
+                    } else if(!compare(str,"sphere")) {
+                        Scalar radiusi, radiuso;
+                        input >> key >> radiusi >> radiuso;
+                        sphere.radiusi = radiusi;
+                        sphere.radiuso = radiuso;
+                        sphere.center = key_points[key];
+                        has_sphere = true;
                     } else {
                         Bdry b;
                         b.name = str;
@@ -188,7 +197,8 @@ int main(int argc,char* argv[]) {
 
                 //generate mesh
                 MeshObject mo;
-                hexMesh(&n[0],&s[0],&t[0],&v[0],&edges[0],mo);
+                hexMesh(&n[0],&s[0],&t[0],&corners[0],&edges[0],mo,
+                        has_sphere ? &sphere : 0);
                 merge(gMesh,bMerge,mo);
             } else {
                 /*read boundaries*/
@@ -211,16 +221,9 @@ int main(int argc,char* argv[]) {
         forEach(patches,i) {
             IntVector list;
             IntVector& b = patches[i].index;
-            Vector N = (corners[b[1]] - corners[b[0]]) ^ (corners[b[2]] - corners[b[0]]);
-            N /= mag(N);
-
             forEach(gMesh.mPatches,j) {
                 Patch& p = gMesh.mPatches[j];
-                Vector H = (p.C - corners[b[0]]);
-                Scalar d1 = mag(N ^ p.N);
-                Scalar d2 = sqrt(mag(N & H));
-                // if(Mesh::pointInPolygon(corners,b,p.C))
-                if(d1 <= 10e-4 && d2 <= 10e-4) {
+                if(Mesh::pointInPolygon(key_points,b,p.C)) {
                     for(Int k = p.from;k < p.to;k++)
                         list.push_back(k);
                 }

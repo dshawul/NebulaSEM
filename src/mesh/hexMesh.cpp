@@ -19,24 +19,38 @@ Vector circumcenter(const Vector& v1,const Vector& v2,const Vector& v3) {
 /**
   Add a vertex following shape of a given edge
  */
-void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
+void ADDV(int w,Scalar m,Edge* edges,Vector* vd,Sphere* sphere) {
     Edge& e = edges[w];
+    Vector v;
     if(e.type == NONE) {
-        vd[w] = (1 - m) * e.v[0] + (m) * e.v[1];
+        v = (1 - m) * e.v[0] + (m) * e.v[1];
     } else if(e.type == ARC) {
-        vd[w] = rotate(e.v[0] - e.v[3],e.N,e.theta * m) + e.v[3];
+        v = rotate(e.v[0] - e.v[3],e.N,e.theta * m) + e.v[3];
     } else if(e.type == COSINE) {
-        vd[w] = (1 - m) * e.v[0] + (m) * e.v[1] + 
+        v = (1 - m) * e.v[0] + (m) * e.v[1] + 
             pow(cos(Constants::PI * (m - 0.5)),2) * e.N;
     } else if(e.type == QUAD) {
-        vd[w] = (1 - m) * e.v[0] + (m) * e.v[1] + 
+        v = (1 - m) * e.v[0] + (m) * e.v[1] + 
             (4 * m * (1 - m)) * e.N;
     }
+    if(sphere) {
+        Scalar radius;
+        if(w >= 8)
+            radius = (1 - m) * sphere->radiusi + m * sphere->radiuso;
+        else if(w == 0 || w == 1 || w == 4 || w == 5)
+            radius = sphere->radiusi;
+        else
+            radius = sphere->radiuso;
+
+        vd[w] = unit(v - sphere->center) * radius;
+    } else
+        vd[w] = v;
 }
 /**
   Generate hexahedral mesh
  */
-void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
+void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
+    MeshObject& mo, Sphere* sphere) {
     Int i,j,k,m;
 
     /*for wall division set twice 
@@ -107,6 +121,16 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             e.N = e.v[2] - mid;
         }
     }
+    /*for cubed sphere*/
+    Vector vp[8];
+    for(i = 0; i < 8; i++)
+        vp[i] = vpo[i];
+    if(sphere) {
+        for(i = 0; i < 4; i++)
+            vp[i] = unit(vpo[i] - sphere->center) * sphere->radiusi;
+        for(i = 4; i < 8; i++)
+            vp[i] = unit(vpo[i] - sphere->center) * sphere->radiuso;
+    }
     /*variables*/
     Int nx = n[0] + 1 , ny = n[1] + 1 , nz = n[2] + 1;
     const Int B1 = (nx - 0) * (ny - 1) * (nz - 1);
@@ -126,6 +150,14 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             rr,rs,                                      \
             vp[i00],vp[i01],vp[i10],vp[i11],            \
             vd[ir0],vd[ir1],vd[i0s],vd[i1s]);           \
+    if(sphere) {                                        \
+        if(w == 0)                                      \
+            vf[w] = unit(vf[w] - sphere->center) *      \
+                    sphere->radiusi;                    \
+        else if(w == 1)                                 \
+            vf[w] = unit(vf[w] - sphere->center) *      \
+                    sphere->radiuso;                    \
+    }                                                   \
 }
 
 #define ADDC() {                                        \
@@ -140,18 +172,18 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
 }
 
 #define ADD() {                                     \
-    ADDV(0,sc[0][i],edges,vd);                      \
-    ADDV(1,sc[1][i],edges,vd);                      \
-    ADDV(2,sc[2][i],edges,vd);                      \
-    ADDV(3,sc[3][i],edges,vd);                      \
-    ADDV(4,sc[4][j],edges,vd);                      \
-    ADDV(5,sc[5][j],edges,vd);                      \
-    ADDV(6,sc[6][j],edges,vd);                      \
-    ADDV(7,sc[7][j],edges,vd);                      \
-    ADDV(8,sc[8][k],edges,vd);                      \
-    ADDV(9,sc[9][k],edges,vd);                      \
-    ADDV(10,sc[10][k],edges,vd);                    \
-    ADDV(11,sc[11][k],edges,vd);                    \
+    ADDV(0,sc[0][i],edges,vd,sphere);               \
+    ADDV(1,sc[1][i],edges,vd,sphere);               \
+    ADDV(2,sc[2][i],edges,vd,sphere);               \
+    ADDV(3,sc[3][i],edges,vd,sphere);               \
+    ADDV(4,sc[4][j],edges,vd,sphere);               \
+    ADDV(5,sc[5][j],edges,vd,sphere);               \
+    ADDV(6,sc[6][j],edges,vd,sphere);               \
+    ADDV(7,sc[7][j],edges,vd,sphere);               \
+    ADDV(8,sc[8][k],edges,vd,sphere);               \
+    ADDV(9,sc[9][k],edges,vd,sphere);               \
+    ADDV(10,sc[10][k],edges,vd,sphere);             \
+    ADDV(11,sc[11][k],edges,vd,sphere);             \
     rx = i / Scalar(nx - 1);                        \
     ry = j / Scalar(ny - 1);                        \
     rz = k / Scalar(nz - 1);                        \
@@ -292,10 +324,10 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
         mo.mPatches.push_back(p);
     }
 /*compute normals of mPatches*/
-#define NORMAL(i,j,k,l,p) {                     \
-    p.N = ((vp[j] - vp[i]) ^ (vp[k] - vp[i]));  \
-    p.N /= mag(p.N);                            \
-    p.C = (vp[i] + vp[j] + vp[k] + vp[l]) / 4;  \
+#define NORMAL(i,j,k,l,p) {                         \
+    p.N = ((vpo[j] - vpo[i]) ^ (vpo[k] - vpo[i]));  \
+    p.N /= mag(p.N);                                \
+    p.C = (vpo[i] + vpo[j] + vpo[k] + vpo[l]) / 4;  \
 }
     NORMAL(0,1,2,3,mo.mPatches[0]);
     NORMAL(4,5,6,7,mo.mPatches[1]);

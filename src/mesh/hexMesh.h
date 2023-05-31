@@ -30,13 +30,21 @@ struct Edge {
     }
 };
 
+/** Face curvature for cubed-sphere like grids */
+struct Sphere {
+    Scalar radiusi; /**< inner radius of sphere */
+    Scalar radiuso; /**< outer radius of sphere */
+    Vector center;  /**< center of sphere */
+};
+
 /** Boundary faces and vertices for merging hex grids*/
 struct MergeObject {
     Vertices vb;  /**< List of boundary vertices */
     Facets   fb;  /**< List of boundary faces */
 };
 
-void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,Mesh::MeshObject& mo);
+void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,
+             Mesh::MeshObject& mo, Sphere* sphere = 0);
 void merge(Mesh::MeshObject&,MergeObject&,Mesh::MeshObject&);
 void remove_duplicate(Mesh::MeshObject&);
 void merge(Mesh::MeshObject&,MergeObject&);
