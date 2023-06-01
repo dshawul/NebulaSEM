@@ -48,6 +48,7 @@ void euler(std::istream& input) {
         VectorCellField U("U",READWRITE);
         ScalarCellField T("T",READWRITE);
         ScalarCellField rho("rho",WRITE);
+        VectorCellField g(false);
 
         /*Read fields*/
         Iteration it(ait.get_step());
@@ -68,6 +69,15 @@ void euler(std::istream& input) {
         rho = (P0 / (R*T)) * pow(p / P0, 1 / p_gamma);
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         rho.write(0);
+
+        /*gravity vector*/
+        if(buoyancy) {
+            g.construct();
+            if(Controls::is_spherical)
+                g = -unit(Mesh::cC) * mag(Controls::gravity);
+            else
+                g = Controls::gravity;
+        }
 
         /*Time loop*/
         for (; !it.end(); it.next()) {
@@ -97,7 +107,7 @@ void euler(std::istream& input) {
                 VectorCellField Sc = Vector(0);
                 /*buoyancy*/
                 if(buoyancy)
-                    Sc += rho * VectorCellField(Controls::gravity);
+                    Sc += rho * g;
                 /*solve*/
                 VectorCellMatrix M;
                 M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho, &rhof);

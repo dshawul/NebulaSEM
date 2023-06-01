@@ -93,10 +93,18 @@ void piso(std::istream& input) {
         VectorCellField U("U", READWRITE);
         ScalarCellField p("p", READWRITE);
         ScalarCellField T(false);
+        VectorCellField g(false);
 
         /*temperature*/
-        if(buoyancy != NONE)
+        if(buoyancy != NONE) {
             T.construct("T",READWRITE);
+            /*gravity vector*/
+            g.construct();
+            if(Controls::is_spherical)
+                g = -unit(Mesh::cC) * mag(Controls::gravity);
+            else
+                g = Controls::gravity;
+        }
 
         /*turbulence model*/
         VectorCellField Fc;
@@ -164,9 +172,13 @@ void piso(std::istream& input) {
                         beta = 1 / Fluid::T0;
                     if (buoyancy == BOUSSINESQ_T1 || buoyancy == BOUSSINESQ_THETA1) {  
                         ScalarCellField drho = -rho * beta * (T - Fluid::T0);
-                        Sc += (drho * VectorCellField(Controls::gravity));
+                        Sc += (drho * g);
                     } else if(buoyancy == BOUSSINESQ_T2 || buoyancy == BOUSSINESQ_THETA2) {
-                        ScalarCellField gh = dot(Mesh::cC,VectorCellField(Controls::gravity));
+                        ScalarCellField gh;
+                        if(Controls::is_spherical)
+                            gh = -(mag(Mesh::cC) - Controls::sphere_radius) * mag(Controls::gravity);
+                        else
+                            gh = dot(Mesh::cC,g);
                         Sc += gh * (rho * beta) * gradi(T);
                     }
                 }

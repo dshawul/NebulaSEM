@@ -378,6 +378,8 @@ namespace Controls {
     extern Int print_time;
 
     extern Vector gravity;
+    extern Int is_spherical;
+    extern Scalar sphere_radius;
 
     extern FILE_FORMAT write_format;
 }
@@ -1571,8 +1573,12 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
                 Scalar scale, expon;
                 is >> p0 >> scale >> expon;
                 for(Int i = 0;i < gALLfield;i++) {
-                    Scalar gz = dot(cC[i],Controls::gravity);
-                    (*this)[i] += (p0) * pow(Scalar(1.0) + scale * gz, expon);
+                    Scalar gh;
+                    if(Controls::is_spherical)
+                        gh = -(mag(cC[i]) - Controls::sphere_radius) * mag(Controls::gravity);
+                    else
+                        gh = dot(cC[i],Controls::gravity);
+                    (*this)[i] += p0 * pow(1.0 + scale * gh, expon);
                 }
             } else {
                 std::cerr << "Unknown initialization name: " << str << std::endl;

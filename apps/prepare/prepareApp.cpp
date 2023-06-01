@@ -67,7 +67,11 @@ int main(int argc,char* argv[]) {
         params.enroll("npx",&DG::Nop[0]);
         params.enroll("npy",&DG::Nop[1]);
         params.enroll("npz",&DG::Nop[2]);
-        params.enroll("gravity",&Controls::gravity);
+        Util::Option* op;
+        params.enroll("gravity", &Controls::gravity);
+        op = new Util::BoolOption(&Controls::is_spherical);
+        params.enroll("is_spherical",op);
+        params.enroll("sphere_radius", &Controls::sphere_radius);
         params.read(input); 
     }
     {

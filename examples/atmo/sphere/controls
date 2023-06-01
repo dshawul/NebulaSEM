@@ -50,6 +50,7 @@ general
 ############################
     probe     0 {}
     gravity   0 0 -9.80606
+    is_spherical  YES
 ############################
 #  DG polynomial order
 ############################

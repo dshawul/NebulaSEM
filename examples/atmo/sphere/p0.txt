@@ -1,7 +1,7 @@
 size 1
 internal 1
 {
-    uniform 101325
+    hydrostatic 101325 3.31783902509e-06 3.47432306256
 }
 boundary 2
 {

@@ -70,6 +70,8 @@ namespace Controls {
     Int print_time = 0;
     CommMethod parallel_method = BLOCKED;
     Vector gravity = Vector(0,0,-9.860616);
+    Int is_spherical = 0;
+    Scalar sphere_radius = 6371220.0;
     FILE_FORMAT write_format = BINARY;
 }
 /**
@@ -492,9 +494,12 @@ void Mesh::enroll(Util::ParamList& params) {
 
     params.enroll("probe",&Mesh::probePoints);
 
-    params.enroll("gravity", &gravity);
-
     Option* op;
+    params.enroll("gravity", &gravity);
+    op = new BoolOption(&is_spherical);
+    params.enroll("is_spherical",op);
+    params.enroll("sphere_radius", &sphere_radius);
+
     op = new Option(&convection_scheme,
             {"CDS","UDS","HYBRID","BLENDED","LUD","CDSS","MUSCL","QUICK",
             "VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST",
