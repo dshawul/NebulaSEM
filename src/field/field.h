@@ -1104,15 +1104,12 @@ class MeshField : public BaseField
         /*IO*/
         template<typename Ts>
         friend Ts& operator << (Ts& os, const MeshField& p) {
-            forEach(p,i)
-                os << p[i] << "\n";
-            os << "\n";
+            p->write_(os);
             return os;
         }
         template<typename Ts>
         friend Ts& operator >> (Ts& is, MeshField& p) {
-            forEach(p,i)
-                is >> p[i];
+            p->read_(is);
             return is;
         }
         /*Memory usage*/
@@ -1711,8 +1708,10 @@ void MeshField<T,E>::writeBoundary_(Ts& os) {
 template <class T,ENTITY E> 
 template <typename Ts>
 void MeshField<T,E>::write_(Ts& os, IntVector* cMap) {
+    os.precision(12);
     writeInternal(os,cMap);
     writeBoundary(os);
+    os.precision(6);
 }
 
 template <class T,ENTITY E> 
