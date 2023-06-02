@@ -5,13 +5,12 @@ general
 ######################################
     solver                       euler
     mesh                         grid
-    write_format                 TEXT
 
 ######################################
 #  Fluid properties specific to solver
 ######################################
     rho                          1.177
-    viscosity                    1.5
+    viscosity                    30
 
 #############################
 #  Time increment
@@ -19,9 +18,9 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     2
-    write_interval               1
-    dt                           0.02
+    end_step                     1440
+    write_interval               60
+    dt                           60
     n_deferred                   0
 
 ############################
