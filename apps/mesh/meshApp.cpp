@@ -266,7 +266,7 @@ int main(int argc,char* argv[]) {
         os << gMesh;
     } else if(ext == ".msh") {
         Mesh::gMesh.addBoundaryCells();
-        Mesh::gMesh.calcGeometry();
+        Mesh::gMesh.calcGeometry(0);
         ofstream os(o_file_name);
         gMesh.writeMshMesh(os);
     } else {

@@ -105,7 +105,7 @@ namespace Mesh {
         void writeMshMesh(std::ostream&);
         void readMshMesh(std::istream&);
         void addBoundaryCells();
-        void calcGeometry();
+        void calcGeometry(Int);
         void removeBoundary(const IntVector&);
         Int  removeUnusedVertices(Int = 0);
         void breakEdges(Int);

@@ -126,7 +126,7 @@ void Mesh::MeshObject::addBoundaryCells() {
 /**
   Calculate geometric information
  */
-void Mesh::MeshObject::calcGeometry() {
+void Mesh::MeshObject::calcGeometry(Int is_spherical) {
     Int i;
     /*allocate*/
     mFC.assign(mFacets.size(),Vector(0));
@@ -165,7 +165,6 @@ void Mesh::MeshObject::calcGeometry() {
             Scalar magN = mag(Ni);
             Ci = magN * ((v1 + v2 + v3) / 3);
 
-
             C += Ci;
             Ntot += magN;
             N += Ni;
@@ -195,6 +194,14 @@ void Mesh::MeshObject::calcGeometry() {
           instead of the vertices alone*/
         mCC[i] = C / V;
         mCV[i] = V / Scalar(3);
+        /*correct for sphere*/
+        if(is_spherical) {
+            Scalar radiusb = mag(mVertices[mFacets[c[0]][0]]);
+            Scalar radiust = mag(mVertices[mFacets[c[1]][0]]);
+            mCC[i] = ((radiusb + radiust) / (2 * mag(mCC[i]))) * mCC[i];
+            mFC[c[0]] = (radiusb / mag(mFC[c[0]])) * mFC[c[0]];
+            mFC[c[1]] = (radiust / mag(mFC[c[1]])) * mFC[c[1]];
+        }
     }
     /*boundary cell centre and volume*/
     forEachS(mCells,i,mBCS) {

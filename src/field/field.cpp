@@ -132,7 +132,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
                 gVertices.size(),gFacets.size(),gCells.size());
         /*initialize mesh*/
         gMesh.addBoundaryCells();
-        gMesh.calcGeometry();
+        gMesh.calcGeometry(Controls::is_spherical);
         DG::init_poly();
         /* remove empty faces*/
         if(remove_empty) {
