@@ -575,7 +575,7 @@ void SolveTexplicit(const MeshMatrix<T1,T2,T3>& M) {
         SolveTexplicit(A);                  \
     else                                    \
         SolveT(A);                          \
-    applyExplicitBCs(*A.cF,true,false);     \
+    applyExplicitBCs(*A.cF,true);           \
 }
 void Solve(const MeshMatrix<Scalar>& A) {
     SOLVE();

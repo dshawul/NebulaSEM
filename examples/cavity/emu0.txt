@@ -6,9 +6,9 @@ internal 1
 boundary 2
 {
     top_WALL {
-        type NONE
+        type CALC_DIRICHLET
     }
     all_WALL {
-        type NONE
+        type CALC_DIRICHLET
     }
 }

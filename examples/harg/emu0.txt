@@ -6,16 +6,16 @@ internal 1
 boundary 5
 {
     inlet {
-        type NONE
+        type CALC_DIRICHLET
     }
     outlet {
-        type NONE
+        type CALC_DIRICHLET
     }
     sides {
-        type NONE
+        type CALC_DIRICHLET
     }
     top {
-        type NONE
+        type CALC_DIRICHLET
     }
     WALLS {
         type ROUGHWALL

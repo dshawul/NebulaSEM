@@ -218,7 +218,7 @@ void piso(std::istream& input) {
             }
 
             /*update fluctuations*/
-            applyExplicitBCs(U, true, true);
+            applyExplicitBCs(U, true);
             Fc = flxc(rho * U);
             F = flx(rho * U);
 

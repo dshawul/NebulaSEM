@@ -127,6 +127,7 @@ namespace Mesh {
     const Int PARABOLIC    = Util::hash_function("PARABOLIC");
     const Int INVERSE      = Util::hash_function("INVERSE");
     const Int ROUGHWALL    = Util::hash_function("ROUGHWALL");
+    const Int CALC_DIRICHLET = Util::hash_function("CALC_DIRICHLET");
     const Int CALC_NEUMANN = Util::hash_function("CALC_NEUMANN");
 }
 /** Basic boundary condition */
@@ -1625,7 +1626,7 @@ void MeshField<T,E>::read_(Ts& is) {
     readBoundary(is);
 
     /*update BCs*/
-    applyExplicitBCs(*this,true,true);
+    applyExplicitBCs(*this,true);
 }
 
 template <class T,ENTITY E> 
@@ -2233,10 +2234,7 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
 
 /** Apply explicit boundary conditions */
 template<class T,ENTITY E>
-void applyExplicitBCs(const MeshField<T,E>& cF,
-        bool update_ghost = false,
-        bool update_fixed = false
-        ) {
+void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
     using namespace Mesh;
     BasicBCondition* bbc;
     BCondition<T>* bc;
@@ -2262,48 +2260,51 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
             Int sz = bc->bdry->size();
 
             if(sz == 0) continue;
-            if(!bc->fixed.size())
+            bool update_fixed = false;
+            if(!bc->fixed.size() &&
+                (bc->cIndex == POWER || 
+                 bc->cIndex == LOG || 
+                 bc->cIndex == PARABOLIC ||
+                 bc->cIndex == INVERSE ||
+                 bc->cIndex == CALC_DIRICHLET ||
+                 bc->cIndex == ROUGHWALL)
+            ) {
+                update_fixed = true;
                 bc->fixed.resize(sz * DG::NPF);
+            }
 
             if(update_fixed) {
-                if(bc->cIndex == DIRICHLET || 
-                        bc->cIndex == POWER || 
-                        bc->cIndex == LOG || 
-                        bc->cIndex == PARABOLIC ||
-                        bc->cIndex == INVERSE
-                  ) {
-                    if(bc->zMax > 0) {
-                        zmin = bc->zMin;
-                        zmax = bc->zMax;
-                        zR = zmax - zmin;
-                    } else {
-                        zmin = Scalar(10e30);
-                        zmax = -Scalar(10e30);
-                        C = Vector(0);
-                        for(Int j = 0;j < sz;j++) {
-                            Facet& f = gFacets[(*bc->bdry)[j]];
-                            Vector fc(Scalar(0));
-                            forEach(f,k) {
-                                fc += vC[f[k]];
-                                z = (vC[f[k]] & bc->dir);
-                                if(z < zmin) 
-                                    zmin = z;
-                                if(z > zmax) 
-                                    zmax = z;
-                            }
-                            C += (fc / f.size());
+                if(bc->zMax > 0) {
+                    zmin = bc->zMin;
+                    zmax = bc->zMax;
+                    zR = zmax - zmin;
+                } else {
+                    zmin = Scalar(10e30);
+                    zmax = -Scalar(10e30);
+                    C = Vector(0);
+                    for(Int j = 0;j < sz;j++) {
+                        Facet& f = gFacets[(*bc->bdry)[j]];
+                        Vector fc(Scalar(0));
+                        forEach(f,k) {
+                            fc += vC[f[k]];
+                            z = (vC[f[k]] & bc->dir);
+                            if(z < zmin) 
+                                zmin = z;
+                            if(z > zmax) 
+                                zmax = z;
                         }
-                        C /= Scalar(sz);
-                        zR = zmax - zmin;
+                        C += (fc / f.size());
+                    }
+                    C /= Scalar(sz);
+                    zR = zmax - zmin;
 
-                        if(bc->cIndex == PARABOLIC) {
-                            Int vi = gFacets[(*bc->bdry)[0]][0];
-                            zR = magSq(vC[vi] - C);
-                            for(Int j = 1;j < sz;j++) {
-                                vi = gFacets[(*bc->bdry)[j]][0];
-                                Scalar r = magSq(vC[vi] - C);
-                                if(r < zR) zR = r;
-                            }
+                    if(bc->cIndex == PARABOLIC) {
+                        Int vi = gFacets[(*bc->bdry)[0]][0];
+                        zR = magSq(vC[vi] - C);
+                        for(Int j = 1;j < sz;j++) {
+                            vi = gFacets[(*bc->bdry)[j]][0];
+                            Scalar r = magSq(vC[vi] - C);
+                            if(r < zR) zR = r;
                         }
                     }
                 }
@@ -2345,13 +2346,13 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
                             else
                                 cF[c22] = cF[c1];
                         }
+                    } else if(bc->cIndex == DIRICHLET) {
+                       cF[c2] = bc->value;
                     } else { 
                         if(update_fixed) {
                             T v(0);
                             z = (cC[c2] & bc->dir) - zmin;
-                            if(bc->cIndex == DIRICHLET) {
-                                v = bc->value;
-                            } else if(bc->cIndex == POWER) {
+                            if(bc->cIndex == POWER) {
                                 if(z < 0) z = 0;
                                 if(z > zR) v = bc->value;
                                 else v = bc->value * pow(z / zR,bc->shape);
@@ -2364,6 +2365,8 @@ void applyExplicitBCs(const MeshField<T,E>& cF,
                                 v = bc->value * (z / zR);
                             } else if(bc->cIndex == INVERSE) {
                                 v = bc->value / (z + bc->shape);
+                            } else {
+                                v = cF[c2];
                             }
                             if(!bc->first && !equal(mag(bc->tvalue),0)) { 
                                 T meanTI = v * (bc->tvalue * pow (z / zR,-bc->tshape));

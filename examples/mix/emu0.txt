@@ -6,18 +6,18 @@ internal 1
 boundary 5
 {
     inlet1 {
-        type NONE
+        type CALC_DIRICHLET
     }
     inlet2 {
-        type NONE
+        type CALC_DIRICHLET
     }
     outlet {
-        type NONE
+        type CALC_DIRICHLET
     }
     topbot {
-        type NONE
+        type CALC_DIRICHLET
     }
     WALLS {
-        type WALL
+        type ROUGHWALL
     }
 }

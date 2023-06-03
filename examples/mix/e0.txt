@@ -22,6 +22,6 @@ boundary 5
         value 0
     }
     WALLS {
-        type NONE
+        type CALC_DIRICHLET
     }
 }

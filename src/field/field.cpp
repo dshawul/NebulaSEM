@@ -356,7 +356,7 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
             bc->init_indices();
             AllBConditions.push_back(bc);
         }
-        applyExplicitBCs(yWall,true,true);
+        applyExplicitBCs(yWall,true);
     }
 }
 /**
@@ -593,7 +593,7 @@ void Prepare::calcQOI(VectorCellField& qoi) {
         ScalarCellField norm;
         bf->norm(&norm);
         fillBCs(norm);
-        applyExplicitBCs(norm,false,false);
+        applyExplicitBCs(norm,false);
         qoi = gradf(norm);
         forEach(qoi,i) {
             Vector& v = qoi[i];
