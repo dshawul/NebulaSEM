@@ -2219,10 +2219,8 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
                         M.ap[c1] -= M.ann[k];
                         M.Su[c1] += M.ann[k] * (cF[c2] - cF[c1]);
                     } else if(bc->cIndex == ROBIN) {
-                        Vector dv = cC[c2] - cC[c1];
                         M.ap[c1] -= (1 - bc->shape) * M.ann[k];
-                        M.Su[c1] += M.ann[k] * (bc->shape * bc->value + 
-                                (1 - bc->shape) * bc->tvalue * mag(dv));
+                        M.Su[c1] += M.ann[k] * (cF[c2] - (1 - bc->shape) * cF[c1]);
                     } else {
                         M.Su[c1] += M.ann[k] * cF[c2];
                     }
