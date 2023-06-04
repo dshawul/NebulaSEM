@@ -68,15 +68,19 @@ void euler(std::istream& input) {
         /*calculate rho*/
         rho = (P0 / (R*T)) * pow(p / P0, 1 / p_gamma);
         Mesh::scaleBCs<Scalar>(p,rho,psi);
+        applyExplicitBCs(p,true);
         rho.write(0);
 
         /*gravity vector*/
         if(buoyancy) {
-            g.construct();
+            g.construct("gravity",WRITE);
             if(Controls::is_spherical)
                 g = -unit(Mesh::cC) * mag(Controls::gravity);
             else
                 g = Controls::gravity;
+            Mesh::fixedBCs<Vector>(U,g);
+            applyExplicitBCs(g,true);
+            g.write(0);
         }
 
         /*Time loop*/

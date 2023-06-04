@@ -1297,6 +1297,8 @@ namespace Mesh {
     void   calc_courant(const VectorCellField& U, Scalar dt);
     template <class type>
     void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
+    template <class type>
+    void   fixedBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&);
 }
 
 namespace Prepare {
@@ -1421,6 +1423,25 @@ auto sum(const DVExpr<type,A>& expr) {
 }
 #endif
 
+/** Calaculated dirichlet boundary condition */
+template <class type>
+void Mesh::fixedBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest) {
+    using namespace Mesh;
+    forEach(AllBConditions,i) {
+        BCondition<type> *bc, *bc1;
+        bc = static_cast<BCondition<type>*> (AllBConditions[i]);
+        if(bc->fIndex == src.fIndex) {
+            bc1 = new BCondition<type>(dest.fName);
+            *bc1 = *bc;
+            bc1->fIndex = dest.fIndex;
+            bc1->cname = "CALC_DIRICHLET";
+            bc1->cIndex = CALC_DIRICHLET;
+            bc1->fixed.clear();
+            AllBConditions.push_back(bc1);
+        }
+    }
+}
+
 /** Scale boundary condition by a constant */
 template <class type>
 void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
@@ -1442,7 +1463,9 @@ void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest,
                     bc1->cIndex == CYCLIC ||
                     bc1->cIndex == RECYCLE) {
             } else {
-                bc1->cIndex = GHOST;
+                bc1->cname = "CALC_DIRICHLET";
+                bc1->cIndex = CALC_DIRICHLET;
+                bc1->fixed.clear();
             }
 
             dest.calc_neumann(bc1);
@@ -2366,7 +2389,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
                             } else if(bc->cIndex == INVERSE) {
                                 v = bc->value / (z + bc->shape);
                             } else {
-                                v = cF[c2];
+                                v = cF[c1];
                             }
                             if(!bc->first && !equal(mag(bc->tvalue),0)) { 
                                 T meanTI = v * (bc->tvalue * pow (z / zR,-bc->tshape));

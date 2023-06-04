@@ -248,7 +248,6 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
     /* Facet interpolation factor to the owner of the face.
      * Neighbor takes (1 - f) */
     forEach(gFacets,faceid) {
-        Vector v0 = gVertices[gFacets[faceid][0]];
         for(Int n = 0; n < DG::NPF;n++) {
             Int k = faceid * DG::NPF + n;
             Int c1 = FO[k];
@@ -257,8 +256,8 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
                 fI[k] = 0;
             else if(equal(cC[c1],cC[c2]))  
                 fI[k] = 0.5;
-            else 
-                fI[k] = 1 - dot(v0 - cC[c1],fN[k]) / 
+            else
+                fI[k] = 1 - dot(fC[k] - cC[c1],fN[k]) / 
                     dot(cC[c2] - cC[c1],fN[k]);
         }
     }
