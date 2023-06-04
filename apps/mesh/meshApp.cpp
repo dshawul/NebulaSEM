@@ -221,9 +221,17 @@ int main(int argc,char* argv[]) {
         forEach(patches,i) {
             IntVector list;
             IntVector& b = patches[i].index;
+
+            //pick faces on same plane as patch
+            Vector N = (key_points[b[1]] - key_points[b[0]])
+                     ^ (key_points[b[2]] - key_points[b[0]]);
+            N /= mag(N);
             forEach(gMesh.mPatches,j) {
                 Patch& p = gMesh.mPatches[j];
-                if(Mesh::pointInPolygon(key_points,b,p.C)) {
+                Vector H = (p.C - key_points[b[0]]);
+                Scalar d1 = mag(N ^ p.N);
+                Scalar d2 = sqrt(mag(N & H));
+                if(d1 <= 10e-4 && d2 <= 10e-4) {
                     for(Int k = p.from;k < p.to;k++)
                         list.push_back(k);
                 }
