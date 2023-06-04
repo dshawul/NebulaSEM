@@ -109,6 +109,19 @@ void Mesh::MeshObject::addBoundaryCells() {
         erase_indices(mCells,allbs);
         mCells.insert(mCells.end(),bcs.begin(),bcs.end());
     }
+    /*recompute mFOC/mFNC*/
+    mFOC.assign(mFacets.size(),MAX_INT);
+    mFNC.assign(mFacets.size(),MAX_INT);
+    forEach(mCells,i) {
+        Cell& c = mCells[i];
+        forEach(c,j) {
+            Int fi = c[j];
+            if(mFOC[fi] == MAX_INT) 
+                mFOC[fi] = i;
+            else 
+                mFNC[fi] = i;
+        }
+    }
     /*add boundary cells*/
     forEachIt(mBoundaries,it) {
         IntVector& mB = it->second;
@@ -201,6 +214,8 @@ void Mesh::MeshObject::calcGeometry(Int is_spherical) {
             mCC[i] = ((radiusb + radiust) / (2 * mag(mCC[i]))) * mCC[i];
             mFC[c[0]] = (radiusb / mag(mFC[c[0]])) * mFC[c[0]];
             mFC[c[1]] = (radiust / mag(mFC[c[1]])) * mFC[c[1]];
+            for(Int j = 2; j < 6; j++)
+                mFC[c[j]] = ((radiusb + radiust) / (2 * mag(mFC[c[j]]))) * mFC[c[j]];
         }
     }
     /*boundary cell centre and volume*/

@@ -189,7 +189,7 @@ void DG::init_geom() {
             {0,3}, {1,2}, {5,6}, {4,7},
             {0,4}, {1,5}, {2,6}, {3,7}
         };
-        Vertex ev[12][3];
+        Vertex ev[12][2];
         for(Int i = 0;i < 12;i++) {
             ev[i][0] = vp[sides[i][0]];
             ev[i][1] = vp[sides[i][1]];

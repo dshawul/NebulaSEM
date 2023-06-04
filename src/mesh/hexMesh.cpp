@@ -150,14 +150,8 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
             rr,rs,                                      \
             vp[i00],vp[i01],vp[i10],vp[i11],            \
             vd[ir0],vd[ir1],vd[i0s],vd[i1s]);           \
-    if(sphere) {                                        \
-        if(w == 0)                                      \
-            vf[w] = unit(vf[w] - sphere->center) *      \
-                    sphere->radiusi;                    \
-        else if(w == 1)                                 \
-            vf[w] = unit(vf[w] - sphere->center) *      \
-                    sphere->radiuso;                    \
-    }                                                   \
+    if(sphere && w < 2)                                 \
+        vf[w] = (mag(vd[ir0])/mag(vf[w])) * vf[w];      \
 }
 
 #define ADDC() {                                        \
@@ -169,6 +163,8 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
             vd[4],vd[7],vd[5],vd[6],                    \
             vd[8],vd[11],vd[9],vd[10],                  \
             vf[4],vf[5],vf[2],vf[3],vf[0],vf[1]);       \
+    if(sphere)                                          \
+        v = (mag(vd[8])/mag(v)) * v;                    \
 }
 
 #define ADD() {                                     \

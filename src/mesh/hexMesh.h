@@ -24,7 +24,7 @@ struct Edge {
     int type;     /**< Edge shape type */
     Scalar theta; /**< Subtended angle of arc */
     Vector N;     /**< Unit normal vector of edge */
-    Vertex v[4];  /**< Points defining share of edge */
+    Vertex v[4];  /**< Points defining shape of edge */
     Edge() {
         type = NONE;
     }
