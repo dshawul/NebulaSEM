@@ -147,6 +147,41 @@ void DG::init_poly() {
     else
         NPF = NPX * NPY;
 }
+Int find_surface_node(Int cj, Int index0) {
+    using namespace Mesh;
+    using namespace DG;
+    Int face, index1 = Int(-1);
+
+    for(face = 0; face < 2; face++) {
+        Int ff = (face == 0) ? 0 : (NPZ - 1);
+        forEachLglXY(ii,jj) {
+            index1 = INDEX4(cj,ii,jj,ff);
+            if(equal(cC[index0],cC[index1]))
+                return index1;
+        }
+    }
+    for(face = 2; face < 4; face++) {
+        Int ff = (face == 2) ? 0 : (NPY - 1);
+        forEachLglXZ(ii,kk) {
+            index1 = INDEX4(cj,ii,ff,kk);
+            if(equal(cC[index0],cC[index1]))
+                return index1;
+        }
+    }
+    for(face = 4; face < 6; face++) {
+        Int ff = (face == 4) ? 0 : (NPX - 1);
+        forEachLglYZ(jj,kk) {
+            index1 = INDEX4(cj,ff,jj,kk);
+            if(equal(cC[index0],cC[index1]))
+                return index1;
+        }
+    }
+#if 1
+    std::cout << "Not Found: " << cC[index0] << std::endl;
+    exit(0);
+#endif
+    return index1;
+}
 /**
   Initialize geometry
  */
@@ -201,7 +236,7 @@ void DG::init_geom() {
 
 #define ADDV(w,m,ev,vd) {                               \
     vd[w] = (1 - m) * ev[w][0] + (m) * ev[w][1];        \
-    if(Controls::is_spherical)                          \
+    if(Controls::is_spherical && w < 8)                 \
         vd[w] = (mag(ev[w][0])/mag(vd[w])) * vd[w];     \
 }
 
@@ -210,8 +245,8 @@ void DG::init_geom() {
             rr,rs,                                      \
             vp[i00],vp[i01],vp[i10],vp[i11],            \
             vd[ir0],vd[ir1],vd[i0s],vd[i1s]);           \
-    if(Controls::is_spherical && w <= 1)                \
-        vf[w] = (mag(vp[i00])/mag(vf[w])) * vf[w];      \
+    if(Controls::is_spherical && w < 2)                 \
+        vf[w] = (mag(vd[ir0])/mag(vf[w])) * vf[w];      \
 }
 
 #define ADDC() {                                        \
@@ -223,12 +258,8 @@ void DG::init_geom() {
             vd[4],vd[7],vd[5],vd[6],                    \
             vd[8],vd[11],vd[9],vd[10],                  \
             vf[4],vf[5],vf[2],vf[3],vf[0],vf[1]);       \
-    if(Controls::is_spherical) {                        \
-        if(k == 0)                                      \
-            v = (mag(vf[0])/mag(v)) * v;                \
-        else if(k == NPZ-1)                             \
-            v = (mag(vf[1])/mag(v)) * v;                \
-    }                                                   \
+    if(Controls::is_spherical)                          \
+        v = (mag(vd[8])/mag(v)) * v;                    \
 }
 
 #define ADD() {                                         \
@@ -304,6 +335,7 @@ void DG::init_geom() {
                     Int indf = fi * NPF + i * NPY + j;
                     Int index0 = INDEX4(ci,i,j,ff);
                     Int index1 = INDEX4(cj,i,j,(NPZ - 1) - ff);
+                    if(index1 < gBCSfield) index1 = find_surface_node(cj, index0);
                     ADD();
                 }
             } else if(face == 2 || face == 3) {
@@ -313,6 +345,7 @@ void DG::init_geom() {
                     Int indf = fi * NPF + i * NPZ + k;
                     Int index0 = INDEX4(ci,i,ff,k);
                     Int index1 = INDEX4(cj,i,(NPY - 1) - ff,k);
+                    if(index1 < gBCSfield) index1 = find_surface_node(cj, index0);
                     ADD();
                 }
             } else {
@@ -322,6 +355,7 @@ void DG::init_geom() {
                     Int indf = fi * NPF + j * NPZ + k;
                     Int index0 = INDEX4(ci,ff,j,k);
                     Int index1 = INDEX4(cj,(NPX - 1) - ff,j,k);
+                    if(index1 < gBCSfield) index1 = find_surface_node(cj, index0);
                     ADD();
                 }
             }
