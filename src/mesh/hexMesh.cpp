@@ -522,13 +522,14 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
         m1.mFacets.insert(m1.mFacets.end(),m2.mFacets.begin(),m2.mFacets.begin() + s1);
 
         //insert faces
-        IntVector index0(s3,0),index1(s2 - s1,0);
+        constexpr Int INVALID = MAXNUM + (MAXNUM - 2);
+        IntVector index0(s3,0),index1(s2 - s1,INVALID);
         Int count = 0;
         b.fb.reserve(s3 + s2 - s1);
         for(Int j = 0;j < s3;j++) {
             found = 0;
             for(Int i = s1;i < s2;i++) {
-                if(!index1[i - s1] && equalSet(m2.mFacets[i],b.fb[j])) {
+                if((index1[i - s1] == INVALID) && equalSet(m2.mFacets[i],b.fb[j])) {
 
                     m1.mFacets.push_back(b.fb[j]);
                     index0[j]      = m1.mFacets.size() - 1;
@@ -545,7 +546,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
             }
         }
         for(Int i = s1;i < s2;i++) {
-            if(!index1[i - s1]) {
+            if(index1[i - s1] == INVALID) {
                 index1[i - s1] = MAXNUM + count;
 
                 if(count >= s3) b.fb.push_back(m2.mFacets[i]);
