@@ -1104,13 +1104,13 @@ class MeshField : public BaseField
         }
         /*IO*/
         template<typename Ts>
-        friend Ts& operator << (Ts& os, const MeshField& p) {
-            p->write_(os);
+        friend Ts& operator << (Ts& os, MeshField& p) {
+            p.write_(os,0);
             return os;
         }
         template<typename Ts>
         friend Ts& operator >> (Ts& is, MeshField& p) {
-            p->read_(is);
+            p.read_(is);
             return is;
         }
         /*Memory usage*/
