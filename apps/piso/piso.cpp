@@ -158,7 +158,7 @@ void piso(std::istream& input) {
                  *  where the perturbed density (rho) is used instead of rho_0
                  *
                  *  -grad(p) + rho*g = -grad(pm + rho*g*h) + rho*g
-                 *                   = -grad(pm) - g*h*grad(rho) - rho*grad(gh) + rho*g
+                 *                   = -grad(pm) - g*h*grad(rho) - rho*grad(g*h) + rho*g
                  *                   = -grad(pm) - g*h*grad(rho) - rho*g + rho*g
                  *                   = -grad(pm) - g*h*grad(rho)
                  *                   = -grad(pm) + g*h*rho_0*beta*grad(T)
