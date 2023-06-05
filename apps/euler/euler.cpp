@@ -65,23 +65,34 @@ void euler(std::istream& input) {
         psi = 1 / (R * T0);
         iPr = 1 / Pr;
 
+        /*buoyancy*/
+        if(buoyancy) {
+            ScalarCellField gh;
+
+            /*gravity vector*/
+            g.construct("gravity",WRITE);
+            if(Controls::is_spherical) {
+                g = -unit(Mesh::cC) * mag(Controls::gravity);
+                gh = -(mag(Mesh::cC) - Controls::sphere_radius) * mag(Controls::gravity);
+            } else {
+                g = Controls::gravity;
+                gh = dot(g,Mesh::cC);
+            }
+            Mesh::fixedBCs<Vector>(U,g);
+            applyExplicitBCs(g,true);
+            g.write(0);
+
+            /*compute hydrostatic pressure and add it to total pressure*/
+            p += P0 * pow(1.0 + gh / (cp * T), cp / R);
+        } else {
+            p += P0;
+        }
+
         /*calculate rho*/
         rho = (P0 / (R*T)) * pow(p / P0, 1 / p_gamma);
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         applyExplicitBCs(p,true);
         rho.write(0);
-
-        /*gravity vector*/
-        if(buoyancy) {
-            g.construct("gravity",WRITE);
-            if(Controls::is_spherical)
-                g = -unit(Mesh::cC) * mag(Controls::gravity);
-            else
-                g = Controls::gravity;
-            Mesh::fixedBCs<Vector>(U,g);
-            applyExplicitBCs(g,true);
-            g.write(0);
-        }
 
         /*Time loop*/
         for (; !it.end(); it.next()) {

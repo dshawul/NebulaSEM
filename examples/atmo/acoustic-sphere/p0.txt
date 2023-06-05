@@ -1,7 +1,6 @@
 size 1
-internal 2
+internal 1
 {
-    hydrostatic 101325 3.31783902509e-06 3.47432306256
     cosine 0 100   -6376220 0 0   1000000 2125406 2125406
 }
 boundary 2
