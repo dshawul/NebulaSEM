@@ -456,7 +456,7 @@ namespace Constants {
     const Scalar E  = Scalar(2.71828182845904523536028);
 #ifdef USE_DOUBLE
     const Scalar MachineEpsilon = Scalar(1e-15);
-    const Scalar EqualEpsilon = Scalar(1e-8);
+    const Scalar EqualEpsilon = Scalar(1e-7);
 #else
     const Scalar MachineEpsilon = Scalar(1e-7);
     const Scalar EqualEpsilon = Scalar(1e-3);

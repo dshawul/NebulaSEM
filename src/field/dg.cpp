@@ -150,7 +150,8 @@ void DG::init_poly() {
 Int find_surface_node(Int ci, Int cj, Int index0) {
     using namespace Mesh;
     using namespace DG;
-    Int face, index1 = Int(-1);
+    Int face, index1 = Int(-1), minindex;
+    Scalar mindist = 1e30;
 
     for(face = 0; face < 2; face++) {
         Int kk = (face == 0) ? 0 : (NPZ - 1);
@@ -158,6 +159,13 @@ Int find_surface_node(Int ci, Int cj, Int index0) {
             index1 = INDEX4(cj,ii,jj,kk);
             if(equal(cC[index0],cC[index1]))
                 return index1;
+            else {
+                Scalar dist = mag(cC[index0] - cC[index1]);
+                if(dist < mindist) {
+                    mindist = dist;
+                    minindex = index1;
+                }
+            }
         }
     }
     for(face = 2; face < 4; face++) {
@@ -166,6 +174,13 @@ Int find_surface_node(Int ci, Int cj, Int index0) {
             index1 = INDEX4(cj,ii,jj,kk);
             if(equal(cC[index0],cC[index1]))
                 return index1;
+            else {
+                Scalar dist = mag(cC[index0] - cC[index1]);
+                if(dist < mindist) {
+                    mindist = dist;
+                    minindex = index1;
+                }
+            }
         }
     }
     for(face = 4; face < 6; face++) {
@@ -174,6 +189,13 @@ Int find_surface_node(Int ci, Int cj, Int index0) {
             index1 = INDEX4(cj,ii,jj,kk);
             if(equal(cC[index0],cC[index1]))
                 return index1;
+            else {
+                Scalar dist = mag(cC[index0] - cC[index1]);
+                if(dist < mindist) {
+                    mindist = dist;
+                    minindex = index1;
+                }
+            }
         }
     }
 
@@ -190,11 +212,15 @@ Int find_surface_node(Int ci, Int cj, Int index0) {
     forEachLgl(i,j,k) {
         Int index = INDEX4(cj,i,j,k);
         std::cout << cj << ". " << index << " " << cC[index]
-                  << " mag " << mag(cC[index]) << std::endl;
+                  << " mag " << mag(cC[index]) << " equal "
+                  << " equal " << equal(cC[index],cC[index0])
+                  << " mag(diff) " << mag(cC[index]-cC[index0])/mag(cC[index])
+                  << std::endl;
     }
-    exit(0);
+    std::cout << "Returning minindex " << minindex << std::endl;
 #endif
-    return index1;
+
+    return minindex;
 }
 /**
   Initialize geometry
