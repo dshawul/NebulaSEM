@@ -5,6 +5,7 @@ general
 ######################################
     solver                       euler
     mesh                         grid
+    write_format                 TEXT
 
 ######################################
 #  Fluid properties specific to solver
@@ -32,7 +33,6 @@ general
     time_scheme                  AB1
     blend_factor                 0.3
     parallel_method              BLOCKED
-    print_time                   1000
 
 ############################
 #  Solver options
@@ -53,9 +53,9 @@ general
 ############################
 #  DG polynomial order
 ############################
-    npx       0
-    npy       0
-    npz       0
+    npx       1
+    npy       1
+    npz       1
 }
 
 ############################

@@ -110,26 +110,44 @@ void euler(std::istream& input) {
             rhof = rho;
             Fc = flxc(rho * U);
             F = flx(rho * U);
+
+            /*artificial viscosity*/
+            if(diffusion) mu = rho * viscosity;
+            else mu = Scalar(0);
+
             /*rho-equation*/
             {
                 ScalarCellMatrix M;
                 M = convection(rho, flxc(U), flx(U), pressure_UR);
                 Solve(M);
             }
-            /*artificial viscosity*/
-            if(diffusion) mu = rho * viscosity;
-            else mu = Scalar(0);
-
+            {
+                ScalarCellField rhod = fabs(rho - rho_ref);
+                Scalar maxv = reduce_max(rhod);
+                Scalar minv = reduce_min(rhod);
+                Scalar avgv = reduce_sum(rhod) / rhod.size();
+                MP::printH("rho: Max: %g Min: %g Avg: %g\n",maxv,minv,avgv);
+            }
             /*T-equation*/
             {
                 ScalarCellMatrix M;
                 M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
+                //ScalarCellField mmu = mu * iPr;
+                //M = div(T,Fc,F,&mmu) - lap(T,mmu);
+                //addTemporal<1>(M,t_UR,&rho,&rhof);
                 Solve(M);
             }
 
             /*calculate p*/
             p = P0 * pow((rho*T*R) / P0, p_gamma);
             applyExplicitBCs(p,true);
+            {
+                ScalarCellField rhod = fabs(p - p_ref);
+                Scalar maxv = reduce_max(rhod);
+                Scalar minv = reduce_min(rhod);
+                Scalar avgv = reduce_sum(rhod) / rhod.size();
+                MP::printH("pd: Max: %g Min: %g Avg: %g\n",maxv,minv,avgv);
+            }
 
             /*U-equation*/
             {
@@ -137,6 +155,12 @@ void euler(std::istream& input) {
                 /*buoyancy*/
                 if(buoyancy)
                     Sc += (rho - rho_ref) * g;
+                {
+                    Scalar maxv = reduce_max(Sc);
+                    Scalar minv = reduce_min(Sc);
+                    Vector avgv = reduce_sum(Sc) / Sc.size();
+                    MP::printH("U src: Max: %g Min: %g Avg: %g\n",maxv,minv,mag(avgv));
+                }
                 /*solve*/
                 VectorCellMatrix M;
                 M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho, &rhof);

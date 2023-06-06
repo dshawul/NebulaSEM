@@ -40,7 +40,7 @@ run() {
 	echo "Starting job with " $2 " processors"
 
 	#generate grid
-	${bin_path}mesh $1 -o grid_0.bin
+	${bin_path}mesh $1 -o grid_0.txt
 
 	#solve
 	solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')

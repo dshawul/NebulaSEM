@@ -79,6 +79,12 @@ void Mesh::MeshObject::addBoundaryCells() {
                     mDelete.push_back(i);
             }
         }
+        if(mDelete.size()) {
+            using namespace Util;
+            std::cout << "============== Delete faces ==========" << std::endl;
+            std::cout << mDelete << std::endl;
+        } else
+            std::cout << "============== No delete ==========" << std::endl;
     }
     /*reorder cells*/
     {   
