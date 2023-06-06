@@ -1,0 +1,16 @@
+size 3
+internal 1
+{
+    uniform 0 0 0
+}
+boundary 2
+{
+    top {
+        type SYMMETRY
+        value 0 0 0
+    }
+    bottom {
+        type SYMMETRY
+        value 0 0 0
+    }
+}

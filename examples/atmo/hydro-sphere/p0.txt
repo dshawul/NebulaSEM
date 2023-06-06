@@ -1,0 +1,14 @@
+size 1
+internal 1
+{
+    uniform 0
+}
+boundary 2
+{
+    top {
+        type NEUMANN
+    }
+    bottom {
+        type NEUMANN
+    }
+}
