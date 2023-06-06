@@ -433,19 +433,20 @@ void Mesh::getProbeFaces(IntVector& probes) {
 void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
     ScalarCellField Courant;
     Courant = mag(U) * dt / pow(cV,1.0/3);
-    Scalar minc = 1.0e200, maxc = 0.0;
-    #pragma omp parallel for reduction(min:minc) reduction(max:maxc)
-    #pragma acc parallel loop reduction(min:minc) reduction(max:maxc)
-    for(Int i = 0; i < gBCSfield; i++) {
-        if(Courant[i] < minc) minc = Courant[i];
-        if(Courant[i] > maxc) maxc = Courant[i];
-    }
-    Scalar globalmax, globalmin;
+
+    Scalar maxc = reduce_max(Courant);
+    Scalar minc = reduce_min(Courant);
+    Scalar avgc = reduce_sum(Courant) / Courant.size();
+
+    Scalar globalmax, globalmin, globalavg;
     MP::allreduce(&maxc,&globalmax,1,MP::OP_MAX);
     MP::allreduce(&minc,&globalmin,1,MP::OP_MIN);
+    MP::allreduce(&avgc,&globalavg,1,MP::OP_SUM);
+    avgc /= MP::n_hosts;
+
     if(MP::printOn) {
-        MP::printH("Courant number: Max: %g Min: %g\n",
-                globalmax,globalmin);
+        MP::printH("Courant number: Max: %g Min: %g Avg: %g\n",
+                globalmax,globalmin,globalavg);
     }
 }
 /**

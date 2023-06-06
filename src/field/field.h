@@ -930,6 +930,35 @@ class MeshField : public BaseField
 #undef Op
 
 #endif
+
+        /*reductions*/
+        friend type reduce_sum(const MeshField& p) {
+            type sum = type(0);
+            Scalar *CP = addr(sum);
+            #pragma omp parallel for reduction(+:sum)
+            #pragma acc parallel loop copyin(p) reduction(+:CP[0:TYPE_SIZE])
+            forEach(p,i)
+                sum += p[i];
+            return sum;
+        }
+        friend Scalar reduce_max(const MeshField& p) {
+            Scalar maxv = Scalar(-1e30);
+            Scalar *CP = addr(maxv);
+            #pragma omp parallel for reduction(max:maxv)
+            #pragma acc parallel loop copyin(p) reduction(max:maxv)
+            forEach(p,i)
+                if(mag(p[i]) > maxv) maxv = mag(p[i]);
+            return maxv;
+        }
+        friend Scalar reduce_min(const MeshField& p) {
+            Scalar minv = Scalar(1e30);
+            #pragma omp parallel for reduction(min:minv)
+            #pragma acc parallel loop copyin(p) reduction(min:minv)
+            forEach(p,i)
+                if(mag(p[i]) < minv) minv = mag(p[i]);
+            return minv;
+        }
+
         /*other member functions*/
         void calc_neumann(BCondition<type>*);
         //------------
