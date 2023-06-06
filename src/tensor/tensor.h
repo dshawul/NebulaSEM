@@ -456,9 +456,9 @@ namespace Constants {
     const Scalar E  = Scalar(2.71828182845904523536028);
 #ifdef USE_DOUBLE
     const Scalar MachineEpsilon = Scalar(1e-15);
-    const Scalar EqualEpsilon = Scalar(1e-7);
+    const Scalar EqualEpsilon = Scalar(1e-8);
 #else
-    const Scalar MachineEpsilon = Scalar(1e-8);
+    const Scalar MachineEpsilon = Scalar(1e-7);
     const Scalar EqualEpsilon = Scalar(1e-3);
 #endif
     const Vector I_V(1,1,1);
@@ -468,7 +468,9 @@ namespace Constants {
 }
 /** Checks if two scalars are equal within machine epsilon */
 FORCEINLINE  bool equal(const Scalar& p,const Scalar& q) { 
-    return (mag(p - q) <= Constants::EqualEpsilon); 
+    Scalar delta = mag(p - q);
+    return delta <= Constants::EqualEpsilon * mag(p) ||
+           delta <= Constants::EqualEpsilon * mag(q);
 }
 /** Checks if two vectors are equal within machine epsilon */
 FORCEINLINE  bool equal(const Vector& p,const Vector& q) {
