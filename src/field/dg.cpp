@@ -147,37 +147,51 @@ void DG::init_poly() {
     else
         NPF = NPX * NPY;
 }
-Int find_surface_node(Int cj, Int index0) {
+Int find_surface_node(Int ci, Int cj, Int index0) {
     using namespace Mesh;
     using namespace DG;
     Int face, index1 = Int(-1);
 
     for(face = 0; face < 2; face++) {
-        Int ff = (face == 0) ? 0 : (NPZ - 1);
+        Int kk = (face == 0) ? 0 : (NPZ - 1);
         forEachLglXY(ii,jj) {
-            index1 = INDEX4(cj,ii,jj,ff);
+            index1 = INDEX4(cj,ii,jj,kk);
             if(equal(cC[index0],cC[index1]))
                 return index1;
         }
     }
     for(face = 2; face < 4; face++) {
-        Int ff = (face == 2) ? 0 : (NPY - 1);
+        Int jj = (face == 2) ? 0 : (NPY - 1);
         forEachLglXZ(ii,kk) {
-            index1 = INDEX4(cj,ii,ff,kk);
+            index1 = INDEX4(cj,ii,jj,kk);
             if(equal(cC[index0],cC[index1]))
                 return index1;
         }
     }
     for(face = 4; face < 6; face++) {
-        Int ff = (face == 4) ? 0 : (NPX - 1);
+        Int ii = (face == 4) ? 0 : (NPX - 1);
         forEachLglYZ(jj,kk) {
-            index1 = INDEX4(cj,ff,jj,kk);
+            index1 = INDEX4(cj,ii,jj,kk);
             if(equal(cC[index0],cC[index1]))
                 return index1;
         }
     }
-#if 1
+
+#if 0
+    using namespace Util;
     std::cout << "Not Found: " << cC[index0] << std::endl;
+    std::cout << "cell " << ci << " = " << gCells[ci] << std::endl;
+    std::cout << "cell " << cj << " = " << gCells[cj] << std::endl;
+    forEachLgl(i,j,k) {
+        Int index = INDEX4(ci,i,j,k);
+        std::cout << ci << ". " << index << " " << cC[index]
+                  << " mag " << mag(cC[index]) << std::endl;
+    }
+    forEachLgl(i,j,k) {
+        Int index = INDEX4(cj,i,j,k);
+        std::cout << cj << ". " << index << " " << cC[index]
+                  << " mag " << mag(cC[index]) << std::endl;
+    }
     exit(0);
 #endif
     return index1;
@@ -331,33 +345,33 @@ void DG::init_geom() {
 }
 
             if(face == 0 || face == 1) {
-                Int ff = (face == 0) ? 0 : (NPZ - 1);
+                Int k = (face == 0) ? 0 : (NPZ - 1);
                 forEachLglXY(i,j) {
                     Scalar wgt = wgl[0][i] * wgl[1][j] / 4;
                     Int indf = fi * NPF + i * NPY + j;
-                    Int index0 = INDEX4(ci,i,j,ff);
-                    Int index1 = INDEX4(cj,i,j,(NPZ - 1) - ff);
-                    if(index1 < gBCSfield) index1 = find_surface_node(cj, index0);
+                    Int index0 = INDEX4(ci,i,j,k);
+                    Int index1 = INDEX4(cj,i,j,(NPZ - 1) - k);
+                    if(index1 < gBCSfield) index1 = find_surface_node(ci, cj, index0);
                     ADD();
                 }
             } else if(face == 2 || face == 3) {
-                Int ff = (face == 2) ? 0 : (NPY - 1);
+                Int j = (face == 2) ? 0 : (NPY - 1);
                 forEachLglXZ(i,k) {
                     Scalar wgt = wgl[0][i] * wgl[2][k] / 4;
                     Int indf = fi * NPF + i * NPZ + k;
-                    Int index0 = INDEX4(ci,i,ff,k);
-                    Int index1 = INDEX4(cj,i,(NPY - 1) - ff,k);
-                    if(index1 < gBCSfield) index1 = find_surface_node(cj, index0);
+                    Int index0 = INDEX4(ci,i,j,k);
+                    Int index1 = INDEX4(cj,i,(NPY - 1) - j,k);
+                    if(index1 < gBCSfield) index1 = find_surface_node(ci, cj, index0);
                     ADD();
                 }
             } else {
-                Int ff = (face == 4) ? 0 : (NPX - 1);
+                Int i = (face == 4) ? 0 : (NPX - 1);
                 forEachLglYZ(j,k) {
                     Scalar wgt = wgl[1][j] * wgl[2][k] / 4;
                     Int indf = fi * NPF + j * NPZ + k;
-                    Int index0 = INDEX4(ci,ff,j,k);
-                    Int index1 = INDEX4(cj,(NPX - 1) - ff,j,k);
-                    if(index1 < gBCSfield) index1 = find_surface_node(cj, index0);
+                    Int index0 = INDEX4(ci,i,j,k);
+                    Int index1 = INDEX4(cj,(NPX - 1) - i,j,k);
+                    if(index1 < gBCSfield) index1 = find_surface_node(ci, cj, index0);
                     ADD();
                 }
             }
