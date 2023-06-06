@@ -11,11 +11,6 @@
                 for(Int j_ = NPY;j_-- > 0;)                             \
                     for(Int k_ = NPZ;k_-- > 0;)
 
-#define forEachLglBound(i_,j_,k_)                                       \
-            for(Int i_ = 0;i_ < NPX;i_+=((NPX-1) ? (NPX-1) : 1))        \
-                for(Int j_ = 0;j_ < NPY;j_+=((NPY-1) ? (NPY-1) : 1))    \
-                    for(Int k_ = 0;k_ < NPZ;k_+=((NPZ-1) ? (NPZ-1) : 1))
-                                                                                    
 #define forEachLglXY(i_,j_)                             \
             for(Int i_ = 0;i_ < NPX;i_++)               \
                 for(Int j_ = 0;j_ < NPY;j_++)
@@ -33,6 +28,13 @@
 #define forEachLglZ(k_)                                 \
             for(Int k_ = 0;k_ < NPZ;k_++)
                                                                                             
+#define forEachLglBoundX(i_)                                            \
+            for(Int i_ = 0;i_ < NPX;i_+=((NPX-1) ? (NPX-1) : 1))
+#define forEachLglBoundY(j_)                                            \
+            for(Int j_ = 0;j_ < NPY;j_+=((NPY-1) ? (NPY-1) : 1))
+#define forEachLglBoundZ(k_)                                            \
+            for(Int k_ = 0;k_ < NPZ;k_+=((NPZ-1) ? (NPZ-1) : 1))
+
 #define isBoundary(i_,j_,k_)                            \
     (i_ == 0 || i_ == NPX - 1 ||                        \
      j_ == 0 || j_ == NPY - 1 ||                        \

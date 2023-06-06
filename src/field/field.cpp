@@ -297,10 +297,6 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
         //diffusivity
         VectorCellField grad_psi = Vector(0);
 
-        for(Int ci = 0; ci < gBCS; ci++) {
-            forEachLglBound(ii,jj,kk) {
-                Int index = INDEX4(ci,ii,jj,kk);
-
 #define PSID(im,jm,km) {                    \
     Int index1 = INDEX4(ci,im,jm,km);       \
     Vector dpsi_ij;                         \
@@ -308,12 +304,33 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
     dpsi_ij = dot(Jinv[index1],dpsi_ij);    \
     grad_psi[index] += dpsi_ij;             \
 }
-                forEachLglX(i) PSID(i,jj,kk);
-                forEachLglY(j) if(j != jj) PSID(ii,j,kk);
-                forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
-#undef PSID
+        for(Int ci = 0; ci < gBCS; ci++) {
+            forEachLglBoundX(ii) {
+                forEachLglYZ(jj,kk) {
+                    Int index = INDEX4(ci,ii,jj,kk);
+                    forEachLglX(i) PSID(i,jj,kk);
+                    forEachLglY(j) if(j != jj) PSID(ii,j,kk);
+                    forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
+                }
+            }
+            forEachLglBoundY(jj) {
+                forEachLglXZ(ii,kk) {
+                    Int index = INDEX4(ci,ii,jj,kk);
+                    forEachLglX(i) PSID(i,jj,kk);
+                    forEachLglY(j) if(j != jj) PSID(ii,j,kk);
+                    forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
+                }
+            }
+            forEachLglBoundZ(kk) {
+                forEachLglXY(ii,jj) {
+                    Int index = INDEX4(ci,ii,jj,kk);
+                    forEachLglX(i) PSID(i,jj,kk);
+                    forEachLglY(j) if(j != jj) PSID(ii,j,kk);
+                    forEachLglZ(k) if(k != kk) PSID(ii,jj,k);
+                }
             }
         }
+#undef PSID
 
         fD += dot(cds(grad_psi),fN);
     } else {
