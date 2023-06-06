@@ -85,6 +85,9 @@ void euler(std::istream& input) {
 
             /*compute hydrostatic pressure*/
             p_ref = P0 * pow(1.0 + gh / (cp * T), cp / R);
+            Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
+            applyExplicitBCs(p_ref,true);
+
         } else {
             p_ref = P0;
         }
@@ -92,9 +95,13 @@ void euler(std::istream& input) {
 
         /*calculate rho*/
         rho_ref = (P0 / (R*T0)) * pow(p_ref / P0, 1 / p_gamma);
+        Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
+        applyExplicitBCs(rho_ref,true);
+
         rho = (P0 / (R*T)) * pow(p / P0, 1 / p_gamma);
         Mesh::scaleBCs<Scalar>(p,rho,psi);
-        applyExplicitBCs(p,true);
+        applyExplicitBCs(rho,true);
+
         rho.write(0);
 
         /*Time loop*/
@@ -112,14 +119,18 @@ void euler(std::istream& input) {
             /*artificial viscosity*/
             if(diffusion) mu = rho * viscosity;
             else mu = Scalar(0);
+
             /*T-equation*/
             {
                 ScalarCellMatrix M;
                 M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
                 Solve(M);
             }
+
             /*calculate p*/
             p = P0 * pow((rho*T*R) / P0, p_gamma);
+            applyExplicitBCs(p,true);
+
             /*U-equation*/
             {
                 VectorCellField Sc = -gradi(p - p_ref);
@@ -131,6 +142,7 @@ void euler(std::istream& input) {
                 M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho, &rhof);
                 Solve(M);
             }
+
             /*courant number*/
             if(Controls::state != Controls::STEADY)
                 Mesh::calc_courant(U,Controls::dt);
