@@ -150,7 +150,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
             rr,rs,                                      \
             vp[i00],vp[i01],vp[i10],vp[i11],            \
             vd[ir0],vd[ir1],vd[i0s],vd[i1s]);           \
-    if(sphere && w < 2)                                 \
+    if(sphere)                                          \
         vf[w] = (mag(vd[ir0])/mag(vf[w])) * vf[w];      \
 }
 
