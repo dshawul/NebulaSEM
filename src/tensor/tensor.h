@@ -467,14 +467,14 @@ namespace Constants {
 #pragma acc declare create(I_V,I_T,I_ST)
 }
 /** Checks if two scalars are equal within machine epsilon */
-FORCEINLINE  bool equal(const Scalar& p,const Scalar& q) { 
+FORCEINLINE  bool equal(const Scalar& p,const Scalar& q, const Scalar tol = Constants::EqualEpsilon) { 
     Scalar delta = mag(p - q);
-    return delta <= Constants::EqualEpsilon * mag(p) ||
-           delta <= Constants::EqualEpsilon * mag(q);
+    return delta <= tol * mag(p) ||
+           delta <= tol * mag(q);
 }
 /** Checks if two vectors are equal within machine epsilon */
-FORCEINLINE  bool equal(const Vector& p,const Vector& q) {
-    return (equal(p[0],q[0]) && equal(p[1],q[1]) && equal(p[2],q[2]));
+FORCEINLINE  bool equal(const Vector& p,const Vector& q, const Scalar tol = Constants::EqualEpsilon) {
+    return (equal(p[0],q[0],tol) && equal(p[1],q[1],tol) && equal(p[2],q[2],tol));
 }
 /** \name Symmetry boundary condition*/
 //@{
