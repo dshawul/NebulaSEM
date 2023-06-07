@@ -41,6 +41,7 @@ struct Sphere {
 struct MergeObject {
     Vertices vb;  /**< List of boundary vertices */
     Facets   fb;  /**< List of boundary faces */
+    ScalarVector extrudeFactor; /**< Extrude factors */
 };
 
 void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,

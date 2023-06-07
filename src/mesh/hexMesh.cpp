@@ -19,7 +19,7 @@ Vector circumcenter(const Vector& v1,const Vector& v2,const Vector& v3) {
 /**
   Add a vertex following shape of a given edge
  */
-void ADDV(int w,Scalar m,Edge* edges,Vector* vd,Sphere* sphere) {
+void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
     Edge& e = edges[w];
     Vector v;
     if(e.type == NONE) {
@@ -33,23 +33,12 @@ void ADDV(int w,Scalar m,Edge* edges,Vector* vd,Sphere* sphere) {
         v = (1 - m) * e.v[0] + (m) * e.v[1] + 
             (4 * m * (1 - m)) * e.N;
     }
-    if(sphere) {
-        Scalar radius;
-        if(w >= 8)
-            radius = (1 - m) * sphere->radiusi + m * sphere->radiuso;
-        else if(w == 0 || w == 1 || w == 4 || w == 5)
-            radius = sphere->radiusi;
-        else
-            radius = sphere->radiuso;
-
-        vd[w] = unit(v - sphere->center) * radius;
-    } else
-        vd[w] = v;
+    vd[w] = v;
 }
 /**
   Generate hexahedral mesh
  */
-void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
+void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,
     MeshObject& mo, Sphere* sphere) {
     Int i,j,k,m;
 
@@ -121,16 +110,6 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
             e.N = e.v[2] - mid;
         }
     }
-    /*for cubed sphere*/
-    Vector vp[8];
-    for(i = 0; i < 8; i++)
-        vp[i] = vpo[i];
-    if(sphere) {
-        for(i = 0; i < 4; i++)
-            vp[i] = unit(vpo[i] - sphere->center) * sphere->radiusi;
-        for(i = 4; i < 8; i++)
-            vp[i] = unit(vpo[i] - sphere->center) * sphere->radiuso;
-    }
     /*variables*/
     Int nx = n[0] + 1 , ny = n[1] + 1 , nz = n[2] + 1;
     const Int B1 = (nx - 0) * (ny - 1) * (nz - 1);
@@ -150,8 +129,6 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
             rr,rs,                                      \
             vp[i00],vp[i01],vp[i10],vp[i11],            \
             vd[ir0],vd[ir1],vd[i0s],vd[i1s]);           \
-    if(sphere)                                          \
-        vf[w] = (mag(vd[ir0])/mag(vf[w])) * vf[w];      \
 }
 
 #define ADDC() {                                        \
@@ -163,23 +140,21 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
             vd[4],vd[7],vd[5],vd[6],                    \
             vd[8],vd[11],vd[9],vd[10],                  \
             vf[4],vf[5],vf[2],vf[3],vf[0],vf[1]);       \
-    if(sphere)                                          \
-        v = (mag(vd[8])/mag(v)) * v;                    \
 }
 
 #define ADD() {                                     \
-    ADDV(0,sc[0][i],edges,vd,sphere);               \
-    ADDV(1,sc[1][i],edges,vd,sphere);               \
-    ADDV(2,sc[2][i],edges,vd,sphere);               \
-    ADDV(3,sc[3][i],edges,vd,sphere);               \
-    ADDV(4,sc[4][j],edges,vd,sphere);               \
-    ADDV(5,sc[5][j],edges,vd,sphere);               \
-    ADDV(6,sc[6][j],edges,vd,sphere);               \
-    ADDV(7,sc[7][j],edges,vd,sphere);               \
-    ADDV(8,sc[8][k],edges,vd,sphere);               \
-    ADDV(9,sc[9][k],edges,vd,sphere);               \
-    ADDV(10,sc[10][k],edges,vd,sphere);             \
-    ADDV(11,sc[11][k],edges,vd,sphere);             \
+    ADDV(0,sc[0][i],edges,vd);                      \
+    ADDV(1,sc[1][i],edges,vd);                      \
+    ADDV(2,sc[2][i],edges,vd);                      \
+    ADDV(3,sc[3][i],edges,vd);                      \
+    ADDV(4,sc[4][j],edges,vd);                      \
+    ADDV(5,sc[5][j],edges,vd);                      \
+    ADDV(6,sc[6][j],edges,vd);                      \
+    ADDV(7,sc[7][j],edges,vd);                      \
+    ADDV(8,sc[8][k],edges,vd);                      \
+    ADDV(9,sc[9][k],edges,vd);                      \
+    ADDV(10,sc[10][k],edges,vd);                    \
+    ADDV(11,sc[11][k],edges,vd);                    \
     rx = i / Scalar(nx - 1);                        \
     ry = j / Scalar(ny - 1);                        \
     rz = k / Scalar(nz - 1);                        \
@@ -190,6 +165,8 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
     ADDF(4, ry,rz, 0,4,3,7, 4,7,8,11);              \
     ADDF(5, ry,rz, 1,5,2,6, 5,6,9,10);              \
     ADDC();                                         \
+    if(sphere) mo.extrudeFactor.push_back(rz);      \
+    else mo.extrudeFactor.push_back(1);             \
 };
 
     /*interior*/
@@ -321,9 +298,9 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vpo,Edge* edges,
     }
 /*compute normals of mPatches*/
 #define NORMAL(i,j,k,l,p) {                         \
-    p.N = ((vpo[j] - vpo[i]) ^ (vpo[k] - vpo[i]));  \
+    p.N = ((vp[j] - vp[i]) ^ (vp[k] - vp[i]));      \
     p.N /= mag(p.N);                                \
-    p.C = (vpo[i] + vpo[j] + vpo[k] + vpo[l]) / 4;  \
+    p.C = (vp[i] + vp[j] + vp[k] + vp[l]) / 4;      \
 }
     NORMAL(0,1,2,3,mo.mPatches[0]);
     NORMAL(4,5,6,7,mo.mPatches[1]);
@@ -486,6 +463,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
         s2 = m2.mVertices.size();
         s3 = b.vb.size();
         m1.mVertices.insert(m1.mVertices.end(),m2.mVertices.begin(),m2.mVertices.begin() + s1);
+        m1.extrudeFactor.insert(m1.extrudeFactor.end(),m2.extrudeFactor.begin(),m2.extrudeFactor.begin() + s1);
 
         IntVector locv(s2 - s1,MAXNUM);
         for(Int i = s1;i < s2;i++) {
@@ -499,6 +477,7 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
             }
             if(!found) {
                 b.vb.push_back(m2.mVertices[i]);
+                b.extrudeFactor.push_back(m2.extrudeFactor[i]);
                 locv[i - s1] += b.vb.size() - 1;
             }
         }
@@ -625,6 +604,7 @@ void merge(Mesh::MeshObject& m,MergeObject& b) {
     m.mBCS = m.mCells.size();
 
     m.mVertices.insert(m.mVertices.end(),b.vb.begin(),b.vb.end());
+    m.extrudeFactor.insert(m.extrudeFactor.end(),b.extrudeFactor.begin(),b.extrudeFactor.end());
     m.mFacets.insert(m.mFacets.end(),b.fb.begin(),b.fb.end());
     forEach(m.mFacets,i) {
         Facet& ft = m.mFacets[i];

@@ -100,6 +100,8 @@ namespace Mesh {
 
         NodeVector   mAmrTree;  /**< AMR tree */
 
+        ScalarVector extrudeFactor; /**< By how much to scale in radial direction */
+
         /*functions*/
         void clear();
         void writeMshMesh(std::ostream&);

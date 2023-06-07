@@ -26,6 +26,9 @@ int main(int argc,char* argv[]) {
     bool Import = false;
     char c;
 
+    Sphere sphere;
+    bool has_sphere = false;
+
     /*command line arguments*/
     for(int i = 1;i < argc;i++) {
         if(!strcmp(argv[i],"-i")) {
@@ -151,8 +154,6 @@ int main(int argc,char* argv[]) {
                     {0,4}, {1,5}, {2,6}, {3,7}
                 };
                 vector<Edge> edges(12);
-                Sphere sphere;
-                bool has_sphere = false;
                 for(Int i = 0;i < 12;i++) {
                     edges[i].v[0] = corners[sides[i][0]];
                     edges[i].v[1] = corners[sides[i][1]];
@@ -228,7 +229,7 @@ int main(int argc,char* argv[]) {
             N /= mag(N);
             forEach(gMesh.mPatches,j) {
                 Patch& p = gMesh.mPatches[j];
-                Vector H = (p.C - key_points[b[0]]);
+                Vector H = unit(p.C - key_points[b[0]]);
                 Scalar d1 = mag(N ^ p.N);
                 Scalar d2 = sqrt(mag(N & H));
                 if(d1 <= 10e-4 && d2 <= 10e-4) {
@@ -261,6 +262,15 @@ int main(int argc,char* argv[]) {
                 if(!faceInB[i])
                     gB.push_back(i);
             }
+        }
+    }
+
+    /*extrude cube to sphere*/
+    if(has_sphere) {
+        forEach(gMesh.extrudeFactor,i) {
+            Vertex& v = gMesh.mVertices[i];
+            Scalar f = gMesh.extrudeFactor[i];
+            v = unit(v) * ((f) * sphere.radiusi + (1-f) * sphere.radiuso);
         }
     }
 
