@@ -175,10 +175,10 @@ void Mesh::MeshObject::calcGeometry(Int is_spherical) {
         Facet& f = mFacets[i];
         Vector N(0),C(0),Ci,Ni;
         Scalar Ntot = Scalar(0);
-        const Vector& v1 = mFC[i];
-        forEach(f,j) {
+        const Vector& v1 = mVertices[f[0]]; //mFC[i];
+        for(Int j = 1; j < f.size() - 1; j++) {
             const Vector& v2 = mVertices[f[j]];
-            const Vector& v3 = mVertices[f[ (j + 1 == f.size()) ? 0 : (j + 1) ]];
+            const Vector& v3 = mVertices[f[j + 1]];
 
             Ni = ((v2 - v1) ^ (v3 - v1));
             Scalar magN = mag(Ni);

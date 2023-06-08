@@ -3,6 +3,53 @@
 #include "wrapper.h"
 #include "properties.h"
 
+
+/**
+  Explicit gradient operator
+ */
+#define GRADD(im,jm,km) {                           \
+    Int index1 = INDEX4(ci,im,jm,km);               \
+    Vector dpsi_ij;                                 \
+    DPSI(dpsi_ij,im,jm,km);                         \
+    dpsi_ij = dot(Jin,dpsi_ij);                     \
+    r[index1] -= mul(dpsi_ij,p[index]);             \
+}
+
+#define GRAD(T1,T2)                                                                             \
+    inline auto mgradf(const MeshField<T2,CELL>& p) {                                            \
+        using namespace Mesh;                                                                   \
+        using namespace DG;                                                                     \
+        MeshField<T1,CELL> r;                                                                   \
+                                                                                                \
+        r = sum(mul(fN,cds(p)));                                                                \
+                                                                                                \
+        /*if(NPMAT) {                                                                             \
+            _Pragma("omp parallel for")                                                         \
+            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
+            for(Int ci = 0; ci < gBCS;ci++) {                                                   \
+                forEachLgl(ii,jj,kk) {                                                          \
+                    Int index = INDEX4(ci,ii,jj,kk);                                            \
+                    Tensor Jin = Jinv[index] * cV[index];                                       \
+                    forEachLglX(i) GRADD(i,jj,kk);                                              \
+                    forEachLglY(j) if(j != jj) GRADD(ii,j,kk);                                  \
+                    forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);                                  \
+                }                                                                               \
+            }                                                                                   \
+        }                                                                                       \
+                                                                                                \
+        fillBCs(r,false,p.fIndex);*/                                                              \
+                                                                                                \
+        return r;                                                                               \
+    }
+
+GRAD(Vector,Scalar);
+GRAD(Tensor,Vector);
+#undef GRAD
+#undef GRADD
+
+#define mgradi(x) (mgradf(x)  / Mesh::cV)
+
+
 /**
   \verbatim
   Euler equations solver
@@ -115,7 +162,7 @@ void euler(std::istream& input) {
             if(diffusion) mu = rho * viscosity;
             else mu = Scalar(0);
 
-            /*rho-equation*/
+            /*rho-equation*
             {
                 ScalarCellMatrix M;
                 M = convection(rho, flxc(U), flx(U), pressure_UR);
@@ -129,12 +176,21 @@ void euler(std::istream& input) {
                 MP::printH("rho: Max: %g Min: %g Avg: %g\n",maxv,minv,avgv);
             }
             /*T-equation*/
+            using namespace Util;
+            ScalarFacetField Tf = cds(T);
+            VectorCellField sN = sum(Mesh::fN) / Mesh::cV;
+            std::cout << sN << std::endl;
+            exit(0);
+            VectorCellField gT = mgradi(T);
+            for(Int i  = 0; i < Mesh::gBCSfield; i++)
+                std::cout << i << ". " << T[i] << " " << gT[i] << std::endl;
             {
                 ScalarCellMatrix M;
-                M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
-                //ScalarCellField mmu = mu * iPr;
-                //M = div(T,Fc,F,&mmu) - lap(T,mmu);
-                //addTemporal<1>(M,t_UR,&rho,&rhof);
+                //M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
+                ScalarCellField mmu = mu * iPr;
+                //M = div(T,Fc,F,&mmu) - lapf(T,mmu);
+                M = -lap(T,mmu,true);
+                addTemporal<1>(M,t_UR,&rho,&rhof);
                 Solve(M);
             }
 
@@ -170,6 +226,7 @@ void euler(std::istream& input) {
             /*courant number*/
             if(Controls::state != Controls::STEADY)
                 Mesh::calc_courant(U,Controls::dt);
+            break;
         }
     }
 }
