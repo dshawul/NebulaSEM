@@ -1445,6 +1445,52 @@ auto sum(const MeshField<type,FACET>& fF) {
     return cF;
 }
 
+template<class type,class type2>
+void grad_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
+    using namespace Mesh;
+    MeshField<type,FACET> fF = cds(p);
+    cF = type2(0);
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fF)
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
+            for(Int n = 0; n < DG::NPF; n++) {
+                Int k = allFaces[f] * DG::NPF + n;  
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
+                    cF[c1] += mul(fN[k],(fF[k] - p[c1]));
+                else if(c2 < gALLfield)
+                    cF[c2] -= mul(fN[k],(fF[k] - p[c2]));
+            }
+        }
+    }    
+}
+
+
+template<class type,class type2>
+void div_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
+    using namespace Mesh;
+    MeshField<type,FACET> fF = cds(p);
+    cF = type2(0);
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fF)
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
+            for(Int n = 0; n < DG::NPF; n++) {
+                Int k = allFaces[f] * DG::NPF + n;  
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
+                    cF[c1] += dot((fF[k] - p[c1]),fN[k]);
+                else if(c2 < gALLfield)
+                    cF[c2] -= dot((fF[k] - p[c2]),fN[k]);
+            }   
+        }   
+    }        
+}
+
+
 #ifdef USE_EXPR_TMPL
 template<class type, class A>
 auto sum(const DVExpr<type,A>& expr) {
@@ -2527,7 +2573,7 @@ auto srcf(const MeshField<type,CELL>& Su) {
     Vector dpsi_ij;                                 \
     DPSI(dpsi_ij,im,jm,km);                         \
     dpsi_ij = dot(Jin,dpsi_ij);                     \
-    r[index1] -= mul(dpsi_ij,p[index]);             \
+    r[index] += mul(dpsi_ij,p[index1]);             \
 }
 
 #define GRAD(T1,T2)                                                                             \
@@ -2536,7 +2582,7 @@ auto srcf(const MeshField<type,CELL>& Su) {
         using namespace DG;                                                                     \
         MeshField<T1,CELL> r;                                                                   \
                                                                                                 \
-        r = sum(mul(fN,cds(p)));                                                                \
+        grad_flux(p,r);                                                                         \
                                                                                                 \
         if(NPMAT) {                                                                             \
             _Pragma("omp parallel for")                                                         \
@@ -2784,16 +2830,14 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
                 Tensor Jr = Jinv[index];
-                T1 F = fluxc[index];
-
 #define GRADD(im,jm,km) {                                   \
-    Int index2 = INDEX4(ci,im,jm,km);                       \
+    Int index1 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    T2 val = -dot(Jr,dpsi_ij) * F;                          \
-    if(index == index2) {                                   \
+    dpsi_ij = dot(Jr,dpsi_ij);                              \
+    T2 val = -mul(dpsi_ij,fluxc[index]);                    \
+    if(index == index1) {                                   \
         m.ap[index] = -val;                                 \
-        m.adg[indexm] = 0;                                  \
     } else {                                                \
         m.adg[indexm] = val;                                \
     }                                                       \
@@ -2845,7 +2889,7 @@ auto flxc(const DVExpr<T,A>& expr) {
     Vector dpsi_ij;                                 \
     DPSI(dpsi_ij,im,jm,km);                         \
     dpsi_ij = dot(Jin,dpsi_ij);                     \
-    r[index1] -= dot(p[index],dpsi_ij);             \
+    r[index] += dot(p[index1],dpsi_ij);             \
 }
 
 #define DIV(T1,T2)                                                                              \
@@ -2857,7 +2901,7 @@ auto flxc(const DVExpr<T,A>& expr) {
         using namespace DG;                                                                     \
         MeshField<T1,CELL> r;                                                                   \
                                                                                                 \
-        r = sum(dot(cds(p),fN));                                                                \
+        div_flux(p,r);                                                                          \
                                                                                                 \
         if(NPMAT) {                                                                             \
             _Pragma("omp parallel for")                                                         \
@@ -2908,16 +2952,15 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
-                Vector Jr = dot(Jinv[index],fluxc[index]);
-
+                Tensor Jr = Jinv[index];
 #define DIVD(im,jm,km) {                                    \
-    Int index2 = INDEX4(ci,im,jm,km);                       \
+    Int index1 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    Scalar val = -dot(Jr,dpsi_ij);                          \
-    if(index == index2) {                                   \
+    dpsi_ij = dot(Jr,dpsi_ij);                              \
+    Scalar val = -dot(fluxc[index],dpsi_ij);                \
+    if(index == index1) {                                   \
         m.ap[index] = -val;                                 \
-        m.adg[indexm] = 0;                                  \
     } else {                                                \
         m.adg[indexm] = val;                                \
     }                                                       \
