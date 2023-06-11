@@ -437,15 +437,17 @@ void DG::init_basis() {
     //Compute Jacobian matrix
     Jinv.deallocate(false);
     Jinv.construct();
+    Jinv = Tensor(0);
     #pragma omp parallel for
     #pragma acc parallel loop copyin(gBCS)
     for(Int ci = 0; ci < gBCS;ci++) {
-        forEachLgl(ii,jj,kk) {
-            Tensor Ji(Scalar(0));
 
+        forEachLgl(ii,jj,kk) {
+            Int index = INDEX4(ci,ii,jj,kk);
 #define JACD(im,jm,km) {                                    \
-    Int index = INDEX4(ci,im,jm,km);                        \
-    Vector& C = cC[index];                                  \
+    Int index1 = INDEX4(ci,im,jm,km);                       \
+    Tensor& Ji = Jinv[index];                               \
+    Vector& C = cC[index1];                                 \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
     Ji += mul(dpsi_ij,C);                                   \
@@ -454,7 +456,11 @@ void DG::init_basis() {
             forEachLglY(j) if(j != jj) JACD(ii,j,kk);
             forEachLglZ(k) if(k != kk) JACD(ii,jj,k);
 #undef JACD
+        }
 
+        forEachLgl(ii,jj,kk) {
+            Int index = INDEX4(ci,ii,jj,kk);
+            Tensor& Ji = Jinv[index];
             if(NPX == 1) {Ji[XX] = 1; Ji[YX] = 0; Ji[ZX] = 0;}
             if(NPY == 1) {Ji[YY] = 1; Ji[XY] = 0; Ji[ZY] = 0;}
             if(NPZ == 1) {Ji[ZZ] = 1; Ji[XZ] = 0; Ji[YZ] = 0;}
@@ -462,9 +468,6 @@ void DG::init_basis() {
             if(NPX == 1) Ji[XX] = 0;
             if(NPY == 1) Ji[YY] = 0;
             if(NPZ == 1) Ji[ZZ] = 0;
-
-            Int index = INDEX4(ci,ii,jj,kk);
-            Jinv[index] = Ji;
         }
     }
 }
