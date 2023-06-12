@@ -18,9 +18,9 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     1440
-    write_interval               60
-    dt                           60
+    end_step                     17280
+    write_interval               720
+    dt                           5
     n_deferred                   0
 
 ############################
@@ -53,9 +53,9 @@ general
 ############################
 #  DG polynomial order
 ############################
-    npx       0
-    npy       0
-    npz       0
+    npx       4
+    npy       4
+    npz       1
 }
 
 ############################

@@ -10,7 +10,7 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1.177
-    viscosity                    30
+    viscosity                    0
 
 #############################
 #  Time increment
@@ -18,9 +18,9 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     8
-    write_interval               1
-    dt                           10
+    end_step                     80
+    write_interval               8
+    dt                           5
     n_deferred                   0
 
 ############################
@@ -29,7 +29,7 @@ general
 
     convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-    time_scheme                  AB1
+    time_scheme                  BDF1
     blend_factor                 0.3
     parallel_method              BLOCKED
     print_time                   1000
@@ -53,9 +53,9 @@ general
 ############################
 #  DG polynomial order
 ############################
-    npx       0
-    npy       0
-    npz       0
+    npx       1
+    npy       1
+    npz       1
 }
 
 ############################
