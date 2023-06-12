@@ -84,14 +84,16 @@ void euler(std::istream& input) {
             g.write(0);
 
             /*compute hydrostatic pressure*/
-            p_ref = P0 * pow(1.0 + gh / (cp * T), cp / R);
-            Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
-            applyExplicitBCs(p_ref,true);
-
+            p_ref = P0 * pow(1.0 + gh / (cp * T0), cp / R);
+            p += P0 * pow(1.0 + gh / (cp * T), cp / R);
         } else {
             p_ref = P0;
+            p += P0;
         }
-        p += p_ref;
+
+        Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
+        applyExplicitBCs(p_ref,true);
+        applyExplicitBCs(p,true);
 
         /*calculate rho*/
         rho_ref = (P0 / (R*T0)) * pow(p_ref / P0, 1 / p_gamma);
