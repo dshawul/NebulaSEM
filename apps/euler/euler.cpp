@@ -109,23 +109,18 @@ void euler(std::istream& input) {
         /*Time loop*/
         for (; !it.end(); it.next()) {
             /*fluxes*/
-            rhof = rho;
             Fc = flxc(rho * U);
             F = flx(rho * U);
-            /*rho-equation*/
-            {
-                ScalarCellMatrix M;
-                M = convection(rho, flxc(U), flx(U), pressure_UR);
-                Solve(M);
-            }
+
             /*artificial viscosity*/
             if(diffusion) mu = rho * viscosity;
             else mu = Scalar(0);
 
-            /*T-equation*/
+            /*rho-equation*/
+            rhof = rho;
             {
                 ScalarCellMatrix M;
-                M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
+                M = convection(rho, flxc(U), flx(U), pressure_UR);
                 Solve(M);
             }
 
@@ -142,6 +137,13 @@ void euler(std::istream& input) {
                 /*solve*/
                 VectorCellMatrix M;
                 M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho, &rhof);
+                Solve(M);
+            }
+
+            /*T-equation*/
+            {
+                ScalarCellMatrix M;
+                M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
                 Solve(M);
             }
 
