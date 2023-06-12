@@ -1856,7 +1856,12 @@ struct MeshMatrix {
     /*c'tors*/
     MeshMatrix() {
         cF = 0;
-        flags = 0;
+        flags = (SYMMETRIC | DIAGONAL);
+        ap = T2(0);
+        ano = T2(0);
+        ann = T2(0);
+        Su = T3(0);
+        adg = T2(0);
     }
     MeshMatrix(const MeshMatrix& p) {
         cF = p.cF;
@@ -2130,9 +2135,12 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
     MeshField<T3,CELL> r;
     ASYNC_COMM<T1> comm(&q[0]);
 
-    if(sync) comm.send();
-
     r = q * p.ap;
+
+    if(p.flags & p.DIAGONAL)
+        return r;
+
+    if(sync) comm.send();
 
     if(NPMAT) {
         TensorProduct(q,p);
@@ -2188,9 +2196,12 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
     MeshField<T3,CELL> r;
     ASYNC_COMM<T1> comm(&q[0]);
 
-    if(sync) comm.send();
-
     r = q * p.ap;
+
+    if(p.flags & p.DIAGONAL)
+        return r;
+
+    if(sync) comm.send();
 
     if(NPMAT) {
         TensorProductT(q,p);
@@ -2238,9 +2249,12 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const MeshField<T1,CELL>& q, const bo
     MeshField<T3,CELL> r;
     ASYNC_COMM<T1> comm(&q[0]);
 
-    if(sync) comm.send();
-
     r = p.Su;
+
+    if(p.flags & p.DIAGONAL)
+        return r;
+
+    if(sync) comm.send();
 
     if(NPMAT) {
         TensorProductM(q,p);
