@@ -7,10 +7,8 @@ boundary 2
 {
     top {
         type SYMMETRY
-        value 0 0 0
     }
     bottom {
         type SYMMETRY
-        value 0 0 0
     }
 }

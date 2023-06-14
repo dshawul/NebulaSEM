@@ -128,7 +128,9 @@ Tensor trn(const Tensor& p) {
     r[ZX] = p[XZ];
     return r;
 }
-/** Rotate a vector by an angle */
+/** Rotate a vector by an angle about a given axis 
+ The rotation is clock-wise in right-handed system.
+*/
 Vector rotate(const Vector& v,const Vector& N,const Scalar& theta) {
     Vector r;
     Scalar sum = v & N;

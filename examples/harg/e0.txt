@@ -15,10 +15,10 @@ boundary 4
         type NEUMANN
     }
     sides {
-        type SYMMETRY
+        type NEUMANN
     }
     top {
-        type SYMMETRY
+        type NEUMANN
     }
     WALLS {
         type NEUMANN

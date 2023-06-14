@@ -3,7 +3,7 @@
 using namespace Mesh;
 
 /**
-  Calculate the circum-circumcenter of triangel (circumcenter of circumscribed circle)
+  Calculate the circum-circumcenter of triangle (circumcenter of circumscribed circle)
   or crossing point of two perpendicular bisectors. Used for ARC edges.
  */
 Vector circumcenter(const Vector& v1,const Vector& v2,const Vector& v3) {

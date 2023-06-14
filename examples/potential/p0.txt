@@ -12,9 +12,9 @@ boundary 4
         type DIRICHLET
     }
     top {
-        type SYMMETRY
+        type NEUMANN
     }
     WALLS {
-        type SYMMETRY
+        type NEUMANN
     }
 }

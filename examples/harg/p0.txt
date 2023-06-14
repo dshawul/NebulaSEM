@@ -14,7 +14,7 @@ boundary 4
         value 0
     }
     top {
-        type SYMMETRY
+        type NEUMANN
     }
     WALLS {
         type NEUMANN

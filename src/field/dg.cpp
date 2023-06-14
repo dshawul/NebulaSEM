@@ -437,37 +437,55 @@ void DG::init_basis() {
     //Compute Jacobian matrix
     Jinv.deallocate(false);
     Jinv.construct();
-    Jinv = Tensor(0);
     #pragma omp parallel for
     #pragma acc parallel loop copyin(gBCS)
     for(Int ci = 0; ci < gBCS;ci++) {
 
         forEachLgl(ii,jj,kk) {
             Int index = INDEX4(ci,ii,jj,kk);
+            Tensor Ji = Tensor(0);
 #define JACD(im,jm,km) {                                    \
     Int index1 = INDEX4(ci,im,jm,km);                       \
-    Tensor& Ji = Jinv[index];                               \
-    Vector& C = cC[index1];                                 \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    Ji += mul(dpsi_ij,C);                                   \
+    Ji += mul(cC[index1], dpsi_ij);                         \
 }
             forEachLglX(i) JACD(i,jj,kk);
             forEachLglY(j) if(j != jj) JACD(ii,j,kk);
             forEachLglZ(k) if(k != kk) JACD(ii,jj,k);
 #undef JACD
-        }
-
-        forEachLgl(ii,jj,kk) {
-            Int index = INDEX4(ci,ii,jj,kk);
-            Tensor& Ji = Jinv[index];
-            if(NPX == 1) {Ji[XX] = 1; Ji[YX] = 0; Ji[ZX] = 0;}
-            if(NPY == 1) {Ji[YY] = 1; Ji[XY] = 0; Ji[ZY] = 0;}
-            if(NPZ == 1) {Ji[ZZ] = 1; Ji[XZ] = 0; Ji[YZ] = 0;}
-            Ji = inv(Ji);
+            //
+            // Note that the Jacobian is stored inverted and transposed so that it
+            // can be used directly for gradient/divergence calculations.
+            //
+            //   {x,y,z} = J * {a,b,c} where J is
+            //
+            //       [dx/da dx/db dx/dc]
+            //   J = [dy/da dy/db dy/dc]
+            //       [dz/da dz/db dz/dc]
+            //
+            //   Also, {a,b,c} = J' * {x,y,z} where J' is the inverse of J
+            //
+            //       [da/dx da/dy da/dz]
+            //  J' = [db/dx db/dy db/dz]
+            //       [dc/dx dc/dy dc/dz]
+            //
+            //   The transpose of J' is used to compute derivatives of q
+            //
+            //   {dq/dx, dq/dy, dq/dz} = trn(J') * {dq/da, dq/db, dq/dc}
+            //
+            //   While the transpose of J is used for the inverse
+            //
+            //   {dq/da, dq/db, dq/dc} = trn(J) * {dq/dx, dq/dy, dq/dz}
+            //
+            if(NPX == 1) Ji[XX] = 1;
+            if(NPY == 1) Ji[YY] = 1;
+            if(NPZ == 1) Ji[ZZ] = 1;
+            Ji = trn(inv(Ji)); /*invert-transpose*/
             if(NPX == 1) Ji[XX] = 0;
             if(NPY == 1) Ji[YY] = 0;
             if(NPZ == 1) Ji[ZZ] = 0;
+            Jinv[index] = Ji;
         }
     }
 }

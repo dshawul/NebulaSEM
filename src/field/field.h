@@ -2327,8 +2327,7 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
                     if(c2 >= gALLfield) continue;
 
                     /*break connection with boundary cells*/
-                    if(bc->cIndex == NEUMANN || bc->cIndex == SYMMETRY ||
-                            bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
+                    if(bc->cIndex == NEUMANN || bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
                         M.ap[c1] -= M.ann[k];
                         M.Su[c1] += M.ann[k] * (cF[c2] - cF[c1]);
                     } else if(bc->cIndex == ROBIN) {
