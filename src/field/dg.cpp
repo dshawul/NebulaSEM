@@ -455,6 +455,8 @@ void DG::init_basis() {
             forEachLglZ(k) if(k != kk) JACD(ii,jj,k);
 #undef JACD
             //
+            // Part I
+            // ======
             // Note that the Jacobian is stored inverted and transposed so that it
             // can be used directly for gradient/divergence calculations.
             //
@@ -478,13 +480,23 @@ void DG::init_basis() {
             //
             //   {dq/da, dq/db, dq/dc} = trn(J) * {dq/dx, dq/dy, dq/dz}
             //
+            // Part II
+            // =======
+            // For 2D problems aligned with one of the axes or is inclined,
+            // the Jacobian is singular. We will use the pseudo-inverse (Moore-Penrose)
+            // inverse to solve a 2D problem in a 3D space
+            //
+            Tensor JiT = trn(Ji);
+            Ji = mul(JiT,Ji);
             if(NPX == 1) Ji[XX] = 1;
             if(NPY == 1) Ji[YY] = 1;
             if(NPZ == 1) Ji[ZZ] = 1;
-            Ji = trn(inv(Ji)); /*invert-transpose*/
+            Ji = inv(Ji); /*invert*/
             if(NPX == 1) Ji[XX] = 0;
             if(NPY == 1) Ji[YY] = 0;
             if(NPZ == 1) Ji[ZZ] = 0;
+            Ji = mul(Ji,JiT);
+            Ji = trn(Ji); /*transpose*/
             Jinv[index] = Ji;
         }
     }
