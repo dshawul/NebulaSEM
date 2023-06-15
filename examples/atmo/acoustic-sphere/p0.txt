@@ -3,12 +3,6 @@ internal 1
 {
     cosine 0 100   -6376220 0 0   1000000 2125406 2125406
 }
-boundary 2
+boundary 0
 {
-    top {
-        type NEUMANN
-    }
-    bottom {
-        type NEUMANN
-    }
 }

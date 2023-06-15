@@ -3,12 +3,6 @@ internal 1
 {
     uniform 300
 }
-boundary 2
+boundary 0
 {
-    top {
-        type NEUMANN
-    }
-    bottom {
-        type NEUMANN
-    }
 }

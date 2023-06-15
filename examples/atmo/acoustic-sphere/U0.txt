@@ -3,12 +3,6 @@ internal 1
 {
     uniform 0 0 0
 }
-boundary 2
+boundary 0
 {
-    top {
-        type SYMMETRY
-    }
-    bottom {
-        type SYMMETRY
-    }
 }
