@@ -83,7 +83,7 @@ refinement
 piso
 {
     turbulence_model             KE
-    velocity_UR                  0.7
+    velocity_UR                  0.5
     pressure_UR                  0.3
     n_PISO                       1
     n_ORTHO                      0

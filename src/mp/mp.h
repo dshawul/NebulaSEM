@@ -53,17 +53,23 @@ class MP {
 
         template <class type>
         static void recieve(type* buffer,int size,int source,int message_id) {
-            const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
+            int FLOAT_SIZE;
+            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
+            const int count = (size * sizeof(type) / FLOAT_SIZE);
             MPI_Recv(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         }
         template <class type>
         static void send(type* buffer,int size,int source,int message_id) {
-            const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
+            int FLOAT_SIZE;
+            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
+            const int count = (size * sizeof(type) / FLOAT_SIZE);
             MPI_Send(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD);
         }
         template <class type>
         static void allreduce(type* sendbuf,type* recvbuf,int size, Int op) {
-            const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
+            int FLOAT_SIZE;
+            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
+            const int count = (size * sizeof(type) / FLOAT_SIZE);
             MPI_Op mpi_op;
             switch(op) {
                 case OP_MAX: mpi_op = MPI_MAX; break;
@@ -74,13 +80,31 @@ class MP {
             MPI_Allreduce(sendbuf,recvbuf,count,MPI_SCALAR,mpi_op,MPI_COMM_WORLD);
         }
         template <class type>
+        static void reduce(type* sendbuf,type* recvbuf,int size, Int op) {
+            int FLOAT_SIZE;
+            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
+            const int count = (size * sizeof(type) / FLOAT_SIZE);
+            MPI_Op mpi_op;
+            switch(op) {
+                case OP_MAX: mpi_op = MPI_MAX; break;
+                case OP_MIN: mpi_op = MPI_MIN; break;
+                case OP_SUM: mpi_op = MPI_SUM; break;
+                case OP_PROD: mpi_op = MPI_PROD; break;
+            }
+            MPI_Reduce(sendbuf,recvbuf,count,MPI_SCALAR,mpi_op,0,MPI_COMM_WORLD);
+        }
+        template <class type>
         static void irecieve(type* buffer,int size,int source,int message_id,void* request) {
-            const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
+            int FLOAT_SIZE;
+            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
+            const int count = (size * sizeof(type) / FLOAT_SIZE);
             MPI_Irecv(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
         }
         template <class type>
         static void isend(type* buffer,int size,int source,int message_id,void* request) {
-            const int count = (size * sizeof(type) / sizeof(MPI_SCALAR));
+            int FLOAT_SIZE;
+            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
+            const int count = (size * sizeof(type) / FLOAT_SIZE);
             MPI_Isend(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
         }
         static void waitall(int count,void* request) {

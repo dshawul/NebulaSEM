@@ -442,7 +442,7 @@ void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
     MP::allreduce(&maxc,&globalmax,1,MP::OP_MAX);
     MP::allreduce(&minc,&globalmin,1,MP::OP_MIN);
     MP::allreduce(&avgc,&globalavg,1,MP::OP_SUM);
-    avgc /= MP::n_hosts;
+    globalavg /= MP::n_hosts;
 
     if(MP::printOn) {
         MP::printH("Courant number: Max: %g Min: %g Avg: %g\n",
