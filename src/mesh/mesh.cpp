@@ -604,6 +604,7 @@ void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,F
 
 #ifdef RDEBUG
     if(f.size() < 4)  {
+        using namespace Util;
         cout << "Merge failed.\n";
         cout << "=======================\n";
         cout << c1 << endl;
@@ -836,7 +837,7 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
 
 #define ADD(x) {                    \
     if(fr.size())                   \
-    addVerticesToEdge(x,fn,fr); \
+        addVerticesToEdge(x,fn,fr); \
     fn.push_back(x);                \
 }
 
@@ -844,7 +845,7 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     ADD(f[k]);                      \
     Int k1 = midpts[k];             \
     if(k1 == Constants::MAX_INT)    \
-    skipped = true;             \
+        skipped = true;             \
     else {                          \
         ADD(k1);                    \
         break;                      \
@@ -913,6 +914,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         IntVector& refineF,IntVector& startF,IntVector& endF,
         Cells& newc,IntVector& delFacets, Int ivBegin
         ) {
+    using namespace Util;
     /* *************************
      *
      * Form new cells (pyramids) 
@@ -975,7 +977,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 
 #ifdef RDEBUG
         cout << it->first << " = " << it->second.first << " = " << it->second.second <<  endl;
-        cout << "---\n";
+        cout << "----" << endl;
 #endif
 
     }
@@ -1011,6 +1013,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 #ifdef RDEBUG
         if(j == 0) cout << "====================================\n";
         cout << crj << " " << rDir << " ( " << startF[fi] << "  " << endF[fi] << " ) " << endl;
+        cout << "----" << endl;
 #endif
 
         /*refine cells*/
@@ -1031,7 +1034,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
             calcFaceCenter(f,fc);
             cout << f << endl;
             cout << fc << endl;
-            cout << "----\n";
+            cout << "----" << endl;
 #endif
 
             Cell cn;
@@ -1262,16 +1265,22 @@ END:;
         }
     }
 #ifdef RDEBUG
-    cout << " After merge new cells " << newc.size() << endl;
+    cout << " New cells after merge " << newc.size() << endl;
     cout << newc << endl;
-    forEach(newc,i) {
+    forEach(newc, i) {
         Cell& c = newc[i];
+        std::cout << "Cell " << c << std::endl;
         forEach(c,j) {
-            if(mFacets[c[j]].size() <= 3) {
-                cout << "Cell still has triangular face.\n";
+            Facet& f = mFacets[c[j]];
+            std::cout << j << ". " << f << std::endl;
+            forEach(f,k)
+                std::cout << "    " << k << ". " << mVertices[f[k]] << std::endl;
+            if(f.size() <= 3) {
+                cout << "Cell still has triangular face." << endl;
                 exit(0);
             }
         }
+        std::cout << "-----" << std::endl;
     }
 #endif
 
@@ -1324,6 +1333,7 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
 void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCells,const IntVector& rLevel,
         const IntVector& rDirs, IntVector& cellMap,IntVector& coarseMap) {
 
+    using namespace Util;
     Int ivBegin = mVertices.size();
     IntVector delFacets;
     IntVector delCells;
@@ -1643,14 +1653,18 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
 
 #ifdef RDEBUG
                 cout << "========================================"
-                    "========================================\n";
+                        "========================================\n";
                 cout << "Refinement level " << m + 1 << endl;
                 cout << "==================\n";
                 cout << "Cell " << c << endl;
                 cout << "-------------\n";
                 cout << "Facets of cell:\n";
-                forEach(c,j)
+                forEach(c,j) {
+                    Facet& f = gFacets[c[j]];
                     cout << gFacets[c[j]] << endl;
+                    forEach(f,k)
+                        cout << gVertices[f[k]] << endl;
+                }
                 cout << "-------------\n";
                 cout << "cr " << cr << endl;
 #endif
