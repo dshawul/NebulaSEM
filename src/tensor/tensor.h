@@ -469,7 +469,8 @@ namespace Constants {
 /** Checks if two scalars are equal within machine epsilon */
 FORCEINLINE  bool equal(const Scalar& p,const Scalar& q, const Scalar tol = Constants::EqualEpsilon) { 
     Scalar delta = mag(p - q);
-    return delta <= tol * mag(p) ||
+    return delta <= tol ||
+           delta <= tol * mag(p) ||
            delta <= tol * mag(q);
 }
 /** Checks if two vectors are equal within machine epsilon */
