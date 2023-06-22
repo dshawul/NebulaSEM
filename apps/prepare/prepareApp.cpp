@@ -29,8 +29,6 @@ int main(int argc,char* argv[]) {
             work = 3;
         } else if(!strcmp(argv[i],"-refine")) {
             work = 4;
-        } else if(!strcmp(argv[i],"-poly")) {
-            Vtk::write_polyhedral = true;
         } else if(!strcmp(argv[i],"-start")) {
             i++;
             start_index = atoi(argv[i]);
@@ -46,7 +44,6 @@ int main(int argc,char* argv[]) {
                 << "  -vtk        --  Convert data to VTK format\n"
                 << "  -probe      --  Probe result at specified locations\n"
                 << "  -refine     --  Refine mesh\n"
-                << "  -poly       --  Write VTK in polyhedral format\n"
                 << "  -start <i>  --  Start at time step <i>\n"
                 << "  -h          --  Display this message\n\n";
             return 0;
@@ -87,6 +84,15 @@ int main(int argc,char* argv[]) {
     {
         Util::ParamList params("refinement");
         Controls::enrollRefine(params);
+        params.read(input);
+    }
+    {
+        Util::ParamList params("vtk");
+        Util::Option* op;
+        op = new Util::BoolOption(&Vtk::write_polyhedral);
+        params.enroll("write_polyhedral",op);
+        op = new Util::BoolOption(&Vtk::write_cell_value);
+        params.enroll("write_cell_value",op);
         params.read(input);
     }
 
