@@ -602,52 +602,20 @@ void Prepare::readFields(vector<string>& fields,Int step) {
 /**
   Calculate quantity of interest (QOI)
  */
-void Prepare::calcQOI(VectorCellField& qoi) {
-    using namespace Mesh;
-
+void Prepare::calcQOI(ScalarCellField& qoi) {
     BaseField* bf = BaseField::findField(Controls::refine_params.field);
     if(bf) {
-        ScalarCellField norm;
-        bf->norm(&norm);
-        fillBCs(norm);
-        applyExplicitBCs(norm,false);
-        qoi = gradf(norm);
-        forEach(qoi,i) {
-            Vector& v = qoi[i];
-            v[0] = mag(v[0]);
-            v[1] = mag(v[1]);
-            v[2] = mag(v[2]);
-        }
+        bf->norm(&qoi);
+        qoi = pow(qoi * Mesh::cV,0.25);
+        fillBCs(qoi);
+        Scalar maxq = reduce_max(qoi);
+        qoi /= maxq;
     }
-}
-/**
-  Init AMR refinement threshold
- */
-void Prepare::initRefineThreshold() {
-    using namespace Mesh;
-    using namespace Controls;
-
-    VectorCellField qoi;
-    ScalarCellField qoim;
-    calcQOI(qoi);
-    qoim = mag(qoi);
-    /*max and min*/
-    Scalar maxq = 0;
-    for(Int i = 0;i < gBCS;i++) {
-        if(qoim[i] > maxq)
-            maxq = qoim[i];
-    }
-    refine_params.field_max *= (maxq);
-    refine_params.field_min *= (maxq);
-    std::cout << "----------------------" << std::endl;
-    std::cout << " Refinement threshold " << Controls::refine_params.field_max << std::endl;
-    std::cout << " Coarsening threshold " << Controls::refine_params.field_min << std::endl;
-    std::cout << "----------------------" << std::endl;
 }
 /**
   Refine grid
  */
-void Prepare::refineMesh(Int step,bool init_threshold) {
+void Prepare::refineMesh(Int step) {
     using namespace Mesh;
     using namespace Controls;
 
@@ -663,36 +631,27 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
     Prepare::createFields(BaseField::fieldNames,step);
     Prepare::readFields(BaseField::fieldNames,step);
 
-    /*init threshold*/
-    if(init_threshold)
-        Prepare::initRefineThreshold();
-
     /*find cells to refine/coarsen*/
     IntVector rCells,cCells,rLevel,rDirs;
     {
-        /*find quantity of interest*/
-        VectorCellField qoi;
+        /*compute quantity of interest (qoi) and normalize it*/
+        ScalarCellField qoi;
         calcQOI(qoi);
 
         /*get cells to refine*/
         gCells.erase(gCells.begin() + gBCS,gCells.end());
         cCells.assign(gCells.size(),0);
         for(Int i = 0;i < gBCS;i++) {
-            Vector q = qoi[i];
-            Scalar qm = mag(q);
+            Scalar q = qoi[i];
             RefineParams& rp = refine_params;
-            if(qm >= rp.field_max) {
+            if(q >= rp.field_max) {
                 if(gCells.size() <= rp.limit) {
-                    Int dir = 0;
-                    if(q[0] >= rp.field_max) dir |= 1;
-                    if(q[1] >= rp.field_max) dir |= 2;
-                    if(q[2] >= rp.field_max) dir |= 4;
-
+                    constexpr Int dir = 7;
                     if(dir) {
                         Int level = 1;
                         for(;level < 3;level++) {
                             Int factor = (1 << (2 * level));
-                            if(qm < rp.field_max * factor)
+                            if(q < rp.field_max * factor)
                                 break;
                         }
                         rCells.push_back(i);
@@ -700,7 +659,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
                         rDirs.push_back(dir);
                     }
                 }
-            } else if(qm <= rp.field_min) {
+            } else if(q <= rp.field_min) {
                 cCells[i] = 1;
             }
         }
@@ -727,6 +686,7 @@ void Prepare::refineMesh(Int step,bool init_threshold) {
         forEachIt(BaseField::allFields, it)
             (*it)->refineField(step,refineMap,coarseMap);
     }
+
     /*Write amrTree*/
     {
         stringstream path;

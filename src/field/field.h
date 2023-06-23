@@ -1333,9 +1333,8 @@ namespace Mesh {
 namespace Prepare {
     void createFields(std::vector<std::string>& fields,Int step);
     void readFields(std::vector<std::string>& fields,Int step);
-    void refineMesh(Int step, bool = false);
-    void calcQOI(VectorCellField&);
-    void initRefineThreshold();
+    void refineMesh(Int step);
+    void calcQOI(ScalarCellField&);
     int decomposeMesh(Int);
     int mergeFields(Int);
 }

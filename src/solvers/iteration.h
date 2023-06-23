@@ -113,8 +113,7 @@ class AmrIteration {
                         Prepare::mergeFields(i);
                     }
 
-                    bool init_threshold = (i == starti + Controls::amr_step);
-                    Prepare::refineMesh(i, init_threshold);
+                    Prepare::refineMesh(i);
                 }
 
                 if(MP::n_hosts > 1)
