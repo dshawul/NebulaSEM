@@ -1,0 +1,98 @@
+general
+{
+######################################
+#  mesh file name and solver type
+######################################
+    solver                       piso
+    mesh                         grid
+
+######################################
+#  Fluid properties specific to solver
+######################################
+    rho                          1
+    viscosity                    1e-1
+#############################
+#  Time increment
+#############################
+
+    state                        TRANSIENT
+    start_step                   0
+    end_step                     1000
+    write_interval               100
+    amr_step                     2
+    dt                           0.005
+
+############################
+#  Discretization schemes
+############################
+
+    convection_scheme            HYBRID
+    nonortho_scheme              OVER_RELAXED
+    blend_factor                 0.2
+
+############################
+#  Solver options
+############################
+
+    method                       PCG
+    tolerance                    1e-5
+    max_iterations               6400
+    SOR_omega                    1.7
+    parallel_method              BLOCKED
+
+############################
+#  Probe locations
+############################
+    probe     0 {}
+    gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       0
+    npy       0
+    npz       0
+}
+
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    3 { U p T }
+}
+
+decomposition
+{
+    type      	METIS
+}
+
+refinement
+{
+    direction       0 0 1
+    field           U
+    field_min       0.1
+    field_max       0.7
+    limit           100000
+}
+
+vtk
+{
+    write_polyhedral  YES
+}
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             NONE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       2
+    n_ORTHO                      0
+}
+
+turbulence
+{
+    k_UR                         0.5
+    x_UR                         0.5
+}
