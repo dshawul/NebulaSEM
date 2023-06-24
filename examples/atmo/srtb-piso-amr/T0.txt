@@ -1,0 +1,17 @@
+size 1
+internal 1
+{
+    cosine 300 0.5    1000 50 350   250 1000 250
+}
+boundary 3
+{
+    top {
+        type NEUMANN
+    }
+    bottom {
+        type NEUMANN
+    }
+    sides {
+        type NEUMANN
+    }
+}
