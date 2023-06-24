@@ -1394,6 +1394,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
 
 #ifdef RDEBUG
             cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << endl;
+            cout << c1 << std::endl;
 #endif
 
             map<Int,IntVector> sharedMap;
@@ -1404,18 +1405,16 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 Int o1 = (mFOC[f1] == ci) ? mFNC[f1] : mFOC[f1];
                 if(o1 >= mCells.size()) {
                     Vector u = unit(mFN[f1]);
-                    o1 = Int(0.75 * Constants::MAX_INT) +
-                        int(Scalar(1000.0) * u[2] +
-                                Scalar(100.0) * u[1] +
-                                Scalar(10.0) * u[0]);
+                    o1 = round(Scalar(1000.0) * u[2] + Scalar(100.0) * u[1] + Scalar(10.0) * u[0]);
+                    o1 += Int(3 * (Constants::MAX_INT >> 2));
                 }
                 IntVector& val = sharedMap[o1];
                 val.push_back(j);
             }
 
 #ifdef RDEBUG
-            cout << sharedMap << endl;
-            cout << "------\n";
+            cout << "Shared map" << std::endl;
+            cout << sharedMap;
 #endif
 
             IntVector allDel;
@@ -1456,6 +1455,10 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             sort(allDel.begin(),allDel.end());
             erase_indices(c1,allDel);
 
+#ifdef RDEBUG
+            cout << "After coarsening  " << endl;
+            cout << c1 << std::endl;
+#endif
             i += nchildren;
         }
         /*renumber children ids*/
@@ -1476,7 +1479,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
         }
 #ifdef RDEBUG
-        cout << "Coarsening " << delTree << endl;
+        cout << "Coarsening delTree " << delTree << endl;
 #endif
         /*delete coarsened cells*/
         sort(delTree.begin(),delTree.end());
@@ -1661,7 +1664,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 cout << "Facets of cell:\n";
                 forEach(c,j) {
                     Facet& f = gFacets[c[j]];
-                    cout << gFacets[c[j]] << endl;
+                    cout << f << endl;
                     forEach(f,k)
                         cout << gVertices[f[k]] << endl;
                 }
@@ -1741,9 +1744,15 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         c.insert(c.end(),newF.begin(),newF.end());          \
     } while (has);                                          \
                                                             \
+    IntVector eraseF;                                       \
     forEach(c,j)    {                                       \
-        c[j] = refineF[c[j]];                               \
+        Int fi = c[j];                                      \
+        if(refineF[fi] != Constants::MAX_INT - 1)           \
+            c[j] = refineF[fi];                             \
+        else                                                \
+            eraseF.push_back(j);                            \
     }                                                       \
+    erase_indices(c,eraseF);                                \
 }
     forEach(mCells,i) {
         Cell& c = mCells[i];
