@@ -854,6 +854,7 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
         /*Add faces*/
         forEachS(f,j,fmid) {
             Facet fn;
+            Int rot = j;
             fn.push_back(midpts[j]);
         
             bool skipped = false;
@@ -871,6 +872,9 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
         
             if(!skipped)
                 fn.push_back(fci);
+
+            /*rotate*/
+            std::rotate(fn.rbegin(), fn.rbegin() + rot, fn.rend());
         
             newf.push_back(fn);
         }
