@@ -1335,7 +1335,7 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
   Refine mesh
  */
 void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCells,const IntVector& rLevel,
-        const IntVector& rDirs, IntVector& cellMap,IntVector& coarseMap) {
+        const IntVector& rDirs, IntVector& refineMap,IntVector& coarseMap) {
 
     using namespace Util;
     Int ivBegin = mVertices.size();
@@ -1563,9 +1563,9 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
     /*************************
      * Refine cells
      *************************/
-    cellMap.assign(mBCS,0);
-    forEach(cellMap,i)
-        cellMap[i] = i;
+    refineMap.assign(mBCS,0);
+    forEach(refineMap,i)
+        refineMap[i] = i;
 
     forEach(rCells,i) {
         Cells newc;
@@ -1710,7 +1710,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         /*add cells*/
         mCells.insert(mCells.end(),newc.begin(),newc.end());
         forEach(newc,j)
-            cellMap.push_back(ci);
+            refineMap.push_back(ci);
     }
 
     /*************************************
@@ -1799,7 +1799,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
     
     /*erase cells*/
     erase_indices(mCells,rmCells);
-    erase_indices(cellMap,rmCells);
+    erase_indices(refineMap,rmCells);
     mBCS = mCells.size();
     
     /*remove unused vertices*/
