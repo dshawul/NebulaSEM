@@ -137,6 +137,67 @@ void Mesh::MeshObject::addBoundaryCells() {
     }
 }
 /**
+  Fix hexahedral cells for the sake of DG
+ */
+void Mesh::MeshObject::fixHexCell(Cell& c) {
+    /*order faces so that 0,1 are opposite one another
+    same for 2,3 and 4,5*/
+    forEach(c,j) {
+        Facet& fj = mFacets[c[j]];
+        forEachS(c,k,j+2) {
+            Facet& fk = mFacets[c[k]];
+            bool has_shared = false;
+            forEach(fj, j1) {
+                forEach(fk, k1) {
+                    if(fj[j1] == fk[k1]) {
+                        has_shared = true;
+                        break;
+                    }
+                }
+            }
+            if(!has_shared) {
+                Int temp = c[j+1];
+                c[j+1] = c[k];
+                c[k] = temp;
+                break;
+            }
+        }
+        j++;
+    }
+    /*order faces for xy, xz, and yz planes*/
+    Facet& f1 = mFacets[c[0]];
+    Facet& f2 = mFacets[c[1]];
+    for(Int j = 2; j < c.size(); j++) {
+        Facet& fj = mFacets[c[j]];
+        int count = 0;
+        forEach(fj, k) {
+            if(fj[k] == f1[0] || fj[k] == f1[1])
+                count++;
+        }
+        if(count == 2 && j != 2) {
+            Int temp = c[2];
+            c[2] = c[j];
+            c[j] = temp;
+            if(j > 3) {
+                temp = c[3];
+                c[3] = c[j ^ 1];
+                c[j ^ 1] = temp;
+            }
+        }
+    }
+    Facet& fj = mFacets[c[4]];
+    int count = 0;
+    forEach(fj, k) {
+        if(fj[k] == f1[0] || fj[k] == f1[3])
+            count++;
+    }
+    if(count != 2) {
+        Int temp = c[4];
+        c[4] = c[5];
+        c[5] = temp;
+    }
+}
+/**
   Calculate geometric information
  */
 void Mesh::MeshObject::calcGeometry(Int is_spherical) {
@@ -147,6 +208,14 @@ void Mesh::MeshObject::calcGeometry(Int is_spherical) {
     mFN.assign(mFacets.size(),Vector(0));
     mCV.assign(mCells.size(),Scalar(0));
     mReversed.assign(mFacets.size(),false);
+
+    /*fix Hex cells for DG*/
+    forEach(mCells,i) {
+        Cell& c = mCells[i];
+        if(c.size() == 6) {
+            fixHexCell(c);
+        }
+    }
 
     /* face centre: centroid of face vertices*/
     forEach(mFacets,i) {
