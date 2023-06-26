@@ -1,0 +1,19 @@
+size 1
+internal 1
+{
+    gaussian 0 1    0.3 0.5 0.05   0.125 0.125 0.05
+}
+boundary 3
+{
+    in {
+        type CYCLIC
+        neighbor out
+    }
+    out {
+        type CYCLIC
+        neighbor in
+    }
+    topbot {
+        type NEUMANN
+    }
+}
