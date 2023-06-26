@@ -120,7 +120,6 @@ namespace Mesh {
     const Int ROBIN        = Util::hash_function("ROBIN");
     const Int SYMMETRY     = Util::hash_function("SYMMETRY");
     const Int CYCLIC       = Util::hash_function("CYCLIC");
-    const Int RECYCLE      = Util::hash_function("RECYCLE");
     const Int GHOST        = Util::hash_function("GHOST");
     const Int POWER        = Util::hash_function("POWER");
     const Int LOG          = Util::hash_function("LOG");
@@ -1539,8 +1538,7 @@ void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest,
                 bc1->value *= psi;
                 bc1->tvalue *= psi;
             } else if(bc1->cIndex == SYMMETRY ||
-                    bc1->cIndex == CYCLIC ||
-                    bc1->cIndex == RECYCLE) {
+                    bc1->cIndex == CYCLIC) {
             } else {
                 bc1->cname = "CALC_DIRICHLET";
                 bc1->cIndex = CALC_DIRICHLET;
@@ -2331,7 +2329,7 @@ void applyImplicitBCs(const MeshMatrix<T1,T2,T3>& M) {
                     if(c2 >= gALLfield) continue;
 
                     /*break connection with boundary cells*/
-                    if(bc->cIndex == NEUMANN || bc->cIndex == CYCLIC || bc->cIndex == RECYCLE) {
+                    if(bc->cIndex == NEUMANN || bc->cIndex == CYCLIC) {
                         M.ap[c1] -= M.ann[k];
                         M.Su[c1] += M.ann[k] * (cF[c2] - cF[c1]);
                     } else if(bc->cIndex == ROBIN) {
@@ -2446,23 +2444,13 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
                             (1 - bc->shape) * (cF[c1] + bc->tvalue * mag(dv));
                     } else if(bc->cIndex == SYMMETRY) {
                         cF[c2] = sym(cF[c1],fN[k]);
-                    } else if(bc->cIndex == CYCLIC ||
-                            bc->cIndex == RECYCLE) {
+                    } else if(bc->cIndex == CYCLIC) {
                         Int fi = (*neighbor_bdry)[j];
                         Int k1 = fi * DG::NPF + n;
                         Int c11 = FO[k1];
-                        Int c22 = FN[k1];
-                        if(bc->cIndex == CYCLIC) {
-                            cF[c2] = cF[c11];
-                            cF[c22] = cF[c1];
-                        } else {
-                            if(c2 >= gBCSfield)
-                                cF[c2] = cF[c11];
-                            else
-                                cF[c22] = cF[c1];
-                        }
+                        cF[c2] = cF[c11];
                     } else if(bc->cIndex == DIRICHLET) {
-                       cF[c2] = bc->value;
+                        cF[c2] = bc->value;
                     } else { 
                         if(update_fixed) {
                             T v(0);
