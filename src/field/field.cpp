@@ -664,6 +664,51 @@ void Prepare::refineMesh(Int step) {
             }
         }
     }
+    /*refine cyclic patch owner cells together*/
+    {
+        std::vector<std::string> cyclic_patches;
+        forEach(AllBConditions,i) {
+            BasicBCondition* bbc = AllBConditions[i];
+            if(bbc->cIndex == Mesh::CYCLIC) {
+                cyclic_patches.push_back(bbc->bname);
+                cyclic_patches.push_back(bbc->neighbor);
+            }
+        }
+        for(Int i = 0; i < cyclic_patches.size(); i += 2) {
+            IntVector& gB1 = gBoundaries[cyclic_patches[i].c_str()];
+            IntVector& gB2 = gBoundaries[cyclic_patches[i+1].c_str()];
+            forEach(gB1,j) {
+                Int c1 = gFOC[gB1[j]];
+                Int c2 = gFOC[gB2[j]];
+                if(cCells[c1] || cCells[c2])
+                    cCells[c1] = cCells[c2] = 1;
+                else {
+                    using namespace Constants;
+                    Int cs = MAX_INT, i, ci;
+                    for(i = 0; i < rCells.size(); i++) {
+                        if(rCells[i] == c1) {
+                            if(cs == MAX_INT) {
+                                cs = c2;
+                                ci = i;
+                            } else
+                                break;
+                        } else if(rCells[i] == c2) {
+                            if(cs == MAX_INT) {
+                                cs = c1;
+                                ci = i;
+                            } else
+                                break;
+                        }
+                    }
+                    if(cs != MAX_INT && i == rCells.size()) {
+                        rCells.push_back(cs);
+                        rLevel.push_back(rLevel[ci]);
+                        rDirs.push_back(rDirs[ci]);
+                    }
+                }
+            }
+        }
+    }
     /*Read amr tree*/
     {
         stringstream path;
