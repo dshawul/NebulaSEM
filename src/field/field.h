@@ -138,6 +138,7 @@ struct BasicBCondition {
     std::string cname;
     std::string bname;
     std::string fname;
+    std::string neighbor;
     LawOfWall low;
 };
 /** Template boundary condition's class for different tensors */
@@ -199,6 +200,8 @@ struct BCondition : public BasicBCondition {
             os << "\tks " << p.low.ks << "\n";
             os << "\tcks " << p.low.cks << "\n";
         }
+        if(!p.neighbor.empty())
+            os << "\tneighbor " << p.neighbor << "\n";
         os << "}\n";
         return os;
     }
@@ -243,6 +246,8 @@ struct BCondition : public BasicBCondition {
                 is >> p.low.ks;
             } else if(!compare(str,"cks")) {
                 is >> p.low.cks;
+            } else if(!compare(str,"neighbor")) {
+                is >> p.neighbor;
             }
         }
     
@@ -2420,6 +2425,10 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
                 }
             }
 
+            IntVector* neighbor_bdry;
+            if(!bc->neighbor.empty())
+                neighbor_bdry = &Mesh::gBoundaries[bc->neighbor.c_str()];
+
             for(Int j = 0;j < sz;j++) {
                 Int faceid = (*bc->bdry)[j];
                 for(Int n = 0; n < DG::NPF;n++) {
@@ -2439,11 +2448,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
                         cF[c2] = sym(cF[c1],fN[k]);
                     } else if(bc->cIndex == CYCLIC ||
                             bc->cIndex == RECYCLE) {
-                        Int fi;
-                        if(j < sz / 2) 
-                            fi = (*bc->bdry)[j + sz/2];
-                        else
-                            fi = (*bc->bdry)[j - sz/2];
+                        Int fi = (*neighbor_bdry)[j];
                         Int k1 = fi * DG::NPF + n;
                         Int c11 = FO[k1];
                         Int c22 = FN[k1];

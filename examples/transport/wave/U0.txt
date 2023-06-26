@@ -3,9 +3,12 @@ internal 1
 {
     uniform 2 0 0
 }
-boundary 1
+boundary 2
 {
-    inout {
-        type CYCLIC
+    in {
+        type NEUMANN
+    }
+    out {
+        type NEUMANN
     }
 }

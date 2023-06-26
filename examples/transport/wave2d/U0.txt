@@ -3,9 +3,12 @@ internal 1
 {
     uniform 0.1 0 0
 }
-boundary 2
+boundary 3
 {
-    inout {
+    in {
+        type NEUMANN
+    }
+    out {
         type NEUMANN
     }
     topbot {

@@ -3,9 +3,14 @@ internal 1
 {
     gaussian 0 1    0 0.5 0.5   0.25 0.5 0.5
 }
-boundary 1
+boundary 2
 {
-    inout {
+    in {
         type CYCLIC
+        neighbor out
+    }
+    out {
+        type CYCLIC
+        neighbor in
     }
 }

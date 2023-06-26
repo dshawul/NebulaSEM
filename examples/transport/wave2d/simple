@@ -14,7 +14,8 @@
 
 8{ 0  1  2  3  4  5  6  7 } linear  3{8 8 1} 
 
-inout  4{0 3 7 4} 4{1 2 6 5}
+in  4{0 3 7 4}
+out  4{1 2 6 5}
 topbot 4{3 2 6 7} 4{0 1 5 4}
 default   delete
 
