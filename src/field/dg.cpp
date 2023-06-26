@@ -242,8 +242,19 @@ void DG::init_geom() {
             Vertex vp1[8];
             forEach(f1,i)
                 vp1[i + 0] = gVertices[f1[i]];
-            forEach(f2,i)
-                vp1[i + 4] = gVertices[f2[i]];  
+            forEach(f1,i) {
+                Scalar mind = 1e20;
+                Int minj = 0;
+                forEach(f2,j) {
+                    Scalar dist = mag(gVertices[f2[j]] - gVertices[f1[i]]);
+                    if(dist < mind) {
+                        mind = dist;
+                        minj = j;
+                    }
+                }
+                vp1[i + 4] = gVertices[f2[minj]];
+            }
+
             Int id = gFaceID[ci][0];
             if(id == 2) {
                 Int order[8] = {0,1,5,4,3,2,6,7};
