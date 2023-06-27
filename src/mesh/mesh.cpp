@@ -2,7 +2,7 @@
 
 using namespace std;
 
-// #define RDEBUG
+//#define RDEBUG
 
 /**
   References to global mesh
@@ -995,15 +995,15 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         IntVector& refineF,IntVector& startF,IntVector& endF,
         Cells& newc,IntVector& delFacets, Int ivBegin
         ) {
+
     using namespace Util;
-    /* *************************
+
+    /* ***************************************
      *
-     * Form new cells (pyramids) 
+     * Merge and then refine co-planar faces
      *
-     * *************************/
-    //co-planar faces
-    typedef map<Int, pair<IntVector,IntVector> > typeMap;
-    typeMap sharedMap;
+     * ***************************************/
+    map<Int, pair<IntVector,IntVector> > sharedMap;
 
     IntVector c1;
     IntVector c1r;
@@ -1063,7 +1063,11 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 
     }
 
-    //refine cell
+    /* *************************
+     *
+     * Form new cells (pyramids) 
+     *
+     * *************************/
     Vector C;
     calcCellCenter(c,C);
     mVertices.push_back(C);
@@ -1079,7 +1083,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         Int fi = c1[j];
         Int crj = c1r[j];
 
-        /*cell is refined but face is not?*/
+        //cell is refined but face is not?
         IntVector list;
         if(crj) {
             list.push_back(fi);
@@ -1097,7 +1101,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         cout << "----" << endl;
 #endif
 
-        /*refine cells*/
+        //refine cells
         forEach(list,k) {
             Int fni = list[k];
             Facet f = mFacets[fni];
@@ -1130,6 +1134,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
                 fn.push_back(v1i);
                 fn.push_back(v2i);
                 fn.push_back(cci);
+
                 //duplicate
                 Int k = ifBegin;
                 for(; k < mFacets.size();k++) {
@@ -1151,7 +1156,11 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         }
     }
 
-    //Replace co-planar faces
+    /* *************************
+     *
+     * Replace co-planar faces
+     *
+     * *************************/
     forEach(newc,i) {
         if(ownerf[i] < Constants::MAX_INT / 2)
             continue;
@@ -1203,9 +1212,6 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
      *
      * *********************/
     {
-        /* Find among new cells on different owner faces,
-         * and merge if they have a shared face
-         */
 #ifdef RDEBUG
         cout << "============\n";
         cout << " New cells before merge " << newc.size() << endl;
@@ -1213,6 +1219,8 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         cout << "============\n";
 #endif
 
+        // Find among new cells on different owner faces,
+        // and merge if they have a shared face
         Cells mergec;
         forEach(newc,j) {
             Int o1 = ownerf[j];
@@ -1224,7 +1232,6 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 
                 if(o1 == o2) continue;
 
-                /*Compare faces*/
                 forEach(c1,m) {
                     Int f1 = c1[m];
                     forEach(c2,n) {
@@ -1270,7 +1277,7 @@ END:;
             }
         } while(inserted);
 
-        /*merge cells*/
+        //merge cells
         {
             IntVector erasei;
             erasei.assign(newc.size(),0);
@@ -1300,7 +1307,7 @@ END:;
         cout << "============\n";
 #endif
 
-        /*two cells should share only one face*/
+        //two cells should share only one face
         forEach(newc,j) {
             Cell& c1 = newc[j];
             forEachS(newc,k,j+1) {
@@ -1345,6 +1352,7 @@ END:;
             }
         }
     }
+
 #ifdef RDEBUG
     cout << " New cells after merge " << newc.size() << endl;
     cout << newc << endl;
@@ -1370,7 +1378,7 @@ END:;
   Initialize facet refinement information
  */
 void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
-        const IntVector& rCells,const Cells& newCells, Int ivBegin) {
+        const IntVector& rCells,const Cells& newCells) {
 
     forEach(rCells,i) {
         const Cell& c = newCells[rCells[i]];
@@ -1385,16 +1393,16 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
             IntVector shared;
             shared.push_back(j);
 
-            bool straight = false;
+            bool coplanar = false;
             forEachS(c,k,j+1) {
                 if(flag[k]) continue;
 
                 if(coplanarFaces(mFacets[c[j]],mFacets[c[k]])) {
-                    straight = true;
+                    coplanar = true;
                     shared.push_back(k);
                 }
             }
-            if(!straight) {
+            if(!coplanar) {
                 refineF[c[j]] = 1;
             } else {
 
@@ -1467,13 +1475,13 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
         }
         /*merge facets*/
-        Int myfBegin = mFacets.size();
         forEach(coarseMap,i) {
             Int nchildren = coarseMap[i];
             Int ci = coarseMap[i + 1];
             Cell& c1 = mCells[ci];
 
 #ifdef RDEBUG
+            cout << "-----------------------------" << endl;
             cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << endl;
             cout << c1 << std::endl;
 #endif
@@ -1482,7 +1490,6 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
 
             forEach(c1,j) {
                 Int f1 = c1[j];
-                if(f1 >= myfBegin) continue;
                 Int o1 = (mFOC[f1] == ci) ? mFNC[f1] : mFOC[f1];
                 if(o1 >= mCells.size()) {
                     Vector u = unit(mFN[f1]);
@@ -1494,7 +1501,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
 
 #ifdef RDEBUG
-            cout << "Shared map" << std::endl;
+            cout << "Face sharing map with neighbor cell " << std::endl;
             cout << sharedMap;
 #endif
 
@@ -1510,19 +1517,21 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                     Int fi = c1[faces[0]];
                     mFacets[fi] = nf;
 
-                    //erase old faces
+                    //mark old faces for deletion
                     forEachS(faces,j,1)
                         delFacets.push_back(c1[faces[j]]);
                     allDel.insert(allDel.end(),faces.begin() + 1,faces.end());
 
                     if(it->first < Constants::MAX_INT / 2) {
+                        //erase old faces from neighbor cell
                         Cell& c2 = mCells[it->first];
                         forEachS(faces,j,1)
                             eraseValue(c2,c1[faces[j]]);
                     } else {
-                        //Assume all faces are on same patch [Fix me later]
+                        //erase old faces from neighbor boundary cell
                         forEachIt(mBoundaries,it) {
                             IntVector& c2 = it->second;
+                            //Assume all faces are on same patch [Fix me later]
                             if(find(c2.begin(),c2.end(),fi) != c2.end()) {
                                 forEachS(faces,j,1)
                                     eraseValue(c2,c1[faces[j]]);
@@ -1537,7 +1546,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             erase_indices(c1,allDel);
 
 #ifdef RDEBUG
-            cout << "After coarsening  " << endl;
+            cout << "-----------------------------" << endl;
+            cout << "Cell after coarsening  " << endl;
             cout << c1 << std::endl;
 #endif
             i += nchildren;
@@ -1560,7 +1570,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
         }
 #ifdef RDEBUG
-        cout << "Coarsening delTree " << delTree << endl;
+        cout << "Coarsening tree to delete " << delTree << endl;
 #endif
         /*delete coarsened cells*/
         sort(delTree.begin(),delTree.end());
@@ -1596,7 +1606,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         crefineF.push_back(v);
     }
 
-    initFaceInfo(refineF,crefineF,rCells,mCells,ivBegin);
+    initFaceInfo(refineF,crefineF,rCells,mCells);
 
     /*fill refinement face set*/
     forEach(refineF,i) {
@@ -1613,10 +1623,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             rft.assign(mFacets.size(),0);
             forEach(rCells,i) {
                 Cell& c = mCells[rCells[i]];
-                forEach(c,j) {
-                    Int fi = c[j];
-                    rft[fi] |= rDirs[i];
-                }
+                forEach(c,j)
+                    rft[c[j]] |= rDirs[i];
             }
             Int cnt = 0;
             forEach(refineF,i) {
@@ -1634,6 +1642,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
             }
         }
 
+        /*Note: co-planar faces are not refined here*/
         refineFacets(rFacets,refineF,rfDirs,startF,endF,ivBegin);
     }
 
@@ -1645,95 +1654,98 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         refineMap[i] = i;
 
     forEach(rCells,i) {
-        Cells newc;
-        Cells ncrefineF;
+        Int rci = rCells[i];
+        Int rdir = rDirs[i];
+        Int rlevel = rLevel[i];
 
-        Int ci = rCells[i];
-        Int ndir = rDirs[i];
-        newc.push_back(mCells[ci]);
-        ncrefineF.push_back(crefineF[i]);
-
-        int node_index = -1;
+        //find tree node for this cell
+        Int start_index = mCells.size();
+        Int node_index = Constants::MAX_INT - 1;
         forEach(mAmrTree,j) {
             Node& n = mAmrTree[j];
-            if((n.id == ci) && (n.nchildren == 0)) {
+            if((n.id == rci) && (n.nchildren == 0)) {
                 node_index = j;
                 break;
             }
         }
 
-        Int start_index = mCells.size();
-        Int NR = rLevel[i];
+        //initialize recursive refinemet of the cell
+        Cells newc;
+        Cells ncrefineF;
+        newc.push_back(mCells[rci]);
+        ncrefineF.push_back(crefineF[i]);
 
-        for(Int m = 0;m < NR;m++) {
+        //conduct multiple refinement levels
+        for(Int m = 0; m < rlevel; m++) {
 
+            //face refinement for multiple levels only
             if(m) {
-                //face refinement
+
+                //form unique set of faces to refine
+                IntVector rfFacets;
+                forEach(newc,j)
+                    rfFacets.insert(rfFacets.end(),newc[j].begin(),newc[j].end());
+                sort(rfFacets.begin(), rfFacets.end());
+                rfFacets.erase(unique(rfFacets.begin(),rfFacets.end()), rfFacets.end());
+
+                //handle already refined faces
                 {
-                    IntVector rfFacets;
-                    forEach(newc,j)
-                        rfFacets.insert(rfFacets.end(),newc[j].begin(),newc[j].end());
-                    sort(rfFacets.begin(), rfFacets.end());
-                    rfFacets.erase(unique(rfFacets.begin(),rfFacets.end()), rfFacets.end());
-
-                    //handle already refined faces
-                    {
-                        IntVector alRef;
-                        forEach(rfFacets,j) {
-                            Int fi = rfFacets[j];
-                            if(refineF[fi])
-                                alRef.push_back(j);
-                        }
-                        erase_indices(rfFacets,alRef);
+                    IntVector alRef;
+                    forEach(rfFacets,j) {
+                        Int fi = rfFacets[j];
+                        if(refineF[fi])
+                            alRef.push_back(j);
                     }
-
-                    //init face refinement info
-                    {
-                        IntVector nrCells;
-                        ncrefineF.clear();
-                        forEach(newc,j) {
-                            IntVector v = newc[j];
-                            forEach(v,k) v[k] = 0;
-                            ncrefineF.push_back(v);
-                            nrCells.push_back(j);
-                        }
-
-                        initFaceInfo(refineF,ncrefineF,nrCells,newc,ivBegin);
-                    }
-
-                    //remove unrefined faces
-                    {
-                        IntVector alRef;
-                        forEach(rfFacets,j) {
-                            Int fi = rfFacets[j];
-                            if(refineF[fi])
-                                rFacets.push_back(fi);
-                            else
-                                alRef.push_back(j);
-                        }
-                        erase_indices(rfFacets,alRef);
-                    }
-
-                    //set face refinement directions
-                    IntVector rfDirs;
-                    rfDirs.assign(rfFacets.size(),ndir);
-
-                    forEach(ncrefineF,i) {
-                        Cell& cr = ncrefineF[i];
-                        forEach(cr,j)
-                            if(cr[j] == 0)
-                                cr[j] = ndir;
-                    }
-                    //refine face
-                    refineFacets(rfFacets,refineF,rfDirs,startF,endF,ivBegin);
+                    erase_indices(rfFacets,alRef);
                 }
+
+                //init face refinement info
+                {
+                    IntVector nrCells;
+                    ncrefineF.clear();
+                    forEach(newc,j) {
+                        IntVector v = newc[j];
+                        forEach(v,k) v[k] = 0;
+                        ncrefineF.push_back(v);
+                        nrCells.push_back(j);
+                    }
+
+                    initFaceInfo(refineF,ncrefineF,nrCells,newc);
+                }
+
+                //remove unrefined faces
+                {
+                    IntVector alRef;
+                    forEach(rfFacets,j) {
+                        Int fi = rfFacets[j];
+                        if(refineF[fi])
+                            rFacets.push_back(fi);
+                        else
+                            alRef.push_back(j);
+                    }
+                    erase_indices(rfFacets,alRef);
+                }
+
+                //set face refinement directions
+                IntVector rfDirs;
+                rfDirs.assign(rfFacets.size(),rdir);
+
+                forEach(ncrefineF,i) {
+                    Cell& cr = ncrefineF[i];
+                    forEach(cr,j)
+                        if(cr[j] == 0)
+                            cr[j] = rdir;
+                }
+
+                //refine the new set of facets
+                refineFacets(rfFacets,refineF,rfDirs,startF,endF,ivBegin);
             }
 
+            //cell refinement
             Cells newcm;
             forEach(newc,j) {
                 Cell& c = newc[j];
                 Cell& cr = ncrefineF[j];
-                Cells newcn;
 
 #ifdef RDEBUG
                 cout << "========================================"
@@ -1752,9 +1764,12 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 cout << "-------------\n";
                 cout << "cr " << cr << endl;
 #endif
-                refineCell(c,cr,ndir,refineF,startF,endF,newcn,delFacets,ivBegin);
 
-                /*add children to the mAmrTree*/
+                //refine cell
+                Cells newcn;
+                refineCell(c,cr,rdir,refineF,startF,endF,newcn,delFacets,ivBegin);
+
+                //add children to the mAmrTree
                 {
                     Node* mnd = &mAmrTree[node_index + j];
                     mnd->nchildren = newcn.size();
@@ -1768,16 +1783,16 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 }
 
                 newcm.insert(newcm.end(),newcn.begin(),newcn.end());
-                if(m == NR - 1)
+                if(m == rlevel - 1)
                     start_index += newcn.size();
             }
 
-            /*next level refinement*/
+            //next level refinement
             newc = newcm;
             node_index = mAmrTree.size() - newcm.size();
 
 #ifdef RDEBUG
-            if(NR > 1) {
+            if(rlevel > 1) {
                 cout << "==================\n";
                 cout << newc << endl;
             }
@@ -1787,7 +1802,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
         /*add cells*/
         mCells.insert(mCells.end(),newc.begin(),newc.end());
         forEach(newc,j)
-            refineMap.push_back(ci);
+            refineMap.push_back(rci);
     }
 
     /*************************************

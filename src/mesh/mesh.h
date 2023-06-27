@@ -122,7 +122,7 @@ namespace Mesh {
         void calcFaceCenter(const Facet&,Vector&);
         void calcCellCenter(const Cell&, Vector&);
         void calcUnitNormal(const Facet&,Vector&);
-        void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&,Int);
+        void initFaceInfo(IntVector&,Cells&,const IntVector&,const Cells&);
         void refineFacet(const Facet&, Facets&, Int, Int); 
         void refineFacets(const IntVector&, IntVector&, const IntVector&, IntVector&, IntVector&,Int);
         void refineCell(const Cell&, IntVector&, Int, IntVector&,

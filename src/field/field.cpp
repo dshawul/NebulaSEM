@@ -651,17 +651,10 @@ void Prepare::refineMesh(Int step) {
             if(q >= rp.field_max) {
                 if(gCells.size() <= rp.limit) {
                     constexpr Int dir = 7;
-                    if(dir) {
-                        Int level = 1;
-                        for(;level < 3;level++) {
-                            Int factor = (1 << (2 * level));
-                            if(q < rp.field_max * factor)
-                                break;
-                        }
-                        rCells.push_back(i);
-                        rLevel.push_back(level);
-                        rDirs.push_back(dir);
-                    }
+                    constexpr Int level = 1;
+                    rCells.push_back(i);
+                    rLevel.push_back(level);
+                    rDirs.push_back(dir);
                 }
             } else if(q <= rp.field_min) {
                 cCells[i] = 1;
