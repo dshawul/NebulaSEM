@@ -603,8 +603,14 @@ void Prepare::readFields(vector<string>& fields,Int step) {
 void Prepare::calcQOI(ScalarCellField& qoi) {
     BaseField* bf = BaseField::findField(Controls::refine_params.field);
     if(bf) {
+        ScalarCellField dx = pow(Mesh::cV, 0.125);
+        Scalar maxdx = reduce_max(dx);
+        dx /= maxdx;
+
         bf->norm(&qoi);
-        qoi = pow(qoi * Mesh::cV,0.25);
+        qoi = pow(qoi,0.25);
+        qoi *= dx;
+
         fillBCs(qoi);
         Scalar maxq = reduce_max(qoi);
         qoi /= maxq;
