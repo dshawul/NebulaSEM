@@ -501,7 +501,10 @@ bool Mesh::pointInPolygon(const VectorVector& points,const IntVector& f,const Ve
         Scalar mg = mag(p1) * mag(p2);
         if (equal(mg,Scalar(0)))
             return true;
-        sum += acos(dot(p1,p2) / mg);
+        Scalar dt = dot(p1,p2) / mg;
+        if(dt > 1) dt = 1;
+        else if(dt < -1) dt = -1;
+        sum += acos(dt);
     }
 
     if(equal(sum, 2 * Constants::PI))
@@ -840,7 +843,10 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
 
         /*anisotropic refinement*/
 #define RDIR(mDir) {                        \
-    Scalar angle = acos(dot(mDir,uLine));   \
+    Scalar dt = dot(mDir,uLine);            \
+    if(dt > 1) dt = 1;                      \
+    else if(dt < -1) dt = -1;               \
+    Scalar angle = acos(dt);                \
     if(angle < Constants::PI / 4 ||         \
        angle >= 3 * Constants::PI / 4)      \
     continue;                               \
@@ -849,7 +855,7 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
         Vector uLine = unit(v2 - v1);
 
         if(!refine3D) {
-            const Vector uDir = unit(amr_direction);
+            const Vector uDir = is_spherical ? unit(v1) : unit(amr_direction);
             RDIR(uDir);
         }
 
