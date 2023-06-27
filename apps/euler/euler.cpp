@@ -150,6 +150,9 @@ void euler(std::istream& input) {
             /*courant number*/
             if(Controls::state != Controls::STEADY)
                 Mesh::calc_courant(U,Controls::dt);
+
+            /*save pressure perturbation*/
+            p -= p_ref;
         }
     }
 }
