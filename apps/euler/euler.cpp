@@ -72,9 +72,9 @@ void euler(std::istream& input) {
 
             /*gravity vector*/
             g.construct("gravity",WRITE);
-            if(Controls::is_spherical) {
+            if(Mesh::is_spherical) {
                 g = -unit(Mesh::cC) * mag(Controls::gravity);
-                gh = -(mag(Mesh::cC) - Controls::sphere_radius) * mag(Controls::gravity);
+                gh = -(mag(Mesh::cC) - Mesh::sphere_radius) * mag(Controls::gravity);
             } else {
                 g = Controls::gravity;
                 gh = dot(g,Mesh::cC);

@@ -100,7 +100,7 @@ void piso(std::istream& input) {
             T.construct("T",READWRITE);
             /*gravity vector*/
             g.construct();
-            if(Controls::is_spherical)
+            if(Mesh::is_spherical)
                 g = -unit(Mesh::cC) * mag(Controls::gravity);
             else
                 g = Controls::gravity;
@@ -175,8 +175,8 @@ void piso(std::istream& input) {
                         Sc += (drho * g);
                     } else if(buoyancy == BOUSSINESQ_T2 || buoyancy == BOUSSINESQ_THETA2) {
                         ScalarCellField gh;
-                        if(Controls::is_spherical)
-                            gh = -(mag(Mesh::cC) - Controls::sphere_radius) * mag(Controls::gravity);
+                        if(Mesh::is_spherical)
+                            gh = -(mag(Mesh::cC) - Mesh::sphere_radius) * mag(Controls::gravity);
                         else
                             gh = dot(Mesh::cC,g);
                         Sc += gh * (rho * beta) * gradi(T);

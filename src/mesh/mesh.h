@@ -107,7 +107,7 @@ namespace Mesh {
         void writeMshMesh(std::ostream&);
         void readMshMesh(std::istream&);
         void addBoundaryCells();
-        void calcGeometry(Int);
+        void calcGeometry();
         void fixHexCell(Cell&);
         void removeBoundary(const IntVector&);
         Int  removeUnusedVertices(Int = 0);
@@ -230,6 +230,8 @@ namespace Mesh {
     //@}
 
     extern  Vector amr_direction; /**< Direction of AMR */
+    extern  Int is_spherical; /**< Mesh is spherical */
+    extern Scalar sphere_radius; /**< Radius of the sphere */
 
     bool pointInLine(const Vector&,const Vector&,const Vector&);
     bool pointInPolygon(const VectorVector&,const IntVector&,const Vector&);

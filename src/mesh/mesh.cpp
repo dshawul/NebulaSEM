@@ -27,6 +27,8 @@ namespace Mesh {
     ScalarVector&     gCV = gMesh.mCV;
 
     Vector            amr_direction(0,0,0);
+    Int               is_spherical = 0;
+    Scalar            sphere_radius = 6371220.0;
 }
 /**
   Clear mesh object
@@ -200,7 +202,7 @@ void Mesh::MeshObject::fixHexCell(Cell& c) {
 /**
   Calculate geometric information
  */
-void Mesh::MeshObject::calcGeometry(Int is_spherical) {
+void Mesh::MeshObject::calcGeometry() {
     Int i;
     /*allocate*/
     mFC.assign(mFacets.size(),Vector(0));

@@ -287,7 +287,7 @@ void DG::init_geom() {
 
 #define ADDV(w,m,ev,vd) {                               \
     vd[w] = (1 - m) * ev[w][0] + (m) * ev[w][1];        \
-    if(Controls::is_spherical)                          \
+    if(is_spherical)                                    \
         vd[w] = vd[w] * (((1 -m) * mag(ev[w][0]) +      \
                             (m)  * mag(ev[w][1]))       \
                         / mag(vd[w]));                  \
@@ -298,7 +298,7 @@ void DG::init_geom() {
             rr,rs,                                      \
             vp[i00],vp[i01],vp[i10],vp[i11],            \
             vd[ir0],vd[ir1],vd[i0s],vd[i1s]);           \
-    if(Controls::is_spherical)                          \
+    if(is_spherical)                                    \
         vf[w] = (mag(vd[ir0])/mag(vf[w])) * vf[w];      \
 }
 
@@ -311,7 +311,7 @@ void DG::init_geom() {
             vd[4],vd[7],vd[5],vd[6],                    \
             vd[8],vd[11],vd[9],vd[10],                  \
             vf[4],vf[5],vf[2],vf[3],vf[0],vf[1]);       \
-    if(Controls::is_spherical)                          \
+    if(is_spherical)                                    \
         v = (mag(vd[8])/mag(v)) * v;                    \
 }
 

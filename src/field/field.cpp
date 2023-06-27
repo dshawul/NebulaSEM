@@ -70,8 +70,6 @@ namespace Controls {
     Int print_time = 0;
     CommMethod parallel_method = BLOCKED;
     Vector gravity = Vector(0,0,-9.860616);
-    Int is_spherical = 0;
-    Scalar sphere_radius = 6371220.0;
     FILE_FORMAT write_format = BINARY;
 }
 /**
@@ -132,7 +130,7 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
                 gVertices.size(),gFacets.size(),gCells.size());
         /*initialize mesh*/
         gMesh.addBoundaryCells();
-        gMesh.calcGeometry(Controls::is_spherical);
+        gMesh.calcGeometry();
         DG::init_poly();
         /* remove empty faces*/
         if(remove_empty) {

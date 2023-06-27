@@ -66,9 +66,9 @@ int main(int argc,char* argv[]) {
         params.enroll("npz",&DG::Nop[2]);
         Util::Option* op;
         params.enroll("gravity", &Controls::gravity);
-        op = new Util::BoolOption(&Controls::is_spherical);
+        op = new Util::BoolOption(&Mesh::is_spherical);
         params.enroll("is_spherical",op);
-        params.enroll("sphere_radius", &Controls::sphere_radius);
+        params.enroll("sphere_radius", &Mesh::sphere_radius);
         params.read(input); 
     }
     {
