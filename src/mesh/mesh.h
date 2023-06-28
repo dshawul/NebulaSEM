@@ -100,7 +100,7 @@ namespace Mesh {
 
         NodeVector   mAmrTree;  /**< AMR tree */
 
-        ScalarVector extrudeFactor; /**< By how much to scale in radial direction */
+        Vertices mVerticesNoExtrude; /**< Vertices before extruded on sphere */
 
         /*functions*/
         void clear();
@@ -112,6 +112,7 @@ namespace Mesh {
         void removeBoundary(const IntVector&);
         Int  removeUnusedVertices(Int = 0);
         void breakEdges(Int);
+        void ExtrudeMesh();
 
         void straightenEdges(const Facet&, Facet&, Facet&);
         bool coplanarFaces(const Facet&,const Facet&);
@@ -191,7 +192,10 @@ namespace Mesh {
         void writeTextMesh(Ts& os) const {
             using Util::operator<<;
             os.precision(12);
-            os << mVertices;
+            if(mVerticesNoExtrude.size())
+                os << mVerticesNoExtrude;
+            else
+                os << mVertices;
             os.precision(6);
             os << mFacets;
             /*cells*/

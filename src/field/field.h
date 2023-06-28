@@ -1316,7 +1316,7 @@ namespace Mesh {
     extern Int*              allFaces;
     extern Int**             faceIndices;
 
-    bool   LoadMesh(Int = 0, bool = true);
+    bool   LoadMesh(Int = 0, bool = true, bool extrude = true);
     void   initGeomMeshFields(bool);
     void   write_fields(Int);
     void   read_fields(Int);

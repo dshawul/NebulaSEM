@@ -26,9 +26,6 @@ int main(int argc,char* argv[]) {
     bool Import = false;
     char c;
 
-    Sphere sphere;
-    bool has_sphere = false;
-
     /*command line arguments*/
     for(int i = 1;i < argc;i++) {
         if(!strcmp(argv[i],"-i")) {
@@ -159,7 +156,7 @@ int main(int argc,char* argv[]) {
                     edges[i].v[1] = corners[sides[i][1]];
                 }
 
-                if((c = Util::nextc(input)) && (c == 'e' || c == 's')) {
+                if((c = Util::nextc(input)) && (c == 'e')) {
                     Int sz,side,key;
                     input >> str;
                     if(!compare(str,"edges")) {
@@ -179,13 +176,6 @@ int main(int argc,char* argv[]) {
                             }
                         }
                         input >> symbol;
-                    } else if(!compare(str,"sphere")) {
-                        Scalar radiusi, radiuso;
-                        input >> key >> radiusi >> radiuso;
-                        sphere.radiusi = radiusi;
-                        sphere.radiuso = radiuso;
-                        sphere.center = key_points[key];
-                        has_sphere = true;
                     } else {
                         Bdry b;
                         b.name = str;
@@ -198,8 +188,7 @@ int main(int argc,char* argv[]) {
 
                 //generate mesh
                 MeshObject mo;
-                hexMesh(&n[0],&s[0],&t[0],&corners[0],&edges[0],mo,
-                        has_sphere ? &sphere : 0);
+                hexMesh(&n[0],&s[0],&t[0],&corners[0],&edges[0],mo);
                 merge(gMesh,bMerge,mo);
             } else {
                 /*read boundaries*/
@@ -262,15 +251,6 @@ int main(int argc,char* argv[]) {
                 if(!faceInB[i])
                     gB.push_back(i);
             }
-        }
-    }
-
-    /*extrude cube to sphere*/
-    if(has_sphere) {
-        forEach(gMesh.extrudeFactor,i) {
-            Vertex& v = gMesh.mVertices[i];
-            Scalar f = gMesh.extrudeFactor[i];
-            v = unit(v) * ((f) * sphere.radiusi + (1-f) * sphere.radiuso);
         }
     }
 

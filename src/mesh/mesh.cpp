@@ -35,6 +35,7 @@ namespace Mesh {
  */
 void Mesh::MeshObject::clear() {
     mVertices.clear();
+    mVerticesNoExtrude.clear();
     mFacets.clear();
     mCells.clear();
     mBoundaries.clear();
@@ -427,6 +428,38 @@ Int Mesh::MeshObject::removeUnusedVertices(Int ivBegin) {
     }
     return ivCount;
 }
+/**
+ Extrude mesh
+ */
+void Mesh::MeshObject::ExtrudeMesh() {
+     if(is_spherical) {
+        if(mVerticesNoExtrude.size()) {
+            forEach(mVerticesNoExtrude,i)
+                mVertices[i] = mVerticesNoExtrude[i];
+        } else {
+            mVerticesNoExtrude.resize(mVertices.size());
+            forEach(mVerticesNoExtrude,i)
+                mVerticesNoExtrude[i] = mVertices[i];
+        }
+
+        Scalar minh = 1e30, maxh = 0;
+        forEach(mVertices,i) {
+           Vertex& v = mVertices[i];
+           Scalar h = max(max(fabs(v[0]),fabs(v[1])),fabs(v[2]));
+           if(h > maxh) maxh = h;
+           if(h < minh) minh = h;
+        }
+
+        forEach(mVertices,i) {
+           Vertex& v = mVertices[i];
+           Scalar h = max(max(fabs(v[0]),fabs(v[1])),fabs(v[2]));
+           Scalar f = (h - minh) / (maxh - minh);
+           constexpr Scalar radiusi = 6371220;
+           constexpr Scalar radiuso = 6381220;
+           v = unit(v) * ((f) * radiusi + (1-f) * radiuso);
+        }
+     }
+}
 /** 
   Break edges of faces that are not set for refinement 
   but has a neighboring refined face
@@ -659,6 +692,7 @@ void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,F
     IntVector flag;
     flag.assign(shared1.size(),0);
     bool has,mhas;
+    Int merge_count = 0;
     f = mFacets[c1[shared1[0]]];
     do {
         has = false;
@@ -668,6 +702,7 @@ void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,F
             const Facet& f1 = mFacets[c1[shared1[p]]];
             Facet f2 = f;
             if(mergeFacets(f2,f1,f)) {
+                merge_count++;
                 flag[p] = 1;
                 mhas = true;
             } else {
@@ -677,7 +712,7 @@ void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,F
     } while(has && mhas);
 
 #ifdef RDEBUG
-    if(f.size() < 4)  {
+    if((merge_count + 1) != shared1.size())  {
         using namespace Util;
         cout << "Merge failed.\n";
         cout << "=======================\n";

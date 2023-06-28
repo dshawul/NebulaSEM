@@ -91,7 +91,7 @@ static int findLastRefinedGrid(Int step_) {
 /**
   Load mesh
  */
-bool Mesh::LoadMesh(Int step_, bool remove_empty) {
+bool Mesh::LoadMesh(Int step_, bool remove_empty, bool extrude) {
     /*load refined mesh*/
     int step = findLastRefinedGrid(step_);
 
@@ -112,6 +112,8 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty) {
             loaded = gMesh.readTextMesh(is);
             found = true;
         }
+        if(extrude)
+            gMesh.ExtrudeMesh();
         path.clear();
         path << gMesh.name << "_" << 0;
         str = path.str();
@@ -630,7 +632,7 @@ void Prepare::refineMesh(Int step) {
     Mesh::amr_direction = refine_params.dir;
 
     /*Load mesh*/
-    LoadMesh(step,false);
+    LoadMesh(step,false,false);
 
     /*create fields*/
     Prepare::createFields(BaseField::fieldNames,step);
@@ -759,6 +761,10 @@ void Prepare::refineMesh(Int step) {
         forEachIt(BaseField::allFields, it)
             (*it)->refineField(step,refineMap,coarseMap);
     }
+
+    /*extrude mesh after refinement is complete*/
+    if(is_spherical)
+        gMesh.ExtrudeMesh();
 
     /*Write amrTree*/
     {

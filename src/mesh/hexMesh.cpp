@@ -38,8 +38,7 @@ void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
 /**
   Generate hexahedral mesh
  */
-void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,
-    MeshObject& mo, Sphere* sphere) {
+void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
     Int i,j,k,m;
 
     /*for wall division set twice 
@@ -165,8 +164,6 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,
     ADDF(4, ry,rz, 0,4,3,7, 4,7,8,11);              \
     ADDF(5, ry,rz, 1,5,2,6, 5,6,9,10);              \
     ADDC();                                         \
-    if(sphere) mo.extrudeFactor.push_back(rz);      \
-    else mo.extrudeFactor.push_back(1);             \
 };
 
     /*interior*/
@@ -463,7 +460,6 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
         s2 = m2.mVertices.size();
         s3 = b.vb.size();
         m1.mVertices.insert(m1.mVertices.end(),m2.mVertices.begin(),m2.mVertices.begin() + s1);
-        m1.extrudeFactor.insert(m1.extrudeFactor.end(),m2.extrudeFactor.begin(),m2.extrudeFactor.begin() + s1);
 
         IntVector locv(s2 - s1,MAXNUM);
         for(Int i = s1;i < s2;i++) {
@@ -477,7 +473,6 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
             }
             if(!found) {
                 b.vb.push_back(m2.mVertices[i]);
-                b.extrudeFactor.push_back(m2.extrudeFactor[i]);
                 locv[i - s1] += b.vb.size() - 1;
             }
         }
@@ -604,7 +599,6 @@ void merge(Mesh::MeshObject& m,MergeObject& b) {
     m.mBCS = m.mCells.size();
 
     m.mVertices.insert(m.mVertices.end(),b.vb.begin(),b.vb.end());
-    m.extrudeFactor.insert(m.extrudeFactor.end(),b.extrudeFactor.begin(),b.extrudeFactor.end());
     m.mFacets.insert(m.mFacets.end(),b.fb.begin(),b.fb.end());
     forEach(m.mFacets,i) {
         Facet& ft = m.mFacets[i];
