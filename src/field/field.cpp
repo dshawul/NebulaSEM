@@ -619,6 +619,7 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
 /**
   Refine grid
  */
+
 void Prepare::refineMesh(Int step) {
     using namespace Mesh;
     using namespace Controls;
@@ -661,51 +662,7 @@ void Prepare::refineMesh(Int step) {
             }
         }
     }
-    /*refine cyclic patch owner cells together*/
-    {
-        std::vector<std::string> cyclic_patches;
-        forEach(AllBConditions,i) {
-            BasicBCondition* bbc = AllBConditions[i];
-            if(bbc->cIndex == Mesh::CYCLIC) {
-                cyclic_patches.push_back(bbc->bname);
-                cyclic_patches.push_back(bbc->neighbor);
-            }
-        }
-        for(Int i = 0; i < cyclic_patches.size(); i += 2) {
-            IntVector& gB1 = gBoundaries[cyclic_patches[i].c_str()];
-            IntVector& gB2 = gBoundaries[cyclic_patches[i+1].c_str()];
-            forEach(gB1,j) {
-                Int c1 = gFOC[gB1[j]];
-                Int c2 = gFOC[gB2[j]];
-                if(cCells[c1] || cCells[c2])
-                    cCells[c1] = cCells[c2] = 1;
-                else {
-                    using namespace Constants;
-                    Int cs = MAX_INT, i, ci;
-                    for(i = 0; i < rCells.size(); i++) {
-                        if(rCells[i] == c1) {
-                            if(cs == MAX_INT) {
-                                cs = c2;
-                                ci = i;
-                            } else
-                                break;
-                        } else if(rCells[i] == c2) {
-                            if(cs == MAX_INT) {
-                                cs = c1;
-                                ci = i;
-                            } else
-                                break;
-                        }
-                    }
-                    if(cs != MAX_INT && i == rCells.size()) {
-                        rCells.push_back(cs);
-                        rLevel.push_back(rLevel[ci]);
-                        rDirs.push_back(rDirs[ci]);
-                    }
-                }
-            }
-        }
-    }
+
     /*Read amr tree*/
     {
         stringstream path;
@@ -718,6 +675,80 @@ void Prepare::refineMesh(Int step) {
             gAmrTree.resize(gCells.size());
             forEach(gCells,i)
                 gAmrTree[i].id = i;
+        }
+    }
+
+    /*Adjust coarsening cells array based on amr tree*/
+    forEach(gAmrTree,i) {
+        Node& n = gAmrTree[i];
+        if(n.nchildren) {
+            bool coarsen = true;
+            for(Int j = 0;j < n.nchildren;j++) {
+                Node& cn = gAmrTree[n.cid + j];
+                if(cn.nchildren || !cCells[cn.id]) {
+                    coarsen = false;
+                    break;
+                }
+            }
+            if(!coarsen) {
+                for(Int j = 0;j < n.nchildren;j++) {
+                    Node& cn = gAmrTree[n.cid + j];
+                    if(!cn.nchildren && cCells[cn.id]) {
+                        cCells[cn.id] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    /*refine cyclic patch owner cells together*/
+    {
+        std::vector<std::string> cyclic_patches;
+        forEach(AllBConditions,i) {
+            BasicBCondition* bbc = AllBConditions[i];
+            if(bbc->cIndex == Mesh::CYCLIC) {
+                auto it = std::find(cyclic_patches.begin(), cyclic_patches.end(), bbc->bname);
+                if(it == cyclic_patches.end()) {
+                    cyclic_patches.push_back(bbc->bname);
+                    cyclic_patches.push_back(bbc->neighbor);
+                }
+            }
+        }
+        for(Int p = 0; p < cyclic_patches.size(); p += 2) {
+            IntVector& gB1 = gBoundaries[cyclic_patches[p].c_str()];
+            IntVector& gB2 = gBoundaries[cyclic_patches[p+1].c_str()];
+            forEach(gB1,j) {
+                using namespace Constants;
+                Int c1 = gFOC[gB1[j]];
+                Int c2 = gFOC[gB2[j]];
+                Int cs = MAX_INT, i = 0, ci;
+                for(; i < rCells.size(); i++) {
+                    if(rCells[i] == c1) {
+                        if(cs == MAX_INT) {
+                            cs = c2;
+                            ci = i;
+                        } else
+                            break;
+                    } else if(rCells[i] == c2) {
+                        if(cs == MAX_INT) {
+                            cs = c1;
+                            ci = i;
+                        } else
+                            break;
+                    }
+                }
+                if(cs != MAX_INT) {
+                    if(i == rCells.size()) {
+                        rCells.push_back(cs);
+                        rLevel.push_back(rLevel[ci]);
+                        rDirs.push_back(rDirs[ci]);
+                        cCells[cs] = 0;
+                    }
+                } else {
+                    if(!cCells[c1] || !cCells[c2])
+                        cCells[c1] = cCells[c2] = 0;
+                }
+            }
         }
     }
 

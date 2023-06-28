@@ -72,7 +72,7 @@ refinement
 {
     direction       0 0 1
     field           T
-    field_min       0.2
+    field_min       0.4
     field_max       0.9
     limit           100000
 }
