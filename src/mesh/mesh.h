@@ -49,19 +49,21 @@ namespace Mesh {
         Int id;
         Int cid;
         Int nchildren;
+        Int level;
         Node() {
             id = 0;
             cid = 0;
             nchildren = 0;
+            level = 0;
         }
         template<typename Ts>
         friend Ts& operator << (Ts& os, const Node& p) {
-            os << p.id << " " << p.nchildren << " " << p.cid;
+            os << p.id << " " << p.nchildren << " " << p.cid << " " << p.level;
             return os;
         }
         template<typename Ts>
         friend Ts& operator >> (Ts& is, Node& p) {
-            is >> p.id >> p.nchildren >> p.cid;
+            is >> p.id >> p.nchildren >> p.cid >> p.level;
             return is;
         }
     };

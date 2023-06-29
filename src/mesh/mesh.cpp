@@ -1810,9 +1810,10 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                     mnd->nchildren = newcn.size();
                     mnd->cid = mAmrTree.size();
                     mnd->id = 0;
-                    forEach(newcn,j) {
+                    forEach(newcn,k) {
                         Node n;
-                        n.id = start_index + j;
+                        n.id = start_index + k;
+                        n.level = mnd->level + 1;
                         mAmrTree.push_back(n);
                     }
                 }

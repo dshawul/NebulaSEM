@@ -699,6 +699,34 @@ void Prepare::refineMesh(Int step) {
         }
     }
 
+    /*Enforce 2:1 balance*/
+    IntVector rDepth;
+    rDepth.assign(gBCS,0);
+    forEach(gAmrTree,i) {
+        Node& n = gAmrTree[i];
+        rDepth[n.id] = n.level;
+    }
+
+    for(Int i = 0;i < gBCS;i++) {
+        Cell& c = gCells[i];
+        forEach(c,j) {
+            Int c1 = gFOC[c[j]];
+            Int c2 = gFNC[c[j]];
+            if(c2 > gBCS) continue;
+            if(c1 == i) {
+                if(rDepth[i] > rDepth[c2] - cCells[c2]) {
+                    rCells[i] = 0;
+                    break;
+                }
+            } else {
+                if(rDepth[i] > rDepth[c1] - cCells[c1]) {
+                    rCells[i] = 0;
+                    break;
+                }
+            }
+        }
+    }
+
     /*refine cyclic patch owner cells together*/
     {
         std::vector<std::string> cyclic_patches;
