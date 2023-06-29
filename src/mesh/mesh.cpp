@@ -887,10 +887,11 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     continue;                               \
 }
 
+        Vector Ce = (v1 + v2) / 2.0;
         Vector uLine = unit(v2 - v1);
 
         if(!refine3D) {
-            const Vector uDir = is_spherical ? unit(v1) : unit(amr_direction);
+            const Vector uDir = is_spherical ? unit(Ce) : unit(amr_direction);
             RDIR(uDir);
         }
 
@@ -911,7 +912,6 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
 
         /*save first mid-point location*/
         if(j < fmid) fmid = j;
-        Vector Ce = (v1 + v2) / 2.0;
         
         /*add midpoint*/
         {
@@ -1132,8 +1132,9 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 
 #ifdef RDEBUG
         if(j == 0) cout << "====================================\n";
-        cout << crj << " " << rDir << " ( " << startF[fi] << "  " << endF[fi] << " ) " << endl;
-        cout << "----" << endl;
+        cout << "------------------------" << endl;
+        cout << "Face split id:  " << fi << " rdir " << rDir << " cr " << crj 
+             << " subfaces ( " << startF[fi] << " to " << endF[fi] << " ) " << endl;
 #endif
 
         //refine cells
@@ -1152,9 +1153,8 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 #ifdef RDEBUG
             Vector fc;
             calcFaceCenter(f,fc);
-            cout << f << endl;
-            cout << fc << endl;
-            cout << "----" << endl;
+            cout << "subface " << fni << " ";
+            cout << f << " fC " << fc << endl;
 #endif
 
             Cell cn;
@@ -1792,7 +1792,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCell
                 cout << "Facets of cell:\n";
                 forEach(c,j) {
                     Facet& f = gFacets[c[j]];
-                    cout << f << endl;
+                    cout << "face " << c[j] << " " << f << endl;
                     forEach(f,k)
                         cout << gVertices[f[k]] << endl;
                 }
