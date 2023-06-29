@@ -81,7 +81,8 @@ void euler(std::istream& input) {
             }
             Mesh::fixedBCs<Vector>(U,g);
             applyExplicitBCs(g,true);
-            g.write(0);
+            if(ait.get_step() == 0)
+                g.write(0);
 
             /*compute hydrostatic pressure*/
             p_ref = P0 * pow(1.0 + gh / (cp * T0), cp / R);
@@ -104,7 +105,8 @@ void euler(std::istream& input) {
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         applyExplicitBCs(rho,true);
 
-        rho.write(0);
+        if(ait.get_step() == 0)
+            rho.write(0);
 
         /*Time loop*/
         for (; !it.end(); it.next()) {
