@@ -1454,8 +1454,8 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
 /**
   Refine mesh
  */
-void Mesh::MeshObject::refineMesh(const IntVector& rCells,const IntVector& cCells,const IntVector& rLevel,
-        const IntVector& rDirs, IntVector& refineMap,IntVector& coarseMap) {
+void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCells,const IntVector& rLevel,
+        const IntVector& rDirs,IntVector& refineMap,IntVector& coarseMap) {
 
     using namespace Util;
     Int ivBegin = mVertices.size();

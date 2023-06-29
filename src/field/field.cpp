@@ -639,7 +639,7 @@ void Prepare::refineMesh(Int step) {
     Prepare::readFields(BaseField::fieldNames,step);
 
     /*find cells to refine/coarsen*/
-    IntVector rCells,cCells,rLevel,rDirs;
+    IntVector rCells,cCells;
     {
         /*compute quantity of interest (qoi) and normalize it*/
         ScalarCellField qoi;
@@ -647,18 +647,14 @@ void Prepare::refineMesh(Int step) {
 
         /*get cells to refine*/
         gCells.erase(gCells.begin() + gBCS,gCells.end());
-        cCells.assign(gCells.size(),0);
+        cCells.assign(gBCS,0);
+        rCells.assign(gBCS,0);
         for(Int i = 0;i < gBCS;i++) {
             Scalar q = qoi[i];
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {
-                if(gCells.size() <= rp.limit) {
-                    constexpr Int dir = 7;
-                    constexpr Int level = 1;
-                    rCells.push_back(i);
-                    rLevel.push_back(level);
-                    rDirs.push_back(dir);
-                }
+                if(gBCS <= rp.limit)
+                    rCells[i] = 1;
             } else if(q <= rp.field_min) {
                 cCells[i] = 1;
             }
@@ -723,33 +719,30 @@ void Prepare::refineMesh(Int step) {
                 using namespace Constants;
                 Int c1 = gFOC[gB1[j]];
                 Int c2 = gFOC[gB2[j]];
-                Int cs = MAX_INT, i = 0, ci;
-                for(; i < rCells.size(); i++) {
-                    if(rCells[i] == c1) {
-                        if(cs == MAX_INT) {
-                            cs = c2;
-                            ci = i;
-                        } else
-                            break;
-                    } else if(rCells[i] == c2) {
-                        if(cs == MAX_INT) {
-                            cs = c1;
-                            ci = i;
-                        } else
-                            break;
-                    }
-                }
-                if(cs != MAX_INT) {
-                    if(i == rCells.size()) {
-                        rCells.push_back(cs);
-                        rLevel.push_back(rLevel[ci]);
-                        rDirs.push_back(rDirs[ci]);
-                        cCells[cs] = 0;
-                    }
-                } else {
-                    if(!cCells[c1] || !cCells[c2])
-                        cCells[c1] = cCells[c2] = 0;
-                }
+                if(rCells[c1] && !rCells[c2]) {
+                    rCells[c2] = 1;
+                    cCells[c2] = 0;
+                } else if(rCells[c2] && !rCells[c1]) {
+                    rCells[c1] = 1;
+                    cCells[c1] = 0;
+                } else if(rCells[c2] && rCells[c1])
+                    ;
+                else if(!cCells[c1] || !cCells[c2])
+                    cCells[c1] = cCells[c2] = 0;
+            }
+        }
+    }
+
+    /*Construct refinement vars*/
+    IntVector rCellsL,rLevelL,rDirsL;
+    {
+        for(Int i = 0;i < gBCS;i++) {
+            if(rCells[i]) {
+                constexpr Int dir = 7;
+                constexpr Int level = 1;
+                rCellsL.push_back(i);
+                rLevelL.push_back(level);
+                rDirsL.push_back(dir);
             }
         }
     }
@@ -757,7 +750,7 @@ void Prepare::refineMesh(Int step) {
     /*refine/coarsen mesh and fields*/
     {
         IntVector refineMap,coarseMap;
-        gMesh.refineMesh(rCells,cCells,rLevel,rDirs,refineMap,coarseMap);
+        gMesh.refineMesh(cCells,rCellsL,rLevelL,rDirsL,refineMap,coarseMap);
         forEachIt(BaseField::allFields, it)
             (*it)->refineField(step,refineMap,coarseMap);
     }
