@@ -696,32 +696,50 @@ void Prepare::refineMesh(Int step) {
                     }
                 }
             }
-        }
+        } else if(n.level == 0)
+            cCells[n.id] = 0;
     }
 
-    /*Enforce 2:1 balance*/
+    /*Enforce approximate 2:1 balance*/
     IntVector rDepth;
     rDepth.assign(gBCS,0);
     forEach(gAmrTree,i) {
         Node& n = gAmrTree[i];
-        rDepth[n.id] = n.level;
+        if(!n.nchildren)
+            rDepth[n.id] = n.level;
     }
 
     for(Int i = 0;i < gBCS;i++) {
         Cell& c = gCells[i];
+        if(!(rCells[i] || cCells[i])) continue;
+
         forEach(c,j) {
             Int c1 = gFOC[c[j]];
             Int c2 = gFNC[c[j]];
             if(c2 > gBCS) continue;
             if(c1 == i) {
-                if(rDepth[i] > rDepth[c2] - cCells[c2]) {
-                    rCells[i] = 0;
-                    break;
+                if(rCells[i]) {
+                    if(rDepth[i] > rDepth[c2] - cCells[c2] + rCells[c2]) {
+                        rCells[i] = 0;
+                        break;
+                    }
+                } else {
+                    if(rDepth[i] < rDepth[c2] - cCells[c2] + rCells[c2]) {
+                        cCells[i] = 0;
+                        break;
+                    }
                 }
             } else {
-                if(rDepth[i] > rDepth[c1] - cCells[c1]) {
-                    rCells[i] = 0;
-                    break;
+                if(rCells[i]) {
+                    if(rDepth[i] > rDepth[c1] - cCells[c1] + rCells[c1]) {
+                        rCells[i] = 0;
+                        break;
+                    }
+                } else {
+                    if(rDepth[i] < rDepth[c1] - cCells[c1] + rCells[c1]) {
+                        cCells[i] = 0;
+                        break;
+                    }
                 }
             }
         }
