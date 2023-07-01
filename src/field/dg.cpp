@@ -240,13 +240,29 @@ void DG::init_geom() {
         Vertex vp[8];
         {
             Vertex vp1[8];
-            forEach(f1,i)
-                vp1[i + 0] = gVertices[f1[i]];
-            forEach(f1,i) {
+            //pick first 4 vertices from face 0 skipping midpoints
+            Int i0 = f1.size() - 1;
+            Int idx = 0;
+            for(Int i = 0; i < f1.size() && idx < 4; i++) {
+                Int i1 = (i == f1.size() - 1) ? 0 : i + 1;
+                Vector v0 = unit(gVertices[f1[i]] - gVertices[f1[i0]]);
+                Vector v1 = unit(gVertices[f1[i1]] - gVertices[f1[i]]);
+                Scalar dt = dot(v0,v1);
+                if(dt > 1) dt = 1;
+                else if(dt < -1) dt = -1;
+                Scalar angle = acos(dt);
+                const Scalar tol = Constants::PI / 32;
+                if(!(angle < tol || angle >= Constants::PI - tol)) {
+                    vp1[idx++] = gVertices[f1[i]];
+                    i0 = i;
+                }
+            }
+            //pick the other vertices by distance from the first 4
+            for(Int i = 0; i < 4; i++) {
                 Scalar mind = 1e20;
                 Int minj = 0;
                 forEach(f2,j) {
-                    Scalar dist = mag(gVertices[f2[j]] - gVertices[f1[i]]);
+                    Scalar dist = mag(gVertices[f2[j]] - vp1[i]);
                     if(dist < mind) {
                         mind = dist;
                         minj = j;
