@@ -468,6 +468,7 @@ void Mesh::remove_fields() {
     forEachCellField(removeAll());
     forEachFacetField(removeAll());
     forEachVertexField(removeAll());
+    forEachCellMatField(removeAll());
     BaseField::allFields.clear();
 }
 /**

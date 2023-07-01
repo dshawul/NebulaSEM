@@ -1174,6 +1174,9 @@ class MeshField : public BaseField
     STensorVertexField::X;          \
     TensorVertexField::X;           \
 }
+#define forEachCellMatField(X)    { \
+    ScalarCellMatField::X;          \
+}
 /** \name Typedef common mesh field types */
 //@{
 typedef MeshField<Int,CELL>       IntCellField;
@@ -1191,6 +1194,7 @@ typedef MeshField<Tensor,VERTEX>  TensorVertexField;
 typedef MeshField<STensor,CELL>   STensorCellField;
 typedef MeshField<STensor,FACET>  STensorFacetField;
 typedef MeshField<STensor,VERTEX> STensorVertexField;
+typedef MeshField<Scalar,CELLMAT> ScalarCellMatField;
 //@}
 
 /** \name Static variables of MeshField */
