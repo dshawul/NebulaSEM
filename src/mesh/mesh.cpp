@@ -964,6 +964,7 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     }                               \
 }
         /*Add faces*/
+        Facets mf;
         forEachS(f,j,fmid) {
             Facet fn;
             Int rot = j;
@@ -988,8 +989,11 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
             /*rotate*/
             std::rotate(fn.rbegin(), fn.rbegin() + rot, fn.rend());
         
-            newf.push_back(fn);
+            mf.push_back(fn);
         }
+        newf.push_back(mf[mf.size() - 1]);
+        for(Int j = 0; j < mf.size() - 1; j++)
+            newf.push_back(mf[j]);
 
 #undef TEST
 #undef ADD
