@@ -1846,15 +1846,15 @@ void MeshField<type,entity>::refineField(Int step,
 
     using namespace DG;
 
-    const Int newSize = Mesh::gCells.size() * DG::NP;
+    const Int newgBCSfield = Mesh::gCells.size() * DG::NP;
+    const Int oldgBCS = Mesh::gBCSfield / DG::NP;
     type* Pn;
 
     //allocate refined array
-    aligned_reserve<type>(Pn,newSize);
-    memset(Pn, 0, newSize*sizeof(type));
+    aligned_reserve<type>(Pn,newgBCSfield);
 
     //copy array
-    for(Int i = 0; i < cellMap.size(); i++) {
+    for(Int i = 0; i < oldgBCS; i++) {
         Int id = cellMap[i];
         if(id == Constants::MAX_INT) continue;
         for(Int k = 0; k < DG::NP; k++)
@@ -1866,15 +1866,36 @@ void MeshField<type,entity>::refineField(Int step,
         Int nchildren = coarseMap[i];
         Int id = cellMap[coarseMap[i + 1]];
 
-        for(Int k = 0; k < DG::NP; k++) {
-            type sum(0.0);
-            for(Int j = 0;j < nchildren;j++) {
-                Int id1 = coarseMap[i + 2 + j];
-                sum += P[id1 * DG::NP + k];
+        for(Int k = 0; k < DG::NP; k++)
+            Pn[id * DG::NP + k] = type(0.0);
+
+        for(Int j = 0;j < nchildren;j++) {
+            Int id1 = coarseMap[i + 2 + j];
+
+            if(DG::NPMAT) {
+                Int ioff = 0, joff = 0, koff = 0;
+                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
+                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
+                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
+                forEachLgl(ii1,jj1,kk1) {
+                    Int index1 = INDEX4(id1,ii1,jj1,kk1);
+                    type P0 = P[index1];
+                    forEachLgl(ii,jj,kk) {
+                        Int index = INDEX4(id,ii,jj,kk);
+                        Scalar fx = psiCor[0*2+ioff][ii1*NPX+ii];
+                        Scalar fy = psiCor[1*2+joff][jj1*NPY+jj];
+                        Scalar fz = psiCor[2*2+koff][kk1*NPZ+kk];
+                        Pn[index] += P0 * fx * fy * fz; 
+                    }
+                }
+            } else {
+                Pn[id] += P[id1];
             }
-            sum /= Scalar(nchildren);
-            Pn[id * DG::NP + k] = sum;
         }
+
+        for(Int k = 0; k < DG::NP; k++)
+            Pn[id * DG::NP + k] /= Scalar(nchildren);
+
         i += nchildren + 1;
     }
 
@@ -1883,10 +1904,31 @@ void MeshField<type,entity>::refineField(Int step,
         Int nchildren = refineMap[i];
         Int id = refineMap[i + 1];
 
-        for(Int k = 0; k < DG::NP; k++) {
-            for(Int j = 0;j < nchildren;j++) {
-                Int id1 = cellMap[refineMap[i + 2 + j]];
-                Pn[id1 * DG::NP + k] = P[id * DG::NP + k];
+        for(Int j = 0;j < nchildren;j++) {
+            Int id1 = cellMap[refineMap[i + 2 + j]];
+
+            if(DG::NPMAT) {
+                Int ioff = 0, joff = 0, koff = 0;
+                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
+                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
+                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
+
+                for(Int k = 0; k < DG::NP; k++)
+                    Pn[id1 * DG::NP + k] = type(0.0);
+
+                forEachLgl(ii,jj,kk) {
+                    Int index = INDEX4(id,ii,jj,kk);
+                    type P0 = P[index];
+                    forEachLgl(ii1,jj1,kk1) {
+                        Int index1 = INDEX4(id1,ii1,jj1,kk1);
+                        Scalar fx = psiRef[0*2+ioff][ii*NPX+ii1];
+                        Scalar fy = psiRef[1*2+joff][jj*NPY+jj1];
+                        Scalar fz = psiRef[2*2+koff][kk*NPZ+kk1];
+                        Pn[index1] += P0 * fx * fy * fz; 
+                    }
+                }
+            } else {
+                Pn[id1] = P[id];
             }
         }
         i += nchildren + 1;
@@ -1894,11 +1936,13 @@ void MeshField<type,entity>::refineField(Int step,
 
     //switch pointers and write the new interpolated field
     type* Psave = P;
+    Int Ssave = Mesh::gBCSfield; 
     P = Pn;
-    SIZE = Mesh::gBCSfield = newSize;
+    SIZE = Mesh::gBCSfield = newgBCSfield;
     if(access & WRITE)
         write(step);
     P = Psave;
+    SIZE = Mesh::gBCSfield = Ssave;
 
     //deallocate
     aligned_free<type>(Pn);

@@ -651,7 +651,13 @@ void Prepare::refineMesh(Int step) {
         cCells.assign(gBCS,0);
         rCells.assign(gBCS,0);
         for(Int i = 0;i < gBCS;i++) {
-            Scalar q = qoi[i];
+
+            Scalar q = 0.0;
+            for(Int j = 0; j < DG::NP; j++) {
+                Scalar qj = qoi[i * DG::NP + j];
+                if(qj > q) q = qj;
+            }
+
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {
                 if(gBCS <= rp.limit)
@@ -709,6 +715,22 @@ void Prepare::refineMesh(Int step) {
         if(!n.nchildren)
             rDepth[n.id] = n.level;
     }
+
+#if 0
+    ScalarCellField rCellsS("rCells",WRITE);
+    ScalarCellField cCellsS("cCells",WRITE);
+    ScalarCellField rDepthS("rDepth",WRITE);
+    for(Int i = 0; i < gBCS; i++) {
+        for(Int j = 0; j < DG::NP; j++) {
+            rCellsS[i * DG::NP + j] = Scalar(rCells[i]);
+            cCellsS[i * DG::NP + j] = Scalar(cCells[i]);
+            rDepthS[i * DG::NP + j] = Scalar(rDepth[i]);
+        }
+    }
+    Mesh::setNeumannBCs(rCellsS);
+    Mesh::setNeumannBCs(cCellsS);
+    Mesh::setNeumannBCs(rDepthS);
+#endif
 
     for(Int i = 0;i < gBCS;i++) {
         Cell& c = gCells[i];

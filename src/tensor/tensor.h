@@ -511,6 +511,8 @@ FORCEINLINE Tensor sym(const Tensor& p,const Vector& n) {
 }
 //@}
 
+void inv(Scalar* A, Scalar* X, Int N);
+
 /**
  Transfinite interpolation on face (2D)
 */

@@ -13,6 +13,8 @@ namespace DG {
     Scalar **dpsi;
     Scalar **xgl;
     Scalar **wgl;
+    Scalar **psiRef;
+    Scalar **psiCor;
     TensorCellField Jinv(false);
 }
 /** 
@@ -96,12 +98,30 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
     }
 }
 /**
-  Compute lagrange basis functions
+  Compute lagrange basis functions. Two versions are provided
+  1) For interpolation on LGL nodes takes either 0 or 1
+  2) For an arbitrary set of points
  */
-void DG::lagrange_basis(int v, int N, Scalar* xgl, Scalar* psi) {
-    for(int i = 0;i < N;i++) {
-        if(i != v) psi[i] = 0;
-        else psi[i] = 1;
+void DG::lagrange_basis(int v, int Ns, Scalar* psi) {
+    for(int s = 0;s < Ns; s++) {
+        if(s == v) psi[s] = 1;
+        else psi[s] = 0;
+    }
+}
+void DG::lagrange_basis(int N, Scalar* xgl, int Ns, Scalar* xs, Scalar* psi) {
+    Scalar x,xj,xk,prod;
+    for(int s = 0;s < Ns;s++) {
+        x = xs[s];
+        for(int j = 0;j < N;j++) {
+            xj = xgl[j];
+            prod = 1;
+            for(int k = 0;k < N;k++) {
+                xk = xgl[k];
+                if(k != j)
+                    prod *= ((x - xk) / (xj - xk));
+            }
+            psi[j*Ns+s] = prod;
+        }
     }
 }
 /**
@@ -236,6 +256,19 @@ void DG::init_geom() {
         Cell& c = gCells[ci];
         Facet& f1 = gFacets[c[0]];
         Facet& f2 = gFacets[c[1]];
+#if 0
+        {
+            using namespace Util;
+            std::cout << "=========== cell " << ci << " " << c << " ===========" << std::endl; 
+            std::cout << f1 << std::endl;
+            forEach(f1,i)
+                std::cout << i << ". " << gVertices[f1[i]] << std::endl;
+            std::cout << f2 << std::endl;
+            forEach(f2,i)
+                std::cout << i << ". " << gVertices[f2[i]] << std::endl;
+            std::cout << gFaceID[ci] << std::endl;
+        }
+#endif
         //vertices
         Vertex vp[8];
         {
@@ -389,10 +422,9 @@ void DG::init_geom() {
         cC[index1] = cC[index0] + d * dir;                  \
         cV[index1] = cV[index0];                            \
     }                                                       \
-    Scalar d;                                               \
-    if(equal(cC[index0],cC[index1])) d = 0.5;               \
-    else d = dot(fC[indf] - cC[index0],fN[indf]) /          \
-             dot(cC[index1] - cC[index0],fN[indf]);         \
+    Scalar d, denom = dot(cC[index1]-cC[index0],fN[indf]);  \
+    if(equal(denom,Scalar(0))) d = 0.5;                     \
+    else d = dot(fC[indf]-cC[index0],fN[indf]) / denom;     \
     fC[indf] = cC[index0] + d * (cC[index1] - cC[index0]);  \
     fN[indf] *= wgt;                                        \
 }
@@ -445,16 +477,52 @@ void DG::init_basis() {
     wgl = new Scalar*[3];
     psi = new Scalar*[3];
     dpsi = new Scalar*[3];
+    psiRef = new Scalar*[3*2];
+    psiCor = new Scalar*[3*2];
     for(Int i = 0;i < 3;i++) {
         Int ngl = Nop[i] + 1;
         xgl[i] = new Scalar[ngl];
         wgl[i] = new Scalar[ngl];
         psi[i] = new Scalar[ngl*ngl];
         dpsi[i] = new Scalar[ngl*ngl];
+        for(Int j = 0; j < 2; j++) {
+            psiRef[i*2+j] = new Scalar[ngl*ngl];
+            psiCor[i*2+j] = new Scalar[ngl*ngl];
+        }
+        //initialize interpolation at LGL nodes
         legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
         for(Int j = 0;j < ngl;j++) {
-            lagrange_basis(j,ngl,xgl[i],&psi[i][j*ngl]);
+            lagrange_basis(j,ngl,&psi[i][j*ngl]);
             lagrange_basis_derivative(j,ngl,xgl[i],&dpsi[i][j*ngl]);
+        }
+        //initialize interpolation for 2:1 amr
+        Scalar* xglRef = new Scalar[2*ngl];
+        if(ngl == 1) {
+            xglRef[0] = 0;
+            xglRef[1] = 0;
+        } else {
+            for(Int j = 0;j < ngl;j++) {
+                xglRef[j] = -0.5 + xgl[i][j]/2;
+                xglRef[j+ngl] = 0.5 + xgl[i][j]/2;
+            }
+        }
+        for(Int j = 0; j < 2; j++) {
+            lagrange_basis(ngl,xgl[i],ngl,&xglRef[j*ngl],psiRef[i*2+j]);
+            inv(psiRef[i*2+j],psiCor[i*2+j],ngl);
+#if 0
+            std::cout << "========" << j << "==========" << std::endl;
+            for(Int k = 0; k < ngl; k++) {
+                for(Int l = 0; l < ngl; l++)
+                    std::cout << psiRef[i*2+j][k*ngl+l] << " ";
+                std::cout << std::endl;
+            }
+            std::cout << "------------" << std::endl;
+            for(Int k = 0; k < ngl; k++) {
+                for(Int l = 0; l < ngl; l++)
+                    std::cout << psiCor[i*2+j][k*ngl+l] << " ";
+                std::cout << std::endl;
+            }
+#endif
         }
     }
 

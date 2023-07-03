@@ -165,3 +165,59 @@ Tensor inv(const Tensor& p) {
     else r /= d;
     return r;
 }
+
+/** Inverse of matrix using Gauss-Jordan elimination */
+void inv(Scalar* A_, Scalar* X, Int N) {
+
+#define A(ii,jj) A[(ii)*N+(jj)]
+#define X(ii,jj) X[(ii)*N+(jj)]
+
+    Scalar* A = new Scalar[N*N];
+
+    for (Int i = 0; i < N; i++) {
+        for(Int j = 0; j < N; j++) {
+            A(i,j) = A_[i*N+j];
+            X(i,j) = 0.0;
+        }
+        X(i,i) = 1.0;
+    }
+
+    for (int i = N - 1; i > 0; i--) {
+        if (A(i - 1,0) < A(i,0)) {
+            for(Int k = 0; k < N; k++) {
+                Scalar temp;
+
+                temp = A(i,k);
+                A(i,k) = A(i-1,k);
+                A(i-1,k) = temp;
+
+                temp = X(i,k);
+                X(i,k) = X(i-1,k);
+                X(i-1,k) = temp;
+            }
+        }
+    }
+
+    for (Int i = 0; i < N; i++) {
+       for (Int j = 0; j < N; j++) {
+          if (j != i) {
+             Scalar temp = A(j,i) / A(i,i);
+             for (Int k = 0; k < N; k++) {
+                A(j,k) -= A(i,k) * temp;
+                X(j,k) -= X(i,k) * temp;
+             }
+          }
+       }
+    }
+
+    for (Int i = 0; i < N; i++) {
+       Scalar temp = A(i,i);
+       for (Int j = 0; j < N; j++) {
+          A(i,j) = A(i,j) / temp;
+          X(i,j) = X(i,j) / temp;
+       }
+    }
+
+#undef A
+#undef X
+}
