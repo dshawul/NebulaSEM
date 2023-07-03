@@ -1120,19 +1120,7 @@ class MeshField : public BaseField
                 }
             }
         }
-        /*refine/unrefine field*/
-        void refineField(Int step,IntVector& refineMap,IntVector& coarseMap) {
-            forEach(coarseMap,i) {
-                Int nchildren = coarseMap[i];
-                Int id = coarseMap[i + 1];
-                for(Int j = 1;j < nchildren;j++)
-                    P[id] += P[coarseMap[(i + 1) + j]];
-                P[id] /= nchildren;
-                i += nchildren;
-            }
-            if(access & WRITE)
-                write(step,&refineMap);
-        }
+        void refineField(Int,IntVector&,IntVector&);
         /*IO*/
         template<typename Ts>
         friend Ts& operator << (Ts& os, MeshField& p) {
@@ -1836,6 +1824,45 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
  * ********************/
 #include "dg.h"
 
+/*refine/unrefine field*/
+template <class type,ENTITY entity> 
+void MeshField<type,entity>::refineField(Int step,IntVector& refineMap,IntVector& coarseMap) {
+    using namespace DG;
+
+    const Int newSize = Mesh::gCells.size() * DG::NP;
+    type* Pn;
+
+    //allocate refined array
+    aligned_reserve<type>(Pn,newSize);
+    memset(Pn, 0, newSize*sizeof(type));
+
+    //coarsening
+    forEach(coarseMap,i) {
+        Int nchildren = coarseMap[i];
+        Int id = coarseMap[i + 1];
+        type sum(0.0);
+        for(Int j = 0;j < nchildren;j++)
+            sum += P[coarseMap[(i + 1) + j]];
+        sum /= nchildren;
+        P[id] = sum;
+
+        i += nchildren;
+    }
+
+    forEach(refineMap,i)
+        Pn[i] = P[refineMap[i]];
+
+    //switch pointers and write the new interpolated field
+    type* Psave = P;
+    P = Pn;
+    SIZE = Mesh::gBCSfield = newSize;
+    if(access & WRITE)
+        write(step);
+    P = Psave;
+
+    //deallocate
+    aligned_free<type>(Pn);
+}
 /*********************************************************************************
  *                      matrix class defined on mesh                             
  *********************************************************************************/
