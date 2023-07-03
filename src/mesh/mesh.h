@@ -46,10 +46,10 @@ namespace Mesh {
 
     /** AMR tree node */
     struct Node {
-        Int id;
-        Int cid;
-        Int nchildren;
-        Int level;
+        Int id;           /**< Cell id in mCells */ 
+        Int cid;          /**< First child id in mAmrTree */
+        Int nchildren;    /**< Number of children */
+        Int level;        /**< Refinement level */
         Node() {
             id = 0;
             cid = 0;
@@ -131,7 +131,7 @@ namespace Mesh {
         void refineCell(const Cell&, IntVector&, Int, IntVector&,
                 IntVector&, IntVector&, Cells&, IntVector&, Int);
         void refineMesh(const IntVector&, const IntVector&, const IntVector&, 
-                const IntVector&, IntVector&, IntVector&);
+                const IntVector&, IntVector&, IntVector&, IntVector&);
 
         template<typename Ts>
         friend Ts& operator << (Ts& os, const MeshObject& p) {

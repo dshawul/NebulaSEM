@@ -796,10 +796,10 @@ void Prepare::refineMesh(Int step) {
 
     /*refine/coarsen mesh and fields*/
     {
-        IntVector refineMap,coarseMap;
-        gMesh.refineMesh(cCells,rCellsL,rLevelL,rDirsL,refineMap,coarseMap);
+        IntVector refineMap,coarseMap,cellMap;
+        gMesh.refineMesh(cCells,rCellsL,rLevelL,rDirsL,refineMap,coarseMap,cellMap);
         forEachIt(BaseField::allFields, it)
-            (*it)->refineField(step,refineMap,coarseMap);
+            (*it)->refineField(step,refineMap,coarseMap,cellMap);
     }
 
     /*extrude mesh after refinement is complete*/

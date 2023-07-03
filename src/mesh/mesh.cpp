@@ -1455,7 +1455,7 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
   Refine mesh
  */
 void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCells,const IntVector& rLevel,
-        const IntVector& rDirs,IntVector& refineMap,IntVector& coarseMap) {
+        const IntVector& rDirs,IntVector& refineMap,IntVector& coarseMap,IntVector& cellMap) {
 
     using namespace Util;
     Int ivBegin = mVertices.size();
@@ -1482,29 +1482,29 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                     }
                 }
                 if(coarsen) {
-                    Int cnid = mAmrTree[n.cid].id;
-                    Cell& c1 = mCells[cnid];
+                    Cell c1;
+                    Int pid = mCells.size();
                     coarseMap.push_back(n.nchildren);
-                    coarseMap.push_back(cnid);
-                    for(Int j = 1;j < n.nchildren;j++) {
+                    coarseMap.push_back(pid);
+                    for(Int j = 0;j < n.nchildren;j++) {
                         Node& cn = mAmrTree[n.cid + j];
                         Cell& c2 = mCells[cn.id];
                         mergeCells(c1,c2,delFacets);
                         delCells.push_back(cn.id);
                         coarseMap.push_back(cn.id);
+                        delTree.push_back(n.cid + j);
                         /*update owner/neighbor info*/
                         forEach(c2,k) {
                             Int fi = c2[k];
                             if(mFOC[fi] == cn.id)
-                                mFOC[fi] = cnid;
+                                mFOC[fi] = pid;
                             else
-                                mFNC[fi] = cnid;
+                                mFNC[fi] = pid;
                         }
                     }
-                    for(Int j = 0;j < n.nchildren;j++)
-                        delTree.push_back(n.cid + j);
+                    mCells.push_back(c1);
                     n.nchildren = 0;
-                    n.id = cnid;
+                    n.id = pid;
                     n.cid = 0;
                 }
             }
@@ -1585,14 +1585,14 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
             cout << "Cell after coarsening  " << endl;
             cout << c1 << std::endl;
 #endif
-            i += nchildren;
+            i += nchildren + 1;
         }
         /*renumber children ids*/
         {
             IntVector cidMap;
             cidMap.assign(mAmrTree.size(),0);
             forEach(delTree,i)
-                cidMap[delTree[i]] = 1;
+                cidMap[delTree[i]] = Constants::MAX_INT;
             Int cnt = 0;
             forEach(cidMap,i) {
                 if(cidMap[i] == 0)
@@ -1684,10 +1684,6 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
     /*************************
      * Refine cells
      *************************/
-    refineMap.assign(mBCS,0);
-    forEach(refineMap,i)
-        refineMap[i] = i;
-
     forEach(rCells,i) {
         Int rci = rCells[i];
         Int rdir = rDirs[i];
@@ -1836,9 +1832,12 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
         }
 
         /*add cells*/
+        Int cid = mCells.size();
         mCells.insert(mCells.end(),newc.begin(),newc.end());
+        refineMap.push_back(newc.size());
+        refineMap.push_back(rci);
         forEach(newc,j)
-            refineMap.push_back(rci);
+            refineMap.push_back(cid + j);
     }
 
     /*************************************
@@ -1906,19 +1905,18 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
     
     /*update mAmrTree IDs*/
     {
-        IntVector newIDs;
-        newIDs.assign(mCells.size(),0);
+        cellMap.assign(mCells.size(),0);
         forEach(rmCells,i)
-            newIDs[rmCells[i]] = 1;
+            cellMap[rmCells[i]] = Constants::MAX_INT;
         Int cnt = 0;
-        forEach(newIDs,i) {
-            if(newIDs[i] == 0)
-                newIDs[i] = cnt++;
+        forEach(cellMap,i) {
+            if(cellMap[i] == 0)
+                cellMap[i] = cnt++;
         }
         forEach(mAmrTree,i) {
             Node& n = mAmrTree[i];
             if(!n.nchildren)
-                n.id = newIDs[n.id];
+                n.id = cellMap[n.id];
         }
     }
     
@@ -1927,7 +1925,6 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
     
     /*erase cells*/
     erase_indices(mCells,rmCells);
-    erase_indices(refineMap,rmCells);
     mBCS = mCells.size();
     
     /*remove unused vertices*/

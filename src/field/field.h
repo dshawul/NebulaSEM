@@ -418,7 +418,7 @@ class BaseField {
         std::string  fName;
     public:
         virtual void deallocate(bool) = 0;
-        virtual void refineField(Int,IntVector&,IntVector&) = 0;
+        virtual void refineField(Int,const IntVector&,const IntVector&,const IntVector&) = 0;
         //------------
         virtual void writeInternal(std::ostream&,IntVector*) = 0;
         virtual Int readInternal(std::istream&,Int = 0) = 0;
@@ -1120,7 +1120,7 @@ class MeshField : public BaseField
                 }
             }
         }
-        void refineField(Int,IntVector&,IntVector&);
+        void refineField(Int,const IntVector&,const IntVector&,const IntVector&);
         /*IO*/
         template<typename Ts>
         friend Ts& operator << (Ts& os, MeshField& p) {
@@ -1826,7 +1826,9 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
 
 /*refine/unrefine field*/
 template <class type,ENTITY entity> 
-void MeshField<type,entity>::refineField(Int step,IntVector& refineMap,IntVector& coarseMap) {
+void MeshField<type,entity>::refineField(Int step,
+    const IntVector& refineMap,const IntVector& coarseMap, const IntVector& cellMap) {
+
     using namespace DG;
 
     const Int newSize = Mesh::gCells.size() * DG::NP;
@@ -1836,21 +1838,44 @@ void MeshField<type,entity>::refineField(Int step,IntVector& refineMap,IntVector
     aligned_reserve<type>(Pn,newSize);
     memset(Pn, 0, newSize*sizeof(type));
 
-    //coarsening
-    forEach(coarseMap,i) {
-        Int nchildren = coarseMap[i];
-        Int id = coarseMap[i + 1];
-        type sum(0.0);
-        for(Int j = 0;j < nchildren;j++)
-            sum += P[coarseMap[(i + 1) + j]];
-        sum /= nchildren;
-        P[id] = sum;
-
-        i += nchildren;
+    //copy array
+    for(Int i = 0; i < cellMap.size(); i++) {
+        Int id = cellMap[i];
+        if(id == Constants::MAX_INT) continue;
+        for(Int k = 0; k < DG::NP; k++)
+            Pn[id * DG::NP + k] = P[i * DG::NP + k];
     }
 
-    forEach(refineMap,i)
-        Pn[i] = P[refineMap[i]];
+    //interpolation for coarsening
+    forEach(coarseMap,i) {
+        Int nchildren = coarseMap[i];
+        Int id = cellMap[coarseMap[i + 1]];
+
+        for(Int k = 0; k < DG::NP; k++) {
+            type sum(0.0);
+            for(Int j = 0;j < nchildren;j++) {
+                Int id1 = coarseMap[i + 2 + j];
+                sum += P[id1 * DG::NP + k];
+            }
+            sum /= Scalar(nchildren);
+            Pn[id * DG::NP + k] = sum;
+        }
+        i += nchildren + 1;
+    }
+
+    //interpolation for refinement
+    forEach(refineMap,i) {
+        Int nchildren = refineMap[i];
+        Int id = refineMap[i + 1];
+
+        for(Int k = 0; k < DG::NP; k++) {
+            for(Int j = 0;j < nchildren;j++) {
+                Int id1 = cellMap[refineMap[i + 2 + j]];
+                Pn[id1 * DG::NP + k] = P[id * DG::NP + k];
+            }
+        }
+        i += nchildren + 1;
+    }
 
     //switch pointers and write the new interpolated field
     type* Psave = P;
@@ -1863,6 +1888,7 @@ void MeshField<type,entity>::refineField(Int step,IntVector& refineMap,IntVector
     //deallocate
     aligned_free<type>(Pn);
 }
+
 /*********************************************************************************
  *                      matrix class defined on mesh                             
  *********************************************************************************/
