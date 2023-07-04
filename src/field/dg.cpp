@@ -254,6 +254,8 @@ void DG::init_geom() {
     FN = gALLfield;
     for(Int ci = 0; ci < gBCS;ci++) {
         Cell& c = gCells[ci];
+
+        //find first and second face
         Facet& f1 = gFacets[c[0]];
         Facet& f2 = gFacets[c[1]];
 #if 0
