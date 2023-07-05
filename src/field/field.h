@@ -1322,6 +1322,8 @@ namespace Mesh {
     void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
     template <class type>
     void   fixedBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&);
+    template <class type>
+    void   setNeumannBCs(MeshField<type,CELL>&);
 }
 
 namespace Prepare {
@@ -1538,6 +1540,19 @@ void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest,
             dest.calc_neumann(bc1);
             AllBConditions.push_back(bc1);
         }
+    }
+}
+
+/** Set NEUMANN boundary condition for all */
+template <class type>
+void Mesh::setNeumannBCs(MeshField<type,CELL>& p) {
+    forEachIt(gBoundaries,it) {
+        std::string name = it->first;
+        auto bc = new BCondition<type>(p.fName);
+        bc->cname = "NEUMANN";
+        bc->cIndex = NEUMANN;
+        bc->fIndex = Util::hash_function(p.fName);
+        AllBConditions.push_back(bc);
     }
 }
 
