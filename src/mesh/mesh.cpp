@@ -16,6 +16,7 @@ namespace Mesh {
     Boundaries&       gBoundaries = gMesh.mBoundaries;
     IntVector&        gFOC = gMesh.mFOC;
     IntVector&        gFNC = gMesh.mFNC;
+    IntVector&        gFMC = gMesh.mFMC;
     Int&              gBCS = gMesh.mBCS;
     Int&              gBCSI = gMesh.mBCSI;
     Cells&            gFaceID = gMesh.mFaceID;

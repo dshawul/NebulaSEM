@@ -81,8 +81,12 @@ namespace Mesh {
 
         std::string name;           /**< File name */
         Boundaries  mBoundaries;    /**< List of boundary patches */
-        IntVector   mFOC;           /**< Facet owners of elements */
-        IntVector   mFNC;           /**< Facet neighbors of elements */
+        IntVector   mFOC;           /**< Facet owner cells */
+        IntVector   mFNC;           /**< Facet neighbor cells */
+        IntVector   mFMC;           /**< Facet mortar flags
+                                        0=conforming,
+                                        1=facet owner is mortar,
+                                        2=facet neighbor is mortar*/
 
         Int      mNV;   /**< Number of internal vertices */
         Int      mNF;   /**< Number of internal faces */
@@ -221,6 +225,7 @@ namespace Mesh {
     extern  Boundaries&       gBoundaries;
     extern  IntVector&        gFOC;
     extern  IntVector&        gFNC;
+    extern  IntVector&        gFMC;
     extern  Int&              gBCS;
     extern  Int&              gBCSI;
     extern  Cells&            gFaceID;

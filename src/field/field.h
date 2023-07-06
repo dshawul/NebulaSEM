@@ -1335,260 +1335,11 @@ namespace Prepare {
     int mergeFields(Int);
 }
 
-/** central difference scheme */
-template<class type>
-auto cds(const MeshField<type,CELL>& cF) {
-    using namespace Mesh;
-    MeshField<type,FACET> fF;
-    #pragma omp parallel for
-    #pragma acc parallel loop copyin(cF)
-    forEach(fF,i) {
-        fF[i] =  (cF[FO[i]] * (fI[i])) + (cF[FN[i]] * (1 - fI[i]));
-    }
-    return fF;
-}
+/* ********************
+ *   Include DG header
+ * ********************/
+#include "dg.h"
 
-#ifdef USE_EXPR_TMPL
-template<class type, class A>
-auto cds(const DVExpr<type,A>& expr) {
-    return cds(MeshField<type,CELL>(expr));
-}
-#endif
-
-/** upwind differencing scheme */
-template<class type,class T3>
-auto uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
-    using namespace Mesh;
-    MeshField<type,FACET> fF;
-    #pragma omp parallel for
-    #pragma acc parallel loop copyin(cF,flux)
-    forEach(fF,i) {
-        if(dot(flux[i],T3(1)) >= 0) fF[i] = cF[FO[i]];
-        else fF[i] = cF[FN[i]];
-    }
-    return fF;
-}
-
-#ifdef USE_EXPR_TMPL
-template<class type, class T3, class A>
-auto uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
-    return uds(MeshField<type,CELL>(expr),flux);
-}
-#endif
-
-/** interpolate facet data to vertex data */
-template<class type>
-auto cds(const MeshField<type,FACET>& fF) {
-    using namespace Mesh;
-    MeshField<type,VERTEX> vF;
-    ScalarVertexField cnt;
-
-    vF = type(0);
-    cnt = Scalar(0);
-
-    forEach(fF,i) {
-        Facet& f = gFacets[(i / DG::NP)];
-        if(FN[i] >= gALLfield) {
-        } else if(FN[i] < gBCSfield) {
-            forEach(f,j) {
-                Int v = f[j];
-                Scalar dist = Scalar(1.0) / magSq(gVertices[v] - fC[i]);
-                vF[v] += (fF[i] * dist);
-                cnt[v] += dist;
-            }
-        } else {
-            forEach(f,j) {
-                Int v = f[j];
-                vF[v] += Scalar(10e30) * fF[i];
-                cnt[v] += Scalar(10e30);
-            }
-        }
-    }
-
-    #pragma omp parallel for
-    #pragma acc parallel loop
-    forEach(vF,i) {
-        vF[i] /= cnt[i];
-        if(mag(vF[i]) < Constants::MachineEpsilon)
-            vF[i] = type(0);
-    }
-
-    return vF;
-}
-
-/** Integrate field operation */
-template<class type>
-auto sum(const MeshField<type,FACET>& fF) {
-    using namespace Mesh;
-    MeshField<type,CELL> cF;
-    cF = type(0);
-    #pragma omp parallel for
-    #pragma acc parallel loop copyin(fF)
-    for(Int i = 0; i < gNCells; i++) {
-        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
-            for(Int n = 0; n < DG::NPF; n++) {
-                Int k = allFaces[f] * DG::NPF + n;
-                Int c1 = FO[k];
-                Int c2 = FN[k];
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                    cF[c1] += fF[k];
-                else if(c2 < gALLfield)
-                    cF[c2] -= fF[k];
-            }
-        }
-    }
-    return cF;
-}
-
-template<class type,class type2>
-void grad_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
-    using namespace Mesh;
-    MeshField<type,FACET> fF = cds(p);
-    cF = type2(0);
-    #pragma omp parallel for
-    #pragma acc parallel loop copyin(fF)
-    for(Int i = 0; i < gNCells; i++) {
-        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
-            for(Int n = 0; n < DG::NPF; n++) {
-                Int k = allFaces[f] * DG::NPF + n;  
-                Int c1 = FO[k];
-                Int c2 = FN[k];
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                    cF[c1] += mul(fN[k],(fF[k] - p[c1]));
-                else if(c2 < gALLfield)
-                    cF[c2] -= mul(fN[k],(fF[k] - p[c2]));
-            }
-        }
-    }    
-}
-
-
-template<class type,class type2>
-void div_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
-    using namespace Mesh;
-    MeshField<type,FACET> fF = cds(p);
-    cF = type2(0);
-    #pragma omp parallel for
-    #pragma acc parallel loop copyin(fF)
-    for(Int i = 0; i < gNCells; i++) {
-        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
-            for(Int n = 0; n < DG::NPF; n++) {
-                Int k = allFaces[f] * DG::NPF + n;  
-                Int c1 = FO[k];
-                Int c2 = FN[k];
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                    cF[c1] += dot((fF[k] - p[c1]),fN[k]);
-                else if(c2 < gALLfield)
-                    cF[c2] -= dot((fF[k] - p[c2]),fN[k]);
-            }   
-        }   
-    }        
-}
-
-
-#ifdef USE_EXPR_TMPL
-template<class type, class A>
-auto sum(const DVExpr<type,A>& expr) {
-    return sum(MeshField<type,FACET>(expr));
-}
-#endif
-
-/** Calaculated dirichlet boundary condition */
-template <class type>
-void Mesh::fixedBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest) {
-    using namespace Mesh;
-    forEach(AllBConditions,i) {
-        BCondition<type> *bc, *bc1;
-        bc = static_cast<BCondition<type>*> (AllBConditions[i]);
-        if(bc->fIndex == src.fIndex) {
-            bc1 = new BCondition<type>(dest.fName);
-            *bc1 = *bc;
-            bc1->fIndex = dest.fIndex;
-            bc1->cname = "CALC_DIRICHLET";
-            bc1->cIndex = CALC_DIRICHLET;
-            bc1->fixed.clear();
-            AllBConditions.push_back(bc1);
-        }
-    }
-}
-
-/** Scale boundary condition by a constant */
-template <class type>
-void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
-    using namespace Mesh;
-    forEach(AllBConditions,i) {
-        BCondition<type> *bc, *bc1;
-        bc = static_cast<BCondition<type>*> (AllBConditions[i]);
-        if(bc->fIndex == src.fIndex) {
-            bc1 = new BCondition<type>(dest.fName);
-            *bc1 = *bc;
-            bc1->fIndex = dest.fIndex;
-
-            if(bc1->cIndex == NEUMANN) {
-                bc1->value *= psi;
-            } else if(bc1->cIndex == ROBIN) {
-                bc1->value *= psi;
-                bc1->tvalue *= psi;
-            } else if(bc1->cIndex == SYMMETRY ||
-                    bc1->cIndex == CYCLIC) {
-            } else {
-                bc1->cname = "CALC_DIRICHLET";
-                bc1->cIndex = CALC_DIRICHLET;
-                bc1->fixed.clear();
-            }
-
-            dest.calc_neumann(bc1);
-            AllBConditions.push_back(bc1);
-        }
-    }
-}
-
-/** Set NEUMANN boundary condition for all */
-template <class type>
-void Mesh::setNeumannBCs(MeshField<type,CELL>& p) {
-    forEachIt(gBoundaries,it) {
-        std::string name = it->first;
-        auto bc = new BCondition<type>(p.fName);
-        bc->cname = "NEUMANN";
-        bc->cIndex = NEUMANN;
-        bc->fIndex = Util::hash_function(p.fName);
-        AllBConditions.push_back(bc);
-    }
-}
-
-/** Calculate neumann boundary condition from initial condition */
-template <class T,ENTITY E> 
-void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
-    using namespace Mesh;
-
-    Int h = Util::hash_function(bc->cname);
-    if(h == CALC_NEUMANN) {
-        /*calculate slope*/
-        T slope = T(0);
-        Int sz = bc->bdry->size();
-        Scalar* CP = addr(slope);
-        #pragma omp parallel for collapse(2) reduction(+:slope)
-        #pragma acc parallel loop collapse(2) reduction(+:CP[0:TYPE_SIZE])
-        for(Int j = 0;j < sz;j++) {
-            for(Int n = 0; n < DG::NPF;n++) {
-                Int k = (*bc->bdry)[j] * DG::NPF + n;
-                Int c1 = FO[k];
-                Int c2 = FN[k];
-                if(c2 >= gALLfield) continue;
-                if((DG::NP == 1) && !equal(cC[c1],cC[c2])) {
-                    slope += ((*this)[c2] - (*this)[c1]) / 
-                        mag(cC[c2] - cC[c1]);
-                }
-            }
-        }
-        (void)CP;
-        slope /= sz;
-        /*set to neumann*/
-        bc->cname = "NEUMANN";
-        bc->cIndex = NEUMANN;
-        bc->value = slope;
-    }
-}
 /* **********************************************
  *  Input - output operations
  * **********************************************/
@@ -1834,120 +1585,6 @@ void MeshField<T,E>::write(Int step, IntVector* cMap) {
     }
 }
 
-/* ********************
- *   DG
- * ********************/
-#include "dg.h"
-
-/*refine/unrefine field*/
-template <class type,ENTITY entity> 
-void MeshField<type,entity>::refineField(Int step,
-    const IntVector& refineMap,const IntVector& coarseMap, const IntVector& cellMap) {
-
-    using namespace DG;
-
-    const Int newgBCSfield = Mesh::gCells.size() * DG::NP;
-    const Int oldgBCS = Mesh::gBCSfield / DG::NP;
-    type* Pn;
-
-    //allocate refined array
-    aligned_reserve<type>(Pn,newgBCSfield);
-
-    //copy array
-    for(Int i = 0; i < oldgBCS; i++) {
-        Int id = cellMap[i];
-        if(id == Constants::MAX_INT) continue;
-        for(Int k = 0; k < DG::NP; k++)
-            Pn[id * DG::NP + k] = P[i * DG::NP + k];
-    }
-
-    //interpolation for coarsening
-    forEach(coarseMap,i) {
-        Int nchildren = coarseMap[i];
-        Int id = cellMap[coarseMap[i + 1]];
-
-        for(Int k = 0; k < DG::NP; k++)
-            Pn[id * DG::NP + k] = type(0.0);
-
-        for(Int j = 0;j < nchildren;j++) {
-            Int id1 = coarseMap[i + 2 + j];
-
-            if(DG::NPMAT) {
-                Int ioff = 0, joff = 0, koff = 0;
-                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
-                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
-                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
-                forEachLgl(ii1,jj1,kk1) {
-                    Int index1 = INDEX4(id1,ii1,jj1,kk1);
-                    type P0 = P[index1];
-                    forEachLgl(ii,jj,kk) {
-                        Int index = INDEX4(id,ii,jj,kk);
-                        Scalar fx = psiCor[0*2+ioff][ii1*NPX+ii];
-                        Scalar fy = psiCor[1*2+joff][jj1*NPY+jj];
-                        Scalar fz = psiCor[2*2+koff][kk1*NPZ+kk];
-                        Pn[index] += P0 * fx * fy * fz; 
-                    }
-                }
-            } else {
-                Pn[id] += P[id1];
-            }
-        }
-
-        for(Int k = 0; k < DG::NP; k++)
-            Pn[id * DG::NP + k] /= Scalar(nchildren);
-
-        i += nchildren + 1;
-    }
-
-    //interpolation for refinement
-    forEach(refineMap,i) {
-        Int nchildren = refineMap[i];
-        Int id = refineMap[i + 1];
-
-        for(Int j = 0;j < nchildren;j++) {
-            Int id1 = cellMap[refineMap[i + 2 + j]];
-
-            if(DG::NPMAT) {
-                Int ioff = 0, joff = 0, koff = 0;
-                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
-                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
-                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
-
-                for(Int k = 0; k < DG::NP; k++)
-                    Pn[id1 * DG::NP + k] = type(0.0);
-
-                forEachLgl(ii,jj,kk) {
-                    Int index = INDEX4(id,ii,jj,kk);
-                    type P0 = P[index];
-                    forEachLgl(ii1,jj1,kk1) {
-                        Int index1 = INDEX4(id1,ii1,jj1,kk1);
-                        Scalar fx = psiRef[0*2+ioff][ii*NPX+ii1];
-                        Scalar fy = psiRef[1*2+joff][jj*NPY+jj1];
-                        Scalar fz = psiRef[2*2+koff][kk*NPZ+kk1];
-                        Pn[index1] += P0 * fx * fy * fz; 
-                    }
-                }
-            } else {
-                Pn[id1] = P[id];
-            }
-        }
-        i += nchildren + 1;
-    }
-
-    //switch pointers and write the new interpolated field
-    type* Psave = P;
-    Int Ssave = Mesh::gBCSfield; 
-    P = Pn;
-    SIZE = Mesh::gBCSfield = newgBCSfield;
-    if(access & WRITE)
-        write(step);
-    P = Psave;
-    SIZE = Mesh::gBCSfield = Ssave;
-
-    //deallocate
-    aligned_free<type>(Pn);
-}
-
 /*********************************************************************************
  *                      matrix class defined on mesh                             
  *********************************************************************************/
@@ -2125,6 +1762,353 @@ typedef MeshMatrix<Vector>  VectorCellMatrix;
 typedef MeshMatrix<Tensor>  TensorCellMatrix;
 typedef MeshMatrix<STensor> STensorCellMatrix;
 //@}
+
+/* ***********************
+ *   Mesh refinement
+ * ***********************/
+
+/*refine/unrefine field*/
+template <class type,ENTITY entity> 
+void MeshField<type,entity>::refineField(Int step,
+    const IntVector& refineMap,const IntVector& coarseMap, const IntVector& cellMap) {
+
+    using namespace DG;
+
+    const Int newgBCSfield = Mesh::gCells.size() * DG::NP;
+    const Int oldgBCS = Mesh::gBCSfield / DG::NP;
+    type* Pn;
+
+    //allocate refined array
+    aligned_reserve<type>(Pn,newgBCSfield);
+
+    //copy array
+    for(Int i = 0; i < oldgBCS; i++) {
+        Int id = cellMap[i];
+        if(id == Constants::MAX_INT) continue;
+        for(Int k = 0; k < DG::NP; k++)
+            Pn[id * DG::NP + k] = P[i * DG::NP + k];
+    }
+
+    //interpolation for coarsening
+    forEach(coarseMap,i) {
+        Int nchildren = coarseMap[i];
+        Int id = cellMap[coarseMap[i + 1]];
+
+        for(Int k = 0; k < DG::NP; k++)
+            Pn[id * DG::NP + k] = type(0.0);
+
+        for(Int j = 0;j < nchildren;j++) {
+            Int id1 = coarseMap[i + 2 + j];
+
+            if(DG::NPMAT) {
+                Int ioff = 0, joff = 0, koff = 0;
+                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
+                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
+                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
+                forEachLgl(ii1,jj1,kk1) {
+                    Int index1 = INDEX4(id1,ii1,jj1,kk1);
+                    type P0 = P[index1];
+                    forEachLgl(ii,jj,kk) {
+                        Int index = INDEX4(id,ii,jj,kk);
+                        Scalar fx = psiCor[0*2+ioff][ii1*NPX+ii];
+                        Scalar fy = psiCor[1*2+joff][jj1*NPY+jj];
+                        Scalar fz = psiCor[2*2+koff][kk1*NPZ+kk];
+                        Pn[index] += P0 * fx * fy * fz; 
+                    }
+                }
+            } else {
+                Pn[id] += P[id1];
+            }
+        }
+
+        for(Int k = 0; k < DG::NP; k++)
+            Pn[id * DG::NP + k] /= Scalar(nchildren);
+
+        i += nchildren + 1;
+    }
+
+    //interpolation for refinement
+    forEach(refineMap,i) {
+        Int nchildren = refineMap[i];
+        Int id = refineMap[i + 1];
+
+        for(Int j = 0;j < nchildren;j++) {
+            Int id1 = cellMap[refineMap[i + 2 + j]];
+
+            if(DG::NPMAT) {
+                Int ioff = 0, joff = 0, koff = 0;
+                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
+                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
+                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
+
+                for(Int k = 0; k < DG::NP; k++)
+                    Pn[id1 * DG::NP + k] = type(0.0);
+
+                forEachLgl(ii,jj,kk) {
+                    Int index = INDEX4(id,ii,jj,kk);
+                    type P0 = P[index];
+                    forEachLgl(ii1,jj1,kk1) {
+                        Int index1 = INDEX4(id1,ii1,jj1,kk1);
+                        Scalar fx = psiRef[0*2+ioff][ii*NPX+ii1];
+                        Scalar fy = psiRef[1*2+joff][jj*NPY+jj1];
+                        Scalar fz = psiRef[2*2+koff][kk*NPZ+kk1];
+                        Pn[index1] += P0 * fx * fy * fz; 
+                    }
+                }
+            } else {
+                Pn[id1] = P[id];
+            }
+        }
+        i += nchildren + 1;
+    }
+
+    //switch pointers and write the new interpolated field
+    type* Psave = P;
+    Int Ssave = Mesh::gBCSfield; 
+    P = Pn;
+    SIZE = Mesh::gBCSfield = newgBCSfield;
+    if(access & WRITE)
+        write(step);
+    P = Psave;
+    SIZE = Mesh::gBCSfield = Ssave;
+
+    //deallocate
+    aligned_free<type>(Pn);
+}
+
+/** gather non-conforming face values */
+template<class type>
+void gather_non_conforming(const MeshField<type,FACET>& fF,
+        MeshField<type,FACET>& fFO, MeshField<type,FACET>& fFN
+) {
+    using namespace Mesh;
+    using namespace DG;
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(cF,gNFacets)
+    for(Int fi = 0; fi < gNFacets; fi++) {
+        for(Int n = 0; n < DG::NPF; n++) {
+            Int fidg = fi * DG::NPF + n;
+            fFO[fidg] = fF[fidg];
+            fFN[fidg] = fF[fidg];
+        }
+    }
+
+    if(!DG::NPMAT)
+        return;
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copy(fFO,fFN) copyin(fF,gNFacets,gFOC,gFNC,gCells,gFaceID,gFC,cC,psiCor)
+    for(Int fi = 0; fi < gNFacets; fi++) {
+        Int fm = gFMC[fi];
+        if(fm >= 1) {
+            Int co = (fm == 1) ? gFOC[fi] : gFNC[fi]; /*mortar owner cell*/
+            Int cn = (fm == 1) ? gFNC[fi] : gFOC[fi]; /*mortar neighbor cell*/
+
+            /*find face id of non-conforming face on neighbor cell*/
+            Cell& c = gCells[cn];
+            Int fid;
+            forEach(c,j) {
+                if(c[j] == fi) {
+                    fid = gFaceID[cn][j];
+                    break; 
+                }
+            }
+
+            /*face centers of mortar owner and neighbor*/
+            Vector cco = gFC[fi], ccn(0.0);
+            Int nchildren = 0;
+            forEach(c,j) {
+                if(gFaceID[cn][j] == fid) {
+                    ccn += gFC[c[j]];
+                    nchildren++;
+                }
+            }
+            ccn /= Scalar(nchildren);
+
+            /*set pointer to neighbor facet field */
+            MeshField<type,FACET>* pfFN;
+            if(fm == 1)
+                pfFN = &fFN;
+            else
+                pfFN = &fFO;
+
+            /*project values from owner(mortar) face onto mortar neighbor face*/
+            if(fid == 0 || fid == 1) {
+                Int k = (fid == 0) ? 0 : (NPZ - 1); 
+                Vector v0 = cC[INDEX4(cn,0,0,k)];
+                Vector vx = cC[INDEX4(cn,NPX-1,0,k)];
+                Vector vy = cC[INDEX4(cn,0,NPY-1,k)];
+                Int ioff = (dot(ccn - v0, vx - v0) >= dot(cco - v0, vx - v0)) ? 0 : 1;
+                Int joff = (dot(ccn - v0, vy - v0) >= dot(cco - v0, vy - v0)) ? 0 : 1;
+                forEachLglXY(in,jn) {
+                    Int fidgn = fi * DG::NPF + in * NPY + jn;
+                    type sum(0.0);
+                    forEachLglXY(io,jo) {
+                        Int fidgo = fi * DG::NPF + io * NPY + jo;
+                        Scalar fx = psiCor[0*2+ioff][io*NPX+in];
+                        Scalar fy = psiCor[1*2+joff][jo*NPY+jn];
+                        sum += fF[fidgo] * fx * fy;
+                    }
+                    (*pfFN)[fidgn] = sum;
+                }
+            } else if(fid == 2 || fid == 3) {
+                Int j = (fid == 2) ? 0 : (NPY - 1); 
+                Vector v0 = cC[INDEX4(cn,0,j,0)];
+                Vector vx = cC[INDEX4(cn,NPX-1,j,0)];
+                Vector vz = cC[INDEX4(cn,0,j,NPZ-1)];
+                Int ioff = (dot(ccn - v0, vx - v0) >= dot(cco - v0, vx - v0)) ? 0 : 1;
+                Int koff = (dot(ccn - v0, vz - v0) >= dot(cco - v0, vz - v0)) ? 0 : 1;
+                forEachLglXZ(in,kn) {
+                    Int fidgn = fi * DG::NPF + in * NPZ + kn;
+                    type sum(0.0);
+                    forEachLglXZ(io,ko) {
+                        Int fidgo = fi * DG::NPF + io * NPZ + ko;
+                        Scalar fx = psiCor[0*2+ioff][io*NPX+in];
+                        Scalar fz = psiCor[2*2+koff][ko*NPZ+kn];
+                        sum += fF[fidgo] * fx * fz;
+                    }
+                    (*pfFN)[fidgn] = sum;
+                }
+            } else if(fid == 4 || fid == 5) {
+                Int i = (fid == 4) ? 0 : (NPX - 1); 
+                Vector v0 = cC[INDEX4(cn,i,0,0)];
+                Vector vy = cC[INDEX4(cn,i,NPY-1,0)];
+                Vector vz = cC[INDEX4(cn,i,0,NPZ-1)];
+                Int joff = (dot(ccn - v0, vy - v0) >= dot(cco - v0, vy - v0)) ? 0 : 1;
+                Int koff = (dot(ccn - v0, vz - v0) >= dot(cco - v0, vz - v0)) ? 0 : 1;
+                forEachLglYZ(jn,kn) {
+                    Int fidgn = fi * DG::NPF + jn * NPZ + kn;
+                    type sum(0.0);
+                    forEachLglYZ(jo,ko) {
+                        Int fidgo = fi * DG::NPF + jo * NPZ + ko;
+                        Scalar fy = psiCor[1*2+joff][jo*NPY+jn];
+                        Scalar fz = psiCor[2*2+koff][ko*NPZ+kn];
+                        sum += fF[fidgo] * fy * fz;
+                    }
+                    (*pfFN)[fidgn] = sum;
+                }
+            }
+        }
+    }
+}
+/** scatter non-conforming face values */
+template<class type>
+void scatter_non_conforming(const MeshField<type,CELL>& cF,
+        MeshField<type,FACET>& fFO, MeshField<type,FACET>& fFN
+) {
+
+    using namespace Mesh;
+    using namespace DG;
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(cF,gNFacets,FO,FN)
+    for(Int fi = 0; fi < gNFacets; fi++) {
+        for(Int n = 0; n < DG::NPF; n++) {
+            Int fidg = fi * DG::NPF + n;
+            fFO[fidg] = cF[FO[fidg]];
+            fFN[fidg] = cF[FN[fidg]];
+        }
+    }
+
+    if(!DG::NPMAT)
+        return;
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copy(fFO,fFN) copyin(cF,gNFacets,gFOC,gFNC,gCells,gFaceID,gFC,cC,psiRef)
+    for(Int fi = 0; fi < gNFacets; fi++) {
+        Int fm = gFMC[fi];
+        if(fm >= 1) {
+            Int co = (fm == 1) ? gFOC[fi] : gFNC[fi]; /*mortar owner cell*/
+            Int cn = (fm == 1) ? gFNC[fi] : gFOC[fi]; /*mortar neighbor cell*/
+
+            /*find face id of non-conforming face on neighbor cell*/
+            Cell& c = gCells[cn];
+            Int fid;
+            forEach(c,j) {
+                if(c[j] == fi) {
+                    fid = gFaceID[cn][j];
+                    break; 
+                }
+            }
+
+            /*face centers of mortar owner and neighbor*/
+            Vector cco = gFC[fi], ccn(0.0);
+            Int nchildren = 0;
+            forEach(c,j) {
+                if(gFaceID[cn][j] == fid) {
+                    ccn += gFC[c[j]];
+                    nchildren++;
+                }
+            }
+            ccn /= Scalar(nchildren);
+
+            /*set pointer to neighbor facet field */
+            MeshField<type,FACET>* pfFN;
+            if(fm == 1)
+                pfFN = &fFN;
+            else
+                pfFN = &fFO;
+
+            /*project values from neighbor face onto mortar (owner) face*/
+            if(fid == 0 || fid == 1) {
+                Int k = (fid == 0) ? 0 : (NPZ - 1); 
+                Vector v0 = cC[INDEX4(cn,0,0,k)];
+                Vector vx = cC[INDEX4(cn,NPX-1,0,k)];
+                Vector vy = cC[INDEX4(cn,0,NPY-1,k)];
+                Int ioff = (dot(ccn - v0, vx - v0) >= dot(cco - v0, vx - v0)) ? 0 : 1;
+                Int joff = (dot(ccn - v0, vy - v0) >= dot(cco - v0, vy - v0)) ? 0 : 1;
+                forEachLglXY(io,jo) {
+                    Int fidgo = fi * DG::NPF + io * NPY + jo;
+                    type sum(0.0);
+                    forEachLglXY(in,jn) {
+                        Int indexn = INDEX4(cn,in,jn,k);
+                        Scalar fx = psiRef[0*2+ioff][in*NPX+io];
+                        Scalar fy = psiRef[1*2+joff][jn*NPY+jo];
+                        sum += cF[indexn] * fx * fy;
+                    }
+                    (*pfFN)[fidgo] = sum;
+                }
+            } else if(fid == 2 || fid == 3) {
+                Int j = (fid == 2) ? 0 : (NPY - 1); 
+                Vector v0 = cC[INDEX4(cn,0,j,0)];
+                Vector vx = cC[INDEX4(cn,NPX-1,j,0)];
+                Vector vz = cC[INDEX4(cn,0,j,NPZ-1)];
+                Int ioff = (dot(ccn - v0, vx - v0) >= dot(cco - v0, vx - v0)) ? 0 : 1;
+                Int koff = (dot(ccn - v0, vz - v0) >= dot(cco - v0, vz - v0)) ? 0 : 1;
+                forEachLglXZ(io,ko) {
+                    Int fidgo = fi * DG::NPF + io * NPZ + ko;
+                    type sum(0.0);
+                    forEachLglXZ(in,kn) {
+                        Int indexn = INDEX4(cn,in,j,kn);
+                        Scalar fx = psiRef[0*2+ioff][in*NPX+io];
+                        Scalar fz = psiRef[2*2+koff][kn*NPZ+ko];
+                        sum += cF[indexn] * fx * fz;
+                    }
+                    (*pfFN)[fidgo] = sum;
+                }
+            } else if(fid == 4 || fid == 5) {
+                Int i = (fid == 4) ? 0 : (NPX - 1); 
+                Vector v0 = cC[INDEX4(cn,i,0,0)];
+                Vector vy = cC[INDEX4(cn,i,NPY-1,0)];
+                Vector vz = cC[INDEX4(cn,i,0,NPZ-1)];
+                Int joff = (dot(ccn - v0, vy - v0) >= dot(cco - v0, vy - v0)) ? 0 : 1;
+                Int koff = (dot(ccn - v0, vz - v0) >= dot(cco - v0, vz - v0)) ? 0 : 1;
+                forEachLglYZ(jo,ko) {
+                    Int fidgo = fi * DG::NPF + jo * NPZ + ko;
+                    type sum(0.0);
+                    forEachLglYZ(jn,kn) {
+                        Int indexn = INDEX4(cn,i,jn,kn);
+                        Scalar fy = psiRef[1*2+joff][jn*NPY+jo];
+                        Scalar fz = psiRef[2*2+koff][kn*NPZ+ko];
+                        sum += cF[indexn] * fy * fz;
+                    }
+                    (*pfFN)[fidgo] = sum;
+                }
+            }
+        }
+    }
+}
 
 /*************************************
  *  Asynchronous communication
@@ -2653,87 +2637,297 @@ auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bi
     }
     return cF;
 }
+
+/** Calculated dirichlet boundary condition */
+template <class type>
+void Mesh::fixedBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest) {
+    using namespace Mesh;
+    forEach(AllBConditions,i) {
+        BCondition<type> *bc, *bc1;
+        bc = static_cast<BCondition<type>*> (AllBConditions[i]);
+        if(bc->fIndex == src.fIndex) {
+            bc1 = new BCondition<type>(dest.fName);
+            *bc1 = *bc;
+            bc1->fIndex = dest.fIndex;
+            bc1->cname = "CALC_DIRICHLET";
+            bc1->cIndex = CALC_DIRICHLET;
+            bc1->fixed.clear();
+            AllBConditions.push_back(bc1);
+        }
+    }
+}
+
+/** Scale boundary condition by a constant */
+template <class type>
+void Mesh::scaleBCs(const MeshField<type,CELL>& src, MeshField<type,CELL>& dest, Scalar psi) {
+    using namespace Mesh;
+    forEach(AllBConditions,i) {
+        BCondition<type> *bc, *bc1;
+        bc = static_cast<BCondition<type>*> (AllBConditions[i]);
+        if(bc->fIndex == src.fIndex) {
+            bc1 = new BCondition<type>(dest.fName);
+            *bc1 = *bc;
+            bc1->fIndex = dest.fIndex;
+
+            if(bc1->cIndex == NEUMANN) {
+                bc1->value *= psi;
+            } else if(bc1->cIndex == ROBIN) {
+                bc1->value *= psi;
+                bc1->tvalue *= psi;
+            } else if(bc1->cIndex == SYMMETRY ||
+                    bc1->cIndex == CYCLIC) {
+            } else {
+                bc1->cname = "CALC_DIRICHLET";
+                bc1->cIndex = CALC_DIRICHLET;
+                bc1->fixed.clear();
+            }
+
+            dest.calc_neumann(bc1);
+            AllBConditions.push_back(bc1);
+        }
+    }
+}
+
+/** Set NEUMANN boundary condition for all */
+template <class type>
+void Mesh::setNeumannBCs(MeshField<type,CELL>& p) {
+    forEachIt(gBoundaries,it) {
+        std::string name = it->first;
+        auto bc = new BCondition<type>(p.fName);
+        bc->cname = "NEUMANN";
+        bc->cIndex = NEUMANN;
+        bc->fIndex = Util::hash_function(p.fName);
+        AllBConditions.push_back(bc);
+    }
+}
+
+/** Calculate neumann boundary condition from initial condition */
+template <class T,ENTITY E> 
+void MeshField<T,E>::calc_neumann(BCondition<T>* bc) {
+    using namespace Mesh;
+
+    Int h = Util::hash_function(bc->cname);
+    if(h == CALC_NEUMANN) {
+        /*calculate slope*/
+        T slope = T(0);
+        Int sz = bc->bdry->size();
+        Scalar* CP = addr(slope);
+        #pragma omp parallel for collapse(2) reduction(+:slope)
+        #pragma acc parallel loop collapse(2) reduction(+:CP[0:TYPE_SIZE])
+        for(Int j = 0;j < sz;j++) {
+            for(Int n = 0; n < DG::NPF;n++) {
+                Int k = (*bc->bdry)[j] * DG::NPF + n;
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c2 >= gALLfield) continue;
+                if((DG::NP == 1) && !equal(cC[c1],cC[c2])) {
+                    slope += ((*this)[c2] - (*this)[c1]) / 
+                        mag(cC[c2] - cC[c1]);
+                }
+            }
+        }
+        (void)CP;
+        slope /= sz;
+        /*set to neumann*/
+        bc->cname = "NEUMANN";
+        bc->cIndex = NEUMANN;
+        bc->value = slope;
+    }
+}
+
 /* *******************************
- * Linearized source term
+ * Interpolation operations
  * *******************************/
 
-/** Add implicit source terms*/
-template <class T1, class T2, class T3> 
-auto src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2,CELL>& Sp) {
-    MeshMatrix<T1,T2,T3> m;
-    m.cF = &cF;
-    m.flags |= (m.SYMMETRIC | m.DIAGONAL);
-    m.ap = -(Sp * Mesh::cV);
-    m.Su = (Su * Mesh::cV);
-    //others
-    m.adg = Scalar(0);
-    m.ano = Scalar(0);
-    m.ann = Scalar(0);
-    return m;
-}
-
-/** Add explicit source term */
+/** central difference scheme */
 template<class type>
-auto srcf(const MeshField<type,CELL>& Su) {
-    return (Su * Mesh::cV);
+auto cds(const MeshField<type,CELL>& cF) {
+    using namespace Mesh;
+
+    MeshField<type,FACET> fF, fFO, fFN;
+    scatter_non_conforming(cF,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN)
+    forEach(fF,i) {
+        fF[i] =  (fFO[i] * (fI[i])) + (fFN[i] * (1 - fI[i]));
+    }
+    return fF;
 }
 
-#define srci(x) (x)
+#ifdef USE_EXPR_TMPL
+template<class type, class A>
+auto cds(const DVExpr<type,A>& expr) {
+    return cds(MeshField<type,CELL>(expr));
+}
+#endif
 
-/***********************************************
- * Gradient field operation.
- ***********************************************/
+/** upwind differencing scheme */
+template<class type,class T3>
+auto uds(const MeshField<type,CELL>& cF,const MeshField<T3,FACET>& flux) {
+    using namespace Mesh;
 
-/**
-  Explicit gradient operator
- */
-#define GRADD(im,jm,km) {                           \
-    Int index1 = INDEX4(ci,im,jm,km);               \
-    Vector dpsi_ij;                                 \
-    DPSI(dpsi_ij,im,jm,km);                         \
-    dpsi_ij = dot(Jin,dpsi_ij);                     \
-    r[index] += mul(dpsi_ij,p[index1]);             \
+    MeshField<type,FACET> fF, fFO, fFN;
+    scatter_non_conforming(cF,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN,flux)
+    forEach(fF,i) {
+        if(dot(flux[i],T3(1)) >= 0) fF[i] = fFO[i];
+        else fF[i] = fFN[i];
+    }
+    return fF;
 }
 
-#define GRAD(T1,T2)                                                                             \
-    inline auto gradf(const MeshField<T2,CELL>& p) {                                            \
-        using namespace Mesh;                                                                   \
-        using namespace DG;                                                                     \
-        MeshField<T1,CELL> r;                                                                   \
-                                                                                                \
-        grad_flux(p,r);                                                                         \
-                                                                                                \
-        if(NPMAT) {                                                                             \
-            _Pragma("omp parallel for")                                                         \
-            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
-            for(Int ci = 0; ci < gBCS;ci++) {                                                   \
-                forEachLgl(ii,jj,kk) {                                                          \
-                    Int index = INDEX4(ci,ii,jj,kk);                                            \
-                    Tensor Jin = Jinv[index] * cV[index];                                       \
-                    forEachLglX(i) GRADD(i,jj,kk);                                              \
-                    forEachLglY(j) if(j != jj) GRADD(ii,j,kk);                                  \
-                    forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);                                  \
-                }                                                                               \
-            }                                                                                   \
-        }                                                                                       \
-                                                                                                \
-        fillBCs(r,false,p.fIndex);                                                              \
-                                                                                                \
-        return r;                                                                               \
+#ifdef USE_EXPR_TMPL
+template<class type, class T3, class A>
+auto uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
+    return uds(MeshField<type,CELL>(expr),flux);
+}
+#endif
+
+/** interpolate facet data to vertex data */
+template<class type>
+auto cds(const MeshField<type,FACET>& fF) {
+    using namespace Mesh;
+    MeshField<type,VERTEX> vF;
+    ScalarVertexField cnt;
+
+    vF = type(0);
+    cnt = Scalar(0);
+
+    forEach(fF,i) {
+        Facet& f = gFacets[(i / DG::NP)];
+        if(FN[i] >= gALLfield) {
+        } else if(FN[i] < gBCSfield) {
+            forEach(f,j) {
+                Int v = f[j];
+                Scalar dist = Scalar(1.0) / magSq(gVertices[v] - fC[i]);
+                vF[v] += (fF[i] * dist);
+                cnt[v] += dist;
+            }
+        } else {
+            forEach(f,j) {
+                Int v = f[j];
+                vF[v] += Scalar(10e30) * fF[i];
+                cnt[v] += Scalar(10e30);
+            }
+        }
     }
 
-GRAD(Vector,Scalar);
-GRAD(Tensor,Vector);
-#undef GRAD
-#undef GRADD
+    #pragma omp parallel for
+    #pragma acc parallel loop
+    forEach(vF,i) {
+        vF[i] /= cnt[i];
+        if(mag(vF[i]) < Constants::MachineEpsilon)
+            vF[i] = type(0);
+    }
 
-#define gradi(x) (gradf(x)  / Mesh::cV)
+    return vF;
+}
 
 /* *******************************
- * Compute numerical flux
+ * Integration operations
  * *******************************/
+
+template<class type>
+auto sum(const MeshField<type,FACET>& fF) {
+    using namespace Mesh;
+    MeshField<type,CELL> cF;
+    cF = type(0);
+
+    MeshField<type,FACET> fFO, fFN;
+    gather_non_conforming(fF,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN)
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
+            for(Int n = 0; n < DG::NPF; n++) {
+                Int k = allFaces[f] * DG::NPF + n;
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
+                    cF[c1] += fFO[k];
+                else if(c2 < gALLfield)
+                    cF[c2] -= fFN[k];
+            }
+        }
+    }
+    return cF;
+}
+
+template<class type,class type2>
+void grad_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
+    using namespace Mesh;
+    MeshField<type,FACET> fF = cds(p);
+    cF = type2(0);
+
+    MeshField<type,FACET> fFO, fFN;
+    gather_non_conforming(fF,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN)
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
+            for(Int n = 0; n < DG::NPF; n++) {
+                Int k = allFaces[f] * DG::NPF + n;  
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
+                    cF[c1] += mul(fN[k],(fFO[k] - p[c1]));
+                else if(c2 < gALLfield)
+                    cF[c2] -= mul(fN[k],(fFN[k] - p[c2]));
+            }
+        }
+    }    
+}
+
+
+template<class type,class type2>
+void div_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
+    using namespace Mesh;
+    MeshField<type,FACET> fF = cds(p);
+    cF = type2(0);
+
+    MeshField<type,FACET> fFO, fFN;
+    gather_non_conforming(fF,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN)
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
+            for(Int n = 0; n < DG::NPF; n++) {
+                Int k = allFaces[f] * DG::NPF + n;  
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
+                    cF[c1] += dot((fFO[k] - p[c1]),fN[k]);
+                else if(c2 < gALLfield)
+                    cF[c2] -= dot((fFN[k] - p[c2]),fN[k]);
+            }   
+        }   
+    }        
+}
+
+
+#ifdef USE_EXPR_TMPL
+template<class type, class A>
+auto sum(const DVExpr<type,A>& expr) {
+    return sum(MeshField<type,FACET>(expr));
+}
+#endif
+
+/* *******************************
+ * Implicit div flux
+ * *******************************/
+
+auto gradf(const MeshField<Scalar,CELL>& p);
+auto gradf(const MeshField<Vector,CELL>& p);
+#define gradi(x) (gradf(x)  / Mesh::cV)
+
 template<class T1, class T2, class T3, class T4>
-void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
+void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
     using namespace Controls;
     using namespace Mesh;
     using namespace DG;
@@ -2791,7 +2985,7 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
             m.ann[i] = ((G) * ( F * (1 - fI[i])) + (1 - G) * (-max(-F,T4(0))));
         }
         #pragma omp parallel for
-        #pragma acc parallel loop copyin(m,flux)
+        #pragma acc parallel loop copyin(m)
         for(Int i = 0; i < gNCells; i++) {
             for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
                 for(Int n = 0; n < DG::NPF; n++) {
@@ -2805,7 +2999,8 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
                 }
             }
         }
-    /*deferred correction*/
+
+    /*deferred correction startring from upwind scheme*/
     } else {
         #pragma omp parallel for
         #pragma acc parallel loop copyin(m,flux)
@@ -2926,6 +3121,53 @@ void numericalFlux(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, con
     }
 }
 
+/***********************************************
+ * Gradient field operation.
+ ***********************************************/
+
+/**
+  Explicit gradient operator
+ */
+#define GRADD(im,jm,km) {                           \
+    Int index1 = INDEX4(ci,im,jm,km);               \
+    Vector dpsi_ij;                                 \
+    DPSI(dpsi_ij,im,jm,km);                         \
+    dpsi_ij = dot(Jin,dpsi_ij);                     \
+    r[index] += mul(dpsi_ij,p[index1]);             \
+}
+
+#define GRAD(T1,T2)                                                                             \
+    inline auto gradf(const MeshField<T2,CELL>& p) {                                            \
+        using namespace Mesh;                                                                   \
+        using namespace DG;                                                                     \
+        MeshField<T1,CELL> r;                                                                   \
+                                                                                                \
+        grad_flux(p,r);                                                                         \
+                                                                                                \
+        if(NPMAT) {                                                                             \
+            _Pragma("omp parallel for")                                                         \
+            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
+            for(Int ci = 0; ci < gBCS;ci++) {                                                   \
+                forEachLgl(ii,jj,kk) {                                                          \
+                    Int index = INDEX4(ci,ii,jj,kk);                                            \
+                    Tensor Jin = Jinv[index] * cV[index];                                       \
+                    forEachLglX(i) GRADD(i,jj,kk);                                              \
+                    forEachLglY(j) if(j != jj) GRADD(ii,j,kk);                                  \
+                    forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);                                  \
+                }                                                                               \
+            }                                                                                   \
+        }                                                                                       \
+                                                                                                \
+        fillBCs(r,false,p.fIndex);                                                              \
+                                                                                                \
+        return r;                                                                               \
+    }
+
+GRAD(Vector,Scalar);
+GRAD(Tensor,Vector);
+#undef GRAD
+#undef GRADD
+
 /**
   Implicit gradient operator
  */
@@ -2948,12 +3190,12 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
-                Tensor Jr = Jinv[index];
+                Tensor Jin = Jinv[index] * cV[index];
 #define GRADD(im,jm,km) {                                   \
     Int index1 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    dpsi_ij = dot(Jr,dpsi_ij);                              \
+    dpsi_ij = dot(Jin,dpsi_ij);                             \
     T2 val = -mul(dpsi_ij,fluxc[index]);                    \
     if(index == index1) {                                   \
         m.ap[index] = -val;                                 \
@@ -2979,7 +3221,7 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         }
     }
     /*compute surface integral*/
-    numericalFlux(m,flux);
+    div_flux_implicit(m,flux);
     
     return m;
 }
@@ -2990,7 +3232,7 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
 //volumetric flux
 template<typename T>
 inline auto flxc(const MeshField<T,CELL>& p) {
-    return p * Mesh::cV;
+    return p;
 }
 
 #ifdef USE_EXPR_TMPL
@@ -3071,12 +3313,12 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         for(Int ci = 0; ci < gBCS;ci++) {
             forEachLgl(ii,jj,kk) {
                 Int index = INDEX4(ci,ii,jj,kk);
-                Tensor Jr = Jinv[index];
+                Tensor Jin = Jinv[index] * cV[index];
 #define DIVD(im,jm,km) {                                    \
     Int index1 = INDEX4(ci,im,jm,km);                       \
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
-    dpsi_ij = dot(Jr,dpsi_ij);                              \
+    dpsi_ij = dot(Jin,dpsi_ij);                             \
     Scalar val = -dot(fluxc[index],dpsi_ij);                \
     if(index == index1) {                                   \
         m.ap[index] = -val;                                 \
@@ -3102,7 +3344,7 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         }
     }
     /*compute surface integral*/
-    numericalFlux(m,flux,muc);
+    div_flux_implicit(m,flux,muc);
     
     return m;
 }
@@ -3262,6 +3504,33 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
     /*end*/
     return m;
 }
+
+/* *******************************
+ * Linearized source term
+ * *******************************/
+
+/** Add implicit source terms*/
+template <class T1, class T2, class T3> 
+auto src(MeshField<T1,CELL>& cF,const MeshField<T3,CELL>& Su, const MeshField<T2,CELL>& Sp) {
+    MeshMatrix<T1,T2,T3> m;
+    m.cF = &cF;
+    m.flags |= (m.SYMMETRIC | m.DIAGONAL);
+    m.ap = -(Sp * Mesh::cV);
+    m.Su = (Su * Mesh::cV);
+    //others
+    m.adg = Scalar(0);
+    m.ano = Scalar(0);
+    m.ann = Scalar(0);
+    return m;
+}
+
+/** Add explicit source term */
+template<class type>
+auto srcf(const MeshField<type,CELL>& Su) {
+    return (Su * Mesh::cV);
+}
+
+#define srci(x) (x)
 
 /* *******************************
  * Temporal derivative
