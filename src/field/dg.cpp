@@ -342,6 +342,7 @@ void DG::init_geom() {
             Int face_o = face_ids[mm];
             Int fi = c[mm];
             Int cj = gFNC[fi];
+            Int fm = gFMC[fi];
             if(cj == ci) 
                 continue;
 
@@ -358,15 +359,10 @@ void DG::init_geom() {
     FO[indf] = index0;                                      \
     FN[indf] = index1;                                      \
     if(index1 >= gBCSfield) {                               \
-        Vector dir = unit(fN[indf]);                        \
-        Scalar d = dot(fC[indf] - cC[index0],dir);          \
-        cC[index1] = cC[index0] + d * dir;                  \
+        cC[index1] = cC[index0];                            \
         cV[index1] = cV[index0];                            \
     }                                                       \
-    Scalar d, denom = dot(cC[index1]-cC[index0],fN[indf]);  \
-    if(equal(denom,Scalar(0))) d = 0.5;                     \
-    else d = dot(fC[indf]-cC[index0],fN[indf]) / denom;     \
-    fC[indf] = cC[index0] + d * (cC[index1] - cC[index0]);  \
+    fC[indf] = (fm <= 1) ? cC[index0] : cC[index1];         \
     fN[indf] *= wgt;                                        \
 }
 
