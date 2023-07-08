@@ -112,8 +112,6 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty, bool extrude) {
             loaded = gMesh.readTextMesh(is);
             found = true;
         }
-        if(extrude)
-            gMesh.ExtrudeMesh();
         path.clear();
         path << gMesh.name << "_" << 0;
         str = path.str();
@@ -130,8 +128,13 @@ bool Mesh::LoadMesh(Int step_, bool remove_empty, bool extrude) {
             cout << "--------------------------------------------\n";
         MP::printH("\t%d vertices\t%d facets\t%d cells\n",
                 gVertices.size(),gFacets.size(),gCells.size());
-        /*initialize mesh*/
+        /*Basic*/
         gMesh.addBoundaryCells();
+        gMesh.fixHexCells();
+        /*extrude*/
+        if(extrude)
+            gMesh.ExtrudeMesh();
+        /*initialize mesh*/
         gMesh.calcGeometry();
         DG::init_poly();
         /* remove empty faces*/

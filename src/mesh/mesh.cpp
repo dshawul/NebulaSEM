@@ -142,153 +142,183 @@ void Mesh::MeshObject::addBoundaryCells() {
 /**
   Fix hexahedral cells for the sake of DG
  */
-void Mesh::MeshObject::fixHexCell(Cell& c) {
-#ifdef RDEBUG
-    using namespace Util;
-    Cell co;
-    forEach(c,i)
-        co.push_back(c[i]);
-    bool print = (co.size() > 6);
-    if(print) {
-        std::cout << "======================" << std::endl;
-        std::cout << co << std::endl;
-        forEach(co,i) {
-            Facet& f = mFacets[co[i]];
-            std::cout << "Facet " << co[i] << ": " << f << std::endl;
-            forEach(f,j)
-                std::cout << mVertices[f[j]] << std::endl;
-        }
-        std::cout << std::endl;
-    }
-#endif
-    /*Group coplanar faces*/
-    std::vector<int> groupId(6);
-    Cells cng;
-    Facets fng;
-    for(Int i = 0; i < 6; i++) {
-        IntVector indices;
-        Cell ci;
+void Mesh::MeshObject::fixHexCells() {
+    mFMC.assign(mFacets.size(),0);
+    mFaceID.clear();
 
-        ci.push_back(c[0]);
-        indices.push_back(0);
-        forEachS(c,j,1) {
-            bool coplanar = almostCoplanarFaces(mFacets[c[0]],mFacets[c[j]]);
-            if(coplanar) {
-                ci.push_back(c[j]);
-                indices.push_back(j);
+    forEach(mCells,i) {
+        Cell& c = mCells[i];
+        if(c.size() == 1) {
+            /*boundary cell*/
+            IntVector b;
+            b.push_back(0);
+            mFaceID.push_back(b);
+        } else {
+            /*hex cells with >=6 faces*/
+#ifdef RDEBUG
+            using namespace Util;
+            Cell co;
+            forEach(c,i)
+                co.push_back(c[i]);
+            bool print = (co.size() > 6);
+            if(print) {
+                std::cout << "======================" << std::endl;
+                std::cout << co << std::endl;
+                forEach(co,i) {
+                    Facet& f = mFacets[co[i]];
+                    std::cout << "Facet " << co[i] << ": " << f << std::endl;
+                    forEach(f,j)
+                        std::cout << mVertices[f[j]] << std::endl;
+                }
+                std::cout << std::endl;
             }
-        }
-        erase_indices(c,indices);
-        cng.push_back(ci);
-
-        Facet fn;
-        forEach(ci,j) {
-            Facet& f = mFacets[ci[j]];
-            forEach(f,k)
-                fn.push_back(f[k]);
-        }
-        fng.push_back(fn);
-        groupId[i] = -1;
-    }
-#ifdef RDEBUG
-    if(print) {
-        std::cout << "cng: " << cng << std::endl;
-        std::cout << "fng: " << fng << std::endl;
-    }
 #endif
-
-    /*order faces so that 0,1 are opposite one another
-    same for 2,3 and 4,5*/
-    Facet& f0 = fng[0];
-    forEach(fng,j) {
-        if(groupId[j] >= 0) continue;
-
-        Facet& fj = fng[j];
-        Int id = j;
-        if(j >= 1) {
-            //set face ids
-            int local_id = -1;
-            do {
-                //xz-0 face 2
-                Int count = 0;
-                forEach(fj, k) {
-                    if(fj[k] == f0[0] ||
-                       fj[k] == f0[1])
-                        count++;
+            /*Group coplanar faces*/
+            std::vector<int> groupId(6);
+            Cells cng;
+            Facets fng;
+            for(Int i = 0; i < 6; i++) {
+                IntVector indices;
+                Cell ci;
+            
+                ci.push_back(c[0]);
+                indices.push_back(0);
+                forEachS(c,j,1) {
+                    bool coplanar = coplanarFaces(mFacets[c[0]],mFacets[c[j]]);
+                    if(coplanar) {
+                        ci.push_back(c[j]);
+                        indices.push_back(j);
+                    }
                 }
-                if(count >= 2) {
-                    local_id = 2;
-                    break;
+                erase_indices(c,indices);
+                cng.push_back(ci);
+            
+                Facet fn;
+                forEach(ci,j) {
+                    Facet& f = mFacets[ci[j]];
+                    forEach(f,k)
+                        fn.push_back(f[k]);
                 }
-                //yz-0 face 4
-                count = 0;
-                forEach(fj, k) {
-                    if(fj[k] == f0[0] ||
-                       fj[k] == f0[f0.size() - 1])
-                        count++;
+                fng.push_back(fn);
+                groupId[i] = -1;
+            }
+#ifdef RDEBUG
+            if(print) {
+                std::cout << "cng: " << cng << std::endl;
+                std::cout << "fng: " << fng << std::endl;
+            }
+#endif
+            
+            /*order faces so that 0,1 are opposite one another
+            same for 2,3 and 4,5*/
+            Facet& f0 = fng[0];
+            forEach(fng,j) {
+                if(groupId[j] >= 0) continue;
+            
+                Facet& fj = fng[j];
+                Int id = j;
+                if(j >= 1) {
+                    //set face ids
+                    int local_id = -1;
+                    do {
+                        //xz-0 face 2
+                        Int count = 0;
+                        forEach(fj, k) {
+                            if(fj[k] == f0[0] ||
+                               fj[k] == f0[1])
+                                count++;
+                        }
+                        if(count >= 2) {
+                            local_id = 2;
+                            break;
+                        }
+                        //yz-0 face 4
+                        count = 0;
+                        forEach(fj, k) {
+                            if(fj[k] == f0[0] ||
+                               fj[k] == f0[f0.size() - 1])
+                                count++;
+                        }
+                        if(count >= 2) {
+                            local_id = 4;
+                            break;
+                        }
+                    } while(0);
+                    if(local_id < 0) continue;
+                    id = local_id;
                 }
-                if(count >= 2) {
-                    local_id = 4;
-                    break;
-                }
-            } while(0);
-            if(local_id < 0) continue;
-            id = local_id;
-        }
-
-        groupId[j] = id;
-        forEach(fng,k) {
-            if(groupId[k] >= 0) continue;
-
-            Facet& fk = fng[k];
-            bool has_shared = false;
-            forEach(fj, j1) {
-                forEach(fk, k1) {
-                    if(fj[j1] == fk[k1]) {
-                        has_shared = true;
+            
+                groupId[j] = id;
+                forEach(fng,k) {
+                    if(groupId[k] >= 0) continue;
+            
+                    Facet& fk = fng[k];
+                    bool has_shared = false;
+                    forEach(fj, j1) {
+                        forEach(fk, k1) {
+                            if(fj[j1] == fk[k1]) {
+                                has_shared = true;
+                                break;
+                            }
+                        }
+                    }
+                    if(!has_shared) {
+                        groupId[k] = (groupId[j] ^ 1);
                         break;
                     }
                 }
             }
-            if(!has_shared) {
-                groupId[k] = (groupId[j] ^ 1);
-                break;
-            }
-        }
-    }
-
+            
 #ifdef RDEBUG
-    if(print) {
-        std::cout << "groupId: " << groupId << std::endl;
-    }
-#endif
-    /*for new cell and face IDs*/
-    IntVector b;
-    for(Int idx = 0; idx < 6; idx++) {
-        for(Int i = 0; i < 6; i++) {
-            Int id = groupId[i];
-            if(id != idx) continue;
-
-            Cell& cn = cng[i];
-            forEach(cn,j) {
-                c.push_back(cn[j]);
-                b.push_back(id);
+            if(print) {
+                std::cout << "groupId: " << groupId << std::endl;
             }
-        }
-    }
-    mFaceID.push_back(b);
-
-#ifdef RDEBUG
-    if(print) {
-        std::cout << "faceId: " << b << std::endl;
-        std::cout << "cell: " << c << std::endl;
-        std::cout << "======================" << std::endl;
-        if(!equalSet(co,c)) {
-            std::cout << "fixHexCell failed" << std::endl;
-            exit(0);
-        }
-    }
 #endif
+            /*for new cell and face IDs*/
+            IntVector b;
+            for(Int idx = 0; idx < 6; idx++) {
+                for(Int i = 0; i < 6; i++) {
+                    Int id = groupId[i];
+                    if(id != idx) continue;
+            
+                    Cell& cn = cng[i];
+                    forEach(cn,j) {
+                        c.push_back(cn[j]);
+                        b.push_back(id);
+                    }
+                }
+            }
+            mFaceID.push_back(b);
+            
+#ifdef RDEBUG
+            if(print) {
+                std::cout << "faceId: " << b << std::endl;
+                std::cout << "cell: " << c << std::endl;
+                std::cout << "======================" << std::endl;
+                if(!equalSet(co,c)) {
+                    std::cout << "fixHexCell failed" << std::endl;
+                    exit(0);
+                }
+            }
+#endif
+       }
+
+       /*for non-conformal*/
+       if(c.size() > 6) {
+           IntVector& fid = mFaceID[i];
+           forEach(c,j) {
+               Int f = c[j];
+               Int cnt = std::count(fid.begin(), fid.end(), fid[j]);
+               if(cnt > 1) {
+                   if(mFOC[f] == i)
+                       mFMC[f] = 2;
+                   else
+                       mFMC[f] = 1;
+               }
+           }
+       }
+
+    }
 }
 /**
   Calculate geometric information
@@ -301,21 +331,6 @@ void Mesh::MeshObject::calcGeometry() {
     mFN.assign(mFacets.size(),Vector(0));
     mCV.assign(mCells.size(),Scalar(0));
     mReversed.assign(mFacets.size(),false);
-
-    /*fix Hex cells for DG*/
-    {
-        mFaceID.clear();
-        forEach(mCells,i) {
-            Cell& c = mCells[i];
-            if(c.size() == 1) {
-                IntVector b;
-                b.push_back(0);
-                mFaceID.push_back(b);
-            } else {
-                fixHexCell(c);
-            }
-        }
-    }
 
     /* face centre: centroid of face vertices*/
     forEach(mFacets,i) {
@@ -521,7 +536,7 @@ Int Mesh::MeshObject::removeUnusedVertices(Int ivBegin) {
  Extrude mesh
  */
 void Mesh::MeshObject::ExtrudeMesh() {
-     if(is_spherical) {
+    if(is_spherical) {
         if(mVerticesNoExtrude.size()) {
             forEach(mVerticesNoExtrude,i)
                 mVertices[i] = mVerticesNoExtrude[i];
@@ -547,7 +562,7 @@ void Mesh::MeshObject::ExtrudeMesh() {
            constexpr Scalar radiuso = 6381220;
            v = unit(v) * ((f) * radiusi + (1-f) * radiuso);
         }
-     }
+    }
 }
 /** 
   Break edges of faces that are not set for refinement 
@@ -678,37 +693,6 @@ bool Mesh::MeshObject::coplanarFaces(const Facet& f1,const Facet& f2) {
         Vector v = mVertices[f2[1]] - mVertices[f1[0]];
         e = dot(N1,v);
         if(equal(e,Scalar(0)))
-            return true;
-    }
-    return false;
-}
-/**
-  Check if faces are almost co-planar
- */
-bool Mesh::MeshObject::almostCoplanarFaces(const Facet& f1,const Facet& f2) {
-    Vector N1,N2;
-    Scalar dt,angle;
-
-    calcUnitNormal(f1,N1);
-    calcUnitNormal(f2,N2);
-
-    dt = dot(N1,N2);
-    if(dt > 1) dt = 1;
-    else if(dt < -1) dt = -1;
-    angle = acos(dt);
-
-    if(angle < Constants::PI / 32 ||
-       angle >= Constants::PI - Constants::PI / 32) {
-
-        Vector v = unit(mVertices[f2[1]] - mVertices[f1[0]]);
-
-        dt = dot(N1,v);
-        if(dt > 1) dt = 1;
-        else if(dt < -1) dt = -1;
-        angle = acos(dt);
-
-        if(angle <= Constants::PI / 2 + Constants::PI / 32 &&
-           angle >= Constants::PI / 2 - Constants::PI / 32)
             return true;
     }
     return false;
