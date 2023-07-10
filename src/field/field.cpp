@@ -617,7 +617,8 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
         qoi = pow(qoi,0.25);
         qoi *= dx;
 
-        fillBCs(qoi);
+        forEachS(qoi,i,Mesh::gBCSfield)
+            qoi[i] = 0;
         Scalar maxq = reduce_max(qoi);
         qoi /= maxq;
     }
@@ -662,7 +663,7 @@ void Prepare::refineMesh(Int step) {
                 q += qj * cV[index];
                 vol += cV[index];
             }
-            q /= (0.5 * vol);
+            q /= vol;
 
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {

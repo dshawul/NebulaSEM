@@ -64,7 +64,8 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
 
 /** Test if two Int vectors are equal. O(n^2) complexity but arrays
   are small since it is used for edges/faces/cells*/
-FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
+template<bool subset = false>
+bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
     forEach(v1,i) {
         bool found = false;
         forEach(v2,j) {
@@ -76,7 +77,10 @@ FORCEINLINE bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
         if(!found)
             return false;
     }
-    return true;
+    if(subset)
+        return true;
+    else
+        return (v1.size() == v2.size());
 }
 
 namespace Util {
