@@ -655,11 +655,14 @@ void Prepare::refineMesh(Int step) {
         rCells.assign(gBCS,0);
         for(Int i = 0;i < gBCS;i++) {
 
-            Scalar q = 0.0;
+            Scalar q = 0.0, vol = 0;;
             for(Int j = 0; j < DG::NP; j++) {
-                Scalar qj = qoi[i * DG::NP + j];
-                if(qj > q) q = qj;
+                Int index = i * DG::NP + j;
+                Scalar qj = qoi[index];
+                q += qj * cV[index];
+                vol += cV[index];
             }
+            q /= (0.5 * vol);
 
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {

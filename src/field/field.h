@@ -284,8 +284,8 @@ namespace Controls {
     enum Scheme{
         CDS,    /**< Central difference */
         UDS,    /**< Upwind difference */
-        HYBRID, /**< Hybrid scheme that switches b/n CDS/UDS */
         BLENDED,/**< Blended CDS/UDS difference */
+        HYBRID, /**< Hybrid scheme that switches b/n CDS/UDS */
         LUD,    /**< Linear upwind */
         CDSS,   /**< Stabilized central difference */
         MUSCL,  /**< Monotonic upstream centered */
@@ -2858,6 +2858,33 @@ auto sum(const MeshField<type,FACET>& fF) {
 }
 
 template<class type,class type2>
+auto sum_flux(const MeshField<type,FACET>& fF, const MeshField<type2,FACET>& flux) {
+    using namespace Mesh;
+    MeshField<type,CELL> cF;
+    cF = type(0);
+
+    MeshField<type,FACET> fFO, fFN;
+    gather_non_conforming(fF,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN)
+    for(Int i = 0; i < gNCells; i++) {
+        for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
+            for(Int n = 0; n < DG::NPF; n++) {
+                Int k = allFaces[f] * DG::NPF + n;
+                Int c1 = FO[k];
+                Int c2 = FN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
+                    cF[c1] += flux[k] * fFO[k];
+                else if(c2 < gALLfield)
+                    cF[c2] -= flux[k] * fFN[k];
+            }
+        }
+    }
+    return cF;
+}
+
+template<class type,class type2>
 void grad_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
     using namespace Mesh;
     MeshField<type,FACET> fF = cds(p);
@@ -2932,27 +2959,16 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
     using namespace Mesh;
     using namespace DG;
 
-    /*compute surface integral*/
     MeshField<T1,CELL>& cF = *m.cF;
 
-    bool isImplicit = (
-            convection_scheme == CDS ||
-            convection_scheme == UDS ||
-            convection_scheme == BLENDED ||
-            convection_scheme == HYBRID );
-
-    if(isImplicit) {
-        ScalarFacetField gamma;
-
+    /*compute blending factor*/
+    ScalarFacetField gamma;
+    {
         if(convection_scheme == CDS) 
             gamma = Scalar(1);
-        else if(convection_scheme == UDS) 
-            gamma = Scalar(0);
         else if(convection_scheme == BLENDED) 
             gamma = Scalar(blend_factor);
-        else if(muc == 0)
-            gamma = Scalar(1);
-        else if(convection_scheme == HYBRID) {
+        else if(convection_scheme == HYBRID && muc) {
             MeshField<T4,FACET> mu = cds(*muc);
             #pragma omp parallel for
             #pragma acc parallel loop copyin(m,flux)
@@ -2974,8 +2990,13 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
                     }
                 }
             }
-        }
+        /*UDS, muc==0, and all other schemes start from upwind*/
+        } else
+            gamma = Scalar(0);
+    }
 
+    /*Include implicit terms for FV*/
+    if(!DG::NPMAT) {
         #pragma omp parallel for
         #pragma acc parallel loop copyin(m,flux)
         forEach(flux,i) {
@@ -3000,124 +3021,107 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
             }
         }
 
-    /*deferred correction startring from upwind scheme*/
-    } else {
-        #pragma omp parallel for
-        #pragma acc parallel loop copyin(m,flux)
-        forEach(flux,i) {
-            T4 F = flux[i];
-            m.ano[i] = -max( F,T4(0));
-            m.ann[i] = -max(-F,T4(0));
-        }
-        #pragma omp parallel for
-        #pragma acc parallel loop copyin(m,flux)
-        for(Int i = 0; i < gNCells; i++) {
-            for(Int f = faceIndices[0][i]; f < faceIndices[1][i]; f++) {
-                for(Int n = 0; n < DG::NPF; n++) {
-                    Int k = allFaces[f] * DG::NPF + n;
-                    Int c1 = FO[k];
-                    Int c2 = FN[k];
-                    if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                        m.ap[c1] += m.ano[k];
-                    else if(c2 < gALLfield)
-                        m.ap[c2] += m.ann[k];
+        /*deferred correction startring from upwind scheme*/
+        if(convection_scheme > HYBRID) {
+            MeshField<T1,FACET> corr;
+            if(convection_scheme == CDSS) {
+                corr = cds(cF) - uds(cF,flux);
+            } else if(convection_scheme == LUD) {
+                VectorFacetField R = fC - uds(cC,flux);
+                corr = dot(uds(gradi(cF),flux),R);
+            } else if(convection_scheme == MUSCL) {
+                VectorFacetField R = fC - uds(cC,flux);
+                corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
+                corr += (1 - blend_factor) * (dot(uds(gradi(cF),flux),R));
+            } else {
+                /**
+                TVD schemes
+                ~~~~~~~~~~~
+                Reference:
+                    M.S Darwish and F Moukalled "TVD schemes for unstructured grids"
+                    Versteeg and Malaskara
+                Description:
+                    phi = phiU + psi(r) * [(phiD - phiC) * (1 - fi)]
+                    Schemes
+                        psi(r) = 0 =>UDS
+                        psi(r) = 1 =>CDS
+                    R is calculated as ratio of upwind and downwind gradient
+                        r = phiDC / phiCU
+                    Further modification to unstructured grid to better fit LUD scheme
+                        r = (phiDC / phiCU) * (fi / (1 - fi))
+                 */
+
+                /*calculate r*/
+                MeshField<T1,FACET> q,r,phiDC,phiCU;
+                ScalarFacetField uFI;
+                {
+                    MeshField<T4,FACET> nflux = T4(0)-flux;
+                    phiDC = uds(cF,nflux) - uds(cF,flux);
+                    #pragma omp parallel for
+                    #pragma acc parallel loop
+                    forEach(phiDC,i) {
+                        Scalar G;
+                        if(dot(flux[i],T4(1)) >= 0) G = fI[i];
+                        else G = 1 - fI[i];
+                        uFI[i] = G;
+                    }
+                    /*Bruner's or Darwish way of calculating r*/
+                    if(TVDbruner) {
+                        VectorFacetField R = fC - uds(cC,flux);
+                        phiCU = 2 * (dot(uds(gradi(cF),flux),R));
+                    } else {
+                        VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
+                        phiCU = 2 * (dot(uds(gradi(cF),flux),R)) - phiDC;
+                    }
+                    /*end*/
                 }
-            }
-        }
-
-        MeshField<T1,FACET> corr;
-        if(convection_scheme == CDSS) {
-            corr = cds(cF) - uds(cF,flux);
-        } else if(convection_scheme == LUD) {
-            VectorFacetField R = fC - uds(cC,flux);
-            corr = dot(uds(gradi(cF),flux),R);
-        } else if(convection_scheme == MUSCL) {
-            VectorFacetField R = fC - uds(cC,flux);
-            corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
-            corr += (1 - blend_factor) * (dot(uds(gradi(cF),flux),R));
-        } else {
-            /**
-            TVD schemes
-            ~~~~~~~~~~~
-            Reference:
-                M.S Darwish and F Moukalled "TVD schemes for unstructured grids"
-                Versteeg and Malaskara
-            Description:
-                phi = phiU + psi(r) * [(phiD - phiC) * (1 - fi)]
-                Schemes
-                    psi(r) = 0 =>UDS
-                    psi(r) = 1 =>CDS
-                R is calculated as ratio of upwind and downwind gradient
-                    r = phiDC / phiCU
-                Further modification to unstructured grid to better fit LUD scheme
-                    r = (phiDC / phiCU) * (fi / (1 - fi))
-             */
-
-            /*calculate r*/
-            MeshField<T1,FACET> q,r,phiDC,phiCU;
-            ScalarFacetField uFI;
-            {
-                MeshField<T4,FACET> nflux = T4(0)-flux;
-                phiDC = uds(cF,nflux) - uds(cF,flux);
+                r = (phiCU / phiDC) * (uFI / (1 - uFI));
                 #pragma omp parallel for
                 #pragma acc parallel loop
                 forEach(phiDC,i) {
-                    Scalar G;
-                    if(dot(flux[i],T4(1)) >= 0) G = fI[i];
-                    else G = 1 - fI[i];
-                    uFI[i] = G;
+                    if(equal(phiDC[i] * (1 - uFI[i]),T1(0)))
+                        r[i] = T1(0);
                 }
-                /*Bruner's or Darwish way of calculating r*/
-                if(TVDbruner) {
-                    VectorFacetField R = fC - uds(cC,flux);
-                    phiCU = 2 * (dot(uds(gradi(cF),flux),R));
-                } else {
-                    VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
-                    phiCU = 2 * (dot(uds(gradi(cF),flux),R)) - phiDC;
+                /*TVD schemes*/
+                if(convection_scheme == VANLEER) {
+                    q = (r+fabs(r)) / (1+r);
+                } else if(convection_scheme == VANALBADA) {
+                    q = (r+r*r) / (1+r*r);
+                } else if(convection_scheme == MINMOD) {
+                    q = max(T1(0),min(r,T1(1)));
+                } else if(convection_scheme == SUPERBEE) {
+                    q = max(min(r,T1(2)),min(2*r,T1(1)));
+                    q = max(q,T1(0));
+                } else if(convection_scheme == SWEBY) {
+                    Scalar beta = 2;
+                    q = max(min(r,T1(beta)),min(beta*r,T1(1)));
+                    q = max(q,T1(0));
+                } else if(convection_scheme == QUICKL) {
+                    q = min(2*r,(3+r)/4);
+                    q = min(q,T1(2));
+                    q = max(q,T1(0));
+                } else if(convection_scheme == UMIST) {
+                    q = min(2*r,(3+r)/4);
+                    q = min(q,(1+3*r)/4);
+                    q = min(q,T1(2));
+                    q = max(q,T1(0));
+                } else if(convection_scheme == QUICK) {
+                    q = (3+r)/4;
+                } else if(convection_scheme == DDS) {
+                    q = 2;
+                } else if(convection_scheme == FROMM) {
+                    q = (1+r)/2;
                 }
+                corr = q * phiDC * (1 - uFI);
                 /*end*/
             }
-            r = (phiCU / phiDC) * (uFI / (1 - uFI));
-            #pragma omp parallel for
-            #pragma acc parallel loop
-            forEach(phiDC,i) {
-                if(equal(phiDC[i] * (1 - uFI[i]),T1(0)))
-                    r[i] = T1(0);
-            }
-            /*TVD schemes*/
-            if(convection_scheme == VANLEER) {
-                q = (r+fabs(r)) / (1+r);
-            } else if(convection_scheme == VANALBADA) {
-                q = (r+r*r) / (1+r*r);
-            } else if(convection_scheme == MINMOD) {
-                q = max(T1(0),min(r,T1(1)));
-            } else if(convection_scheme == SUPERBEE) {
-                q = max(min(r,T1(2)),min(2*r,T1(1)));
-                q = max(q,T1(0));
-            } else if(convection_scheme == SWEBY) {
-                Scalar beta = 2;
-                q = max(min(r,T1(beta)),min(beta*r,T1(1)));
-                q = max(q,T1(0));
-            } else if(convection_scheme == QUICKL) {
-                q = min(2*r,(3+r)/4);
-                q = min(q,T1(2));
-                q = max(q,T1(0));
-            } else if(convection_scheme == UMIST) {
-                q = min(2*r,(3+r)/4);
-                q = min(q,(1+3*r)/4);
-                q = min(q,T1(2));
-                q = max(q,T1(0));
-            } else if(convection_scheme == QUICK) {
-                q = (3+r)/4;
-            } else if(convection_scheme == DDS) {
-                q = 2;
-            } else if(convection_scheme == FROMM) {
-                q = (1+r)/2;
-            }
-            corr = q * phiDC * (1 - uFI);
-            /*end*/
+            m.Su = sum_flux(corr,flux);
         }
-        m.Su = sum(flux * corr);
+    /* only explicit for DG */
+    } else {
+        MeshField<T1,FACET> fF;
+        fF = gamma * cds(cF) + (Scalar(1.0) - gamma) * uds(cF,flux);
+        m.Su = sum_flux(fF,flux);
     }
 }
 
