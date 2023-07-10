@@ -18,7 +18,7 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     40000
+    end_step                     30000
     write_interval               2000
     amr_step                     1
     dt                           0.001
@@ -51,8 +51,8 @@ general
 ############################
 #  DG polynomial order
 ############################
-    npx       0
-    npy       0
+    npx       4
+    npy       4
     npz       0
 }
 ############################
@@ -60,7 +60,7 @@ general
 ############################
 prepare
 {
-    fields    2 { U T }
+    fields    5 { U T rCells cCells rDepth }
 }
 
 decomposition
@@ -72,8 +72,8 @@ refinement
 {
     direction       0 0 1
     field           T
-    field_min       0.4
-    field_max       0.9
+    field_min       0.0
+    field_max       0.6
     limit           100000
 }
 
