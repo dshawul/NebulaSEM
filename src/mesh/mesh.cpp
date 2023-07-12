@@ -1580,7 +1580,17 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
      *        COARSENING
      *
      *************************/
+#ifdef RDEBUG
+    cout << "=======================================\n";
+    IntVector cCellsL;
+    forEach(cCells,i)
+        if(cCells[i]) cCellsL.push_back(i);
+    cout << "Coarsening " << cCellsL << endl;
+#endif
+
     {
+        Int oldgBCS = mCells.size();
+
         /*coarsen mesh*/
         IntVector delTree;
         forEach(mAmrTree,i) {
@@ -1622,6 +1632,17 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                 }
             }
         }
+
+        /*update boundary neighbors*/
+        {
+            Int inc = mCells.size() - oldgBCS;
+            forEachIt(mBoundaries,it) {
+                IntVector& mB = it->second;
+                forEach(mB,i)
+                    mFNC[mB[i]] += inc;
+            }
+        }
+
         /*merge facets*/
         forEach(coarseMap,i) {
             Int nchildren = coarseMap[i];
@@ -1630,7 +1651,11 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
 
 #ifdef RDEBUG
             cout << "-----------------------------" << endl;
-            cout << "Coarsening faces of cell " << ci << " cC " << mCC[ci]  << endl;
+            cout << "Coarsening faces of cell " << ci << " cC " << mCC[coarseMap[i + 2]]  << endl;
+            cout << "children are: ";
+            for(Int j = 0; j < nchildren; j++)
+                cout << coarseMap[i + 2 + j] << " ";
+            cout << std::endl;
             cout << c1 << std::endl;
 #endif
 
@@ -1641,7 +1666,12 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                 Int o1 = (mFOC[f1] == ci) ? mFNC[f1] : mFOC[f1];
                 if(o1 >= mCells.size()) {
                     Vector u = unit(mFN[f1]);
-                    o1 = round(Scalar(1000.0) * u[2] + Scalar(100.0) * u[1] + Scalar(10.0) * u[0]);
+                    Vector v0 = mVertices[mFacets[f1][1]];
+                    Scalar d = dot(v0,u);
+                    o1 = round(Scalar(10000.0) * d +
+                               Scalar(1000.0) * fabs(u[2]) +
+                               Scalar(100.0) * fabs(u[1]) +
+                               Scalar(10.0) * fabs(u[0]));
                     o1 += Int(3 * (Constants::MAX_INT >> 2));
                 }
                 IntVector& val = sharedMap[o1];
