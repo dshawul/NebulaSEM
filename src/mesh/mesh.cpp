@@ -1092,7 +1092,11 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
                 fn.push_back(fci);
 
             /*rotate*/
-            std::rotate(fn.rbegin(), fn.rbegin() + rot, fn.rend());
+            if(rot == f.size() - 1) {
+                auto it = std::find(fn.rbegin(), fn.rend(), f[0]);
+                std::rotate(fn.begin(), it.base() - 1, fn.end());
+            } else
+                std::rotate(fn.rbegin(), fn.rbegin() + rot, fn.rend());
         
             mf.push_back(fn);
         }
