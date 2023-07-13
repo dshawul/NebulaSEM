@@ -788,6 +788,10 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
     for(Int i = a[1];i < f1.size();i++)
         f.push_back(f1[i]);
 
+    //make sure first vertex is a corner
+    while(pointInLine(mVertices[f[0]],mVertices[f[f.size() - 1]], mVertices[f[1]]))
+        std::rotate(f.begin(),f.begin() + 1, f.end());
+
     return true;
 }
 /**
