@@ -132,7 +132,7 @@ void euler(std::istream& input) {
 
             /*U-equation*/
             {
-                VectorCellField Sc = -gradi(p - p_ref);
+                VectorCellField Sc = -gradf(p - p_ref,true);
                 /*buoyancy*/
                 if(buoyancy)
                     Sc += (rho - rho_ref) * g;

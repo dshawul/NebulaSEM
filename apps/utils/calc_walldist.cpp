@@ -14,7 +14,7 @@ void Mesh::calc_walldist(Int step, Int n_ORTHO) {
     }
     /*wall distance*/
     {
-        const VectorCellField g = gradi(phi);
+        const VectorCellField g = gradf(phi,true);
         yWall = sqrt((g & g) + 2 * phi) - mag(g);
     }
     /*write it*/

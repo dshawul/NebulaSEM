@@ -65,7 +65,7 @@ void potential(std::istream& input) {
                 Solve(lap(p, one, true) == divU);
 
             /*correct velocity*/
-            U -= gradi(p);
+            U -= gradf(p,true);
             applyExplicitBCs(U, true);
         }
     }

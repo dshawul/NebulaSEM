@@ -1291,6 +1291,18 @@ DEFINE_BINARY_OP2_O(odot2,dot,STensor,Vector,Vector)
 DEFINE_BINARY_OP2_O(odot3,dot,Tensor,Vector,Vector)
 //@}
 
+#ifdef USE_EXPR_TMPL
+template<typename T, typename A>
+auto eval_expr(const DVExpr<T,A>& expr) {
+    return MeshField<T,CELL>(expr);
+}
+#else
+template<typename T, ENTITY E>
+auto eval_expr(const MeshField<T,E>& f) {
+    return f;
+}
+#endif
+
 /* ***************************************
  * global mesh fields
  * ***************************************/
@@ -2590,7 +2602,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
 
 /** Fill boundary values from internals */
 template<class T>
-auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bind = 0) {
+void fillBCs(MeshField<T,CELL>& cF, bool sync = false, Int bind = 0) {
     using namespace Mesh;
     #pragma omp parallel for
     #pragma acc parallel loop copyin(cF,gBCS,gNCells)
@@ -2635,7 +2647,6 @@ auto& fillBCs(const MeshField<T,CELL>& cF, const bool sync = false, const Int bi
         comm.send();
         comm.recv();
     }
-    return cF;
 }
 
 /** Calculated dirichlet boundary condition */
@@ -2857,8 +2868,8 @@ auto sum(const MeshField<type,FACET>& fF) {
     return cF;
 }
 
-template<class type,class type2>
-auto sum_flux(const MeshField<type,FACET>& fF, const MeshField<type2,FACET>& flux) {
+template<bool strong=true,class type,class type2>
+auto sum_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF, const MeshField<type2,FACET>& flux) {
     using namespace Mesh;
     MeshField<type,CELL> cF;
     cF = type(0);
@@ -2874,21 +2885,27 @@ auto sum_flux(const MeshField<type,FACET>& fF, const MeshField<type2,FACET>& flu
                 Int k = allFaces[f] * DG::NPF + n;
                 Int c1 = FO[k];
                 Int c2 = FN[k];
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                    cF[c1] += flux[k] * fFO[k];
-                else if(c2 < gALLfield)
-                    cF[c2] -= flux[k] * fFN[k];
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP) {
+                    if(strong)
+                        cF[c1] += flux[k] * (fFO[k] - p[c1]);
+                    else
+                        cF[c1] += flux[k] * fFO[k];
+                } else if(c2 < gALLfield) {
+                    if(strong)
+                        cF[c2] -= flux[k] * (fFN[k] - p[c2]);
+                    else
+                        cF[c2] -= flux[k] * fFN[k];
+                }
             }
         }
     }
     return cF;
 }
 
-template<class type,class type2>
-void grad_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
+template<bool strong=true,class type>
+auto grad_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF) {
     using namespace Mesh;
-    MeshField<type,FACET> fF = cds(p);
-    cF = type2(0);
+    auto cF = eval_expr(mul(VectorCellField(Vector(0.0)),p));
 
     MeshField<type,FACET> fFO, fFN;
     gather_non_conforming(fF,fFO,fFN);
@@ -2901,21 +2918,29 @@ void grad_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
                 Int k = allFaces[f] * DG::NPF + n;  
                 Int c1 = FO[k];
                 Int c2 = FN[k];
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                    cF[c1] += mul(fN[k],(fFO[k] - p[c1]));
-                else if(c2 < gALLfield)
-                    cF[c2] -= mul(fN[k],(fFN[k] - p[c2]));
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP) {
+                    if(strong)
+                        cF[c1] += mul(fN[k],(fFO[k] - p[c1]));
+                    else
+                        cF[c1] += mul(fN[k],fFO[k]);
+                } else if(c2 < gALLfield) {
+                    if(strong)
+                        cF[c2] -= mul(fN[k],(fFN[k] - p[c2]));
+                    else
+                        cF[c2] -= mul(fN[k],fFN[k]);
+                }
             }
         }
     }    
+
+    return cF;
 }
 
 
-template<class type,class type2>
-void div_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
+template<bool strong=true,class type>
+auto div_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF) {
     using namespace Mesh;
-    MeshField<type,FACET> fF = cds(p);
-    cF = type2(0);
+    auto cF = eval_expr(dot(p,VectorCellField(Vector(0.0))));
 
     MeshField<type,FACET> fFO, fFN;
     gather_non_conforming(fF,fFO,fFN);
@@ -2928,13 +2953,22 @@ void div_flux(const MeshField<type,CELL>& p, MeshField<type2,CELL>& cF) {
                 Int k = allFaces[f] * DG::NPF + n;  
                 Int c1 = FO[k];
                 Int c2 = FN[k];
-                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP)
-                    cF[c1] += dot((fFO[k] - p[c1]),fN[k]);
-                else if(c2 < gALLfield)
-                    cF[c2] -= dot((fFN[k] - p[c2]),fN[k]);
+                if(c1 >= i * DG::NP && c1 < (i + 1) * DG::NP) {
+                    if(strong)
+                        cF[c1] += dot((fFO[k] - p[c1]),fN[k]);
+                    else
+                        cF[c1] += dot(fFO[k],fN[k]);
+                } else if(c2 < gALLfield) {
+                    if(strong)
+                        cF[c2] -= dot((fFN[k] - p[c2]),fN[k]);
+                    else
+                        cF[c2] -= dot(fFN[k],fN[k]);
+                }
             }   
         }   
     }        
+
+    return cF;
 }
 
 
@@ -2949,11 +2983,7 @@ auto sum(const DVExpr<type,A>& expr) {
  * Implicit div flux
  * *******************************/
 
-auto gradf(const MeshField<Scalar,CELL>& p);
-auto gradf(const MeshField<Vector,CELL>& p);
-#define gradi(x) (gradf(x)  / Mesh::cV)
-
-template<class T1, class T2, class T3, class T4>
+template<bool strong=false,class T1, class T2, class T3, class T4>
 void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
     using namespace Controls;
     using namespace Mesh;
@@ -3028,11 +3058,11 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
                 corr = cds(cF) - uds(cF,flux);
             } else if(convection_scheme == LUD) {
                 VectorFacetField R = fC - uds(cC,flux);
-                corr = dot(uds(gradi(cF),flux),R);
+                corr = dot(uds(gradf(cF,true),flux),R);
             } else if(convection_scheme == MUSCL) {
                 VectorFacetField R = fC - uds(cC,flux);
                 corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
-                corr += (1 - blend_factor) * (dot(uds(gradi(cF),flux),R));
+                corr += (1 - blend_factor) * (dot(uds(gradf(cF,true),flux),R));
             } else {
                 /**
                 TVD schemes
@@ -3068,10 +3098,10 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
                     /*Bruner's or Darwish way of calculating r*/
                     if(TVDbruner) {
                         VectorFacetField R = fC - uds(cC,flux);
-                        phiCU = 2 * (dot(uds(gradi(cF),flux),R));
+                        phiCU = 2 * (dot(uds(gradf(cF,true),flux),R));
                     } else {
                         VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
-                        phiCU = 2 * (dot(uds(gradi(cF),flux),R)) - phiDC;
+                        phiCU = 2 * (dot(uds(gradf(cF,true),flux),R)) - phiDC;
                     }
                     /*end*/
                 }
@@ -3115,13 +3145,13 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
                 corr = q * phiDC * (1 - uFI);
                 /*end*/
             }
-            m.Su = sum_flux(corr,flux);
+            m.Su = sum_flux<strong>(cF,corr,flux);
         }
     /* only explicit for DG */
     } else {
         MeshField<T1,FACET> fF;
         fF = gamma * cds(cF) + (Scalar(1.0) - gamma) * uds(cF,flux);
-        m.Su = sum_flux(fF,flux);
+        m.Su = sum_flux<strong>(cF,fF,flux);
     }
 }
 
@@ -3132,50 +3162,65 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
 /**
   Explicit gradient operator
  */
+template<bool strong=true, typename T1>
+auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
+    using namespace Mesh;
+    using namespace DG;
+
+    auto fF = cds(p);
+    auto r = grad_flux<strong>(p,fF);
+
 #define GRADD(im,jm,km) {                           \
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
     DPSI(dpsi_ij,im,jm,km);                         \
     dpsi_ij = dot(Jin,dpsi_ij);                     \
-    r[index] += mul(dpsi_ij,p[index1]);             \
+    if(strong)                                      \
+        r[index] += mul(dpsi_ij,p[index1]);         \
+    else                                            \
+        r[index1] -= mul(dpsi_ij,p[index]);         \
 }
 
-#define GRAD(T1,T2)                                                                             \
-    inline auto gradf(const MeshField<T2,CELL>& p) {                                            \
-        using namespace Mesh;                                                                   \
-        using namespace DG;                                                                     \
-        MeshField<T1,CELL> r;                                                                   \
-                                                                                                \
-        grad_flux(p,r);                                                                         \
-                                                                                                \
-        if(NPMAT) {                                                                             \
-            _Pragma("omp parallel for")                                                         \
-            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
-            for(Int ci = 0; ci < gBCS;ci++) {                                                   \
-                forEachLgl(ii,jj,kk) {                                                          \
-                    Int index = INDEX4(ci,ii,jj,kk);                                            \
-                    Tensor Jin = Jinv[index] * cV[index];                                       \
-                    forEachLglX(i) GRADD(i,jj,kk);                                              \
-                    forEachLglY(j) if(j != jj) GRADD(ii,j,kk);                                  \
-                    forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);                                  \
-                }                                                                               \
-            }                                                                                   \
-        }                                                                                       \
-                                                                                                \
-        fillBCs(r,false,p.fIndex);                                                              \
-                                                                                                \
-        return r;                                                                               \
+    if(NPMAT) {
+        _Pragma("omp parallel for")
+        _Pragma("acc parallel loop copyin(p,gBCS)")
+        for(Int ci = 0; ci < gBCS;ci++) {
+            forEachLgl(ii,jj,kk) {
+                Int index = INDEX4(ci,ii,jj,kk);
+                Tensor Jin = Jinv[index] * cV[index];
+                forEachLglX(i) GRADD(i,jj,kk);
+                forEachLglY(j) if(j != jj) GRADD(ii,j,kk);
+                forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);
+            }
+        }
     }
 
-GRAD(Vector,Scalar);
-GRAD(Tensor,Vector);
-#undef GRAD
 #undef GRADD
+
+    fillBCs(r,false,p.fIndex);
+
+    if(perunit_volume) r = (r / cV);
+
+    return r;
+}
+
+#ifdef USE_EXPR_TMPL
+template<bool strong=true,typename A>
+MeshField<Vector,CELL> gradf(const DVExpr<Scalar,A>& expr, bool volume=false) {
+    MeshField<Scalar,CELL> e(expr);
+    return gradf<strong>(e,volume);
+}
+template<bool strong=true,typename A>
+MeshField<Tensor,CELL> gradf(const DVExpr<Vector,A>& expr, bool volume=false) {
+    MeshField<Vector,CELL> e(expr);
+    return gradf<strong>(e,volume);
+}
+#endif
 
 /**
   Implicit gradient operator
  */
-template<class T1, class T2>
+template<bool strong=false,class T1, class T2>
 auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         const MeshField<T2,FACET>& flux) {
     using namespace Mesh;
@@ -3200,7 +3245,11 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
     dpsi_ij = dot(Jin,dpsi_ij);                             \
-    T2 val = -mul(dpsi_ij,fluxc[index]);                    \
+    T2 val;                                                 \
+    if(strong)                                              \
+        val = +mul(dpsi_ij,fluxc[index1]);                  \
+    else                                                    \
+        val = -mul(dpsi_ij,fluxc[index]);                   \
     if(index == index1) {                                   \
         m.ap[index] = -val;                                 \
     } else {                                                \
@@ -3208,15 +3257,21 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
     }                                                       \
 }
                 forEachLglX(i) {
-                    Int indexm = ci * NPMAT + INDEX_TX(ii,jj,kk,i);
+                    Int indexm = ci * NPMAT;
+                    if(strong) indexm += INDEX_X(ii,jj,kk,i);
+                    else indexm += INDEX_TX(ii,jj,kk,i);
                     GRADD(i,jj,kk);
                 }
                 forEachLglY(j) if(j != jj) {
-                    Int indexm = ci * NPMAT + INDEX_TY(ii,jj,kk,j);
+                    Int indexm = ci * NPMAT;
+                    if(strong) indexm += INDEX_Y(ii,jj,kk,j);
+                    else indexm += INDEX_TY(ii,jj,kk,j);
                     GRADD(ii,j,kk);
                 }
                 forEachLglZ(k) if(k != kk) {
-                    Int indexm = ci * NPMAT + INDEX_TZ(ii,jj,kk,k);
+                    Int indexm = ci * NPMAT;
+                    if(strong) indexm += INDEX_Z(ii,jj,kk,k);
+                    else indexm += INDEX_TZ(ii,jj,kk,k);
                     GRADD(ii,jj,k);
                 }
 #undef GRADD
@@ -3225,7 +3280,7 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         }
     }
     /*compute surface integral*/
-    div_flux_implicit(m,flux);
+    div_flux_implicit<strong>(m,flux);
     
     return m;
 }
@@ -3233,10 +3288,14 @@ auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
  * Divergence field operation
  * ***************************************************/ 
 
-//volumetric flux
 template<typename T>
 inline auto flxc(const MeshField<T,CELL>& p) {
     return p;
+}
+
+template<typename type>
+auto flx(const MeshField<type,CELL>& p) {
+    return dot(cds(p),Mesh::fN);
 }
 
 #ifdef USE_EXPR_TMPL
@@ -3244,60 +3303,75 @@ template<typename T, typename A>
 auto flxc(const DVExpr<T,A>& expr) {
     return flxc(MeshField<T,CELL>(expr));
 }
+template<typename T, typename A>
+auto flx(const DVExpr<T,A>& expr) {
+    return flx(MeshField<T,CELL>(expr));
+}
 #endif
 
 /** 
   Explicit divergence operator
  */
+
+template<bool strong=true, typename T1>
+auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
+    using namespace Mesh;
+    using namespace DG;
+
+    auto fF = cds(p);
+    auto r = div_flux<strong>(p,fF);
+
 #define DIVD(im,jm,km) {                            \
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
     DPSI(dpsi_ij,im,jm,km);                         \
     dpsi_ij = dot(Jin,dpsi_ij);                     \
-    r[index] += dot(p[index1],dpsi_ij);             \
+    if(strong)                                      \
+        r[index] += dot(p[index1],dpsi_ij);         \
+    else                                            \
+        r[index1] -= dot(p[index],dpsi_ij);         \
 }
 
-#define DIV(T1,T2)                                                                              \
-    inline auto flx(const MeshField<T2,CELL>& p) {                                              \
-        return dot(cds(p),Mesh::fN);                                                            \
-    }                                                                                           \
-    inline auto divf(const MeshField<T2,CELL>& p) {                                             \
-        using namespace Mesh;                                                                   \
-        using namespace DG;                                                                     \
-        MeshField<T1,CELL> r;                                                                   \
-                                                                                                \
-        div_flux(p,r);                                                                          \
-                                                                                                \
-        if(NPMAT) {                                                                             \
-            _Pragma("omp parallel for")                                                         \
-            _Pragma("acc parallel loop copyin(p,gBCS)")                                         \
-            for(Int ci = 0; ci < gBCS;ci++) {                                                   \
-                forEachLgl(ii,jj,kk) {                                                          \
-                    Int index = INDEX4(ci,ii,jj,kk);                                            \
-                    Tensor Jin = Jinv[index] * cV[index];                                       \
-                    forEachLglX(i) DIVD(i,jj,kk);                                               \
-                    forEachLglY(j) if(j != jj) DIVD(ii,j,kk);                                   \
-                    forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);                                   \
-                }                                                                               \
-            }                                                                                   \
-        }                                                                                       \
-                                                                                                \
-        fillBCs(r);                                                                             \
-                                                                                                \
-        return r;                                                                               \
+    if(NPMAT) {
+        _Pragma("omp parallel for")
+        _Pragma("acc parallel loop copyin(p,gBCS)")
+        for(Int ci = 0; ci < gBCS;ci++) {
+            forEachLgl(ii,jj,kk) {
+                Int index = INDEX4(ci,ii,jj,kk);
+                Tensor Jin = Jinv[index] * cV[index];
+                forEachLglX(i) DIVD(i,jj,kk);
+                forEachLglY(j) if(j != jj) DIVD(ii,j,kk);
+                forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);
+            }
+        }
     }
 
-DIV(Scalar,Vector);
-DIV(Vector,Tensor);
-#undef DIV
 #undef DIVD
 
-#define divi(x)  (divf(x)   / Mesh::cV)
+    fillBCs(r);
+
+    if(perunit_volume) r = (r / cV);
+
+    return r;
+}
+
+#ifdef USE_EXPR_TMPL
+template<bool strong=true,typename A>
+MeshField<Scalar,CELL> divf(const DVExpr<Vector,A>& expr, bool volume=false) {
+    MeshField<Vector,CELL> e(expr);
+    return divf<strong>(e,volume);
+}
+template<bool strong=true,typename A>
+MeshField<Vector,CELL> divf(const DVExpr<Tensor,A>& expr, bool volume=false) {
+    MeshField<Tensor,CELL> e(expr);
+    return divf<strong>(e,volume);
+}
+#endif
 
 /** 
   Implicit divergence operator
  */
-template<class type>
+template<bool strong=false,class type>
 auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
 
@@ -3323,7 +3397,11 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
     Vector dpsi_ij;                                         \
     DPSI(dpsi_ij,im,jm,km);                                 \
     dpsi_ij = dot(Jin,dpsi_ij);                             \
-    Scalar val = -dot(fluxc[index],dpsi_ij);                \
+    Scalar val;                                             \
+    if(strong)                                              \
+        val = +dot(fluxc[index1],dpsi_ij);                  \
+    else                                                    \
+        val = -dot(fluxc[index],dpsi_ij);                   \
     if(index == index1) {                                   \
         m.ap[index] = -val;                                 \
     } else {                                                \
@@ -3331,15 +3409,21 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
     }                                                       \
 }
                 forEachLglX(i) {
-                    Int indexm = ci * NPMAT + INDEX_TX(ii,jj,kk,i);
+                    Int indexm = ci * NPMAT;
+                    if(strong) indexm += INDEX_X(ii,jj,kk,i);
+                    else indexm += INDEX_TX(ii,jj,kk,i);
                     DIVD(i,jj,kk);
                 }
                 forEachLglY(j) if(j != jj) {
-                    Int indexm = ci * NPMAT + INDEX_TY(ii,jj,kk,j);
+                    Int indexm = ci * NPMAT;
+                    if(strong) indexm += INDEX_Y(ii,jj,kk,j);
+                    else indexm += INDEX_TY(ii,jj,kk,j);
                     DIVD(ii,j,kk);
                 }
                 forEachLglZ(k) if(k != kk) {
-                    Int indexm = ci * NPMAT + INDEX_TZ(ii,jj,kk,k);
+                    Int indexm = ci * NPMAT;
+                    if(strong) indexm += INDEX_Z(ii,jj,kk,k);
+                    else indexm += INDEX_TZ(ii,jj,kk,k);
                     DIVD(ii,jj,k);
                 }
 #undef DIVD
@@ -3348,7 +3432,7 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         }
     }
     /*compute surface integral*/
-    div_flux_implicit(m,flux,muc);
+    div_flux_implicit<strong>(m,flux,muc);
     
     return m;
 }
@@ -3362,17 +3446,15 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
 /**
   Explicit laplacian operator
  */
-template<class type, ENTITY entity>
+template<bool strong=true,class type, ENTITY entity>
 auto lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
-    return divf(mu * gradi(cF));
+    return divf<strong>(mu * gradf<strong>(cF,true));
 }
-
-#define lapi(x,y) (lapf(x,y)  / Mesh::cV)
 
 /**
   Implicit laplacian operator
  */
-template<class type>
+template<bool strong=false,class type>
 auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
 
     using namespace Controls;
@@ -3434,7 +3516,11 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
     Vector dpsi_jk;                                 \
     DPSI(dpsi_jk,in,jn,kn);                         \
     dpsi_jk = dot(Jin,dpsi_jk);                     \
-    Scalar val = -dot(dpsi_ik,dpsi_jk);             \
+    Scalar val;                                     \
+    if(strong)                                      \
+        val  = dot(dpsi_ik,dpsi_jk);                \
+    else                                            \
+        val  = -dot(dpsi_ik,dpsi_jk);               \
     if(index1 == index2) {                          \
         m.ap[index1] += -val;                       \
     } else {                                        \
@@ -3475,7 +3561,14 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
 
         /* compute explicit term */
         {
-            m.Su += sum(dot(cds(muc * gradi(cF)),fN));
+            if(strong) {
+                auto p = gradf(cF,true);
+                p = p * muc;
+                auto fF = cds(p);
+                auto r = div_flux<strong>(p,fF);
+                m.Su += r;
+            } else
+                m.Su += sum(dot(cds(muc * gradf(cF,true)),fN));
         }
     
     } else {
@@ -3491,7 +3584,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
                 K[i] = fN[i] - fD[i] * dv;
             }
     
-            MeshField<type,FACET> r = dot(cds(muc * gradi(cF)),K);
+            MeshField<type,FACET> r = dot(cds(muc * gradf(cF,true)),K);
             #pragma omp parallel for
             #pragma acc parallel loop
             forEach(r,i) {

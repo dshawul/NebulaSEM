@@ -45,7 +45,7 @@ void MixingLength_Model::enroll() {
     EddyViscosity_Model::enroll();
 }
 ScalarCellField MixingLength_Model::getK() {
-    return pow(lm / C,2.0) * getS2(gradi(U));
+    return pow(lm / C,2.0) * getS2(gradf(U,true));
 }
 void MixingLength_Model::calcEddyViscosity(const TensorCellField& gradU) {
     calcLengthScale();

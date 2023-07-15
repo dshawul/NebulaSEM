@@ -91,11 +91,11 @@ struct Turbulence_Model {
     }
     /* Explicit V */
     virtual VectorCellField getExplicitStresses() {
-        return divi(mu * dev(trn(gradi(U)),2.0));
+        return divf(mu * dev(trn(gradf(U,true)),2.0),true);
     };
     /* V */
     STensorCellField getViscousStress() {
-        return 2.0 * mu * dev(sym(gradi(U)),1.0);
+        return 2.0 * mu * dev(sym(gradf(U,true)),1.0);
     }
     /* R */
     virtual STensorCellField getReynoldsStress() {
@@ -151,16 +151,16 @@ struct EddyViscosity_Model : public Turbulence_Model {
     }
     /* Explicit V + R */
     virtual VectorCellField getExplicitStresses() {
-        TensorCellField gradU = gradi(U);
+        TensorCellField gradU = gradf(U,true);
         calcEddyViscosity(gradU);
         setWallEddyMu();
         fillBCs(eddy_mu);
-        return divi((eddy_mu + mu) * dev(trn(gradU),2.0));
+        return divf((eddy_mu + mu) * dev(trn(gradU),2.0),true);
     };
 
     /* R */
     virtual STensorCellField getReynoldsStress() {
-        STensorCellField R = 2 * eddy_mu * dev(sym(gradi(U)),1.0) - 
+        STensorCellField R = 2 * eddy_mu * dev(sym(gradf(U,true)),1.0) - 
                  STensorCellField(Constants::I_ST) * (2 * rho * getK() / 3);
         return R;
     }

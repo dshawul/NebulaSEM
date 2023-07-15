@@ -179,7 +179,7 @@ void piso(std::istream& input) {
                             gh = -(mag(Mesh::cC) - Mesh::sphere_radius) * mag(Controls::gravity);
                         else
                             gh = dot(Mesh::cC,g);
-                        Sc += gh * (rho * beta) * gradi(T);
+                        Sc += gh * (rho * beta) * gradf(T,true);
                     }
                 }
                 /*momentum prediction*/
@@ -195,7 +195,8 @@ void piso(std::istream& input) {
             /*
              * Correction
              */
-            const ScalarCellField api = fillBCs<Scalar>(1.0 / M.ap);
+            ScalarCellField api = Scalar(1.0) / M.ap;
+            fillBCs(api);
             const ScalarCellField rmu = rho * api * Mesh::cV;
 
             /*PISO loop*/
