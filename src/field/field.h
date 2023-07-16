@@ -53,6 +53,9 @@ namespace Controls {
     void enrollDecompose(Util::ParamList& params);
 }
 
+/** Descretization type */
+constexpr bool form_strong = false;
+
 /*******************************************************************************
  *                              Boundary conditions
  *******************************************************************************/
@@ -2868,7 +2871,7 @@ auto sum(const MeshField<type,FACET>& fF) {
     return cF;
 }
 
-template<bool strong=true,class type,class type2>
+template<bool strong=form_strong,class type,class type2>
 auto sum_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF, const MeshField<type2,FACET>& flux) {
     using namespace Mesh;
     MeshField<type,CELL> cF;
@@ -2902,7 +2905,7 @@ auto sum_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF, co
     return cF;
 }
 
-template<bool strong=true,class type>
+template<bool strong=form_strong,class type>
 auto grad_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF) {
     using namespace Mesh;
     auto cF = eval_expr(mul(VectorCellField(Vector(0.0)),p));
@@ -2937,7 +2940,7 @@ auto grad_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF) {
 }
 
 
-template<bool strong=true,class type>
+template<bool strong=form_strong,class type>
 auto div_flux(const MeshField<type,CELL>& p, const MeshField<type,FACET>& fF) {
     using namespace Mesh;
     auto cF = eval_expr(dot(p,VectorCellField(Vector(0.0))));
@@ -2983,7 +2986,7 @@ auto sum(const DVExpr<type,A>& expr) {
  * Implicit div flux
  * *******************************/
 
-template<bool strong=false,class T1, class T2, class T3, class T4>
+template<bool strong=form_strong,class T1, class T2, class T3, class T4>
 void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
     using namespace Controls;
     using namespace Mesh;
@@ -3162,7 +3165,7 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
 /**
   Explicit gradient operator
  */
-template<bool strong=true, typename T1>
+template<bool strong=form_strong, typename T1>
 auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
     using namespace Mesh;
     using namespace DG;
@@ -3205,22 +3208,22 @@ auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
 }
 
 #ifdef USE_EXPR_TMPL
-template<bool strong=true,typename A>
-MeshField<Vector,CELL> gradf(const DVExpr<Scalar,A>& expr, bool volume=false) {
+template<bool strong=form_strong,typename A>
+MeshField<Vector,CELL> gradf(const DVExpr<Scalar,A>& expr, bool perunit_volume=false) {
     MeshField<Scalar,CELL> e(expr);
-    return gradf<strong>(e,volume);
+    return gradf<strong>(e,perunit_volume);
 }
-template<bool strong=true,typename A>
-MeshField<Tensor,CELL> gradf(const DVExpr<Vector,A>& expr, bool volume=false) {
+template<bool strong=form_strong,typename A>
+MeshField<Tensor,CELL> gradf(const DVExpr<Vector,A>& expr, bool perunit_volume=false) {
     MeshField<Vector,CELL> e(expr);
-    return gradf<strong>(e,volume);
+    return gradf<strong>(e,perunit_volume);
 }
 #endif
 
 /**
   Implicit gradient operator
  */
-template<bool strong=false,class T1, class T2>
+template<bool strong=form_strong,class T1, class T2>
 auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
         const MeshField<T2,FACET>& flux) {
     using namespace Mesh;
@@ -3313,7 +3316,7 @@ auto flx(const DVExpr<T,A>& expr) {
   Explicit divergence operator
  */
 
-template<bool strong=true, typename T1>
+template<bool strong=form_strong, typename T1>
 auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
     using namespace Mesh;
     using namespace DG;
@@ -3356,22 +3359,22 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
 }
 
 #ifdef USE_EXPR_TMPL
-template<bool strong=true,typename A>
-MeshField<Scalar,CELL> divf(const DVExpr<Vector,A>& expr, bool volume=false) {
+template<bool strong=form_strong,typename A>
+MeshField<Scalar,CELL> divf(const DVExpr<Vector,A>& expr, bool perunit_volume=false) {
     MeshField<Vector,CELL> e(expr);
-    return divf<strong>(e,volume);
+    return divf<strong>(e,perunit_volume);
 }
-template<bool strong=true,typename A>
-MeshField<Vector,CELL> divf(const DVExpr<Tensor,A>& expr, bool volume=false) {
+template<bool strong=form_strong,typename A>
+MeshField<Vector,CELL> divf(const DVExpr<Tensor,A>& expr, bool perunit_volume=false) {
     MeshField<Tensor,CELL> e(expr);
-    return divf<strong>(e,volume);
+    return divf<strong>(e,perunit_volume);
 }
 #endif
 
 /** 
   Implicit divergence operator
  */
-template<bool strong=false,class type>
+template<bool strong=form_strong,class type>
 auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
 
@@ -3446,7 +3449,7 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
 /**
   Explicit laplacian operator
  */
-template<bool strong=true,class type, ENTITY entity>
+template<bool strong=form_strong,class type, ENTITY entity>
 auto lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
     return divf<strong>(mu * gradf<strong>(cF,true));
 }
@@ -3454,7 +3457,7 @@ auto lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
 /**
   Implicit laplacian operator
  */
-template<bool strong=false,class type>
+template<bool strong=form_strong,class type>
 auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
 
     using namespace Controls;
