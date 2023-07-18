@@ -1787,10 +1787,11 @@ template <class type,ENTITY entity>
 void MeshField<type,entity>::refineField(Int step,
     const IntVector& refineMap,const IntVector& coarseMap, const IntVector& cellMap) {
 
+    using namespace Mesh;
     using namespace DG;
 
-    const Int newgBCSfield = Mesh::gCells.size() * DG::NP;
-    const Int oldgBCS = Mesh::gBCSfield / DG::NP;
+    const Int newgBCSfield = gCells.size() * NP;
+    const Int oldgBCS = gBCSfield / NP;
     type* Pn;
 
     //allocate refined array
@@ -1800,8 +1801,8 @@ void MeshField<type,entity>::refineField(Int step,
     for(Int i = 0; i < oldgBCS; i++) {
         Int id = cellMap[i];
         if(id == Constants::MAX_INT) continue;
-        for(Int k = 0; k < DG::NP; k++)
-            Pn[id * DG::NP + k] = P[i * DG::NP + k];
+        for(Int k = 0; k < NP; k++)
+            Pn[id * NP + k] = P[i * NP + k];
     }
 
     //interpolation for coarsening
@@ -1809,17 +1810,28 @@ void MeshField<type,entity>::refineField(Int step,
         Int nchildren = coarseMap[i];
         Int id = cellMap[coarseMap[i + 1]];
 
-        for(Int k = 0; k < DG::NP; k++)
-            Pn[id * DG::NP + k] = type(0.0);
+        Vector ccp, ccc;
+        gMesh.calcCellCenter(gCells[id],ccp);
+
+        for(Int k = 0; k < NP; k++)
+            Pn[id * NP + k] = type(0.0);
 
         for(Int j = 0;j < nchildren;j++) {
             Int id1 = coarseMap[i + 2 + j];
+            ccc = gCC[id1];
 
-            if(DG::NPMAT) {
-                Int ioff = 0, joff = 0, koff = 0;
-                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
-                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
-                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
+            if(NPMAT) {
+                Int ioff, joff, koff;
+                {
+                    Vector v0 = cC[INDEX4(id1,0,0,0)];
+                    Vector vx = cC[INDEX4(id1,NPX-1,0,0)];
+                    Vector vy = cC[INDEX4(id1,0,NPY-1,0)];
+                    Vector vz = cC[INDEX4(id1,0,0,NPZ-1)];
+                    ioff = (dot(ccc - v0, vx - v0) <= dot(ccp - v0, vx - v0)) ? 0 : 1;
+                    joff = (dot(ccc - v0, vy - v0) <= dot(ccp - v0, vy - v0)) ? 0 : 1;
+                    koff = (dot(ccc - v0, vz - v0) <= dot(ccp - v0, vz - v0)) ? 0 : 1;
+                }
+
                 forEachLgl(ii1,jj1,kk1) {
                     Int index1 = INDEX4(id1,ii1,jj1,kk1);
                     type P0 = P[index1];
@@ -1836,8 +1848,8 @@ void MeshField<type,entity>::refineField(Int step,
             }
         }
 
-        for(Int k = 0; k < DG::NP; k++)
-            Pn[id * DG::NP + k] /= Scalar(nchildren);
+        for(Int k = 0; k < NP; k++)
+            Pn[id * NP + k] /= Scalar(nchildren);
 
         i += nchildren + 1;
     }
@@ -1847,17 +1859,26 @@ void MeshField<type,entity>::refineField(Int step,
         Int nchildren = refineMap[i];
         Int id = refineMap[i + 1];
 
+        Vector ccp = gCC[id], ccc;
+
         for(Int j = 0;j < nchildren;j++) {
             Int id1 = cellMap[refineMap[i + 2 + j]];
+            gMesh.calcCellCenter(gCells[id1],ccc);
 
-            if(DG::NPMAT) {
-                Int ioff = 0, joff = 0, koff = 0;
-                if(j == 1 || j == 2 || j == 5 || j == 6) ioff = 1;
-                if(j == 3 || j == 2 || j == 7 || j == 6) joff = 1;
-                if(j == 4 || j == 5 || j == 6 || j == 7) koff = 1;
+            if(NPMAT) {
+                Int ioff, joff, koff;
+                {
+                    Vector v0 = cC[INDEX4(id,0,0,0)];
+                    Vector vx = cC[INDEX4(id,NPX-1,0,0)];
+                    Vector vy = cC[INDEX4(id,0,NPY-1,0)];
+                    Vector vz = cC[INDEX4(id,0,0,NPZ-1)];
+                    ioff = (dot(ccc - v0, vx - v0) <= dot(ccp - v0, vx - v0)) ? 0 : 1;
+                    joff = (dot(ccc - v0, vy - v0) <= dot(ccp - v0, vy - v0)) ? 0 : 1;
+                    koff = (dot(ccc - v0, vz - v0) <= dot(ccp - v0, vz - v0)) ? 0 : 1;
+                }
 
-                for(Int k = 0; k < DG::NP; k++)
-                    Pn[id1 * DG::NP + k] = type(0.0);
+                for(Int k = 0; k < NP; k++)
+                    Pn[id1 * NP + k] = type(0.0);
 
                 forEachLgl(ii,jj,kk) {
                     Int index = INDEX4(id,ii,jj,kk);
@@ -1879,13 +1900,13 @@ void MeshField<type,entity>::refineField(Int step,
 
     //switch pointers and write the new interpolated field
     type* Psave = P;
-    Int Ssave = Mesh::gBCSfield; 
+    Int Ssave = gBCSfield; 
     P = Pn;
-    SIZE = Mesh::gBCSfield = newgBCSfield;
+    SIZE = gBCSfield = newgBCSfield;
     if(access & WRITE)
         write(step);
     P = Psave;
-    SIZE = Mesh::gBCSfield = Ssave;
+    SIZE = gBCSfield = Ssave;
 
     //deallocate
     aligned_free<type>(Pn);
