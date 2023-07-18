@@ -942,7 +942,7 @@ class MeshField : public BaseField
             Scalar *CP = addr(sum);
             #pragma omp parallel for reduction(+:sum)
             #pragma acc parallel loop copyin(p) reduction(+:CP[0:TYPE_SIZE])
-            forEach(p,i)
+            for(Int i = 0; i < Mesh::gBCSfield; i++)
                 sum += p[i];
             return sum;
         }
@@ -951,7 +951,7 @@ class MeshField : public BaseField
             Scalar *CP = addr(maxv);
             #pragma omp parallel for reduction(max:maxv)
             #pragma acc parallel loop copyin(p) reduction(max:maxv)
-            forEach(p,i)
+            for(Int i = 0; i < Mesh::gBCSfield; i++)
                 if(mag(p[i]) > maxv) maxv = mag(p[i]);
             return maxv;
         }
@@ -959,7 +959,7 @@ class MeshField : public BaseField
             Scalar minv = Scalar(1e30);
             #pragma omp parallel for reduction(min:minv)
             #pragma acc parallel loop copyin(p) reduction(min:minv)
-            forEach(p,i)
+            for(Int i = 0; i < Mesh::gBCSfield; i++)
                 if(mag(p[i]) < minv) minv = mag(p[i]);
             return minv;
         }

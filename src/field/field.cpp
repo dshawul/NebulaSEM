@@ -618,8 +618,6 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
         qoi = pow(qoi,0.25);
         qoi *= dx;
 
-        forEachS(qoi,i,Mesh::gBCSfield)
-            qoi[i] = 0;
         Scalar maxq = reduce_max(qoi);
         qoi /= maxq;
     }
