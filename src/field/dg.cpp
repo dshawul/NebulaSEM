@@ -367,12 +367,14 @@ void DG::init_geom() {
             if(cj == ci) 
                 continue;
 
-            Int face_n;
-            Cell& cn = gCells[cj];
-            forEach(cn,i) {
-                if(cn[i] == fi) {
-                    face_n = gFaceID[cj][i];
-                    break;
+            Int face_n = (face_o ^ 1);
+            if(cj < gBCS) {
+                Cell& cn = gCells[cj];
+                forEach(cn,i) {
+                    if(cn[i] == fi) {
+                        face_n = gFaceID[cj][i];
+                        break;
+                    }
                 }
             }
 
