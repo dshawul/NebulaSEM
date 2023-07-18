@@ -229,6 +229,7 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
         DG::expand(FO);
         DG::expand(FN);
         DG::init_basis();
+        DG::init_geom();
     }
     /*Start communicating cV and cC*/
     ASYNC_COMM<Scalar> commv(&cV[0]);
