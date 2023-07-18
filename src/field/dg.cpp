@@ -181,10 +181,31 @@ void DG::init_geom() {
     FN = gALLfield;
     for(Int ci = 0; ci < gBCS;ci++) {
         Cell& c = gCells[ci];
+        Cell& fids = gFaceID[ci];
 
         //find first and second face
-        Facet& f1 = gFacets[c[0]];
-        Facet& f2 = gFacets[c[1]];
+        Facet f1, f2;
+        Int id0 = fids[0], id1 = (id0 ^ 1);
+        forEach(c,i) {
+            Facet& f = gFacets[c[i]];
+            Int id = fids[i];
+            Facet fn;
+            if(id == id0) {
+                if(!f1.size())
+                    f1 = f;
+                else {
+                    gMesh.mergeFacets(f1,f,fn);
+                    f1 = fn;
+                }
+            } else if(id == id1) {
+                if(!f2.size())
+                    f2 = f;
+                else {
+                    gMesh.mergeFacets(f2,f,fn);
+                    f2 = fn;
+                }
+            }
+        }
 #if 0
         {
             using namespace Util;
@@ -486,7 +507,6 @@ void DG::init_basis() {
     #pragma omp parallel for
     #pragma acc parallel loop copyin(gBCS)
     for(Int ci = 0; ci < gBCS;ci++) {
-
         forEachLgl(ii,jj,kk) {
             Int index = INDEX4(ci,ii,jj,kk);
             Tensor Ji = Tensor(0);
