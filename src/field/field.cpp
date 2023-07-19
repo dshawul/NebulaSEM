@@ -629,6 +629,7 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
 void Prepare::refineMesh(Int step) {
     using namespace Mesh;
     using namespace Controls;
+    using namespace Util;
 
     std::cout << "Refining grid at step " << step << std::endl;
 
@@ -845,9 +846,15 @@ void Prepare::refineMesh(Int step) {
     /*Write mesh*/
     {
         stringstream path;
-        path << gMeshName << "_" << step << ".bin";
-        Util::ofstream_bin os(path.str());
-        os << gMesh;
+        if(Controls::write_format == BINARY) {
+            path << gMeshName << "_" << step << ".bin";
+            Util::ofstream_bin os(path.str());
+            os << gMesh;
+        } else {
+            path << gMeshName << "_" << step << ".txt";
+            std::ofstream os(path.str());
+            os << gMesh;
+        }
     }
 
     /*destroy*/
