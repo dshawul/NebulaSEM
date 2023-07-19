@@ -18,7 +18,7 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     80000
+    end_step                     75000
     write_interval               1250
     amr_step                     4
     dt                           0.02

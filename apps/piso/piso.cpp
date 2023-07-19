@@ -179,7 +179,7 @@ void piso(std::istream& input) {
                             gh = -(mag(Mesh::cC) - Mesh::sphere_radius) * mag(Controls::gravity);
                         else
                             gh = dot(Mesh::cC,g);
-                        Sc += gh * (rho * beta) * gradf(T,true);
+                        Sc += gh * (rho * beta) * gradf<true>(T,true);
                     }
                 }
                 /*momentum prediction*/
