@@ -254,6 +254,7 @@ void DG::init_geom() {
                 vp1[i + 4] = gVertices[f2[minj]];
             }
 
+            //reorder vertices
             Int id = gFaceID[ci][0];
             if(id == 2) {
                 Int order[8] = {0,1,5,4,3,2,6,7};

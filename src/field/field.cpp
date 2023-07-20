@@ -829,6 +829,8 @@ void Prepare::refineMesh(Int step) {
         gMesh.refineMesh(cCells,rCellsL,rLevelL,rDirsL,refineMap,coarseMap,cellMap);
         forEachIt(BaseField::allFields, it)
             (*it)->refineField(step,refineMap,coarseMap,cellMap);
+        gMesh.addBoundaryCells();
+        gMesh.fixHexCells();
     }
 
     /*extrude mesh after refinement is complete*/
