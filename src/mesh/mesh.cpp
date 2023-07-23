@@ -141,6 +141,41 @@ void Mesh::MeshObject::addBoundaryCells() {
     }
 }
 /**
+  Find the eight vertices of a hexahedron
+ */
+void Mesh::MeshObject::getHexCorners(const Facet& f1, const Facet& f2, IntVector& vp) {
+    //pick first 4 vertices from face 0 skipping midpoints
+    Int i0 = f1.size() - 1;
+    Int idx = 0;
+    for(Int i = 0; i < f1.size() && idx < 4; i++) {
+        Int i1 = (i == f1.size() - 1) ? 0 : i + 1;
+        Vector v0 = unit(mVertices[f1[i]] - mVertices[f1[i0]]);
+        Vector v1 = unit(mVertices[f1[i1]] - mVertices[f1[i]]);
+        Scalar dt = dot(v0,v1);
+        if(dt > 1) dt = 1;
+        else if(dt < -1) dt = -1;
+        Scalar angle = acos(dt);
+        const Scalar tol = Constants::PI / 32;
+        if(!(angle < tol || angle >= Constants::PI - tol)) {
+            vp.push_back(f1[i]);
+            i0 = i;
+        }
+    }
+    //pick the other vertices by distance from the first 4
+    for(Int i = 0; i < 4; i++) {
+        Scalar mind = 1e20;
+        Int minj = 0;
+        forEach(f2,j) {
+            Scalar dist = mag(mVertices[f2[j]] - mVertices[vp[i]]);
+            if(dist < mind) {
+                mind = dist;
+                minj = j;
+            }
+        }
+        vp.push_back(f2[minj]);
+    }
+}
+/**
   Fix hexahedral cells for the sake of DG
  */
 void Mesh::MeshObject::fixHexCells() {

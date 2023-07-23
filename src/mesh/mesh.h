@@ -113,6 +113,7 @@ namespace Mesh {
         void writeMshMesh(std::ostream&);
         void readMshMesh(std::istream&);
         void addBoundaryCells();
+        void getHexCorners(const Facet&, const Facet&, IntVector& vp);
         void fixHexCells();
         void calcGeometry();
         void removeBoundary(const IntVector&);
