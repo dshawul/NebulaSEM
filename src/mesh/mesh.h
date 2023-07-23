@@ -124,7 +124,7 @@ namespace Mesh {
         void straightenEdges(const Facet&, Facet&, Facet&);
         bool coplanarFaces(const Facet&,const Facet&);
         bool mergeFacets(const Facet&,const Facet&, Facet&);
-        void mergeFacetsCell(const Cell&,const IntVector&,Facet&);
+        void mergeFacetsGroup(const IntVector&,Facet&,const Cell* = 0);
         void mergeCells(Cell&,const Cell&,IntVector&);
         void addVerticesToEdge(const int, Facet&, const Facet&);
         void calcFaceCenter(const Facet&,Vector&);

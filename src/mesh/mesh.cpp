@@ -229,13 +229,22 @@ void Mesh::MeshObject::fixHexCells() {
                 erase_indices(c,indices);
                 cng.push_back(ci);
             
-                Facet fn = mFacets[ci[0]];
-                forEachS(ci,j,1) {
+#ifdef RDEBUG
+                using namespace Util;
+                std::cout << "===============\n";
+                std::cout << "ci: " << ci << std::endl;
+                std::cout << "ind: " << indices << std::endl;
+                forEach(ci,j) {
                     Facet& f = mFacets[ci[j]];
-                    Facet fm;
-                    mergeFacets(fn,f,fm);
-                    fn = fm;
+                    std::cout << f << std::endl;
+                    forEach(f,i)
+                        std::cout << i << ". " << mVertices[f[i]] << std::endl;
                 }
+#endif
+
+                Facet fn;
+                mergeFacetsGroup(ci,fn);
+
                 fng.push_back(fn);
                 groupId[i] = -1;
             }
@@ -321,25 +330,27 @@ void Mesh::MeshObject::fixHexCells() {
                 auto it = std::find(fng[i].begin(), fng[i].end(), rots[i]);
                 std::rotate(fng[i].begin(), it, fng[i].end());
 
-                Scalar dir = dot(mVertices[fng[i][1]] - mVertices[fng[i][0]],
-                                 mVertices[rote[i]] - mVertices[rots[i]]);
+                Scalar dir = dot(unit(mVertices[fng[i][1]] - mVertices[fng[i][0]]),
+                                 unit(mVertices[rote[i]] - mVertices[rots[i]]));
                 if(dir < 0.99)
                     std::reverse(fng[i].begin()+1, fng[i].end());
             }
 
-            for(Int idxo = 1; idxo < 6; idxo += 2) {
-                Facet& fngo = fng[idxo];
-                Cell& cn = cng[idxo];
+            for(Int i = 0; i < 6; i++) {
+                Facet& fngo = fng[i];
+                Cell& cn = cng[i];
+
                 Facets newf;
                 newf.resize(cn.size());
-                forEach(fngo,i) {
-                    Int vi = fngo[i];
+                forEach(fngo,k) {
+                    Int vi = fngo[k];
                     forEach(cn,j) {
                         Facet& f = mFacets[cn[j]];
                         if(std::find(f.begin(),f.end(),vi) != f.end())
                             newf[j].push_back(vi);
                     }
                 }
+
                 forEach(cn,j) {
                     Facet& f = mFacets[cn[j]];
                     f = newf[j];
@@ -581,9 +592,26 @@ Int Mesh::MeshObject::removeUnusedVertices(Int ivBegin) {
     IntVector isUsed(mVertices.size(),0);
     forEach(mFacets,i) {
         Facet& f = mFacets[i];
-        forEach(f,j)
-            isUsed[f[j]] = 1;
+        Vector v1 = mVertices[f[f.size() - 1]];
+        forEach(f,j) {
+            Vector v2 = mVertices[f[j]];
+            Vector v3 = mVertices[f[ (j + 1 == f.size()) ? 0 : (j + 1) ]];
+            if(!pointInLine(v2,v1,v3))
+                isUsed[f[j]] = 1;
+            v1 = v2;
+        }
     }
+    forEach(mFacets,i) {
+        Facet& f = mFacets[i];
+        IntVector removed;
+        forEach(f,j) {
+            if(!isUsed[f[j]])
+                removed.push_back(j);
+        }
+        if(removed.size())
+            erase_indices(f,removed);
+    }
+
     IntVector rVertices;
     Int cnt = 0;
     Int ivCount = 0;
@@ -726,9 +754,9 @@ bool Mesh::pointInPolygon(const VectorVector& points,const IntVector& f,const Ve
  */
 void Mesh::MeshObject::calcUnitNormal(const Facet& f,Vector& N) {    
     const Vector& v1 = mVertices[f[0]];
+    const Vector& v2 = mVertices[f[1]];
     for(Int j = 1;j < f.size();j++) {
-        const Vector& v2 = mVertices[f[j]];
-        const Vector& v3 = mVertices[f[ (j + 1 == f.size()) ? 0 : (j + 1) ]];
+        const Vector& v3 = mVertices[f[f.size() - j]];
 
         if(!Mesh::pointInLine(v2,v1,v3)) {
             N = (v2 - v1) ^ (v3 - v1);
@@ -773,18 +801,16 @@ bool Mesh::MeshObject::coplanarFaces(const Facet& f1,const Facet& f2) {
   Union of non-overlaping polygons
  */
 bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) {
-    Vector N1,N2;
-    calcUnitNormal(f1_,N1);
-    calcUnitNormal(f2_,N2);
-
-    //make them same direction
     Facet f1 = f1_;
     Facet f2 = f2_;
-    if(dot(N1,N2) < 0) {
-        forEach(f2_,j)
-            f2[f2.size() - j - 1] = f2_[j];
+    //make them same direction
+    {
+        Vector N1,N2;
+        calcUnitNormal(f1_,N1);
+        calcUnitNormal(f2_,N2);
+        if(dot(N1,N2) < 0)
+            std::reverse(f2.begin()+1,f2.end());
     }
-
     //rotate nodes of faces to first non-shared node
     Int contained = false;
     {
@@ -868,48 +894,51 @@ bool Mesh::MeshObject::mergeFacets(const Facet& f1_,const Facet& f2_, Facet& f) 
 /**
   Merge facets of cell
  */
-void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,Facet& f) {
-    IntVector flag;
-    flag.assign(shared1.size(),0);
-    bool has,mhas;
-    Int merge_count = 0;
-    f = mFacets[c1[shared1[0]]];
+void Mesh::MeshObject::mergeFacetsGroup(const IntVector& shared1,Facet& fn, const Cell* c1) {
+    IntVector ci;
+    if(c1) {
+        forEach(shared1,i)
+            ci.push_back((*c1)[shared1[i]]);
+    } else
+        ci = shared1;
+
+    fn = mFacets[ci[0]];
+    ci.erase(ci.begin());
+    bool repeat = false;
     do {
-        has = false;
-        mhas = false;
-        forEachS(shared1,p,1) {
-            if(flag[p]) continue;
-            const Facet& f1 = mFacets[c1[shared1[p]]];
-            Facet f2 = f;
-            if(mergeFacets(f2,f1,f)) {
-                merge_count++;
-                flag[p] = 1;
-                mhas = true;
-            } else {
-                has = true;
-            }
+        IntVector merged;
+        repeat = false;
+        forEach(ci,j) {
+            Facet& f = mFacets[ci[j]];
+            Facet fm;
+            if(mergeFacets(fn,f,fm)) {
+                fn = fm;
+                merged.push_back(j);
+            } else
+                repeat = true;
         }
-    } while(has && mhas);
+        erase_indices(ci,merged);
+    } while(repeat);
 
 #ifdef RDEBUG
-    if((merge_count + 1) != shared1.size())  {
+    if(ci.size())  {
         using namespace Util;
         cout << "Merge failed.\n";
         cout << "=======================\n";
         cout << c1 << endl;
         cout << shared1 << endl;
         forEach(shared1,i)
-            cout << gFacets[c1[shared1[i]]] << endl;
+            cout << mFacets[ci[i]] << endl;
         cout << "-----------------------\n";
         {
             Facet r,rr;
-            straightenEdges(f,r,rr);
-            cout << "Merged face  : " << f << endl;
+            straightenEdges(fn,r,rr);
+            cout << "Merged face  : " << fn << endl;
             cout << "Straight Edge: " << r << endl;
             cout << "Removed      : " << rr << endl;
         }
-        forEach(f,i)
-            cout << mVertices[f[i]] << " : ";
+        forEach(fn,i)
+            cout << mVertices[fn[i]] << " : ";
         cout << endl;
         exit(0);
     }
@@ -920,17 +949,12 @@ void Mesh::MeshObject::mergeFacetsCell(const Cell& c1,const IntVector& shared1,F
  */
 void Mesh::MeshObject::mergeCells(Cell& c1, const Cell& c2, IntVector& delFacets) {
     forEach(c2,m) {
-        Int c2m = c2[m];
-        Int n;
-        for(n = 0;n < c1.size();n++) {
-            if(c2m == c1[n])
-                break;
-        }
-        if(n == c1.size())
-            c1.push_back(c2m);
+        auto it = std::find(c1.begin(), c1.end(), c2[m]);
+        if(it == c1.end())
+            c1.push_back(c2[m]);
         else {
-            delFacets.push_back(c1[n]);
-            c1.erase(c1.begin() + n);
+            delFacets.push_back(c2[m]);
+            c1.erase(it);
         }
     }
 }
@@ -1257,7 +1281,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 
         Facet f;
         if(shared.size() > 1) {
-            mergeFacetsCell(c,shared,f);
+            mergeFacetsGroup(shared,f,&c);
         } else {
             f = mFacets[c[shared[0]]];
         }
@@ -1550,7 +1574,7 @@ END:;
                 //more than one face shared between two cells
                 if(shared1.size() > 1) {
                     Facet nf;
-                    mergeFacetsCell(c1,shared1,nf);
+                    mergeFacetsGroup(shared1,nf,&c1);
 
                     //straighten edges
                     {
@@ -1764,7 +1788,7 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                 if(faces.size() > 1) {
                     //merge facets of cell
                     Facet nf;
-                    mergeFacetsCell(c1,faces,nf);
+                    mergeFacetsGroup(faces,nf,&c1);
 
                     //merge into first face
                     Int fi = c1[faces[0]];

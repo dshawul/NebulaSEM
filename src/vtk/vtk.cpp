@@ -12,11 +12,10 @@ namespace {
 
     /** Counts number of facets and vertices of cell */
     Int cell_count(Cell& c) {
-        Facet* f;
         Int i,nFacets = c.size(),nVertices = 0,nTotal;
         for(i = 0;i < nFacets;i++) {
-            f = &gFacets[c[i]];
-            nVertices += f->size();
+            Facet f = gFacets[c[i]];
+            nVertices += f.size();
         }
         nTotal = nFacets + nVertices + 2;
         return nTotal;
@@ -24,16 +23,14 @@ namespace {
 
     /** Writes one cell in ascii vtk format */
     void cell_vtk(std::ofstream& of, Cell& c) {
-        Facet* f;
         Int i,j,nFacets = c.size(),nTotal = cell_count(c);
         /*write*/
         of << nTotal - 1 << " " << nFacets << " ";
         for(i = 0;i < nFacets;i++) {
-            f = &gFacets[c[i]];
-            of << f->size() << " ";
-            for(j = 0;j < f->size();j++) {
-                of << (*f)[j] << " ";
-            }
+            Facet f = gFacets[c[i]];
+            of << f.size() << " ";
+            for(j = 0; j < f.size(); j++)
+                of << f[j] << " ";
         }
         of << endl;
     }
