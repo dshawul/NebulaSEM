@@ -196,7 +196,7 @@ void Mesh::MeshObject::fixHexCells() {
             Cell co;
             forEach(c,i)
                 co.push_back(c[i]);
-            bool print = (co.size() > 6);
+            bool print = true;
             if(print) {
                 std::cout << "======================" << std::endl;
                 std::cout << co << std::endl;
@@ -229,11 +229,12 @@ void Mesh::MeshObject::fixHexCells() {
                 erase_indices(c,indices);
                 cng.push_back(ci);
             
-                Facet fn;
-                forEach(ci,j) {
+                Facet fn = mFacets[ci[0]];
+                forEachS(ci,j,1) {
                     Facet& f = mFacets[ci[j]];
-                    forEach(f,k)
-                        fn.push_back(f[k]);
+                    Facet fm;
+                    mergeFacets(fn,f,fm);
+                    fn = fm;
                 }
                 fng.push_back(fn);
                 groupId[i] = -1;
@@ -310,6 +311,41 @@ void Mesh::MeshObject::fixHexCells() {
                 std::cout << "groupId: " << groupId << std::endl;
             }
 #endif
+
+            /*fix orientation of vertices */
+            IntVector vp;
+            getHexCorners(fng[0], fng[1], vp);
+            IntVector rots  = {vp[0], vp[4], vp[0], vp[3], vp[0], vp[1]};
+            IntVector rote  = {vp[1], vp[5], vp[1], vp[2], vp[3], vp[2]};
+            for(Int i = 0; i < 6; i++) {
+                auto it = std::find(fng[i].begin(), fng[i].end(), rots[i]);
+                std::rotate(fng[i].begin(), it, fng[i].end());
+
+                Scalar dir = dot(mVertices[fng[i][1]] - mVertices[fng[i][0]],
+                                 mVertices[rote[i]] - mVertices[rots[i]]);
+                if(dir < 0.99)
+                    std::reverse(fng[i].begin()+1, fng[i].end());
+            }
+
+            for(Int idxo = 1; idxo < 6; idxo += 2) {
+                Facet& fngo = fng[idxo];
+                Cell& cn = cng[idxo];
+                Facets newf;
+                newf.resize(cn.size());
+                forEach(fngo,i) {
+                    Int vi = fngo[i];
+                    forEach(cn,j) {
+                        Facet& f = mFacets[cn[j]];
+                        if(std::find(f.begin(),f.end(),vi) != f.end())
+                            newf[j].push_back(vi);
+                    }
+                }
+                forEach(cn,j) {
+                    Facet& f = mFacets[cn[j]];
+                    f = newf[j];
+                }
+            }
+
             /*for new cell and face IDs*/
             IntVector b;
             for(Int idx = 0; idx < 6; idx++) {
