@@ -543,6 +543,7 @@ void Mesh::MeshObject::removeBoundary(const IntVector& fs) {
     erase_indices(mFacets,fzeroIndices);
     erase_indices(mFOC,fzeroIndices);
     erase_indices(mFNC,fzeroIndices);
+    erase_indices(mFMC,fzeroIndices);
     erase_indices(mFC,fzeroIndices);
     erase_indices(mFN,fzeroIndices);
     /*updated cell id*/
@@ -574,6 +575,7 @@ void Mesh::MeshObject::removeBoundary(const IntVector& fs) {
     forEach(mFacets,i) {
         mFOC[i] = Idc[mFOC[i]];
         mFNC[i] = Idc[mFNC[i]];
+        mFMC[i] = Idc[mFMC[i]];
     }
     /*patches*/
     forEachIt(mBoundaries,it) {
