@@ -2625,7 +2625,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
 
 /** Fill boundary values from internals */
 template<class T>
-void fillBCs(MeshField<T,CELL>& cF, bool sync = false, Int bind = 0) {
+void fillBCs(MeshField<T,CELL>& cF, Int bind = 0, bool sync = false) {
     using namespace Mesh;
     #pragma omp parallel for
     #pragma acc parallel loop copyin(cF,gBCS,gNCells)
@@ -2665,7 +2665,7 @@ void fillBCs(MeshField<T,CELL>& cF, bool sync = false, Int bind = 0) {
         }
     }
 
-    if(gInterMesh.size()) {
+    if(sync && gInterMesh.size()) {
         ASYNC_COMM<T> comm(&cF[0]);
         comm.send();
         comm.recv();
@@ -3220,9 +3220,9 @@ auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
 
 #undef GRADD
 
-    fillBCs(r,false,p.fIndex);
-
     if(perunit_volume) r = (r / cV);
+
+    fillBCs(r,p.fIndex);
 
     return r;
 }
@@ -3371,9 +3371,9 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
 
 #undef DIVD
 
-    fillBCs(r);
-
     if(perunit_volume) r = (r / cV);
+
+    fillBCs(r);
 
     return r;
 }

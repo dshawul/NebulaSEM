@@ -86,7 +86,7 @@ void euler(std::istream& input) {
 
             /*compute hydrostatic pressure*/
             p_ref = P0 * pow(1.0 + gh / (cp * T0), cp / R);
-            p += P0 * pow(1.0 + gh / (cp * T), cp / R);
+            p += P0 * pow(1.0 + gh / (cp * (T + T0)), cp / R);
         } else {
             p_ref = P0;
             p += P0;
@@ -101,15 +101,21 @@ void euler(std::istream& input) {
         Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
         applyExplicitBCs(rho_ref,true);
 
-        rho = (P0 / (R*T)) * pow(p / P0, 1 / p_gamma);
+        rho = (P0 / (R*(T + T0))) * pow(p / P0, 1 / p_gamma);
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         applyExplicitBCs(rho,true);
 
+        rho -= rho_ref;
         if(ait.get_step() == 0)
             rho.write(0);
 
         /*Time loop*/
         for (; !it.end(); it.next()) {
+
+            /*add reference values*/
+            rho += rho_ref;
+            T += T0;
+
             /*fluxes*/
             Fc = flxc(rho * U);
             F = flx(rho * U);
@@ -129,10 +135,11 @@ void euler(std::istream& input) {
             /*calculate p*/
             p = P0 * pow((rho*T*R) / P0, p_gamma);
             applyExplicitBCs(p,true);
+            p -= p_ref;
 
             /*U-equation*/
             {
-                VectorCellField Sc = -gradf<true>(p - p_ref,true);
+                VectorCellField Sc = -gradf<true>(p,true);
                 /*buoyancy*/
                 if(buoyancy)
                     Sc += (rho - rho_ref) * g;
@@ -153,8 +160,9 @@ void euler(std::istream& input) {
             if(Controls::state != Controls::STEADY)
                 Mesh::calc_courant(U,Controls::dt);
 
-            /*save pressure perturbation*/
-            p -= p_ref;
+            /*save perturbation values*/
+            rho -= rho_ref;
+            T -= T0;
         }
     }
 }
