@@ -111,14 +111,16 @@ void SolveT(const MeshMatrix<T1,T2,T3>& M) {
     ASYNC_COMM<T1> comm(&X[0]);                                                 \
     comm.send();                                                                \
     _Pragma("omp parallel for")                                                 \
-    _Pragma("acc parallel loop copyin(gBCSI,M)")                                \
-    for(Int ci = 0;ci < gBCSI;ci++)                                             \
-        Sweep_(X,B,ci);                                                         \
+    _Pragma("acc parallel loop copyin(gBCS,gHasBoundary,M)")                    \
+    for(Int ci = 0;ci < gBCS;ci++) {                                            \
+        if(!gHasBoundary[ci]) Sweep_(X,B,ci);                                   \
+    }                                                                           \
     comm.recv();                                                                \
     _Pragma("omp parallel for")                                                 \
-    _Pragma("acc parallel loop copyin(gBCS,gBCSI,M)")                           \
-    for(Int ci = gBCSI;ci < gBCS;ci++)                                          \
-        Sweep_(X,B,ci);                                                         \
+    _Pragma("acc parallel loop copyin(gBCS,gHasBoundary,M)")                    \
+    for(Int ci = 0;ci < gBCS;ci++) {                                            \
+        if(gHasBoundary[ci]) Sweep_(X,B,ci);                                    \
+    }                                                                           \
 }
     /***********************************
      *  Forward/backward substitution

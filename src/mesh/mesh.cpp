@@ -17,8 +17,8 @@ namespace Mesh {
     IntVector&        gFOC = gMesh.mFOC;
     IntVector&        gFNC = gMesh.mFNC;
     IntVector&        gFMC = gMesh.mFMC;
+    BoolVector&       gHasBoundary = gMesh.mHasBoundary;
     Int&              gBCS = gMesh.mBCS;
-    Int&              gBCSI = gMesh.mBCSI;
     Cells&            gFaceID = gMesh.mFaceID;
     InterBoundVector& gInterMesh = gMesh.mInterMesh;
     NodeVector&       gAmrTree = gMesh.mAmrTree;
@@ -42,6 +42,8 @@ void Mesh::MeshObject::clear() {
     mBoundaries.clear();
     mFOC.clear();
     mFNC.clear();
+    mFMC.clear();
+    mHasBoundary.clear();
     mInterMesh.clear();
     mPatches.clear();
     mAmrTree.clear();
@@ -56,6 +58,7 @@ void Mesh::MeshObject::addBoundaryCells() {
     mBCS = mCells.size();
     mFOC.assign(mFacets.size(),MAX_INT);
     mFNC.assign(mFacets.size(),MAX_INT);
+    mHasBoundary.assign(mCells.size(),false);
     forEach(mCells,i) {
         Cell& c = mCells[i];
         forEach(c,j) {
@@ -67,10 +70,12 @@ void Mesh::MeshObject::addBoundaryCells() {
         }
     }
     /*Flag boundary faces not in mBoundaries for auto deletion*/
+    IntVector faceInB;
     {
-        IntVector faceInB;
         faceInB.assign(mFacets.size(),0);
         forEachIt(mBoundaries,it) {
+            if(it->first == "delete")
+                continue;
             IntVector& mB = it->second; 
             forEach(mB,j)
                 faceInB[mB[j]] = 1;
@@ -84,48 +89,6 @@ void Mesh::MeshObject::addBoundaryCells() {
             }
         }
     }
-    /*reorder cells*/
-    {   
-        Cells bcs;
-        IntVector allbs;
-        Int count = 0;
-        Int bdry_size = 0;
-
-        forEachIt(mBoundaries,it)
-            bdry_size += it->second.size();
-        bcs.resize(bdry_size);
-        allbs.resize(bdry_size);
-        forEach(mCells,i) {
-            Cell& c = mCells[i];
-            forEach(c,j) {
-                Int fi = c[j];
-                if(mFNC[fi] == MAX_INT) {
-                    allbs[count] = i;
-                    bcs[count] = c;
-                    count++;
-                    break;
-                }
-            }
-        }
-        mBCSI = mBCS - count;
-        allbs.resize(count);
-        bcs.resize(count);
-        erase_indices(mCells,allbs);
-        mCells.insert(mCells.end(),bcs.begin(),bcs.end());
-    }
-    /*recompute mFOC/mFNC*/
-    mFOC.assign(mFacets.size(),MAX_INT);
-    mFNC.assign(mFacets.size(),MAX_INT);
-    forEach(mCells,i) {
-        Cell& c = mCells[i];
-        forEach(c,j) {
-            Int fi = c[j];
-            if(mFOC[fi] == MAX_INT) 
-                mFOC[fi] = i;
-            else 
-                mFNC[fi] = i;
-        }
-    }
     /*add boundary cells*/
     forEachIt(mBoundaries,it) {
         IntVector& mB = it->second;
@@ -136,6 +99,8 @@ void Mesh::MeshObject::addBoundaryCells() {
                 c.push_back(fi);
                 mCells.push_back(c);
                 mFNC[fi] = mCells.size() - 1;
+                if(faceInB[fi])
+                    mHasBoundary[mFOC[fi]] = true;
             }
         }
     }

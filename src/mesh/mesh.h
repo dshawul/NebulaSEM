@@ -87,11 +87,11 @@ namespace Mesh {
                                         0=conforming,
                                         1=facet owner is mortar,
                                         2=facet neighbor is mortar*/
+        BoolVector  mHasBoundary;   /**< True if a cell has boundary face */
 
         Int      mNV;   /**< Number of internal vertices */
         Int      mNF;   /**< Number of internal faces */
         Int      mBCS;  /**< Number of internal cells */
-        Int      mBCSI; /**< Number of internal cells one layer away from boundary */
 
         PatchVector      mPatches;      /**< List of patches */
         InterBoundVector mInterMesh;    /**< List of inter-processor boundaries */
@@ -227,8 +227,8 @@ namespace Mesh {
     extern  IntVector&        gFOC;
     extern  IntVector&        gFNC;
     extern  IntVector&        gFMC;
+    extern  BoolVector&       gHasBoundary;
     extern  Int&              gBCS;
-    extern  Int&              gBCSI;
     extern  Cells&            gFaceID;
     extern  InterBoundVector& gInterMesh;
     extern  NodeVector&       gAmrTree;

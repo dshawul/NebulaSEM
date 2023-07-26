@@ -407,7 +407,6 @@ namespace DG {
 namespace Mesh {
     extern IntVector  probeCells;
     extern Int  gBCSfield; 
-    extern Int  gBCSIfield;
     extern Int  gALLfield;
 };
 
@@ -2298,18 +2297,18 @@ auto mul (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool 
 
     //compute internal cell values
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(p,q,gBCSI)
-    for(Int i = 0; i < gBCSI; i++) {
-        MUL();
+    #pragma acc parallel loop copyin(p,q,gBCS,gHasBoundary)
+    for(Int i = 0; i < gBCS; i++) {
+        if(!gHasBoundary[i]) MUL();
     }
 
     if(sync) comm.recv();
 
     //compute boundary cell values
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(p,q,gBCS,gBCSI)
-    for(Int i = gBCSI; i < gBCS; i++) {
-        MUL();
+    #pragma acc parallel loop copyin(p,q,gBCS,gHasBoundary)
+    for(Int i = 0; i < gBCS; i++) {
+        if(gHasBoundary[i]) MUL();
     }
 
 #undef MUL
@@ -2359,18 +2358,18 @@ auto mult (const MeshMatrix<T1,T2,T3>& p,const MeshField<T1,CELL>& q, const bool
 
     //compute internal cell values
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(p,q,gBCSI)
-    for(Int i = 0; i < gBCSI; i++) {
-        MUL();
+    #pragma acc parallel loop copyin(p,q,gBCS,gHasBoundary)
+    for(Int i = 0; i < gBCS; i++) {
+        if(!gHasBoundary[i]) MUL();
     }
 
     if(sync) comm.recv();
 
     //compute boundary cell values
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(p,q,gBCS,gBCSI)
-    for(Int i = gBCSI; i < gBCS; i++) {
-        MUL();
+    #pragma acc parallel loop copyin(p,q,gBCS,gHasBoundary)
+    for(Int i = 0; i < gBCS; i++) {
+        if(gHasBoundary[i]) MUL();
     }
 
 #undef MUL
@@ -2412,18 +2411,18 @@ auto getRHS(const MeshMatrix<T1,T2,T3>& p, const MeshField<T1,CELL>& q, const bo
 
     //compute internal cell values
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(p,q,gBCSI)
-    for(Int i = 0; i < gBCSI; i++) {
-        MUL();
+    #pragma acc parallel loop copyin(p,q,gBCS,gHasBoundary)
+    for(Int i = 0; i < gBCS; i++) {
+        if(!gHasBoundary[i]) MUL();
     }
 
     if(sync) comm.recv();
 
     //compute boundary cell values
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(p,q,gBCS,gBCSI)
-    for(Int i = gBCSI; i < gBCS; i++) {
-        MUL();
+    #pragma acc parallel loop copyin(p,q,gBCS,gHasBoundary)
+    for(Int i = 0; i < gBCS; i++) {
+        if(gHasBoundary[i]) MUL();
     }
 
 #undef MUL
