@@ -47,7 +47,8 @@ void DG::legendre(int p, Scalar x, Scalar& L0, Scalar& L0_1, Scalar& L0_2) {
     }
 }
 /**
-  Compute Legendre-Gauss-Lobato interpolation points and weights
+  Compute Legendre-Gauss-Lobato interpolation points and associated
+  quadrature weights
  */
 void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
     Scalar L0,L0_1,L0_2;
@@ -98,8 +99,8 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
     }
 }
 /**
-  Compute lagrange basis functions. Two versions are provided
-  1) For interpolation on LGL nodes takes either 0 or 1
+  Compute lagrange basis values at a given point. Two versions are provided:
+  1) For interpolation on LGL nodes that takes either 0 or 1
   2) For an arbitrary set of points
  */
 void DG::lagrange_basis(int v, int Ns, Scalar* psi) {
@@ -125,7 +126,7 @@ void DG::lagrange_basis(int N, Scalar* xgl, int Ns, Scalar* xs, Scalar* psi) {
     }
 }
 /**
-  Compute lagrange basis derivatives at given point x, given interpolation points
+  Compute lagrange basis derivatives at LGL points
  */
 void DG::lagrange_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
     Scalar xi,xj,xk,prod;
