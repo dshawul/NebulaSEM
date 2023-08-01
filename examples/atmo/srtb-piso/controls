@@ -10,7 +10,7 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1.177
-    viscosity                    1.5
+    viscosity                    0.0
 
 #############################
 #  Time increment
@@ -27,10 +27,10 @@ general
 #  Discretization schemes
 ############################
 
-    convection_scheme            BLENDED
+    convection_scheme            CDS
     nonortho_scheme              OVER_RELAXED
     time_scheme                  BDF1
-    blend_factor                 0.3
+    blend_factor                 1.0
     parallel_method              BLOCKED
     print_time                   1000
 

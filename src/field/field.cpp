@@ -521,7 +521,7 @@ void Mesh::enroll(Util::ParamList& params) {
     params.enroll("sphere_radius", &sphere_radius);
 
     op = new Option(&convection_scheme,
-            {"CDS","UDS","HYBRID","BLENDED","LUD","CDSS","MUSCL","QUICK",
+            {"CDS","UDS","BLENDED","HYBRID","LUD","CDSS","MUSCL","QUICK",
             "VANLEER","VANALBADA","MINMOD","SUPERBEE","SWEBY","QUICKL","UMIST",
             "DDS","FROMM"});
     params.enroll("convection_scheme",op);
