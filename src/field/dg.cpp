@@ -523,6 +523,51 @@ void DG::init_basis() {
         for(Int j = 0; j < 2; j++) {
             lagrange_basis(ngl,xgl[i],ngl,&xglRef[j*ngl],psiRef[i*2+j]);
             inv(psiRef[i*2+j],psiCor[i*2+j],ngl);
+            //
+            // After inverting refine matrix to get coarsening matrix,
+            // zero out coefficients that do extrapolation instead of interpolation
+            // This is a compact interpolation scheme where each child interpolates
+            // points in its local region.
+            //
+            Int nglh = ngl / 2;
+            if(ngl & 1) {
+                if(j == 0) {
+                    for(Int l = 0; l < ngl; l++) {
+                        for(Int k = nglh + 1; k < ngl; k++)
+                            psiCor[i*2+j][l * ngl + k] = 0;
+                    }
+                } else {
+                    for(Int l = 0; l < ngl; l++) {
+                        for(Int k = 0; k < nglh; k++)
+                            psiCor[i*2+j][l * ngl + k] = 0;
+                    }
+                }
+                //Double values except at midpoint
+                if(ngl > 1) {
+                    for(Int l = 0; l < ngl; l++) {
+                        for(Int k = 0; k < ngl; k++)
+                            if(k != nglh)
+                                psiCor[i*2+j][l * ngl + k] *= 2;
+                    }
+                }
+            } else {
+                if(j == 0) {
+                    for(Int l = 0; l < ngl; l++) {
+                        for(Int k = nglh; k < ngl; k++)
+                            psiCor[i*2+j][l * ngl + k] = 0;
+                    }
+                } else {
+                    for(Int l = 0; l < ngl; l++) {
+                        for(Int k = 0; k < nglh; k++)
+                            psiCor[i*2+j][l * ngl + k] = 0;
+                    }
+                }
+                //Doulbe all values
+                for(Int l = 0; l < ngl; l++) {
+                    for(Int k = 0; k < ngl; k++)
+                        psiCor[i*2+j][l * ngl + k] *= 2;
+                }
+            }
 #if 0
             std::cout << "========" << j << "==========" << std::endl;
             for(Int k = 0; k < ngl; k++) {
