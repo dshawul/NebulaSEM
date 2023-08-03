@@ -87,9 +87,8 @@ namespace DG {
 
     void legendre(int p, Scalar x,Scalar& L0,Scalar& L0_1,Scalar& L0_2);
     void legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl);
-    void lagrange_basis(int v,int N,Scalar* psi);
     void lagrange_basis(int N,Scalar* xgl,int Ns,Scalar* xs,Scalar* psi);
-    void lagrange_basis_derivative(int v,int N, Scalar* xgl,Scalar* dpsi);
+    void lagrange_basis_derivative(int N, Scalar* xgl, int Ns, Scalar* xs, Scalar* dpsi);
     void init_poly();
     void init_basis();
     void init_geom();

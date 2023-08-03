@@ -99,16 +99,8 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
     }
 }
 /**
-  Compute lagrange basis values at a given point. Two versions are provided:
-  1) For interpolation on LGL nodes that takes either 0 or 1
-  2) For an arbitrary set of points
+  Compute lagrange basis values for a set of points
  */
-void DG::lagrange_basis(int v, int Ns, Scalar* psi) {
-    for(int s = 0;s < Ns; s++) {
-        if(s == v) psi[s] = 1;
-        else psi[s] = 0;
-    }
-}
 void DG::lagrange_basis(int N, Scalar* xgl, int Ns, Scalar* xs, Scalar* psi) {
     Scalar x,xj,xk,prod;
     for(int s = 0;s < Ns;s++) {
@@ -126,24 +118,26 @@ void DG::lagrange_basis(int N, Scalar* xgl, int Ns, Scalar* xs, Scalar* psi) {
     }
 }
 /**
-  Compute lagrange basis derivatives at LGL points
+  Compute lagrange basis derivatives for a set of points
  */
-void DG::lagrange_basis_derivative(int v, int N, Scalar* xgl, Scalar* dpsi) {
+void DG::lagrange_basis_derivative(int N, Scalar* xgl, int Ns, Scalar* xs, Scalar* dpsi) {
     Scalar xi,xj,xk,prod;
-    Scalar x = xgl[v];
-    for(int i = 0;i < N;i++) {
-        dpsi[i] = 0;
-        xi = xgl[i];
-        for(int j = 0;j < N;j++) {
-            if(i != j) {
-                xj = xgl[j];
-                prod = 1;
-                for(int k = 0;k < N;k++) {
-                    xk = xgl[k];
-                    if(k != i && k != j)
-                        prod *= ((x - xk) / (xi - xk));
+    for(int s = 0; s < Ns; s++) {
+        Scalar x = xs[s];
+        for(int i = 0;i < N;i++) {
+            dpsi[s*N+i] = 0;
+            xi = xgl[i];
+            for(int j = 0;j < N;j++) {
+                if(i != j) {
+                    xj = xgl[j];
+                    prod = 1;
+                    for(int k = 0;k < N;k++) {
+                        xk = xgl[k];
+                        if(k != i && k != j)
+                            prod *= ((x - xk) / (xi - xk));
+                    }
+                    dpsi[s*N+i] += prod / (xi - xj);
                 }
-                dpsi[i] += prod / (xi - xj);
             }
         }
     }
@@ -505,10 +499,10 @@ void DG::init_basis() {
         }
         //initialize interpolation at LGL nodes
         legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
-        for(Int j = 0;j < ngl;j++) {
-            lagrange_basis(j,ngl,&psi[i][j*ngl]);
-            lagrange_basis_derivative(j,ngl,xgl[i],&dpsi[i][j*ngl]);
-        }
+
+        lagrange_basis(ngl,xgl[i],ngl,xgl[i],psi[i]);
+        lagrange_basis_derivative(ngl,xgl[i],ngl,xgl[i],dpsi[i]);
+
         //initialize interpolation for 2:1 amr
         Scalar* xglRef = new Scalar[2*ngl];
         if(ngl == 1) {
