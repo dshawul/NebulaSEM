@@ -167,7 +167,7 @@ Tensor inv(const Tensor& p) {
 }
 
 /** Inverse of matrix using Gauss-Jordan elimination */
-void inv(Scalar* A_, Scalar* X, Int N) {
+void matinv(Scalar* A_, Scalar* X, Int N) {
 
 #define A(ii,jj) A[(ii)*N+(jj)]
 #define X(ii,jj) X[(ii)*N+(jj)]
@@ -221,3 +221,25 @@ void inv(Scalar* A_, Scalar* X, Int N) {
 #undef A
 #undef X
 }
+
+/** Multiply two square matrices */
+void matmul(Scalar* A, Scalar* B, Scalar* X, Int N) {
+    for(Int i = 0; i < N; i++) {
+        for(Int j = 0; j < N; j++) {
+            Scalar sum = 0.0;
+            for(Int k = 0; k < N; k++)
+                sum += A[i*N+k] * B[k*N+j];
+            X[i*N+j] = sum;
+        }
+    }
+}
+
+/** Transpose square matrix */
+void mattrn(Scalar* A, Scalar* X, Int N) {
+    for(Int i = 0; i < N; i++) {
+        for(Int j = 0; j < N; j++) {
+            X[i*N+j] = A[j*N+i];
+        }
+    }
+}
+

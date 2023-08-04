@@ -485,38 +485,88 @@ void DG::init_basis() {
     wgl = new Scalar*[3];
     psi = new Scalar*[3];
     dpsi = new Scalar*[3];
+
+    Scalar** xgle = new Scalar*[3];
+    Scalar** wgle = new Scalar*[3];
+    Scalar** psie = new Scalar*[3];
+    Scalar** dpsie = new Scalar*[3];
+
     psiRef = new Scalar*[3*2];
     psiCor = new Scalar*[3*2];
+
     for(Int i = 0;i < 3;i++) {
         Int ngl = Nop[i] + 1;
+        Int ngle = ngl + 1;
+
         xgl[i] = new Scalar[ngl];
         wgl[i] = new Scalar[ngl];
         psi[i] = new Scalar[ngl*ngl];
         dpsi[i] = new Scalar[ngl*ngl];
+
+        xgle[i] = new Scalar[ngle];
+        wgle[i] = new Scalar[ngle];
+        psie[i] = new Scalar[ngle*ngle];
+        dpsie[i] = new Scalar[ngle*ngle];
+
         for(Int j = 0; j < 2; j++) {
             psiRef[i*2+j] = new Scalar[ngl*ngl];
             psiCor[i*2+j] = new Scalar[ngl*ngl];
         }
+
         //initialize interpolation at LGL nodes
         legendre_gauss_lobatto(ngl,xgl[i],wgl[i]);
+        legendre_gauss_lobatto(ngle,xgle[i],wgle[i]);
 
         lagrange_basis(ngl,xgl[i],ngl,xgl[i],psi[i]);
         lagrange_basis_derivative(ngl,xgl[i],ngl,xgl[i],dpsi[i]);
 
         //initialize interpolation for 2:1 amr
-        Scalar* xglRef = new Scalar[2*ngl];
+        Scalar* xglre = new Scalar[2*ngle];
+        Scalar* psire = new Scalar[2*ngle*ngle];
         if(ngl == 1) {
-            xglRef[0] = 0;
-            xglRef[1] = 0;
+            xglre[0] = 0;
+            xglre[1] = 0;
         } else {
-            for(Int j = 0;j < ngl;j++) {
-                xglRef[j] = -0.5 + xgl[i][j]/2;
-                xglRef[j+ngl] = 0.5 + xgl[i][j]/2;
+            for(Int j = 0;j < ngle;j++) {
+                xglre[j] = -0.5 + xgle[i][j]/2;
+                xglre[j+ngle] = 0.5 + xgle[i][j]/2;
             }
         }
+        for(Int j = 0; j < 2; j++)
+            lagrange_basis(ngl,xgl[i],ngle,&xglre[j*ngle],&psire[j*ngle*ngle]);
+
+        lagrange_basis(ngl,xgl[i],ngle,xgle[i],psie[i]);
+        lagrange_basis_derivative(ngl,xgl[i],ngle,xgle[i],dpsie[i]);
+
+        //build scatter (refinement) matrix
+        Scalar* Mcc = new Scalar[ngl*ngl];
+        Scalar* iMcc = new Scalar[ngl*ngl];
+        Scalar* Mtemp = new Scalar[ngl*ngl];
+        Scalar* Msc = new Scalar[2*ngl*ngl];
+
+        memset(Mcc,0,ngl*ngl*sizeof(Scalar));
+        memset(Msc,0,2*ngl*ngl*sizeof(Scalar));
+
+        for(Int j = 0; j < ngl; j++) {
+            for(Int k = 0; k < ngl; k++) {
+                for(Int q = 0; q < ngle; q++) {
+                    Mcc[j*ngl+k] += (wgle[i][q] / 2) * psie[i][j*ngle+q] * psie[i][k*ngle+q];
+                    for(Int c = 0; c < 2; c++)
+                        Msc[c*ngl*ngl+j*ngl+k] += 
+                            (wgle[i][q] / 2) * psie[i][j*ngle+q] * psire[c*ngle*ngle+k*ngle+q];
+                }
+            }
+        }
+
+        matinv(Mcc,iMcc,ngl);
         for(Int j = 0; j < 2; j++) {
-            lagrange_basis(ngl,xgl[i],ngl,&xglRef[j*ngl],psiRef[i*2+j]);
-            inv(psiRef[i*2+j],psiCor[i*2+j],ngl);
+            matmul(iMcc,&Msc[j*ngl*ngl],Mtemp,ngl);
+            mattrn(Mtemp,psiRef[i*2+j],ngl);
+        }
+
+        //build gather (coarsening) matrix
+        for(Int j = 0; j < 2; j++) {
+            matinv(psiRef[i*2+j],psiCor[i*2+j],ngl);
             //
             // After inverting refine matrix to get coarsening matrix,
             // zero out coefficients that do extrapolation instead of interpolation
