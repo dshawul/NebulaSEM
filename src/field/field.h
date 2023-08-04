@@ -19,12 +19,14 @@ struct RefineParams {
     std::string field;
     Scalar field_max;
     Scalar field_min;
+    Int max_level;
     Int limit;
     RefineParams() {
         dir = Scalar(0);
         field = "U";
         field_max = 0.6;
         field_min = 0.2;
+        max_level = 100;
         limit = 100000;
     }
 };

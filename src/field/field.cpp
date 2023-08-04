@@ -481,6 +481,7 @@ void Controls::enrollRefine(Util::ParamList& params) {
     params.enroll("field",&refine_params.field);
     params.enroll("field_max",&refine_params.field_max);
     params.enroll("field_min",&refine_params.field_min);
+    params.enroll("max_level",&refine_params.max_level);
     params.enroll("limit",&refine_params.limit);
 }
 /**
@@ -641,6 +642,32 @@ void Prepare::refineMesh(Int step) {
     Prepare::createFields(BaseField::fieldNames,step);
     Prepare::readFields(BaseField::fieldNames,step);
 
+    gCells.erase(gCells.begin() + gBCS,gCells.end());
+
+    /*Read amr tree*/
+    {
+        stringstream path;
+        int stepn = findLastRefinedGrid(step);
+        path << "amrTree" << "_" << stepn << ".bin";
+        if(System::exists(path.str())) {
+            Util::ifstream_bin is(path.str());
+            is >> gAmrTree;
+        } else {
+            gAmrTree.resize(gCells.size());
+            forEach(gCells,i)
+                gAmrTree[i].id = i;
+        }
+    }
+
+    /*Enforce approximate 2:1 balance*/
+    IntVector rDepth;
+    rDepth.assign(gBCS,0);
+    forEach(gAmrTree,i) {
+        Node& n = gAmrTree[i];
+        if(!n.nchildren)
+            rDepth[n.id] = n.level;
+    }
+
     /*find cells to refine/coarsen*/
     IntVector rCells,cCells;
     {
@@ -649,7 +676,6 @@ void Prepare::refineMesh(Int step) {
         calcQOI(qoi);
 
         /*get cells to refine*/
-        gCells.erase(gCells.begin() + gBCS,gCells.end());
         cCells.assign(gBCS,0);
         rCells.assign(gBCS,0);
         for(Int i = 0;i < gBCS;i++) {
@@ -665,26 +691,11 @@ void Prepare::refineMesh(Int step) {
 
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {
-                if(gBCS <= rp.limit)
+                if(gBCS <= rp.limit && rDepth[i] < rp.max_level)
                     rCells[i] = 1;
             } else if(q <= rp.field_min) {
                 cCells[i] = 1;
             }
-        }
-    }
-
-    /*Read amr tree*/
-    {
-        stringstream path;
-        int stepn = findLastRefinedGrid(step);
-        path << "amrTree" << "_" << stepn << ".bin";
-        if(System::exists(path.str())) {
-            Util::ifstream_bin is(path.str());
-            is >> gAmrTree;
-        } else {
-            gAmrTree.resize(gCells.size());
-            forEach(gCells,i)
-                gAmrTree[i].id = i;
         }
     }
 
@@ -710,15 +721,6 @@ void Prepare::refineMesh(Int step) {
             }
         } else if(n.level == 0)
             cCells[n.id] = 0;
-    }
-
-    /*Enforce approximate 2:1 balance*/
-    IntVector rDepth;
-    rDepth.assign(gBCS,0);
-    forEach(gAmrTree,i) {
-        Node& n = gAmrTree[i];
-        if(!n.nchildren)
-            rDepth[n.id] = n.level;
     }
 
 #if 0
