@@ -691,7 +691,18 @@ void Prepare::refineMesh(Int step) {
 
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {
-                if(gBCS <= rp.limit && rDepth[i] < rp.max_level)
+
+                Int level = 1;
+                for(;level < 3;level++) {
+                    Scalar delta = ((1 - rp.field_max) / 2) *
+                                    (2 - 1.0 / (1 << (level - 1)));
+                    if(q < rp.field_max + delta)
+                        break;
+                }
+
+                if(gBCS <= rp.limit
+                   && rDepth[i] < rp.max_level
+                   && rDepth[i] < level)
                     rCells[i] = 1;
             } else if(q <= rp.field_min) {
                 cCells[i] = 1;
