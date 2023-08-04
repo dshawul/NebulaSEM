@@ -19,7 +19,7 @@ general
     state                        TRANSIENT
     start_step                   0
     end_step                     40000
-    write_interval               2000
+    write_interval               1000
     amr_step                     1
     dt                           0.001
 
@@ -74,6 +74,7 @@ refinement
     field           T
     field_min       0.15
     field_max       0.3
+    max_level       1
     limit           100000
 }
 
