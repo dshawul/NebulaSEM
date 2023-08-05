@@ -538,26 +538,32 @@ void DG::init_basis() {
         lagrange_basis(ngl,xgl[i],ngle,xgle[i],psie[i]);
         lagrange_basis_derivative(ngl,xgl[i],ngle,xgle[i],dpsie[i]);
 
-        //build scatter (refinement) matrix
+        //build mass matrices
         Scalar* Mcc = new Scalar[ngl*ngl];
         Scalar* iMcc = new Scalar[ngl*ngl];
         Scalar* Mtemp = new Scalar[ngl*ngl];
         Scalar* Msc = new Scalar[2*ngl*ngl];
+        Scalar* Mga = new Scalar[2*ngl*ngl];
 
         memset(Mcc,0,ngl*ngl*sizeof(Scalar));
         memset(Msc,0,2*ngl*ngl*sizeof(Scalar));
+        memset(Mga,0,2*ngl*ngl*sizeof(Scalar));
 
         for(Int j = 0; j < ngl; j++) {
             for(Int k = 0; k < ngl; k++) {
                 for(Int q = 0; q < ngle; q++) {
                     Mcc[j*ngl+k] += (wgle[i][q] / 2) * psie[i][j*ngle+q] * psie[i][k*ngle+q];
-                    for(Int c = 0; c < 2; c++)
+                    for(Int c = 0; c < 2; c++) {
                         Msc[c*ngl*ngl+j*ngl+k] += 
                             (wgle[i][q] / 2) * psie[i][j*ngle+q] * psire[c*ngle*ngle+k*ngle+q];
+                        Mga[c*ngl*ngl+k*ngl+j] +=
+                            (wgle[i][q] / 2) * psie[i][j*ngle+q] * psire[c*ngle*ngle+k*ngle+q];
+                    }
                 }
             }
         }
 
+        //build scatter (refining) matrix
         matinv(Mcc,iMcc,ngl);
         for(Int j = 0; j < 2; j++) {
             matmul(iMcc,&Msc[j*ngl*ngl],Mtemp,ngl);
@@ -566,6 +572,10 @@ void DG::init_basis() {
 
         //build gather (coarsening) matrix
         for(Int j = 0; j < 2; j++) {
+#if 1
+            matmul(iMcc,&Mga[j*ngl*ngl],Mtemp,ngl);
+            mattrn(Mtemp,psiCor[i*2+j],ngl);
+#else
             matinv(psiRef[i*2+j],psiCor[i*2+j],ngl);
             //
             // After inverting refine matrix to get coarsening matrix,
@@ -606,27 +616,85 @@ void DG::init_basis() {
                             psiCor[i*2+j][l * ngl + k] = 0;
                     }
                 }
-                //Doulbe all values
+                //Double all values
                 for(Int l = 0; l < ngl; l++) {
                     for(Int k = 0; k < ngl; k++)
                         psiCor[i*2+j][l * ngl + k] *= 2;
                 }
             }
+#endif
+        }
+
 #if 0
-            std::cout << "========" << j << "==========" << std::endl;
+        //print scatter/gather matrices
+        for(Int j = 0; j < 2; j++) {
+            std::cout << "======== direction " << i << " subelement " << j << " ==========" << std::endl;
+            std::cout << "-----refine matrix-------" << std::endl;
             for(Int k = 0; k < ngl; k++) {
                 for(Int l = 0; l < ngl; l++)
                     std::cout << psiRef[i*2+j][k*ngl+l] << " ";
                 std::cout << std::endl;
             }
-            std::cout << "------------" << std::endl;
+            std::cout << "-----corsening matrix-------" << std::endl;
             for(Int k = 0; k < ngl; k++) {
                 for(Int l = 0; l < ngl; l++)
                     std::cout << psiCor[i*2+j][k*ngl+l] << " ";
                 std::cout << std::endl;
             }
-#endif
         }
+        //test scatter/gather in 1D
+        {
+            std::cout << "======== Test gather/scatter =======" << std::endl;
+            Scalar* u1 = new Scalar[ngl];
+            Scalar* u2 = new Scalar[ngl];
+            Scalar* u3 = new Scalar[ngl];
+            Scalar* u4 = new Scalar[ngl];
+
+            for(Int k = 0; k < ngl; k++) {
+                u1[k] = k/Scalar(ngl+1);
+                u2[k] = 0;
+            }
+            for(Int k = 0; k < ngl; k++) {
+                Scalar P0 = u1[k];
+                for(Int l = 0; l < ngl; l++) {
+                    u2[l] += P0 * psiRef[i*2+0][k*ngl+l];
+                    u3[l] += P0 * psiRef[i*2+1][k*ngl+l];
+                }
+            }
+            std::cout << "u1: ";
+            for(Int k = 0; k < ngl; k++)
+                std::cout << u1[k] << " ";
+            std::cout << std::endl;
+            std::cout << "u2: ";
+            for(Int k = 0; k < ngl; k++)
+                std::cout << u2[k] << " ";
+            std::cout << std::endl;
+            std::cout << "u3: ";
+            for(Int k = 0; k < ngl; k++)
+                std::cout << u3[k] << " ";
+            std::cout << std::endl;
+
+            for(Int k = 0; k < ngl; k++) {
+                Scalar P0 = u2[k];
+                Scalar P1 = u3[k];
+                for(Int l = 0; l < ngl; l++) {
+                    u4[l] += P0 * psiCor[i*2+0][k*ngl+l] +
+                             P1 * psiCor[i*2+1][k*ngl+l];
+                }
+            }
+            for(Int l = 0; l < ngl; l++)
+                u4[l] /= 2;
+            std::cout << "u4: ";
+            for(Int k = 0; k < ngl; k++)
+                std::cout << u4[k] << " ";
+            std::cout << std::endl;
+            delete[] u1;
+            delete[] u2;
+            delete[] u3;
+            delete[] u4;
+            exit(0);
+        }
+#endif
     }
 }
 
