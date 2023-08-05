@@ -540,8 +540,6 @@ void DG::init_basis() {
 
         //build mass matrices
         Scalar* Mcc = new Scalar[ngl*ngl];
-        Scalar* iMcc = new Scalar[ngl*ngl];
-        Scalar* Mtemp = new Scalar[ngl*ngl];
         Scalar* Msc = new Scalar[2*ngl*ngl];
         Scalar* Mga = new Scalar[2*ngl*ngl];
 
@@ -564,6 +562,8 @@ void DG::init_basis() {
         }
 
         //build scatter (refining) matrix
+        Scalar* iMcc = new Scalar[ngl*ngl];
+        Scalar* Mtemp = new Scalar[ngl*ngl];
         matinv(Mcc,iMcc,ngl);
         for(Int j = 0; j < 2; j++) {
             matmul(iMcc,&Msc[j*ngl*ngl],Mtemp,ngl);
@@ -624,6 +624,13 @@ void DG::init_basis() {
             }
 #endif
         }
+
+        //delete matrices
+        delete[] Mcc;
+        delete[] Msc;
+        delete[] Mga;
+        delete[] iMcc;
+        delete[] Mtemp;
 
 #if 0
         //print scatter/gather matrices
