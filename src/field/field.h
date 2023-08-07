@@ -291,6 +291,7 @@ namespace Controls {
         UDS,    /**< Upwind difference */
         BLENDED,/**< Blended CDS/UDS difference */
         HYBRID, /**< Hybrid scheme that switches b/n CDS/UDS */
+        RUSANOV,/**< Rusanov flux */
         LUD,    /**< Linear upwind */
         CDSS,   /**< Stabilized central difference */
         MUSCL,  /**< Monotonic upstream centered */
@@ -2822,6 +2823,25 @@ auto uds(const DVExpr<type,A>& expr,const MeshField<T3,FACET>& flux) {
 }
 #endif
 
+/** rusanov flux */
+template<typename T1, typename T2>
+auto rusanov(const MeshField<T1,CELL>& F, const MeshField<T2,CELL>& q,
+             const ScalarFacetField& lambdaMax) {
+    using namespace Mesh;
+
+    MeshField<T1,FACET> fF = cds(F);
+
+    MeshField<T2,FACET> fFO, fFN;
+    scatter_non_conforming(q,fFO,fFN);
+
+    #pragma omp parallel for
+    #pragma acc parallel loop copyin(fFO,fFN,lambdaMax)
+    forEach(fF,i) {
+        fF[i] = fF[i] - mul(unit(fN[i]), lambdaMax[i] * (fFN[i] - fFO[i]));
+    }
+    return fF;
+}
+
 /** interpolate facet data to vertex data */
 template<class type>
 auto cds(const MeshField<type,FACET>& fF) {
@@ -3009,7 +3029,9 @@ auto sum(const DVExpr<type,A>& expr) {
  * *******************************/
 
 template<bool strong=form_strong,class T1, class T2, class T3, class T4>
-void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux, const MeshField<T4,CELL>* muc = 0) {
+void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
+    const MeshField<T4,CELL>* muc = 0
+) {
     using namespace Controls;
     using namespace Mesh;
     using namespace DG;
@@ -3077,7 +3099,7 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
         }
 
         /*deferred correction startring from upwind scheme*/
-        if(convection_scheme > HYBRID) {
+        if(convection_scheme >= LUD) {
             MeshField<T1,FACET> corr;
             if(convection_scheme == CDSS) {
                 corr = cds(cF) - uds(cF,flux);
@@ -3338,12 +3360,30 @@ auto flx(const DVExpr<T,A>& expr) {
   Explicit divergence operator
  */
 
-template<bool strong=form_strong, typename T1>
-auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
+template<bool strong=form_strong, typename T1, typename T2>
+auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false,
+         const ScalarFacetField* flux = 0,
+         const MeshField<T2,CELL>* q = 0,
+         const ScalarFacetField* lambdaMax = 0
+) {
     using namespace Mesh;
     using namespace DG;
+    using namespace Controls;
 
-    auto fF = cds(p);
+    MeshField<T1,FACET> fF;
+    if(lambdaMax && convection_scheme == RUSANOV)
+        fF = rusanov(p,*q,*lambdaMax);
+    else {
+        Scalar gamma;
+        if(flux == 0 || convection_scheme == CDS) 
+            fF = cds(p);
+        else {
+            if(convection_scheme == BLENDED)
+                fF = blend_factor * cds(p) + (1.0 - blend_factor) * uds(p,*flux);
+            else
+                fF = uds(p,*flux);
+        }
+    }
     auto r = div_flux<strong>(p,fF);
 
 #define DIVD(im,jm,km) {                            \
@@ -3384,12 +3424,12 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
 template<bool strong=form_strong,typename A>
 MeshField<Scalar,CELL> divf(const DVExpr<Vector,A>& expr, bool perunit_volume=false) {
     MeshField<Vector,CELL> e(expr);
-    return divf<strong>(e,perunit_volume);
+    return divf<strong,Vector,Scalar>(e,perunit_volume);
 }
 template<bool strong=form_strong,typename A>
 MeshField<Vector,CELL> divf(const DVExpr<Tensor,A>& expr, bool perunit_volume=false) {
     MeshField<Tensor,CELL> e(expr);
-    return divf<strong>(e,perunit_volume);
+    return divf<strong,Tensor,Vector>(e,perunit_volume);
 }
 #endif
 
@@ -3398,7 +3438,9 @@ MeshField<Vector,CELL> divf(const DVExpr<Tensor,A>& expr, bool perunit_volume=fa
  */
 template<bool strong=form_strong,class type>
 auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
-        const ScalarFacetField& flux,const ScalarCellField* muc = 0) {
+        const ScalarFacetField& flux,
+        const ScalarCellField* muc = 0
+) {
 
     using namespace Mesh;
     using namespace DG;

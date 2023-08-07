@@ -27,7 +27,7 @@ general
 #  Discretization schemes
 ############################
 
-    convection_scheme            BLENDED
+    convection_scheme            RUSANOV
     nonortho_scheme              OVER_RELAXED
     time_scheme                  BDF1
     blend_factor                 0.3

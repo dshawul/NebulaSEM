@@ -28,7 +28,7 @@ general
 #  Discretization schemes
 ############################
 
-    convection_scheme            UDS
+    convection_scheme            RUSANOV
     nonortho_scheme              OVER_RELAXED
     time_scheme                  BDF1
     blend_factor                 0.3
@@ -75,9 +75,10 @@ decomposition
 refinement
 {
     direction       0 0 1
-    field           U
+    field           p
     field_min       0.7
     field_max       0.9
+    max_level       1
     limit           100000
 }
 

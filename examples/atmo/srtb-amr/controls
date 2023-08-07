@@ -19,20 +19,20 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     100000
-    write_interval               2500
+    end_step                     400000
+    write_interval               10000
     amr_step                     1
-    dt                           0.01
+    dt                           0.0025
     n_deferred                   0
 
 ############################
 #  Discretization schemes
 ############################
 
-    convection_scheme            UDS
+    convection_scheme            RUSANOV
     nonortho_scheme              OVER_RELAXED
     time_scheme                  AB1
-    blend_factor                 0.3
+    blend_factor                 1
     parallel_method              BLOCKED
     print_time                   1000
 
@@ -54,8 +54,8 @@ general
 ############################
 #  DG polynomial order
 ############################
-    npx       1
-    npy       1
+    npx       4
+    npy       4
     npz       0
 }
 
@@ -76,8 +76,8 @@ refinement
 {
     direction       0 0 1
     field           T
-    field_min       0.5
-    field_max       0.7
+    field_min       0.4
+    field_max       0.6
     max_level       1
     limit           100000
 }

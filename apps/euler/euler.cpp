@@ -3,6 +3,8 @@
 #include "wrapper.h"
 #include "properties.h"
 
+//#define LINEARIZE
+
 /**
   \verbatim
   Euler equations solver
@@ -56,6 +58,7 @@ void euler(std::istream& input) {
         ScalarFacetField F;
         ScalarCellField rhof;
         ScalarCellField mu;
+        ScalarFacetField lambdaMax;
 
         /*gas constants*/
         using namespace Fluid;
@@ -119,6 +122,9 @@ void euler(std::istream& input) {
             /*fluxes*/
             Fc = flxc(rho * U);
             F = flx(rho * U);
+#ifndef LINEARIZE
+            lambdaMax = ( cds(mag(U)) + cds(sqrt(p_gamma*R*T)) ) / 2;
+#endif
 
             /*artificial viscosity*/
             if(diffusion) mu = rho * viscosity;
@@ -128,7 +134,17 @@ void euler(std::istream& input) {
             rhof = rho;
             {
                 ScalarCellMatrix M;
+#ifdef LINEARIZE
                 M = convection(rho, flxc(U), flx(U), pressure_UR);
+#else
+                {
+                    VectorCellField fq = U * rho;
+                    ScalarFacetField Fr = flx(U);
+                    M = divf(fq,false,&Fr,&rho,&lambdaMax);
+                    M.cF = &rho;
+                    addTemporal<1>(M,pressure_UR);
+                }
+#endif
                 Solve(M);
             }
 
@@ -139,20 +155,46 @@ void euler(std::istream& input) {
 
             /*U-equation*/
             {
-                VectorCellField Sc = -gradf<true>(p,true);
                 /*buoyancy*/
+                ScalarCellField Sp = Scalar(0);
+#ifdef LINEARIZE
+                VectorCellField Sc = -gradf<true>(p,true);
+#else
+                VectorCellField Sc = Vector(0.0);
+#endif
                 if(buoyancy)
                     Sc += (rho - rho_ref) * g;
                 /*solve*/
                 VectorCellMatrix M;
-                M = transport(U, Fc, F, mu, velocity_UR, Sc, Scalar(0), &rho, &rhof);
+#ifdef LINEARIZE
+                M = transport(U, Fc, F, mu, velocity_UR, Sc, Sp, &rho, &rhof);
+#else
+                {
+                    TensorCellField fq = mul(Fc,U) + TensorCellField(Constants::I_T) * p;
+                    VectorCellField q = rho * U;
+                    M = divf(fq,false,&F,&q,&lambdaMax) - lap(U,mu) - src(U,Sc,Sp);
+                    M.cF = &U;
+                    addTemporal<1>(M,velocity_UR,&rho,&rhof);
+                }
+#endif
                 Solve(M);
             }
 
             /*T-equation*/
             {
                 ScalarCellMatrix M;
+#ifdef LINEARIZE
                 M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
+#else
+                {
+                    ScalarCellField imu = mu * iPr;
+                    VectorCellField fq = Fc * T;
+                    ScalarCellField q = rho * T;
+                    M = divf(fq,false,&F,&q,&lambdaMax) - lap(T,imu);
+                    M.cF = &T;
+                    addTemporal<1>(M,t_UR,&rho,&rhof);
+                }
+#endif
                 Solve(M);
             }
 

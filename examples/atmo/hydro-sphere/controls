@@ -18,16 +18,16 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     80
+    end_step                     160
     write_interval               8
-    dt                           5
+    dt                           2.5
     n_deferred                   0
 
 ############################
 #  Discretization schemes
 ############################
 
-    convection_scheme            BLENDED
+    convection_scheme            RUSANOV
     nonortho_scheme              OVER_RELAXED
     time_scheme                  BDF1
     blend_factor                 0.3
