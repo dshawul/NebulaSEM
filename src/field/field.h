@@ -3264,73 +3264,6 @@ MeshField<Tensor,CELL> gradf(const DVExpr<Vector,A>& expr, bool perunit_volume=f
 }
 #endif
 
-/**
-  Implicit gradient operator
- */
-template<bool strong=form_strong,class T1, class T2>
-auto grad(MeshField<T1,CELL>& cF,const MeshField<T1,CELL>& fluxc,
-        const MeshField<T2,FACET>& flux) {
-    using namespace Mesh;
-    using namespace DG;
-    MeshMatrix<T1,T2,T2> m;
-    m.cF = &cF;
-    m.flags = 0;
-    m.Su = T1(0);
-    m.ap = Scalar(0);
-    m.adg = Scalar(0);
-
-    /*compute volume integral*/
-    if(NPMAT) {
-        #pragma omp parallel for
-        #pragma acc parallel loop copyin(flux,fluxc,gBCS)
-        for(Int ci = 0; ci < gBCS;ci++) {
-            forEachLgl(ii,jj,kk) {
-                Int index = INDEX4(ci,ii,jj,kk);
-                Tensor Jin = Jinv[index] * cV[index];
-#define GRADD(im,jm,km) {                                   \
-    Int index1 = INDEX4(ci,im,jm,km);                       \
-    Vector dpsi_ij;                                         \
-    DPSI(dpsi_ij,im,jm,km);                                 \
-    dpsi_ij = dot(Jin,dpsi_ij);                             \
-    T2 val;                                                 \
-    if(strong)                                              \
-        val = +mul(dpsi_ij,fluxc[index1]);                  \
-    else                                                    \
-        val = -mul(dpsi_ij,fluxc[index]);                   \
-    if(index == index1) {                                   \
-        m.ap[index] = -val;                                 \
-    } else {                                                \
-        m.adg[indexm] = val;                                \
-    }                                                       \
-}
-                forEachLglX(i) {
-                    Int indexm = ci * NPMAT;
-                    if(strong) indexm += INDEX_X(ii,jj,kk,i);
-                    else indexm += INDEX_TX(ii,jj,kk,i);
-                    GRADD(i,jj,kk);
-                }
-                forEachLglY(j) if(j != jj) {
-                    Int indexm = ci * NPMAT;
-                    if(strong) indexm += INDEX_Y(ii,jj,kk,j);
-                    else indexm += INDEX_TY(ii,jj,kk,j);
-                    GRADD(ii,j,kk);
-                }
-                forEachLglZ(k) if(k != kk) {
-                    Int indexm = ci * NPMAT;
-                    if(strong) indexm += INDEX_Z(ii,jj,kk,k);
-                    else indexm += INDEX_TZ(ii,jj,kk,k);
-                    GRADD(ii,jj,k);
-                }
-#undef GRADD
-
-            }
-        }
-    }
-    /*compute surface integral*/
-    div_flux_implicit<strong>(m,flux);
-    
-    return m;
-}
 /* ***************************************************
  * Divergence field operation
  * ***************************************************/ 
@@ -3506,17 +3439,7 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
 
 /* ***********************************************************
  * Laplacian field operation 
- *    It computes div( mu * grad(p) ), hence it is not really
- *    the laplacian operation for a nonconstant mu
  * ***********************************************************/
-
-/**
-  Explicit laplacian operator
- */
-template<bool strong=form_strong,class type, ENTITY entity>
-auto lapf(MeshField<type,entity>& cF,const MeshField<Scalar,entity>& mu) {
-    return divf<strong>(mu * gradf<strong>(cF,true));
-}
 
 /**
   Implicit laplacian operator
