@@ -109,36 +109,49 @@ void Mesh::MeshObject::addBoundaryCells() {
   Find the eight vertices of a hexahedron
  */
 void Mesh::MeshObject::getHexCorners(const Facet& f1, const Facet& f2, IntVector& vp) {
-    //pick first 4 vertices from face 0 skipping midpoints
-    Int i0 = f1.size() - 1;
-    Int idx = 0;
-    for(Int i = 0; i < f1.size() && idx < 4; i++) {
-        Int i1 = (i == f1.size() - 1) ? 0 : i + 1;
-        Vector v0 = unit(mVertices[f1[i]] - mVertices[f1[i0]]);
-        Vector v1 = unit(mVertices[f1[i1]] - mVertices[f1[i]]);
-        Scalar dt = dot(v0,v1);
-        if(dt > 1) dt = 1;
-        else if(dt < -1) dt = -1;
-        Scalar angle = acos(dt);
-        const Scalar tol = Constants::PI / 32;
-        if(!(angle < tol || angle >= Constants::PI - tol)) {
-            vp.push_back(f1[i]);
-            i0 = i;
-        }
-    }
-    //pick the other vertices by distance from the first 4
-    for(Int i = 0; i < 4; i++) {
-        Scalar mind = 1e20;
-        Int minj = 0;
-        forEach(f2,j) {
-            Scalar dist = mag(mVertices[f2[j]] - mVertices[vp[i]]);
-            if(dist < mind) {
-                mind = dist;
-                minj = j;
+    //pick first 4 vertices from face 0 and 1 skipping midpoints
+    Facet fm[2];
+    for(Int f = 0; f < 2; f++) {
+        const Facet& fk = (f == 0) ? f1 : f2;
+
+        Int i0 = fk.size() - 1;
+        Int idx = 0;
+        for(Int i = 0; i < fk.size() && idx < 4; i++) {
+            Int i1 = (i == fk.size() - 1) ? 0 : i + 1;
+            Vector v0 = unit(mVertices[fk[i]] - mVertices[fk[i0]]);
+            Vector v1 = unit(mVertices[fk[i1]] - mVertices[fk[i]]);
+            Scalar dt = dot(v0,v1);
+            if(dt > 1) dt = 1;
+            else if(dt < -1) dt = -1;
+            Scalar angle = acos(dt);
+            const Scalar tol = Constants::PI / 32;
+            if(!(angle < tol || angle >= Constants::PI - tol)) {
+                fm[f].push_back(fk[i]);
+                i0 = i;
             }
         }
-        vp.push_back(f2[minj]);
     }
+
+    //add face 0 vertices
+    for(Int i = 0; i < 4; i++)
+        vp.push_back(fm[0][i]);
+
+    //pick the other vertices by distance from the first 4
+    Scalar mind = 1e20;
+    IntVector order = {0, 1, 2, 3}, best;
+    do {
+        Scalar dist = 0;
+        for(Int i = 0; i < 4; i++)
+            dist += mag(mVertices[fm[1][order[i]]] - mVertices[fm[0][i]]);
+        if(dist < mind) {
+            mind = dist;
+            best = order;
+        }
+    } while(std::next_permutation(order.begin(), order.end()));
+
+    //add face 0 vertices
+    for(Int i = 0; i < 4; i++)
+        vp.push_back(fm[1][best[i]]);
 }
 /**
   Fix hexahedral cells for the sake of DG
