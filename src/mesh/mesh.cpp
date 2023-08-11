@@ -160,8 +160,8 @@ void Mesh::MeshObject::fixHexCells() {
     mFMC.assign(mFacets.size(),0);
     mFaceID.clear();
 
-    forEach(mCells,i) {
-        Cell& c = mCells[i];
+    forEach(mCells,cidx) {
+        Cell& c = mCells[cidx];
         if(c.size() == 1) {
             /*boundary cell*/
             IntVector b;
@@ -321,7 +321,17 @@ void Mesh::MeshObject::fixHexCells() {
                 else if(groupId[i] == 1)
                     i1 = i;
             }
-            getHexCorners(fng[i0], fng[i1], vp);
+            bool flip_order = (mFNC[cng[i0][0]] != cidx);
+            if(!flip_order) {
+                getHexCorners(fng[i0], fng[i1], vp);
+            } else {
+                getHexCorners(fng[i1], fng[i0], vp);
+                for(Int i = 0; i < 4; i++) {
+                    Int temp = vp[i];
+                    vp[i] = vp[i + 4];
+                    vp[i + 4] = temp;
+                }
+            }
             IntVector rots = {vp[0], vp[4], vp[0], vp[3], vp[0], vp[1]};
             IntVector rote = {vp[1], vp[5], vp[1], vp[2], vp[3], vp[2]};
             /*fix orientation of vertices */
@@ -390,12 +400,12 @@ void Mesh::MeshObject::fixHexCells() {
 
        /*for non-conformal*/
        if(c.size() > 6) {
-           IntVector& fid = mFaceID[i];
+           IntVector& fid = mFaceID[cidx];
            forEach(c,j) {
                Int f = c[j];
                Int cnt = std::count(fid.begin(), fid.end(), fid[j]);
                if(cnt > 1) {
-                   if(mFOC[f] == i)
+                   if(mFOC[f] == cidx)
                        mFMC[f] = 2;
                    else
                        mFMC[f] = 1;
@@ -1602,6 +1612,26 @@ END:;
                 }
             }
         }
+    }
+
+    /*pick face 0 to match parent cells face 0*/
+    Vector N0;
+    calcUnitNormal(mFacets[c[0]], N0);
+    forEach(newc, i) {
+        Cell& c = newc[i];
+        Int bestj = 0;
+        Scalar bm = -10;
+        forEach(c,j) {
+            Facet& f = mFacets[c[j]];
+            Vector N;
+            calcUnitNormal(f,N);
+            Scalar m = dot(N,N0);
+            if(m > bm) {
+                bestj = j;
+                bm = m;
+            }
+        }
+        std::swap(c[0], c[bestj]);
     }
 
 #ifdef RDEBUG
