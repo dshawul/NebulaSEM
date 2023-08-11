@@ -293,23 +293,47 @@ void Mesh::MeshObject::fixHexCells() {
                 }
             }
             
+            /*switch face 0 and 1 in some cases (often after refinement)*/
+            Vector N = (mVertices[f0[1]] - mVertices[f0[0]]) ^
+                       (mVertices[f0[f0.size() - 1]] - mVertices[f0[0]]);
+            Vector e = (mVertices[fng[1][0]] - mVertices[f0[0]]);
+            if(dot(N,e) < 0) {
+                for(Int i = 0; i < 6; i++) {
+                    if(groupId[i] == 0)
+                        groupId[i] = 1;
+                    else if(groupId[i] == 1)
+                        groupId[i] = 0;
+                }
+            }
+
 #ifdef RDEBUG
             if(print) {
                 std::cout << "groupId: " << groupId << std::endl;
             }
 #endif
 
-            /*fix orientation of vertices */
+            /*get eight corners of hexahedron */
             IntVector vp;
-            getHexCorners(fng[0], fng[1], vp);
-            IntVector rots  = {vp[0], vp[4], vp[0], vp[3], vp[0], vp[1]};
-            IntVector rote  = {vp[1], vp[5], vp[1], vp[2], vp[3], vp[2]};
+            Int i0,i1;
             for(Int i = 0; i < 6; i++) {
-                auto it = std::find(fng[i].begin(), fng[i].end(), rots[i]);
+                if(groupId[i] == 0)
+                    i0 = i;
+                else if(groupId[i] == 1)
+                    i1 = i;
+            }
+            getHexCorners(fng[i0], fng[i1], vp);
+            IntVector rots = {vp[0], vp[4], vp[0], vp[3], vp[0], vp[1]};
+            IntVector rote = {vp[1], vp[5], vp[1], vp[2], vp[3], vp[2]};
+            /*fix orientation of vertices */
+            for(Int i = 0; i < 6; i++) {
+                Int gid = groupId[i];
+                Int rs = rots[gid];
+                Int re = rote[gid];
+                auto it = std::find(fng[i].begin(), fng[i].end(), rs);
                 std::rotate(fng[i].begin(), it, fng[i].end());
 
                 Scalar dir = dot(unit(mVertices[fng[i][1]] - mVertices[fng[i][0]]),
-                                 unit(mVertices[rote[i]] - mVertices[rots[i]]));
+                                 unit(mVertices[re] - mVertices[rs]));
                 if(dir < 0.99)
                     std::reverse(fng[i].begin()+1, fng[i].end());
             }
