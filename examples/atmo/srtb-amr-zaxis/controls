@@ -1,0 +1,112 @@
+general
+{
+######################################
+#  mesh file name and solver type
+######################################
+    solver                       euler
+    mesh                         grid
+
+######################################
+#  Fluid properties specific to solver
+######################################
+    rho                          1.177
+    viscosity                    1.5
+
+#############################
+#  Time increment
+#############################
+
+    state                        TRANSIENT
+    start_step                   0
+    end_step                     200000
+    write_interval               10000
+    amr_step                     1
+    dt                           0.0025
+    n_deferred                   0
+
+############################
+#  Discretization schemes
+############################
+
+    convection_scheme            RUSANOV
+    nonortho_scheme              OVER_RELAXED
+    time_scheme                  AB1
+    blend_factor                 0.3
+    parallel_method              BLOCKED
+    print_time                   1000
+
+############################
+#  Solver options
+############################
+
+    method                       PCG
+    preconditioner               DIAG
+    tolerance                    1e-5
+    max_iterations               6400
+    SOR_omega                    1.7
+
+############################
+#  Probe locations
+############################
+    probe     0 {}
+    gravity   0 0 -9.80606
+############################
+#  DG polynomial order
+############################
+    npx       4
+    npy       0
+    npz       4
+}
+
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    4 { U T p rho }
+}
+
+decomposition
+{
+    type      	METIS
+}
+
+refinement
+{
+    direction       0 1 0
+    field           T
+    field_min       0.4
+    field_max       0.6
+    max_level       1
+    limit           100000
+}
+
+vtk
+{
+    write_polyhedral YES
+}
+
+######################################
+#  euler options
+######################################
+euler
+{
+    velocity_UR                  0.5
+    pressure_UR                  0.8
+    t_UR                         0.8
+    diffusion                    YES
+    buoyancy                     YES
+}
+
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             NONE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       2
+    n_ORTHO                      0
+    buoyancy                     BOUSSINESQ_THETA2
+}
