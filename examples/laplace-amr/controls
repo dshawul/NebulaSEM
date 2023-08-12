@@ -1,0 +1,109 @@
+general
+{
+######################################
+#  mesh file name and solver type
+######################################
+    solver                       diffusion
+    mesh                         grid
+
+######################################
+#  Fluid properties specific to solver
+######################################
+    rho                          1
+    viscosity                    1e-5
+#############################
+#  Time increment
+#############################
+
+    state                        TRANSIENT
+    start_step                   0
+    end_step                     10000
+    write_interval               2000
+    amr_step                     1
+    dt                           0.02
+
+############################
+#  Discretization schemes
+############################
+
+    convection_scheme            BLENDED
+    nonortho_scheme              OVER_RELAXED
+    time_scheme                  BDF1
+    blend_factor                 0
+
+############################
+#  Solver options
+############################
+
+    method                       PCG
+    tolerance                    1e-5
+    max_iterations               6400
+    SOR_omega                    1.7
+    parallel_method              BLOCKED
+
+############################
+#  Probe locations
+############################
+    probe 2 {
+        0.1 0 0
+        0.2 0 0
+    }
+    gravity   0 0 0
+############################
+#  DG polynomial order
+############################
+    npx       3
+    npy       0
+    npz       3
+}
+
+############################
+#  Prepare options
+############################
+prepare
+{
+    fields    1 { T }
+}
+
+decomposition
+{
+    type      	METIS
+}
+
+refinement
+{
+    direction       0 1 0
+    field           T
+    field_min       0.1
+    field_max       0.9
+    max_level       1
+    limit           100000
+}
+
+vtk
+{
+    write_polyhedral YES
+}
+
+######################################
+#  PISO options
+######################################
+piso
+{
+    turbulence_model             KE
+    velocity_UR                  0.7
+    pressure_UR                  0.3
+    n_PISO                       1
+    n_ORTHO                      0
+}
+
+diffusion
+{
+    DT                           1
+    t_UR                         0.7
+}
+turbulence
+{
+    k_UR                         0.5
+    x_UR                         0.5
+}

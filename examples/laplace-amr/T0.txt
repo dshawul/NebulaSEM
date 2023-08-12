@@ -1,0 +1,21 @@
+size 1
+internal 1
+{
+    uniform 0
+}
+boundary 4
+{
+    inlet {
+        type DIRICHLET
+        value 100
+    }
+    outlet {
+        type DIRICHLET
+    }
+    top {
+        type  NEUMANN
+    }
+    WALLS {
+        type NEUMANN
+    }
+}

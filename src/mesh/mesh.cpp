@@ -321,7 +321,9 @@ void Mesh::MeshObject::fixHexCells() {
                 else if(groupId[i] == 1)
                     i1 = i;
             }
-            bool flip_order = (mFNC[cng[i0][0]] != cidx);
+            Int i0n = (mFNC[cng[i0][0]] != cidx) ? mFNC[cng[i0][0]] : mFOC[cng[i0][0]];
+            Int i1n = (mFNC[cng[i1][0]] != cidx) ? mFNC[cng[i1][0]] : mFOC[cng[i1][0]];
+            bool flip_order = (i0n > i1n && (cidx >= i0n || cidx >= i1n));
             if(!flip_order) {
                 getHexCorners(fng[i0], fng[i1], vp);
             } else {
