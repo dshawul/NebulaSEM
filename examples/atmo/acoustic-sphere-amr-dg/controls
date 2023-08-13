@@ -10,7 +10,7 @@ general
 #  Fluid properties specific to solver
 ######################################
     rho                          1.177
-    viscosity                    1.5
+    viscosity                    30
 
 #############################
 #  Time increment
@@ -18,10 +18,10 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     400000
-    write_interval               10000
+    end_step                     5760
+    write_interval               240
     amr_step                     1
-    dt                           0.0025
+    dt                           15
     n_deferred                   0
 
 ############################
@@ -30,7 +30,7 @@ general
 
     convection_scheme            RUSANOV
     nonortho_scheme              OVER_RELAXED
-    time_scheme                  AB1
+    time_scheme                  BDF1
     blend_factor                 0.3
     parallel_method              BLOCKED
     print_time                   1000
@@ -50,12 +50,13 @@ general
 ############################
     probe     0 {}
     gravity   0 0 -9.80606
+    is_spherical  YES
 ############################
 #  DG polynomial order
 ############################
     npx       4
-    npy       0
-    npz       4
+    npy       4
+    npz       0
 }
 
 ############################
@@ -73,10 +74,10 @@ decomposition
 
 refinement
 {
-    direction       0 1 0
-    field           T
-    field_min       0.2
-    field_max       0.4
+    direction       0 0 1
+    field           p
+    field_min       0.6
+    field_max       0.8
     max_level       1
     limit           100000
 }
@@ -95,7 +96,7 @@ euler
     pressure_UR                  0.8
     t_UR                         0.8
     diffusion                    YES
-    buoyancy                     YES
+    buoyancy                     NO
 }
 
 ######################################
