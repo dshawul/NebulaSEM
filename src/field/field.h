@@ -1392,7 +1392,13 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
                 T perterb;
                 is >> value >> perterb >> center >> radius;
                 for(Int i = 0;i < gALLfield;i++) {
-                    Scalar R = mag((cC[i] - center) / radius);
+                    Scalar R;
+                    if(!is_spherical)
+                        R = mag((cC[i] - center) / radius);
+                    else {
+                        Vector s = cart_to_sphere(cC[i]);
+                        R = geodesic_distance(center,s) / mag(radius);
+                    }
                     R = min(1.0,R);
                     T val = value;
                     val += (perterb / 2) * (Scalar(1.0) + cos(R * Constants::PI));
@@ -1403,7 +1409,13 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
                 T perterb;
                 is >> value >> perterb >> center >> radius;
                 for(Int i = 0;i < gALLfield;i++) {
-                    Scalar R = mag((cC[i] - center) / radius);
+                    Scalar R;
+                    if(!is_spherical)
+                        R = mag((cC[i] - center) / radius);
+                    else {
+                        Vector s = cart_to_sphere(cC[i]);
+                        R = geodesic_distance(center,s) / mag(radius);
+                    }
                     Scalar v = exp(-R*R);
                     if(equal(v,Scalar(0))) v = 0;
                     T val = value;
@@ -1433,7 +1445,13 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
                 T perterb;
                 is >> value >> perterb >> center >> radius;
                 for(Int i = 0;i < gALLfield;i++) {
-                    Scalar R = mag((cC[i] - center) / radius);
+                    Scalar R;
+                    if(!is_spherical)
+                        R = mag((cC[i] - center) / radius);
+                    else {
+                        Vector s = cart_to_sphere(cC[i]);
+                        R = geodesic_distance(center,s) / mag(radius);
+                    }
                     R = min(1.0,R);
                     T val = value;
                     val += (perterb) * (Scalar(1.0) - R);

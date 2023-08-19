@@ -72,7 +72,7 @@ FORCEINLINE Scalar mag(const Scalar& p) {
     return fabs(p); 
 }
 FORCEINLINE Scalar sdiv(const Scalar& p,const Scalar& q) { 
-    return p ? (p / q) : 0; 
+    return (fabs(q) <= 1e-5) ? 0 : (p / q); 
 }
 FORCEINLINE Scalar max(const Scalar& p,const Scalar& q) { 
     return (p >= q) ? p : q; 
@@ -578,6 +578,50 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
 
   return result;
 }
+
+/** \name Define basic spherical coordinate manipulation functions.
+(radius, latitude, longitude) where
+    latitude  = [-pi/2,pi/2]
+    longitude = [-pi,pi]
+    radius = radius of the earth
+*/
+//@{
+
+/** Convert spherical to cartesian coordinates */
+FORCEINLINE Vector sphere_to_cart(const Vector& s) {
+    Vector c;
+    c[0] = s[0] * cos(s[1]) * cos(s[2]);
+    c[1] = s[0] * cos(s[1]) * sin(s[2]);
+    c[2] = s[0] * sin(s[1]);
+    return c;
+}
+
+/** Convert cartesian to spherical coordinates */
+FORCEINLINE Vector cart_to_sphere(const Vector& c) {
+    Scalar radius, lat, lon;
+    radius = mag(c);
+    lat = atan2(c[2], sqrt(c[0]*c[0] + c[1]*c[1]));
+    lon = atan2(c[1],c[0]);
+    return Vector(radius,lat,lon);
+}
+
+/** Compute geodesic distance between two spherical coordinates */
+FORCEINLINE Scalar geodesic_distance(const Vector& s1, const Vector& s2) {
+    Scalar d = (s1[0] + s2[0]) / 2;
+    d *= acos(sin(s1[1])*sin(s2[1]) + cos(s1[1])*cos(s2[1])*cos(s1[2] - s2[2]));
+    return d;
+}
+
+/** Given tangential wind fields, compute cartesian equivalent */
+FORCEINLINE Vector wind_field(Scalar u, Scalar v, Scalar lat, Scalar lon) {
+    Vector U;
+    U[0] = -u * sin(lon) - v * sin(lat) * cos(lon);
+    U[1] = +u * cos(lon) - v * sin(lat) * sin(lon);
+    U[2] = +v * cos(lat);
+    return U;
+}
+
+//@}
 
 /*
  * end
