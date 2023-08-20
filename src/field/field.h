@@ -1387,10 +1387,11 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
             if(str == "uniform") {
                 is >> value;
                 *this += MeshField<T,E>(value);
-            } else if(str == "cosine") {
+            } else if(str == "cosine" || str == "cosine2") {
                 Vector center,radius;
                 T perterb;
                 is >> value >> perterb >> center >> radius;
+                Scalar pw = (str == "cosine2") ? 2.0 : 1.0;
                 for(Int i = 0;i < gALLfield;i++) {
                     Scalar R;
                     if(!is_spherical)
@@ -1401,7 +1402,7 @@ Int MeshField<T,E>::readInternal_(Ts& is, Int offset) {
                     }
                     R = min(1.0,R);
                     T val = value;
-                    val += (perterb / 2) * (Scalar(1.0) + cos(R * Constants::PI));
+                    val += (perterb / 2) * pow(Scalar(1.0) + cos(R * Constants::PI), pw);
                     (*this)[i] += val;
                 }
             } else if(str == "gaussian") {
