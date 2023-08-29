@@ -8,7 +8,8 @@ usage() {
     echo
     echo "   -n,--np       Number of processors to use."
     echo "   -c,--case     Path to grid name under a test case directory."
-    echo "   -b,--bin-path Path to biary files mesh, prepare and solvers."
+    echo "   -b,--bin-path Path to binary files mesh, prepare and solvers."
+    echo "   -s,--steps    Number of time steps -- overwrites the one in control file."
     echo "   -h,--help     Display this help message."
     echo
     exit 0
@@ -18,6 +19,7 @@ usage() {
 case=examples/cavity/cavity
 nprocs=1
 bin_path=../bin/
+steps=0
 
 #process command line args
 while :; do
@@ -26,6 +28,7 @@ while :; do
         --np|-n) shift; nprocs=$1;; 
         --case|-c) shift; case=$1;; 
         --bin-path|-b) shift; bin_path=$1;; 
+        --steps|-s) shift; steps=$1;;
         *) break
     esac
     shift
@@ -48,10 +51,14 @@ run() {
 }
 
 #prepare directory
-rundir=run$nprocs
+rundir="run$nproces-${case//\//-}"
 rm -rf $rundir
 cp -r $case $rundir
 cd $rundir
+
+if [ $steps -ne 0 ]; then
+    sed -i "/^[[:space:]]*end_step/c\    end_step      $steps" ./controls
+fi
 
 #run
 run $grid $nprocs
