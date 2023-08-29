@@ -8,13 +8,12 @@
 Wind field intialization for Scalar advection
 */
 #ifdef OVERWRITE_WIND
-void init_wind_field(Scalar time, VectorCellField& U) {
+void init_wind_field(Scalar time, Scalar etime, VectorCellField& U) {
     using namespace Mesh;
     using namespace Constants;
 
     Scalar radius = 6371220.0;
-    Scalar period = 12 * 24 * 3600;
-    //Scalar period = 5.0;
+    Scalar period = etime;
     Scalar RoT = radius / period; 
     forEach(cC,i) {
         Scalar x = cC[i][0], y = cC[i][1], z = cC[i][2];
@@ -23,7 +22,7 @@ void init_wind_field(Scalar time, VectorCellField& U) {
         Scalar lambda = lon - 2.0 * PI * time / period;
 #if 0
         Scalar u = 40.0, v = 0.0;
-#elif 1
+#elif 0
         Scalar u = 10.0 * RoT * pow(sin(lambda),2.0) * sin(2.0 * lat) * 
                    cos(PI * time / period) + 2.0 * PI * RoT * cos(lat);
         Scalar v = 10.0 * RoT * sin(2.0 * lambda) * cos(lat) * cos(PI * time / period);
@@ -31,7 +30,7 @@ void init_wind_field(Scalar time, VectorCellField& U) {
         Scalar u = -5.0 * RoT * pow(sin(0.5 * lambda),2.0) * sin(2.0 * lat) * pow(cos(lat),2.0) *
                    cos(PI * time / period) + 2.0 * PI * RoT * cos(lat);
         Scalar v = 2.5 * RoT * sin(lambda) * pow(cos(lat),3.0) * cos(PI * time / period);
-#elif 0
+#elif 1
         Scalar u = pow(sin(PI * x), 2.0) * sin(2 * PI * y) * cos(PI * time / period);
         Scalar v = -pow(sin(PI * y), 2.0) * sin(2 * PI * x) * cos(PI * time / period);
 #endif
@@ -74,15 +73,17 @@ void convection(std::istream& input) {
         /*Time loop*/
         Iteration it(ait.get_step());
 #ifdef OVERWRITE_WIND
-        Scalar time = it.get_step() * Controls::dt;
-        init_wind_field(time, U);
+        Scalar ctime = it.get_step() * Controls::dt;
+        Scalar etime = Controls::end_step * Controls::dt;
+        init_wind_field(ctime, etime, U);
 #endif
         Fc = flxc(U);
         F = flx(U);
         for (; !it.end(); it.next()) {
 #ifdef OVERWRITE_WIND
-            Scalar time = it.get_step() * Controls::dt;
-            init_wind_field(time, U);
+            Scalar ctime = it.get_step() * Controls::dt;
+            Scalar etime = Controls::end_step * Controls::dt;
+            init_wind_field(ctime, etime, U);
             Fc = flxc(U);
             F = flx(U);
 #endif
