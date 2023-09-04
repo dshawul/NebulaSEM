@@ -71,7 +71,7 @@ refinement
     direction       0 0 1
     field           U
     field_min       0.1
-    field_max       0.7
+    field_max       0.3
     limit           100000
 }
 
