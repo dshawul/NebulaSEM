@@ -43,6 +43,9 @@ void euler(std::istream& input) {
     /*read parameters*/
     Util::read_params(input,MP::printOn);
 
+    /*total mass and energy of system*/
+    Scalar mass0, energy0;
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
 
@@ -69,10 +72,8 @@ void euler(std::istream& input) {
         iPr = 1 / Pr;
 
         /*buoyancy*/
-        ScalarCellField p_ref, rho_ref;
+        ScalarCellField p_ref, rho_ref, gh;
         if(buoyancy) {
-            ScalarCellField gh;
-
             /*gravity vector*/
             g.construct("gravity",WRITE);
             if(Mesh::is_spherical) {
@@ -108,9 +109,24 @@ void euler(std::istream& input) {
         Mesh::scaleBCs<Scalar>(p,rho,psi);
         applyExplicitBCs(rho,true);
 
+        /*compute total mass and energy*/
+        Scalar mass0, energy0;
+        {
+            ScalarCellField sf = rho * Mesh::cV;
+            mass0 = reduce_sum(sf);
+            //potential + kinetic + internal
+            sf = gh +
+                 0.5 * magSq(U) +
+                 pow(p / P0, R / cp) * (T + T0) * cv;
+            sf = rho * Mesh::cV * sf;
+            energy0 = reduce_sum(sf);
+        }
+
+        /*write calculated rho*/
         rho -= rho_ref;
-        if(ait.get_step() == 0)
+        if(ait.get_step() == 0) {
             rho.write(0);
+        }
 
         /*Time loop*/
         for (; !it.end(); it.next()) {
@@ -199,8 +215,28 @@ void euler(std::istream& input) {
             }
 
             /*courant number*/
-            if(Controls::state != Controls::STEADY)
-                Mesh::calc_courant(U,Controls::dt);
+            if(Controls::state != Controls::STEADY) {
+                if(MP::printOn) {
+                    Vector courant = Mesh::calc_courant(U,Controls::dt);
+                    MP::printH("Courant number: Max: %g Min: %g Avg: %g\n",
+                        courant[0], courant[1], courant[2]);
+
+                    Scalar mass, energy;
+                    {
+                        ScalarCellField sf = rho * Mesh::cV;
+                        mass = reduce_sum(sf);
+                        //potential + kinetic + internal
+                        sf = gh +
+                             0.5 * magSq(U) +
+                             pow((p + p_ref) / P0, R / cp) * T * cv;
+                        sf = rho * Mesh::cV * sf;
+                        energy = reduce_sum(sf);
+                    }
+                    MP::printH("Mass loss: %g Energy loss %g\n",
+                        (mass0 - mass) / mass0,
+                        (energy0 - energy) / energy0);
+                }
+            }
 
             /*save perturbation values*/
             rho -= rho_ref;

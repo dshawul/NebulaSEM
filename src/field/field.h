@@ -1243,6 +1243,7 @@ DEFINE_UNARY_OP(ounit,unit,type);
 DEFINE_UNARY_OP2(oneg,-,operator -,type);
 
 DEFINE_UNARY_SOP(omag,mag,type,Scalar);
+DEFINE_UNARY_SOP(omagSq,magSq,type,Scalar);
 DEFINE_UNARY_SOP(osym,sym,Tensor,STensor)
     
 DEFINE_BINARY_OP(oadd,+,operator +,type);
@@ -1334,7 +1335,7 @@ namespace Mesh {
     Int    findNearestFace(const Vector& v);
     void   getProbeCells(IntVector&);
     void   getProbeFaces(IntVector&);
-    void   calc_courant(const VectorCellField& U, Scalar dt);
+    Vector calc_courant(const VectorCellField& U, Scalar dt);
     template <class type>
     void   scaleBCs(const MeshField<type,CELL>&, MeshField<type,CELL>&, Scalar);
     template <class type>

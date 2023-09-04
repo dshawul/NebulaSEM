@@ -432,7 +432,7 @@ void Mesh::getProbeFaces(IntVector& probes) {
 /**
   Calculate global courant number
  */
-void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
+Vector Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
     ScalarCellField Courant;
     Courant = mag(U) * dt / pow(cV,1.0/3);
 
@@ -446,10 +446,7 @@ void Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
     MP::allreduce(&avgc,&globalavg,1,MP::OP_SUM);
     globalavg /= MP::n_hosts;
 
-    if(MP::printOn) {
-        MP::printH("Courant number: Max: %g Min: %g Avg: %g\n",
-                globalmax,globalmin,globalavg);
-    }
+    return Vector(globalmax, globalmin, globalavg);
 }
 /**
   Write all fields
