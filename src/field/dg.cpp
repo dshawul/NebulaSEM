@@ -522,18 +522,27 @@ void DG::init_basis() {
 
         //initialize interpolation for 2:1 amr
         Scalar* xglre = new Scalar[2*ngle];
+        Scalar* xglce = new Scalar[2*ngle];
         Scalar* psire = new Scalar[2*ngle*ngle];
+        Scalar* psice = new Scalar[2*ngle*ngle];
         if(ngl == 1) {
             xglre[0] = 0;
             xglre[1] = 0;
+            xglce[0] = 0;
+            xglce[1] = 0;
         } else {
             for(Int j = 0;j < ngle;j++) {
                 xglre[j] = -0.5 + xgle[i][j]/2;
                 xglre[j+ngle] = 0.5 + xgle[i][j]/2;
+
+                xglce[j] = 2 * xgle[i][j] + 1;
+                xglce[j+ngle] = 2 * xgle[i][j] - 1;
             }
         }
-        for(Int j = 0; j < 2; j++)
+        for(Int j = 0; j < 2; j++) {
             lagrange_basis(ngl,xgl[i],ngle,&xglre[j*ngle],&psire[j*ngle*ngle]);
+            lagrange_basis(ngl,xgl[i],ngle,&xglce[j*ngle],&psice[j*ngle*ngle]);
+        }
 
         lagrange_basis(ngl,xgl[i],ngle,xgle[i],psie[i]);
         lagrange_basis_derivative(ngl,xgl[i],ngle,xgle[i],dpsie[i]);
@@ -552,10 +561,14 @@ void DG::init_basis() {
                 for(Int q = 0; q < ngle; q++) {
                     Mcc[j*ngl+k] += (wgle[i][q] / 2) * psie[i][j*ngle+q] * psie[i][k*ngle+q];
                     for(Int c = 0; c < 2; c++) {
-                        Msc[c*ngl*ngl+j*ngl+k] += 
-                            (wgle[i][q] / 2) * psie[i][j*ngle+q] * psire[c*ngle*ngle+k*ngle+q];
-                        Mga[c*ngl*ngl+k*ngl+j] +=
-                            (wgle[i][q] / 2) * psie[i][j*ngle+q] * psire[c*ngle*ngle+k*ngle+q];
+                        Scalar vs = (wgle[i][q] / 2) * psie[i][j*ngle+q] * psire[c*ngle*ngle+k*ngle+q];
+                        Msc[c*ngl*ngl+j*ngl+k] += vs; 
+#if 1
+                        Mga[c*ngl*ngl+k*ngl+j] += vs;
+#else
+                        Scalar vg = (wgle[i][q] / 2) * psie[i][j*ngle+q] * psice[c*ngle*ngle+k*ngle+q];
+                        Mga[c*ngl*ngl+j*ngl+k] += vg;
+#endif
                     }
                 }
             }
@@ -577,11 +590,12 @@ void DG::init_basis() {
             mattrn(Mtemp,psiCor[i*2+j],ngl);
 #else
             matinv(psiRef[i*2+j],psiCor[i*2+j],ngl);
+#endif
+#if 0
             //
-            // After inverting refine matrix to get coarsening matrix,
-            // zero out coefficients that do extrapolation instead of interpolation
+            // Zero out extrapolation coefficients.
             // This is a compact interpolation scheme where each child interpolates
-            // points in its local region.
+            // points in its own region.
             //
             Int nglh = ngl / 2;
             if(ngl & 1) {
