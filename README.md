@@ -1,19 +1,19 @@
-## Solver
+## NebulaSEM
 
-Solver is an experimental finite volume and discontinous galerkin code 
+NebulaSEM is an experimental finite volume and discontinous galerkin code 
 for solving partial differential equations.
 
 ### Build
 
-To build and install Solver
+To build and install NebulaSEM
 
     mkdir build && cd build
     cmake -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=.. ..
     make && make install
 
-This will install three tools for pre-processing, solution and post-processing.
-The tool 'mesh' generates the grid, 'solver' does the solution and 'prepare' does
-various post-processing.
+This will install tools for pre-processing, solution and post-processing.
+The tool 'mesh' generates the grid, 'prepare' does various pre- and post-processing,
+and several other binaries for solving PDEs e.g. euler, convection etc
 
 ### Testing
 
