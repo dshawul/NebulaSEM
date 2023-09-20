@@ -124,7 +124,7 @@ void Mesh::MeshObject::getHexCorners(const Facet& f1, const Facet& f2, IntVector
             if(dt > 1) dt = 1;
             else if(dt < -1) dt = -1;
             Scalar angle = acos(dt);
-            const Scalar tol = Constants::PI / 32;
+            const Scalar tol = Constants::PI / 16;
             if(!(angle < tol || angle >= Constants::PI - tol)) {
                 fm[f].push_back(fk[i]);
                 i0 = i;
