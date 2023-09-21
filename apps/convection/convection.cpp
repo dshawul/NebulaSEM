@@ -20,20 +20,23 @@ void init_wind_field(Scalar time, Scalar etime, VectorCellField& U) {
         Vector s = cart_to_sphere(cC[i]);
         Scalar lat = s[1], lon = s[2]; 
         Scalar lambda = lon - 2.0 * PI * time / period;
-#if 0
-        Scalar u = 40.0, v = 0.0;
-#elif 0
-        Scalar u = 10.0 * RoT * pow(sin(lambda),2.0) * sin(2.0 * lat) * 
+        Scalar u,v;
+
+        if(Mesh::is_spherical) {
+#if 1
+            u = 10.0 * RoT * pow(sin(lambda),2.0) * sin(2.0 * lat) * 
                    cos(PI * time / period) + 2.0 * PI * RoT * cos(lat);
-        Scalar v = 10.0 * RoT * sin(2.0 * lambda) * cos(lat) * cos(PI * time / period);
+            v = 10.0 * RoT * sin(2.0 * lambda) * cos(lat) * cos(PI * time / period);
 #elif 0
-        Scalar u = -5.0 * RoT * pow(sin(0.5 * lambda),2.0) * sin(2.0 * lat) * pow(cos(lat),2.0) *
+            u = -5.0 * RoT * pow(sin(0.5 * lambda),2.0) * sin(2.0 * lat) * pow(cos(lat),2.0) *
                    cos(PI * time / period) + 2.0 * PI * RoT * cos(lat);
-        Scalar v = 2.5 * RoT * sin(lambda) * pow(cos(lat),3.0) * cos(PI * time / period);
-#elif 1
-        Scalar u = pow(sin(PI * x), 2.0) * sin(2 * PI * y) * cos(PI * time / period);
-        Scalar v = -pow(sin(PI * y), 2.0) * sin(2 * PI * x) * cos(PI * time / period);
+            v = 2.5 * RoT * sin(lambda) * pow(cos(lat),3.0) * cos(PI * time / period);
 #endif
+        } else {
+            u = pow(sin(PI * x), 2.0) * sin(2 * PI * y) * cos(PI * time / period);
+            v = -pow(sin(PI * y), 2.0) * sin(2 * PI * x) * cos(PI * time / period);
+        }
+
         if(Mesh::is_spherical)
             U[i] = wind_field(u,v,lat,lon);
         else

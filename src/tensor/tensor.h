@@ -72,7 +72,7 @@ FORCEINLINE Scalar mag(const Scalar& p) {
     return fabs(p); 
 }
 FORCEINLINE Scalar sdiv(const Scalar& p,const Scalar& q) { 
-    return (fabs(q) <= 1e-5) ? 0 : (p / q); 
+    return (fabs(q) <= 1e-12) ? 0 : (p / q); 
 }
 FORCEINLINE Scalar max(const Scalar& p,const Scalar& q) { 
     return (p >= q) ? p : q; 
