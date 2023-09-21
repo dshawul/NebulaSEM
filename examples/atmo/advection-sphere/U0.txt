@@ -1,0 +1,11 @@
+size 3
+internal 1
+{
+    uniform 0 0 0
+}
+boundary 1
+{
+    topbot {
+        type NEUMANN
+    }
+}

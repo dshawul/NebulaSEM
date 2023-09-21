@@ -611,7 +611,7 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
         dx /= maxdx;
 
         bf->norm(&qoi);
-        qoi = pow(qoi,0.25);
+        qoi = pow(qoi,0.5);
         qoi *= dx;
 
         Scalar maxq = reduce_max(qoi);
