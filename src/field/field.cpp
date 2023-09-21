@@ -479,6 +479,7 @@ void Controls::enrollRefine(Util::ParamList& params) {
     params.enroll("field_max",&refine_params.field_max);
     params.enroll("field_min",&refine_params.field_min);
     params.enroll("max_level",&refine_params.max_level);
+    params.enroll("buffer_zone",&refine_params.buffer_zone);
     params.enroll("limit",&refine_params.limit);
 }
 /**
@@ -673,10 +674,12 @@ void Prepare::refineMesh(Int step) {
         calcQOI(qoi);
 
         /*get cells to refine*/
+        IntVector rCellsQoi;
         cCells.assign(gBCS,0);
         rCells.assign(gBCS,0);
-        for(Int i = 0;i < gBCS;i++) {
+        rCellsQoi.assign(gBCS,0);
 
+        for(Int i = 0;i < gBCS;i++) {
             Scalar q = 0.0, vol = 0;;
             for(Int j = 0; j < DG::NP; j++) {
                 Int index = i * DG::NP + j;
@@ -688,7 +691,6 @@ void Prepare::refineMesh(Int step) {
 
             RefineParams& rp = refine_params;
             if(q >= rp.field_max) {
-
                 Int level = 1;
                 for(;level < 3;level++) {
                     Scalar delta = ((1 - rp.field_max) / 2) *
@@ -696,13 +698,45 @@ void Prepare::refineMesh(Int step) {
                     if(q < rp.field_max + delta)
                         break;
                 }
+                rCellsQoi[i] = level;
+            }
+            else if(q <= rp.field_min)
+                cCells[i] = 1;
+        }
 
+        /*add buffer zone*/
+        for(Int b = 0; b < refine_params.buffer_zone; b++) {
+            IntVector rCellsQoi_c = rCellsQoi;
+            for(Int i = 0;i < gBCS;i++) {
+                if(!rCellsQoi_c[i]) continue;
+                Cell& c = gCells[i];
+                forEach(c,j) {
+                    Int c1 = gFOC[c[j]];
+                    Int c2 = gFNC[c[j]];
+                    if(c2 >= gBCS) continue;
+                    if(c1 == i) {
+                        if(rCellsQoi[c2] == 0) {
+                            rCellsQoi[c2] = 1;
+                            cCells[c2] = 0;
+                        }
+                    } else {
+                        if(rCellsQoi[c1] == 0) {
+                            rCellsQoi[c1] = 1;
+                            cCells[c1] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        /*set new cells to refine*/
+        for(Int i = 0;i < gBCS;i++) {
+            if(rCellsQoi[i]) {
+                RefineParams& rp = refine_params;
                 if(gBCS <= rp.limit
                    && rDepth[i] < rp.max_level
-                   && rDepth[i] < level)
+                   && rDepth[i] < rCellsQoi[i])
                     rCells[i] = 1;
-            } else if(q <= rp.field_min) {
-                cCells[i] = 1;
             }
         }
     }
@@ -731,6 +765,7 @@ void Prepare::refineMesh(Int step) {
             cCells[n.id] = 0;
     }
 
+    /*Write refined/coarsened cells and level fields*/
 #if 0
     ScalarCellField rCellsS("rCells",WRITE);
     ScalarCellField cCellsS("cCells",WRITE);
@@ -747,6 +782,7 @@ void Prepare::refineMesh(Int step) {
     Mesh::setNeumannBCs(rDepthS);
 #endif
 
+    /*Ensure 2:1 balance */
     for(Int i = 0;i < gBCS;i++) {
         Cell& c = gCells[i];
         if(!(rCells[i] || cCells[i])) continue;

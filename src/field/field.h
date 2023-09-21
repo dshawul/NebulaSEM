@@ -20,6 +20,7 @@ struct RefineParams {
     Scalar field_max;
     Scalar field_min;
     Int max_level;
+    Int buffer_zone;
     Int limit;
     RefineParams() {
         dir = Scalar(0);
@@ -27,6 +28,7 @@ struct RefineParams {
         field_max = 0.6;
         field_min = 0.2;
         max_level = 100;
+        buffer_zone = 2;
         limit = 100000;
     }
 };
