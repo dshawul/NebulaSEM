@@ -5,6 +5,7 @@ general
 ######################################
     solver                       convection
     mesh                         grid
+    write_format                 TEXT
 
 ######################################
 #  Fluid properties specific to solver

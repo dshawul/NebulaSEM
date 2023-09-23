@@ -1373,4 +1373,31 @@ int Prepare::mergeFields(Int step) {
 
     return 0;
 }
+/**
+  Write spherical grid in lat-lon coordinate
+*/
+int Prepare::writeCoords(Int step) {
+    using namespace Mesh;
 
+    std::cout << "Writing coordinates at step " << step << std::endl;
+
+    /*Read mesh*/
+    int stepm = findLastRefinedGrid(step);
+    LoadMesh(stepm,false);
+
+    stringstream path;
+    path << "coords" << step;
+    string str = path.str();
+
+    ofstream os(str + ".txt");
+    for(Int i = 0; i < gBCSfield; i++) {
+        if(is_spherical) {
+            Vector s = cart_to_sphere(cC[i]);
+            os << s[2] << " " << s[1] << endl;
+        } else {
+            os << cC[i] << std::endl;
+        }
+    }
+
+    return 0;
+}

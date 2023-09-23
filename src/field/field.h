@@ -1353,6 +1353,7 @@ namespace Prepare {
     void calcQOI(ScalarCellField&);
     int decomposeMesh(Int);
     int mergeFields(Int);
+    int writeCoords(Int);
 }
 
 /* ********************

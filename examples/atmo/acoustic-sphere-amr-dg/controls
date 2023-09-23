@@ -5,6 +5,7 @@ general
 ######################################
     solver                       euler
     mesh                         grid
+    write_format                 TEXT
 
 ######################################
 #  Fluid properties specific to solver
@@ -18,10 +19,10 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     5760
-    write_interval               240
+    end_step                     11520
+    write_interval               480
     amr_step                     1
-    dt                           15
+    dt                           8
     n_deferred                   0
 
 ############################

@@ -29,6 +29,8 @@ int main(int argc,char* argv[]) {
             work = 3;
         } else if(!strcmp(argv[i],"-refine")) {
             work = 4;
+        } else if(!strcmp(argv[i],"-coords")) {
+            work = 5;
         } else if(!strcmp(argv[i],"-start")) {
             i++;
             start_index = atoi(argv[i]);
@@ -44,6 +46,7 @@ int main(int argc,char* argv[]) {
                 << "  -vtk        --  Convert data to VTK format\n"
                 << "  -probe      --  Probe result at specified locations\n"
                 << "  -refine     --  Refine mesh\n"
+                << "  -coords     --  Write coordinates to a file\n"
                 << "  -start <i>  --  Start at time step <i>\n"
                 << "  -h          --  Display this message\n\n";
             return 0;
@@ -125,6 +128,9 @@ int main(int argc,char* argv[]) {
             cout << "Refining grid.\n";
             Prepare::refineMesh(start_index);
         }
+    } else if(work == 5) {
+        cout << "Writing coordinates.\n";
+        Prepare::writeCoords(start_index);
     } else {
         System::cd(MP::workingDir);
         if(MP::n_hosts > 1)

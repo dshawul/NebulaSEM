@@ -5,6 +5,7 @@ general
 ######################################
     solver                       euler
     mesh                         grid
+    write_format                 TEXT
 
 ######################################
 #  Fluid properties specific to solver
