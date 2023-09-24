@@ -21,6 +21,10 @@ void euler(std::istream& input) {
     Scalar t_UR = Scalar(0.8);
     Int buoyancy = 1;
     Int diffusion = 1;
+    enum PROBLEM_INIT {
+        NONE, ISENTROPIC_VORTEX
+    };
+    PROBLEM_INIT problem_init = NONE;
 
     /*fluid properties*/
     {
@@ -39,6 +43,9 @@ void euler(std::istream& input) {
     params.enroll("buoyancy",op);
     op = new Util::BoolOption(&diffusion);
     params.enroll("diffusion",op);
+    op = new Util::Option(&problem_init,
+            {"NONE", "ISENTROPIC_VORTEX"});
+    params.enroll("problem_init", op);
 
     /*read parameters*/
     Util::read_params(input,MP::printOn);
@@ -70,6 +77,34 @@ void euler(std::istream& input) {
         p_gamma = cp / cv;
         psi = 1 / (R * T0);
         iPr = 1 / Pr;
+
+        /*special initializations*/
+        if(ait.get_step() == 0 && problem_init != NONE) {
+
+            /*isentropic vortex*/
+            auto isentropic_vortex = [&]() {
+                using namespace Constants;
+                constexpr Scalar beta = 5;
+                ScalarCellField r = mag(Mesh::cC);
+                T = (-((p_gamma - 1) * beta * beta) / (8 * p_gamma * PI * PI)) * exp(1 - r*r);
+                #pragma omp parallel for
+                #pragma acc parallel loop
+                for(Int i = 0; i < Mesh::gBCSfield; i++) {
+                    U[i][0] += (beta / (2 * PI)) * exp((1 - r[i]*r[i])/2.0) * -Mesh::cC[i][1];
+                    U[i][1] += (beta / (2 * PI)) * exp((1 - r[i]*r[i])/2.0) *  Mesh::cC[i][0];
+                }
+                p = pow(T + T0, p_gamma / (p_gamma - 1)) - P0;
+            };
+
+            /*choose init type*/
+            if(problem_init == ISENTROPIC_VORTEX)
+                isentropic_vortex();
+
+            /*write initial values*/
+            T.write(0);
+            U.write(0);
+            p.write(0);
+        }
 
         /*buoyancy*/
         ScalarCellField p_ref, rho_ref, gh;

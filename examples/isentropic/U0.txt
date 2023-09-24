@@ -1,0 +1,24 @@
+size 3
+internal 1
+{
+    uniform 1 0 0
+}
+boundary 4
+{
+    inx {
+        type CYCLIC
+        neighbor outx
+    }
+    outx {
+        type CYCLIC
+        neighbor inx
+    }
+    iny {
+        type CYCLIC
+        neighbor outy
+    }
+    outy {
+        type CYCLIC
+        neighbor iny
+    }
+}
