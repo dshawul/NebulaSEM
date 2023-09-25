@@ -87,26 +87,10 @@ vtk
     write_polyhedral YES
 }
 ######################################
-#  euler options
+#  convection options
 ######################################
-euler
+convection
 {
-    velocity_UR                  0.5
-    pressure_UR                  0.8
-    t_UR                         0.8
-    diffusion                    YES
-    buoyancy                     NO
-}
-
-######################################
-#  PISO options
-######################################
-piso
-{
-    turbulence_model             NONE
-    velocity_UR                  0.7
-    pressure_UR                  0.3
-    n_PISO                       2
-    n_ORTHO                      0
-    buoyancy                     BOUSSINESQ_THETA2
+    t_UR            0.8
+    problem_init    LAURITZEN_0
 }
