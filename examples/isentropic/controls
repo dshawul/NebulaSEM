@@ -26,6 +26,7 @@ general
     start_step                   0
     end_step                     20000
     write_interval               1000
+    amr_step                     1
     dt                           0.0005
     n_deferred                   0
 
@@ -54,12 +55,12 @@ general
 #  Probe locations
 ############################
     probe     0 {}
-    gravity   0 0 -9.80606
+    gravity   0 -9.80606 0
 ############################
 #  DG polynomial order
 ############################
-    npx       4
-    npy       4
+    npx       3
+    npy       3
     npz       0
 }
 
@@ -83,6 +84,7 @@ refinement
     field_min       0.4
     field_max       0.5
     max_level       1
+    buffer_zone     3
     limit           100000
 }
 
