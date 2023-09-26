@@ -127,6 +127,7 @@ void euler(std::istream& input) {
             p_ref = P0 * pow(1.0 + gh / (cp * T0), cp / R);
             p += P0 * pow(1.0 + gh / (cp * (T + T0)), cp / R);
         } else {
+            gh = Scalar(0.0);
             p_ref = P0;
             p += P0;
         }

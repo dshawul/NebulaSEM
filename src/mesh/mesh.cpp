@@ -1802,7 +1802,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                 if(o1 >= mCells.size()) {
                     Vector u = unit(mFN[f1]);
                     Vector v0 = mVertices[mFacets[f1][1]];
-                    Scalar d = dot(v0,u);
+                    //find distance from some unlikely ranomd point
+                    Scalar d = dot(v0 - Vector(-11100.43256,2.5675419,-4.98178547),u);
                     o1 = round(Scalar(10000.0) * d +
                                Scalar(1000.0) * fabs(u[2]) +
                                Scalar(100.0) * fabs(u[1]) +
