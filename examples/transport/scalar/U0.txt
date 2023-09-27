@@ -6,11 +6,11 @@ internal 1
 boundary 2
 {
     inlet {
-        type DIRICHLET
-        value 0.1 0 0
+        type CYCLIC
+        neighbor outlet
     }
     outlet {
-        type NEUMANN
-        value 0 0 0
+        type CYCLIC
+        neighbor inlet
     }
 }

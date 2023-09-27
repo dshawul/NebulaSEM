@@ -93,6 +93,13 @@ void convection(std::istream& input) {
         Fc = flxc(U);
         F = flx(U);
 
+        /*Compute total scalar*/
+        Scalar scalar0;
+        {
+            ScalarCellField sf = T * Mesh::cV;
+            scalar0 = reduce_sum(sf);
+        }
+
         /*Time loop*/
         for (; !it.end(); it.next()) {
 
@@ -108,6 +115,14 @@ void convection(std::istream& input) {
             ScalarCellMatrix M;
             M = convection(T, Fc, F, t_UR);
             Solve(M);
+
+            /*compute scalar loss*/
+            if(MP::printOn) {
+                Scalar scalar;
+                ScalarCellField sf = T * Mesh::cV;
+                scalar = reduce_sum(sf);
+                MP::printH("Scalar loss: %g\n", (scalar0 - scalar) / scalar0);
+            }
         }
     }
 }

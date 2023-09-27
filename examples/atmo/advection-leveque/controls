@@ -64,7 +64,7 @@ general
 ############################
 prepare
 {
-    fields    7 { U T p rho rCells cCells rDepth }
+    fields    2 { U T }
 }
 
 decomposition
@@ -79,6 +79,7 @@ refinement
     field_min       0.2
     field_max       0.4
     max_level       1
+    buffer_zone     1
     limit           100000
 }
 
