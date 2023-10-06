@@ -34,7 +34,7 @@ general
     time_scheme                  AB1
     blend_factor                 1
     parallel_method              BLOCKED
-    print_time                   1000
+    print_time                   200
 
 ############################
 #  Solver options
@@ -79,7 +79,7 @@ refinement
     field_min       0.2
     field_max       0.4
     max_level       1
-    buffer_zone     1
+    buffer_zone     2
     limit           100000
 }
 

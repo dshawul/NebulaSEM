@@ -2,6 +2,8 @@
 #include "iteration.h"
 #include "wrapper.h"
 
+//#define LINEARIZE
+
 /**
   \verbatim
   Convection solver
@@ -112,8 +114,19 @@ void convection(std::istream& input) {
                 F = flx(U);
             }
 
+            /*solve*/
             ScalarCellMatrix M;
+#ifdef LINEARIZE
             M = convection(T, Fc, F, t_UR);
+#else
+            {
+                VectorCellField fq = Fc * T;
+                ScalarCellField q = T;
+                M = divf(fq,false,&F,&T);
+                M.cF = &T;
+                addTemporal<1>(M,t_UR);
+            }
+#endif
             Solve(M);
 
             /*compute scalar loss*/
