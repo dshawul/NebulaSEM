@@ -4,9 +4,6 @@ internal 2
     cosine 0.1 0.9    6376220 0 -0.52359877559   3188110 0 0
     cosine 0.1 0.9    6376220 0  0.52359877559   3188110 0 0
 }
-boundary 1
+boundary 0
 {
-    topbot {
-        type NEUMANN
-    }
 }

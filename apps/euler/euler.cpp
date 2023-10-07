@@ -146,7 +146,7 @@ void euler(std::istream& input) {
         applyExplicitBCs(rho,true);
 
         /*compute total mass and energy*/
-        Scalar mass0, energy0;
+        if(ait.get_step() == 0)
         {
             ScalarCellField sf = rho * Mesh::cV;
             mass0 = reduce_sum(sf);

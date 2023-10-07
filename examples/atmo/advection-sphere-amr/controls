@@ -18,10 +18,10 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     20736
-    write_interval               384
+    end_step                     165888
+    write_interval               768
     amr_step                     1
-    dt                           50
+    dt                           6.25
     n_deferred                   0
 
 ############################
@@ -79,6 +79,7 @@ refinement
     field_min       0.6
     field_max       0.7
     max_level       1
+    buffer_zone     4
     limit           100000
 }
 

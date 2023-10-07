@@ -31,6 +31,9 @@ void convection(std::istream& input) {
     /*read parameters*/
     Util::read_params(input,MP::printOn);
 
+    /*total scalar quanity of system*/
+    Scalar scalar0;
+
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
 
@@ -96,7 +99,7 @@ void convection(std::istream& input) {
         F = flx(U);
 
         /*Compute total scalar*/
-        Scalar scalar0;
+        if(ait.get_step() == 0)
         {
             ScalarCellField sf = T * Mesh::cV;
             scalar0 = reduce_sum(sf);

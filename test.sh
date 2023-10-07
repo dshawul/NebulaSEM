@@ -47,7 +47,7 @@ run() {
 
 	#solve
 	solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
-	mpirun -n $2 -bind-to numa ${bin_path}${solver} ./controls
+	mpirun -n $2 -bind-to numa ${bin_path}${solver} ./controls | tee log.txt
 }
 
 #prepare directory

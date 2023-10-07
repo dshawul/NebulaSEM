@@ -19,10 +19,10 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     11520
-    write_interval               480
+    end_step                     5760
+    write_interval               240
     amr_step                     1
-    dt                           8
+    dt                           15
     n_deferred                   0
 
 ############################

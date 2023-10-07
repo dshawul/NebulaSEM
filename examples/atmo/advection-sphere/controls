@@ -5,7 +5,6 @@ general
 ######################################
     solver                       convection
     mesh                         grid
-    write_format                 TEXT
 
 ######################################
 #  Fluid properties specific to solver
@@ -19,9 +18,9 @@ general
 
     state                        TRANSIENT
     start_step                   0
-    end_step                     20736
-    write_interval               384
-    dt                           50
+    end_step                     41472
+    write_interval               768
+    dt                           25
     n_deferred                   0
 
 ############################

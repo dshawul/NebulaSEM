@@ -3,9 +3,6 @@ internal 1
 {
     uniform 0 0 0
 }
-boundary 1
+boundary 0
 {
-    topbot {
-        type NEUMANN
-    }
 }
