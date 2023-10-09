@@ -621,6 +621,20 @@ FORCEINLINE Vector wind_field(Scalar u, Scalar v, Scalar lat, Scalar lon) {
     return U;
 }
 
+/** Compute area of spherical triangle give cartesian coordinates */
+FORCEINLINE Scalar spherical_triangle_area(Scalar radius,
+    const Vector& v0, const Vector& v1, const Vector& v2
+) {
+    Vector a = unit(v0);
+    Vector b = unit(v1);
+    Vector c = unit(v2);
+    Scalar t;
+    t = fabs(dot(a, b^c));
+    t /= (1 + dot(a,b) + dot(b,c) + dot(a,c));
+    t = 2*atan(t)*radius*radius;
+    return t;
+}
+
 //@}
 
 /*

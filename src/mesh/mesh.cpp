@@ -488,15 +488,57 @@ void Mesh::MeshObject::calcGeometry() {
           instead of the vertices alone*/
         mCC[i] = C / V;
         mCV[i] = V / Scalar(3);
-        /*correct for sphere*/
-        if(is_spherical) {
+    }
+    /*correct for sphere*/
+    if(is_spherical) {
+        for(i = 0;i < mBCS;i++) {
+            Cell& c = mCells[i];
             Scalar radiusb = mag(mVertices[mFacets[c[0]][0]]);
             Scalar radiust = mag(mVertices[mFacets[c[1]][0]]);
             mCC[i] = ((radiusb + radiust) / (2 * mag(mCC[i]))) * mCC[i];
             mFC[c[0]] = (radiusb / mag(mFC[c[0]])) * mFC[c[0]];
             mFC[c[1]] = (radiust / mag(mFC[c[1]])) * mFC[c[1]];
-            for(Int j = 2; j < 6; j++)
+            for(Int j = 2; j < 6; j++) {
                 mFC[c[j]] = ((radiusb + radiust) / (2 * mag(mFC[c[j]]))) * mFC[c[j]];
+                /*compute area of the four vertical faces of cubed-sphere elements*/
+                Scalar d = 0;
+                Facet& f = mFacets[c[j]];
+                forEach(f,k) {
+                    Vector v0 = mVertices[f[k]];
+                    Vector v1 = mVertices[f[ (k == f.size() - 1) ? 0 : k + 1]];
+                    Vector r0 = unit(v0), r1 = unit(v1);
+                    if(equal(r0,r1))
+                        continue;
+                    v0 = cart_to_sphere(v0);
+                    v1 = cart_to_sphere(v1);
+                    d += geodesic_distance(v0,v1);
+                }
+                d /= 2;
+                Scalar area = mag(radiust - radiusb) * d;
+                mFN[c[j]] = area * unit(mFN[c[j]]);
+            }
+        }
+        /*compute surface area and volume of cubed-sphere elements*/
+        for(i = 0;i < mBCS;i++) {
+            Cell& c = mCells[i];
+            Scalar area = 0;
+            for(Int k = 0; k < 2; k++) {
+                Scalar radius = mag(mVertices[mFacets[c[k]][0]]);
+                Facet& f = mFacets[c[k]];
+                Vector& fc = mFC[c[k]];
+                Scalar a = 0;
+                forEach(f,j) {
+                    Vector& v0 = mVertices[f[j]];
+                    Vector& v1 = mVertices[f[ (j == f.size() - 1) ? 0 : j + 1]];
+                    a += spherical_triangle_area(radius,v0,v1,fc);
+                }
+                mFN[c[k]] = a * unit(mFN[c[k]]);
+                area += a;
+            }
+            area /= 2;
+            Scalar radiusb = mag(mVertices[mFacets[c[0]][0]]);
+            Scalar radiust = mag(mVertices[mFacets[c[1]][0]]);
+            mCV[i] = mag(radiust - radiusb) * area;
         }
     }
     /*boundary cell centre and volume*/
