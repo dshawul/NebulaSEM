@@ -125,11 +125,11 @@ void euler(std::istream& input) {
 
             /*compute hydrostatic pressure*/
             p_ref = P0 * pow(1.0 + gh / (cp * T0), cp / R);
-            p += P0 * pow(1.0 + gh / (cp * (T + T0)), cp / R);
+            p += p_ref;
         } else {
             gh = Scalar(0.0);
             p_ref = P0;
-            p += P0;
+            p += p_ref;
         }
 
         Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
