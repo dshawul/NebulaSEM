@@ -244,6 +244,7 @@ namespace Mesh {
     extern  Vector amr_direction; /**< Direction of AMR */
     extern  Int is_spherical; /**< Mesh is spherical */
     extern Scalar sphere_radius; /**< Radius of the sphere */
+    extern Scalar sphere_height; /**< Height of the sphere */
 
     bool pointInLine(const Vector&,const Vector&,const Vector&);
     bool pointInPolygon(const VectorVector&,const IntVector&,const Vector&);

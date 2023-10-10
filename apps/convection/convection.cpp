@@ -47,7 +47,7 @@ void convection(std::istream& input) {
             using namespace Mesh;
             using namespace Constants;
         
-            Scalar radius = 6371220.0;
+            Scalar radius = sphere_radius;
             Scalar period = etime;
             Scalar RoT = radius / period; 
 

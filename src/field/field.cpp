@@ -518,6 +518,7 @@ void Mesh::enroll(Util::ParamList& params) {
     op = new BoolOption(&is_spherical);
     params.enroll("is_spherical",op);
     params.enroll("sphere_radius", &sphere_radius);
+    params.enroll("sphere_height", &sphere_height);
 
     op = new Option(&convection_scheme,
             {"CDS","UDS","BLENDED","HYBRID","RUSANOV","LUD","CDSS","MUSCL","QUICK",

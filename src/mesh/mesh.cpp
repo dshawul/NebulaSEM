@@ -30,6 +30,7 @@ namespace Mesh {
     Vector            amr_direction(0,0,0);
     Int               is_spherical = 0;
     Scalar            sphere_radius = 6371220.0;
+    Scalar            sphere_height =   10000.0;
 }
 /**
   Clear mesh object
@@ -716,8 +717,8 @@ void Mesh::MeshObject::ExtrudeMesh() {
            Vertex& v = mVertices[i];
            Scalar h = max(max(fabs(v[0]),fabs(v[1])),fabs(v[2]));
            Scalar f = (h - minh) / (maxh - minh);
-           constexpr Scalar radiusi = 6371220;
-           constexpr Scalar radiuso = 6381220;
+           Scalar radiusi = sphere_radius;
+           Scalar radiuso = sphere_radius + sphere_height;
            v = unit(v) * ((f) * radiusi + (1-f) * radiuso);
         }
     }
