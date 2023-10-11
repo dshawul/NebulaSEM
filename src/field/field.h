@@ -1841,6 +1841,7 @@ void MeshField<type,entity>::refineField(Int step,
         for(Int k = 0; k < NP; k++)
             Pn[id * NP + k] = type(0.0);
 
+        Scalar vol = 0.0;
         for(Int j = 0;j < nchildren;j++) {
             Int id1 = coarseMap[i + 2 + j];
             ccc = gCC[id1];
@@ -1868,13 +1869,15 @@ void MeshField<type,entity>::refineField(Int step,
                         Pn[index] += P0 * fx * fy * fz; 
                     }
                 }
+                vol++;
             } else {
-                Pn[id] += P[id1];
+                Pn[id] += P[id1] * gCV[id1];
+                vol += gCV[id1];
             }
         }
 
         for(Int k = 0; k < NP; k++)
-            Pn[id * NP + k] /= Scalar(nchildren);
+            Pn[id * NP + k] /= vol;
 
         i += nchildren + 1;
     }
