@@ -88,7 +88,9 @@ void convection(std::istream& input) {
         Iteration it(ait.get_step());
         VectorCellField Fc;
         ScalarFacetField F;
+        ScalarFacetField lambdaMax;
 
+        /*special initializations*/
         if(ait.get_step() == 0 && problem_init != NONE) {
             Scalar ctime = it.get_step() * Controls::dt;
             Scalar etime = Controls::end_step * Controls::dt;
@@ -97,6 +99,9 @@ void convection(std::istream& input) {
         }
         Fc = flxc(U);
         F = flx(U);
+#ifndef LINEARIZE
+        lambdaMax = cds(mag(U)) / 2;
+#endif
 
         /*Compute total scalar*/
         if(ait.get_step() == 0)
@@ -115,6 +120,9 @@ void convection(std::istream& input) {
                 init_wind_field(ctime, etime);
                 Fc = flxc(U);
                 F = flx(U);
+#ifndef LINEARIZE
+                lambdaMax = cds(mag(U)) / 2;
+#endif
             }
 
             /*solve*/
@@ -125,7 +133,7 @@ void convection(std::istream& input) {
             {
                 VectorCellField fq = Fc * T;
                 ScalarCellField q = T;
-                M = divf(fq,false,&F,&T);
+                M = divf(fq,false,&F,&T,&lambdaMax);
                 M.cF = &T;
                 addTemporal<1>(M,t_UR);
             }
