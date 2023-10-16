@@ -706,6 +706,9 @@ void Prepare::refineMesh(Int step) {
         }
 
         /*add buffer zone*/
+        IntVector bufferCells;
+        bufferCells.assign(gBCS,0);
+
         for(Int b = 0; b < refine_params.buffer_zone; b++) {
             IntVector rCellsQoi_c = rCellsQoi;
             for(Int i = 0;i < gBCS;i++) {
@@ -716,17 +719,20 @@ void Prepare::refineMesh(Int step) {
                     Int c2 = gFNC[c[j]];
                     if(c2 >= gBCS) continue;
                     if(c1 == i) {
-                        if(rCellsQoi[c2] == 0) {
-                            rCellsQoi[c2] = 1;
-                            cCells[c2] = 0;
-                        }
+                        if(rCellsQoi[c2] < rCellsQoi[c1])
+                            bufferCells[c2]++;
                     } else {
-                        if(rCellsQoi[c1] == 0) {
-                            rCellsQoi[c1] = 1;
-                            cCells[c1] = 0;
-                        }
+                        if(rCellsQoi[c1] < rCellsQoi[c2])
+                            bufferCells[c1]++;
                     }
                 }
+            }
+        }
+
+        for(Int i = 0; i < gBCS; i++) {
+            if(bufferCells[i]) { 
+                rCellsQoi[i]++;
+                cCells[i] = 0;
             }
         }
 
