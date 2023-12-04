@@ -7,9 +7,9 @@ usage() {
     echo "Usage: $0 [options]" >&2
     echo
     echo "   -n,--np       Number of processors to use."
-    echo "   -c,--case     Path to grid name under a test case directory."
-    echo "   -b,--bin-path Path to binary files mesh, prepare and solvers."
-    echo "   -s,--steps    Number of time steps -- overwrites the one in control file."
+    echo "   -c,--case     Path to grid file name that is under a test case directory."
+    echo "   -b,--bin-path Path to binaries: mesh, prepare and solvers."
+    echo "   -s,--steps    Number of time steps, which overwrites the one in control file."
     echo "   -h,--help     Display this help message."
     echo
     exit 0
