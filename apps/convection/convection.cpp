@@ -91,8 +91,10 @@ void convection(std::istream& input) {
         ScalarFacetField lambdaMax;
 
         /*special initializations*/
-        if(ait.get_step() == 0 && problem_init != NONE) {
-            Scalar ctime = it.get_step() * Controls::dt;
+        if(ait.get_step() <= 0 && problem_init != NONE) {
+            int step = it.get_step();
+            if(step < 0) step = 0;
+            Scalar ctime = step * Controls::dt;
             Scalar etime = Controls::end_step * Controls::dt;
             init_wind_field(ctime, etime);
             U.write(0);

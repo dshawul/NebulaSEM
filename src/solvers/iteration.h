@@ -12,8 +12,14 @@ class Iteration {
         Int i;
         Int n_deferred;
         Int idf;
+        bool skip;
     public:
-        Iteration(Int step) {
+        Iteration(int step) {
+            skip = false;
+            if(step < 0) {
+                skip = true;
+                step = 0;
+            }
             starti = Controls::write_interval * step + 1;
             endi = Controls::write_interval * (step + Controls::amr_step);
             if(endi > Controls::end_step) endi = Controls::end_step;
@@ -35,6 +41,12 @@ class Iteration {
             return (i == starti);
         }
         bool end() {
+            /*zero iterations*/
+            if(skip) {
+                Mesh::write_fields(0);
+                return true;
+            }
+            /*check*/
             if(i > endi)
                 return true;
             /*iteration number*/
@@ -80,21 +92,22 @@ class Iteration {
  */
 class AmrIteration {
     private:
-        Int starti;
-        Int endi;
-        Int i;
+        int starti;
+        int endi;
+        int i;
     public:
         AmrIteration() {
-            starti = Controls::start_step / Controls::write_interval;
+            starti = Controls::start_step / Controls::write_interval - Controls::amr_step;
             endi = Controls::end_step / Controls::write_interval;
             if(!Controls::amr_step)
                 Controls::amr_step = endi;
             i = starti;
 
+            int in = (i < 0) ? 0 : i;
             if (MP::n_hosts > 1)
-                Prepare::decomposeMesh(i);
+                Prepare::decomposeMesh(in);
             else
-                Mesh::LoadMesh(i);
+                Mesh::LoadMesh(in);
         }
         bool start() {
             return (i == starti);
@@ -124,7 +137,7 @@ class AmrIteration {
         }
         ~AmrIteration() {
         }
-        Int get_step() {
+        int get_step() {
             return i;
         }
 };

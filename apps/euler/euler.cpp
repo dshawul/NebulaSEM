@@ -79,8 +79,7 @@ void euler(std::istream& input) {
         iPr = 1 / Pr;
 
         /*special initializations*/
-        if(ait.get_step() == 0 && problem_init != NONE) {
-
+        if(ait.get_step() <= 0 && problem_init != NONE) {
             /*isentropic vortex*/
             auto isentropic_vortex = [&]() {
                 using namespace Constants;
@@ -104,6 +103,8 @@ void euler(std::istream& input) {
             T.write(0);
             U.write(0);
             p.write(0);
+            /*turn off*/
+            problem_init = NONE;
         }
 
         /*buoyancy*/

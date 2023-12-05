@@ -40,14 +40,19 @@ case=$(dirname $case)
 
 #run solver
 run() {
-	echo "Starting job with " $2 " processors"
+    echo "Starting job with " $2 " processors"
 
-	#generate grid
-	${bin_path}mesh $1 -o grid_0.bin
+    #generate grid
+    format=$(grep -v "^#" ./controls | grep write_format | awk '{print $2}')
+    if [ "$format" == "TEXT" ]; then
+        ${bin_path}mesh $1 -o grid_0.txt
+    else
+        ${bin_path}mesh $1 -o grid_0.bin
+    fi
 
-	#solve
-	solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
-	mpirun -n $2 -bind-to numa ${bin_path}${solver} ./controls | tee log.txt
+    #solve
+    solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
+    mpirun -n $2 -bind-to numa ${bin_path}${solver} ./controls | tee log.txt
 }
 
 #prepare directory
