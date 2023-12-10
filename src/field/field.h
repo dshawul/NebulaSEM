@@ -1860,7 +1860,7 @@ void MeshField<type,entity>::refineField(Int step,
 
                 forEachLgl(ii1,jj1,kk1) {
                     Int index1 = INDEX4(id1,ii1,jj1,kk1);
-                    type P0 = P[index1];
+                    type P0 = P[index1] * gCV[id1];
                     forEachLgl(ii,jj,kk) {
                         Int index = INDEX4(id,ii,jj,kk);
                         Scalar fx = psiCor[0*2+ioff][ii1*NPX+ii];
@@ -1869,11 +1869,10 @@ void MeshField<type,entity>::refineField(Int step,
                         Pn[index] += P0 * fx * fy * fz; 
                     }
                 }
-                vol++;
             } else {
                 Pn[id] += P[id1] * gCV[id1];
-                vol += gCV[id1];
             }
+            vol += gCV[id1];
         }
 
         for(Int k = 0; k < NP; k++)

@@ -635,7 +635,14 @@ void Prepare::refineMesh(Int step) {
     Mesh::amr_direction = refine_params.dir;
 
     /*Load mesh*/
-    LoadMesh(step,false,false);
+    if(is_spherical) {
+        LoadMesh(step,false,true);
+        ScalarVector extCV = gCV;
+        LoadMesh(step,false,false);
+        gCV = extCV;
+    } else {
+        LoadMesh(step,false,false);
+    }
 
     /*create fields*/
     Prepare::createFields(BaseField::fieldNames,step);

@@ -16,7 +16,7 @@ class Iteration {
     public:
         Iteration(int step) {
             skip = false;
-            if(step < 0) {
+            if(step < -Constants::EqualEpsilon) {
                 skip = true;
                 step = 0;
             }
