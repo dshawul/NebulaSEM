@@ -635,14 +635,17 @@ void Prepare::refineMesh(Int step) {
     Mesh::amr_direction = refine_params.dir;
 
     /*Load mesh*/
+    ScalarVector oldCV;
+    VectorVector oldCC;
     if(is_spherical) {
         LoadMesh(step,false,true);
-        ScalarVector extCV = gCV;
+        oldCV = gCV;
         LoadMesh(step,false,false);
-        gCV = extCV;
     } else {
         LoadMesh(step,false,false);
+        oldCV = gCV;
     }
+    oldCC = gCC;
 
     /*create fields*/
     Prepare::createFields(BaseField::fieldNames,step);
@@ -883,17 +886,31 @@ void Prepare::refineMesh(Int step) {
 
     /*refine/coarsen mesh and fields*/
     {
+
+        /*refine mesh*/
         IntVector refineMap,coarseMap,cellMap;
         gMesh.refineMesh(cCells,rCellsL,rLevelL,rDirsL,refineMap,coarseMap,cellMap);
-        forEachIt(BaseField::allFields, it)
-            (*it)->refineField(step,refineMap,coarseMap,cellMap);
+
+        /*extrude mesh after refinement is complete*/
+        Int nCells = gCells.size();
+
         gMesh.addBoundaryCells();
         gMesh.fixHexCells();
-    }
 
-    /*extrude mesh after refinement is complete*/
-    if(is_spherical)
-        gMesh.ExtrudeMesh();
+        VectorVector newCC;
+        gMesh.calcGeometry();
+        newCC = gCC;
+
+        if(is_spherical) {
+            gMesh.ExtrudeMesh();
+            gMesh.calcGeometry();
+        }
+
+        /*refine fields*/
+        forEachIt(BaseField::allFields, it)
+            (*it)->refineField(step,refineMap,coarseMap,cellMap,nCells,oldCV,oldCC,newCC);
+
+    }
 
     /*Write amrTree*/
     {

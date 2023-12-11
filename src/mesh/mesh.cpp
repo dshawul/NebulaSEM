@@ -1753,6 +1753,11 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
     IntVector delFacets;
     IntVector delCells;
 
+    /*print number of cells to refine and coarsen*/
+    cout << "Refining " << rCells.size() << " Coarsening "
+         << std::count(cCells.begin(),cCells.end(),1)
+         << std::endl;
+
     /*************************
      *
      *        COARSENING

@@ -425,7 +425,8 @@ class BaseField {
         std::string  fName;
     public:
         virtual void deallocate(bool) = 0;
-        virtual void refineField(Int,const IntVector&,const IntVector&,const IntVector&) = 0;
+        virtual void refineField(Int,const IntVector&,const IntVector&,const IntVector&,
+                                const Int,const ScalarVector&,const VectorVector&,const VectorVector&) = 0;
         //------------
         virtual void writeInternal(std::ostream&,IntVector*) = 0;
         virtual Int readInternal(std::istream&,Int = 0) = 0;
@@ -1127,7 +1128,8 @@ class MeshField : public BaseField
                 }
             }
         }
-        void refineField(Int,const IntVector&,const IntVector&,const IntVector&);
+        void refineField(Int,const IntVector&,const IntVector&,const IntVector&,
+                        const Int,const ScalarVector&,const VectorVector&, const VectorVector&);
         /*IO*/
         template<typename Ts>
         friend Ts& operator << (Ts& os, MeshField& p) {
@@ -1810,12 +1812,13 @@ typedef MeshMatrix<STensor> STensorCellMatrix;
 /*refine/unrefine field*/
 template <class type,ENTITY entity> 
 void MeshField<type,entity>::refineField(Int step,
-    const IntVector& refineMap,const IntVector& coarseMap, const IntVector& cellMap) {
+    const IntVector& refineMap, const IntVector& coarseMap, const IntVector& cellMap,
+    const Int nCells, const ScalarVector& oldCV, const VectorVector& oldCC, const VectorVector& newCC) {
 
     using namespace Mesh;
     using namespace DG;
 
-    const Int newgBCSfield = gCells.size() * NP;
+    const Int newgBCSfield = nCells * NP;
     const Int oldgBCS = gBCSfield / NP;
     type* Pn;
 
@@ -1836,7 +1839,7 @@ void MeshField<type,entity>::refineField(Int step,
         Int id = cellMap[coarseMap[i + 1]];
 
         Vector ccp, ccc;
-        gMesh.calcCellCenter(gCells[id],ccp);
+        ccp = newCC[id];
 
         for(Int k = 0; k < NP; k++)
             Pn[id * NP + k] = type(0.0);
@@ -1844,7 +1847,7 @@ void MeshField<type,entity>::refineField(Int step,
         Scalar vol = 0.0;
         for(Int j = 0;j < nchildren;j++) {
             Int id1 = coarseMap[i + 2 + j];
-            ccc = gCC[id1];
+            ccc = oldCC[id1];
 
             if(NPMAT) {
                 Int ioff, joff, koff;
@@ -1860,7 +1863,7 @@ void MeshField<type,entity>::refineField(Int step,
 
                 forEachLgl(ii1,jj1,kk1) {
                     Int index1 = INDEX4(id1,ii1,jj1,kk1);
-                    type P0 = P[index1] * gCV[id1];
+                    type P0 = P[index1] * oldCV[id1];
                     forEachLgl(ii,jj,kk) {
                         Int index = INDEX4(id,ii,jj,kk);
                         Scalar fx = psiCor[0*2+ioff][ii1*NPX+ii];
@@ -1870,9 +1873,9 @@ void MeshField<type,entity>::refineField(Int step,
                     }
                 }
             } else {
-                Pn[id] += P[id1] * gCV[id1];
+                Pn[id] += P[id1] * oldCV[id1];
             }
-            vol += gCV[id1];
+            vol += oldCV[id1];
         }
 
         for(Int k = 0; k < NP; k++)
@@ -1886,11 +1889,12 @@ void MeshField<type,entity>::refineField(Int step,
         Int nchildren = refineMap[i];
         Int id = refineMap[i + 1];
 
-        Vector ccp = gCC[id], ccc;
+        Vector ccp = oldCC[id], ccc;
+        type totn = type(0.0), toto = type(0.0);
 
         for(Int j = 0;j < nchildren;j++) {
             Int id1 = cellMap[refineMap[i + 2 + j]];
-            gMesh.calcCellCenter(gCells[id1],ccc);
+            ccc = newCC[id1];
 
             if(NPMAT) {
                 Int ioff, joff, koff;
@@ -1910,18 +1914,40 @@ void MeshField<type,entity>::refineField(Int step,
                 forEachLgl(ii,jj,kk) {
                     Int index = INDEX4(id,ii,jj,kk);
                     type P0 = P[index];
+
+                    if(j == 0) {
+                        Scalar wgt = wgl[0][ii] * wgl[1][jj] * wgl[2][kk] / 8;
+                        toto += P0 * oldCV[id] * wgt;
+                    }
+
                     forEachLgl(ii1,jj1,kk1) {
                         Int index1 = INDEX4(id1,ii1,jj1,kk1);
                         Scalar fx = psiRef[0*2+ioff][ii*NPX+ii1];
                         Scalar fy = psiRef[1*2+joff][jj*NPY+jj1];
                         Scalar fz = psiRef[2*2+koff][kk*NPZ+kk1];
-                        Pn[index1] += P0 * fx * fy * fz; 
+                        type P1 = P0 * fx * fy * fz;
+                        Pn[index1] += P1; 
+                        {
+                            Scalar wgt = wgl[0][ii1] * wgl[1][jj1] * wgl[2][kk1] / 8;
+                            totn += P1 * gCV[id1] * wgt;
+                        }
                     }
                 }
+
             } else {
                 Pn[id1] = P[id];
             }
         }
+
+        if(NPMAT) {
+            Scalar factor = sdiv(mag(toto), mag(totn));
+            for(Int j = 0;j < nchildren;j++) {
+                Int id1 = cellMap[refineMap[i + 2 + j]];
+                for(Int k = 0; k < NP; k++)
+                    Pn[id1 * NP + k] *= factor;
+            }
+        }
+
         i += nchildren + 1;
     }
 
