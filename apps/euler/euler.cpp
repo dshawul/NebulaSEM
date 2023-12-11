@@ -51,7 +51,7 @@ void euler(std::istream& input) {
     Util::read_params(input,MP::printOn);
 
     /*total mass and energy of system*/
-    Scalar mass0, energy0;
+    Scalar mass0, energy0, volume0;
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
@@ -59,7 +59,7 @@ void euler(std::istream& input) {
         ScalarCellField p("p",READWRITE);
         VectorCellField U("U",READWRITE);
         ScalarCellField T("T",READWRITE);
-        ScalarCellField rho("rho",WRITE);
+        ScalarCellField rho("rho",READWRITE);
         VectorCellField g(false);
 
         /*Read fields*/
@@ -79,7 +79,7 @@ void euler(std::istream& input) {
         iPr = 1 / Pr;
 
         /*special initializations*/
-        if(ait.get_step() <= 0 && problem_init != NONE) {
+        if(ait.start() && problem_init != NONE) {
             /*isentropic vortex*/
             auto isentropic_vortex = [&]() {
                 using namespace Constants;
@@ -93,6 +93,7 @@ void euler(std::istream& input) {
                     U[i][1] += (beta / (2 * PI)) * exp((1 - r[i]*r[i])/2.0) *  Mesh::cC[i][0];
                 }
                 p = pow(T + T0, p_gamma / (p_gamma - 1)) - P0;
+                rho = (P0 / (R*(T + T0))) * pow((p + P0) / P0, 1 / p_gamma);
             };
 
             /*choose init type*/
@@ -103,14 +104,13 @@ void euler(std::istream& input) {
             T.write(0);
             U.write(0);
             p.write(0);
-            /*turn off*/
-            problem_init = NONE;
+            rho.write(0);
         }
 
         /*buoyancy*/
         ScalarCellField p_ref, rho_ref, gh;
         if(buoyancy) {
-            /*gravity vector*/
+            /*gravity*/
             g.construct("gravity",WRITE);
             if(Mesh::is_spherical) {
                 g = -unit(Mesh::cC) * mag(Controls::gravity);
@@ -124,45 +124,65 @@ void euler(std::istream& input) {
             if(ait.get_step() == 0)
                 g.write(0);
 
-            /*compute hydrostatic pressure*/
+            /*reference hydrostatic state*/
             p_ref = P0 * pow(1.0 + gh / (cp * T0), cp / R);
-            p += p_ref;
+            rho_ref = (P0 / (R*T0)) * pow(p_ref / P0, 1 / p_gamma);
         } else {
+            /*gravity*/
             gh = Scalar(0.0);
+
+            /*reference state*/
             p_ref = P0;
-            p += p_ref;
+            rho_ref = (P0 / (R*T0));
         }
 
-        Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
-        applyExplicitBCs(p_ref,true);
-        applyExplicitBCs(p,true);
+        if(ait.start()) {
+            p += p_ref;
+            Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
+            applyExplicitBCs(p_ref,true);
+            applyExplicitBCs(p,true);
 
-        /*calculate rho*/
-        rho_ref = (P0 / (R*T0)) * pow(p_ref / P0, 1 / p_gamma);
-        Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
-        applyExplicitBCs(rho_ref,true);
+            /*calculate rho*/
+            Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
+            applyExplicitBCs(rho_ref,true);
 
-        rho = (P0 / (R*(T + T0))) * pow(p / P0, 1 / p_gamma);
-        Mesh::scaleBCs<Scalar>(p,rho,psi);
-        applyExplicitBCs(rho,true);
+            rho = (P0 / (R*(T + T0))) * pow(p / P0, 1 / p_gamma);
+            Mesh::scaleBCs<Scalar>(p,rho,psi);
+            applyExplicitBCs(rho,true);
+            rho -= rho_ref;
+            rho.write(0);
+
+            p -= p_ref;
+        } else {
+            rho += rho_ref;
+            Mesh::scaleBCs<Scalar>(rho,rho_ref,1.0);
+            applyExplicitBCs(rho_ref,true);
+            applyExplicitBCs(rho,true);
+
+            /*calculate pressure*/
+            Mesh::scaleBCs<Scalar>(rho,p_ref,1.0/psi);
+            applyExplicitBCs(p_ref,true);
+
+            p = P0 * pow((rho*(T+T0)*R) / P0, p_gamma);
+            Mesh::scaleBCs<Scalar>(rho,p,1.0/psi);
+            applyExplicitBCs(p,true);
+            p -= p_ref;
+
+            rho -= rho_ref;
+        }
 
         /*compute total mass and energy*/
         if(ait.get_step() == 0)
         {
-            ScalarCellField sf = rho * Mesh::cV;
+            ScalarCellField sf = (rho + rho_ref) * Mesh::cV;
             mass0 = reduce_sum(sf);
             //potential + kinetic + internal
             sf = gh +
                  0.5 * magSq(U) +
-                 pow(p / P0, R / cp) * (T + T0) * cv;
-            sf = rho * Mesh::cV * sf;
+                 pow((p + p_ref) / P0, R / cp) * (T + T0) * cv;
+            sf = (rho + rho_ref) * Mesh::cV * sf;
             energy0 = reduce_sum(sf);
-        }
-
-        /*write calculated rho*/
-        rho -= rho_ref;
-        if(ait.get_step() == 0) {
-            rho.write(0);
+            volume0 = reduce_sum(Mesh::cV);
         }
 
         /*Time loop*/
@@ -258,7 +278,7 @@ void euler(std::istream& input) {
                     MP::printH("Courant number: Max: %g Min: %g Avg: %g\n",
                         courant[0], courant[1], courant[2]);
 
-                    Scalar mass, energy;
+                    Scalar mass, energy, volume;
                     {
                         ScalarCellField sf = rho * Mesh::cV;
                         mass = reduce_sum(sf);
@@ -268,10 +288,12 @@ void euler(std::istream& input) {
                              pow((p + p_ref) / P0, R / cp) * T * cv;
                         sf = rho * Mesh::cV * sf;
                         energy = reduce_sum(sf);
+                        volume = reduce_sum(Mesh::cV);
                     }
-                    MP::printH("Mass loss: %g Energy loss %g\n",
+                    MP::printH("Mass loss: %.12g Energy loss %.12g Volume loss %.12g\n",
                         (mass0 - mass) / mass0,
-                        (energy0 - energy) / energy0);
+                        (energy0 - energy) / energy0,
+                        (volume0 - volume) / volume0);
                 }
             }
 

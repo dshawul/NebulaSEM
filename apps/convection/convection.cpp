@@ -32,7 +32,7 @@ void convection(std::istream& input) {
     Util::read_params(input,MP::printOn);
 
     /*total scalar quanity of system*/
-    Scalar scalar0;
+    Scalar scalar0, volume0;
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
@@ -91,7 +91,7 @@ void convection(std::istream& input) {
         ScalarFacetField lambdaMax;
 
         /*special initializations*/
-        if(ait.get_step() <= 0 && problem_init != NONE) {
+        if(ait.start() && problem_init != NONE) {
             int step = it.get_step();
             if(step < 0) step = 0;
             Scalar ctime = step * Controls::dt;
@@ -110,6 +110,7 @@ void convection(std::istream& input) {
         {
             ScalarCellField sf = T * Mesh::cV;
             scalar0 = reduce_sum(sf);
+            volume0 = reduce_sum(Mesh::cV);
         }
 
         /*Time loop*/
@@ -144,10 +145,13 @@ void convection(std::istream& input) {
 
             /*compute scalar loss*/
             if(MP::printOn) {
-                Scalar scalar;
+                Scalar scalar, volume;
                 ScalarCellField sf = T * Mesh::cV;
                 scalar = reduce_sum(sf);
-                MP::printH("Scalar loss: %g\n", (scalar0 - scalar) / scalar0);
+                volume = reduce_sum(Mesh::cV);
+                MP::printH("Scalar loss: %.12g Volume loss: %.12g\n",
+                        (scalar0 - scalar) / scalar0,
+                        (volume0 - volume) / volume0);
             }
         }
     }
