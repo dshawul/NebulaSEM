@@ -3250,16 +3250,18 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
     /* only explicit for DG */
     } else {
 #if 0
+        /*This results in non-conservative solution*/
         MeshField<T1,FACET> fF;
         fF = gamma * cds(cF) + (Scalar(1.0) - gamma) * uds(cF,flux);
         m.Su = sum_flux<strong>(cF,fF,flux);
 #else
-        MeshField<T5,FACET> fF;
+        /*This is conservative*/
+        MeshField<T5,FACET> fFp;
         if(lambdaMax && convection_scheme == RUSANOV)
-            fF = rusanov(p,cF,*lambdaMax);
+            fFp = rusanov(p,cF,*lambdaMax);
         else
-            fF = gamma * cds(p) + (1.0 - gamma) * uds(p,flux);
-        m.Su = div_flux<strong>(p,fF);
+            fFp = gamma * cds(p) + (1.0 - gamma) * uds(p,flux);
+        m.Su = div_flux<strong>(p,fFp);
 #endif
     }
 }
@@ -3279,6 +3281,13 @@ auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
     auto fF = cds(p);
     auto r = grad_flux<strong>(p,fF);
 
+    if(NPMAT) {
+        #pragma omp parallel for
+        #pragma acc parallel loop copyin(p,gBCS)
+        for(Int ci = 0; ci < gBCS;ci++) {
+            forEachLgl(ii,jj,kk) {
+                Int index = INDEX4(ci,ii,jj,kk);
+                Tensor Jin = Jinv[index] * cV[index];
 #define GRADD(im,jm,km) {                           \
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
@@ -3289,22 +3298,13 @@ auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
     else                                            \
         r[index1] -= mul(dpsi_ij,p[index]);         \
 }
-
-    if(NPMAT) {
-        _Pragma("omp parallel for")
-        _Pragma("acc parallel loop copyin(p,gBCS)")
-        for(Int ci = 0; ci < gBCS;ci++) {
-            forEachLgl(ii,jj,kk) {
-                Int index = INDEX4(ci,ii,jj,kk);
-                Tensor Jin = Jinv[index] * cV[index];
                 forEachLglX(i) GRADD(i,jj,kk);
                 forEachLglY(j) if(j != jj) GRADD(ii,j,kk);
                 forEachLglZ(k) if(k != kk) GRADD(ii,jj,k);
+#undef GRADD
             }
         }
     }
-
-#undef GRADD
 
     if(perunit_volume) r = (r / cV);
 
@@ -3380,6 +3380,13 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false,
     }
     auto r = div_flux<strong>(p,fF);
 
+    if(NPMAT) {
+        #pragma omp parallel for
+        #pragma acc parallel loop copyin(p,gBCS)
+        for(Int ci = 0; ci < gBCS;ci++) {
+            forEachLgl(ii,jj,kk) {
+                Int index = INDEX4(ci,ii,jj,kk);
+                Tensor Jin = Jinv[index] * cV[index];
 #define DIVD(im,jm,km) {                            \
     Int index1 = INDEX4(ci,im,jm,km);               \
     Vector dpsi_ij;                                 \
@@ -3390,22 +3397,13 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false,
     else                                            \
         r[index1] -= dot(p[index],dpsi_ij);         \
 }
-
-    if(NPMAT) {
-        _Pragma("omp parallel for")
-        _Pragma("acc parallel loop copyin(p,gBCS)")
-        for(Int ci = 0; ci < gBCS;ci++) {
-            forEachLgl(ii,jj,kk) {
-                Int index = INDEX4(ci,ii,jj,kk);
-                Tensor Jin = Jinv[index] * cV[index];
                 forEachLglX(i) DIVD(i,jj,kk);
                 forEachLglY(j) if(j != jj) DIVD(ii,j,kk);
                 forEachLglZ(k) if(k != kk) DIVD(ii,jj,k);
+#undef DIVD
             }
         }
     }
-
-#undef DIVD
 
     if(perunit_volume) r = (r / cV);
 
