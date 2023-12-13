@@ -135,7 +135,6 @@ void convection(std::istream& input) {
 #else
             {
                 VectorCellField fq = Fc * T;
-                ScalarCellField q = T;
                 M = divf(fq,false,&F,&T,&lambdaMax);
                 M.cF = &T;
                 addTemporal<1>(M,t_UR);

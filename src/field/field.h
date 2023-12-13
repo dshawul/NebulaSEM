@@ -3080,7 +3080,7 @@ auto sum(const DVExpr<type,A>& expr) {
  * *******************************/
 
 template<bool strong=form_strong,class T1, class T2, class T3, class T4>
-void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
+void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const VectorCellField& fluxc, const MeshField<T4,FACET>& flux,
     const MeshField<T4,CELL>* muc = 0
 ) {
     using namespace Controls;
@@ -3247,9 +3247,15 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T4,FACET>& flux,
         }
     /* only explicit for DG */
     } else {
+#if 0
         MeshField<T1,FACET> fF;
         fF = gamma * cds(cF) + (Scalar(1.0) - gamma) * uds(cF,flux);
         m.Su = sum_flux<strong>(cF,fF,flux);
+#else
+        auto p = eval_expr(mul(fluxc,cF));
+        auto fF = uds(p,flux);
+        m.Su = div_flux<strong>(p,fF);
+#endif
     }
 }
 
@@ -3483,7 +3489,7 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         }
     }
     /*compute surface integral*/
-    div_flux_implicit<strong>(m,flux,muc);
+    div_flux_implicit<strong>(m,fluxc,flux,muc);
     
     return m;
 }
