@@ -3079,8 +3079,10 @@ auto sum(const DVExpr<type,A>& expr) {
  * Implicit div flux
  * *******************************/
 
-template<bool strong=form_strong,class T1, class T2, class T3, class T4>
-void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const VectorCellField& fluxc, const MeshField<T4,FACET>& flux,
+template<bool strong=form_strong,class T1, class T2, class T3, class T4, class T5>
+void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
+    const VectorCellField& fluxc, const MeshField<T4,FACET>& flux,
+    const ScalarFacetField* lambdaMax = 0,
     const MeshField<T4,CELL>* muc = 0
 ) {
     using namespace Controls;
@@ -3252,8 +3254,11 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const VectorCellField& fluxc, co
         fF = gamma * cds(cF) + (Scalar(1.0) - gamma) * uds(cF,flux);
         m.Su = sum_flux<strong>(cF,fF,flux);
 #else
-        auto p = eval_expr(mul(fluxc,cF));
-        auto fF = uds(p,flux);
+        MeshField<T5,FACET> fF;
+        if(lambdaMax && convection_scheme == RUSANOV)
+            fF = rusanov(p,cF,*lambdaMax);
+        else
+            fF = gamma * cds(p) + (1.0 - gamma) * uds(p,flux);
         m.Su = div_flux<strong>(p,fF);
 #endif
     }
@@ -3364,7 +3369,6 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false,
     if(lambdaMax && convection_scheme == RUSANOV)
         fF = rusanov(p,*q,*lambdaMax);
     else {
-        Scalar gamma;
         if(flux == 0 || convection_scheme == CDS) 
             fF = cds(p);
         else {
@@ -3429,6 +3433,7 @@ MeshField<Vector,CELL> divf(const DVExpr<Tensor,A>& expr, bool perunit_volume=fa
 template<bool strong=form_strong,class type>
 auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         const ScalarFacetField& flux,
+        const ScalarFacetField* lambdaMax = 0,
         const ScalarCellField* muc = 0
 ) {
 
@@ -3489,7 +3494,8 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         }
     }
     /*compute surface integral*/
-    div_flux_implicit<strong>(m,fluxc,flux,muc);
+    auto p = eval_expr(mul(fluxc,cF));
+    div_flux_implicit<strong>(m,p,fluxc,flux,lambdaMax,muc);
     
     return m;
 }
@@ -3889,8 +3895,10 @@ auto diffusion(MeshField<type,CELL>& cF,
 template<class type>
 auto convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F, Scalar cF_UR,
-        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
-    MeshMatrix<type> M = div(cF,Fc,F);
+        const ScalarFacetField* lambdaMax = 0,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0
+) {
+    MeshMatrix<type> M = div(cF,Fc,F,lambdaMax);
     addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
@@ -3898,16 +3906,20 @@ template<class type>
 auto convection(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F, Scalar cF_UR, 
         const MeshField<type,CELL>& Su,const ScalarCellField& Sp,
-        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
-    MeshMatrix<type> M = div(cF,Fc,F) - src(cF,Su,Sp);
+        const ScalarFacetField* lambdaMax = 0,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0
+) {
+    MeshMatrix<type> M = div(cF,Fc,F,lambdaMax) - src(cF,Su,Sp);
     addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
 template<class type>
 auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F, const ScalarCellField& mu, Scalar cF_UR,
-        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
-    MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu);
+        const ScalarFacetField* lambdaMax = 0,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0
+) {
+    MeshMatrix<type> M = div(cF,Fc,F,lambdaMax,&mu) - lap(cF,mu);
     addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }
@@ -3915,8 +3927,10 @@ template<class type>
 auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,
         const ScalarFacetField& F,const ScalarCellField& mu, Scalar cF_UR, 
         const MeshField<type,CELL>& Su, const ScalarCellField& Sp,
-        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0) {
-    MeshMatrix<type> M = div(cF,Fc,F,&mu) - lap(cF,mu) - src(cF,Su,Sp);
+        const ScalarFacetField* lambdaMax = 0,
+        ScalarCellField* rho = 0, ScalarCellField* rho0 = 0
+) {
+    MeshMatrix<type> M = div(cF,Fc,F,lambdaMax,&mu) - lap(cF,mu) - src(cF,Su,Sp);
     addTemporal<1>(M,cF_UR,rho,rho0);
     return M;
 }

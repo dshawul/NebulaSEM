@@ -67,7 +67,8 @@ struct Turbulence_Model {
     Util::ParamList params;
     bool writeStress;
     /*constructor*/
-    Turbulence_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
+    Turbulence_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,
+                     ScalarCellField& trho,ScalarCellField& tmu) :
         U(tU),
         Fc(tFc),
         F(tF),

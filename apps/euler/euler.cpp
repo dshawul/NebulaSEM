@@ -195,9 +195,7 @@ void euler(std::istream& input) {
             /*fluxes*/
             Fc = flxc(rho * U);
             F = flx(rho * U);
-#ifndef LINEARIZE
             lambdaMax = ( cds(mag(U)) + cds(sqrt(p_gamma*R*T)) ) / 2;
-#endif
 
             /*artificial viscosity*/
             if(diffusion) mu = rho * viscosity;
@@ -208,7 +206,7 @@ void euler(std::istream& input) {
             {
                 ScalarCellMatrix M;
 #ifdef LINEARIZE
-                M = convection(rho, flxc(U), flx(U), pressure_UR);
+                M = convection(rho, flxc(U), flx(U), pressure_UR, &lambdaMax);
 #else
                 {
                     VectorCellField fq = U * rho;
@@ -240,7 +238,7 @@ void euler(std::istream& input) {
                 /*solve*/
                 VectorCellMatrix M;
 #ifdef LINEARIZE
-                M = transport(U, Fc, F, mu, velocity_UR, Sc, Sp, &rho, &rhof);
+                M = transport(U, Fc, F, mu, velocity_UR, Sc, Sp, &lambdaMax, &rho, &rhof);
 #else
                 {
                     TensorCellField fq = mul(Fc,U) + TensorCellField(Constants::I_T) * p;
@@ -257,7 +255,7 @@ void euler(std::istream& input) {
             {
                 ScalarCellMatrix M;
 #ifdef LINEARIZE
-                M = transport(T, Fc, F, mu * iPr, t_UR, &rho, &rhof);
+                M = transport(T, Fc, F, mu * iPr, t_UR, &lambdaMax, &rho, &rhof);
 #else
                 {
                     ScalarCellField imu = mu * iPr;

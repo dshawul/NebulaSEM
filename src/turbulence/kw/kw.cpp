@@ -29,7 +29,7 @@ void KW_Model::solve() {
     eff_mu = eddy_mu / SigmaX + mu;
     M = transport<Scalar>(x, Fc, F, eff_mu, x_UR,
             (C1x * Pk * x / k),
-            -(C2x * rho * x), &rho);
+            -(C2x * rho * x), 0, &rho);
     FixNearWallValues(M);
     Solve(M);
     x = max(x,Constants::MachineEpsilon);
@@ -38,7 +38,7 @@ void KW_Model::solve() {
     eff_mu = eddy_mu / SigmaK + mu;
     M = transport<Scalar>(k, Fc, F, eff_mu, k_UR,
             Pk,
-            -(Cmu * rho * x), &rho);
+            -(Cmu * rho * x), 0, &rho);
     if(wallModel == STANDARD)
         FixNearWallValues(M);
     Solve(M);

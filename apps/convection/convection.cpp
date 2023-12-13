@@ -101,9 +101,7 @@ void convection(std::istream& input) {
         }
         Fc = flxc(U);
         F = flx(U);
-#ifndef LINEARIZE
         lambdaMax = cds(mag(U)) / 2;
-#endif
 
         /*Compute total scalar*/
         if(ait.get_step() == 0)
@@ -123,15 +121,13 @@ void convection(std::istream& input) {
                 init_wind_field(ctime, etime);
                 Fc = flxc(U);
                 F = flx(U);
-#ifndef LINEARIZE
                 lambdaMax = cds(mag(U)) / 2;
-#endif
             }
 
             /*solve*/
             ScalarCellMatrix M;
 #ifdef LINEARIZE
-            M = convection(T, Fc, F, t_UR);
+            M = convection(T, Fc, F, t_UR, &lambdaMax);
 #else
             {
                 VectorCellField fq = Fc * T;
