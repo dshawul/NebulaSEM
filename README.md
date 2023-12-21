@@ -1,3 +1,6 @@
+[![NebulaSEM](https://github.com/dshawul/NebulaSEM/actions/workflows/NebulaSEM.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/NebulaSEM.yml)
+[![JOSS](https://github.com/dshawul/NebulaSEM/actions/workflows/paper.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/paper.yml)
+
 ## NebulaSEM
 
 NebulaSEM is an experimental finite volume (FV) and discontinous galerkin spectral element (dGSEM) code 
