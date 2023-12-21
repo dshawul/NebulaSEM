@@ -1,0 +1,25 @@
+name: NebulaSEM
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install prerequistes
+      run: sudo apt-get install libmetis-dev libopenmpi-dev
+    - name: Build
+      run: |
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=.. ..
+        make -j4 && make install
+    - name: Test
+      run: |
+        cd tests && ./run_tests.sh && cd ..

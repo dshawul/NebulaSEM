@@ -23,7 +23,7 @@ allTests=( \
     atmo/advection-sphere/sphere \
     atmo/ctbs/bubble \
     atmo/dc/bubble \
-    atmo/filament/bubble \
+    atmo/advection-leveque/bubble \
     atmo/hydro-sphere/sphere \
     atmo/lrtb/bubble \
     atmo/srtb/bubble \
