@@ -43,6 +43,18 @@ suitability for GPU acceleration, and support for both h- and p- refinement.
 ## A suite of RANS and LES turbulence models
 ## Parallelization with MPI+OpenMP/OpenACC
 
+# Showcases
+We demonstrate the capabilities of NebulaSEM using two example applications: a) as a generic CFD application
+depicted in \autoref{fig:pitz-daily} b) as a non-hydrostatic dynamical core for atmospheric simulation \autoref{fig:srtb}.
+
+![Simulation results for the Pitz-Daily problem [@pitz1983] that aims to evaluate the effect of combustion
+on mixing layer growth. A snapshot of large eddy simulation (LES) results using finite-volume method of NebulaSEM is presented.
+\label{fig:pitz-daily}](pitz-daily.png)
+
+![Simulation results for the Robert Rising Thermal Bubble (RRTB) problem [@robert1993] using oct-tree cell-based AMR
+with two levels of refinement. The discontinuous Galerking spectral element method is used with polynomial order of 4.
+\label{fig:srtb}](srtb-amr.png)
+
 # Statement of need
 
 NebulaSEM has evolved over the years from a purely CFD application to primarily an atmospheric simulation code.
