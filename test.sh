@@ -63,6 +63,7 @@ cd $rundir
 
 if [ $steps -ne 0 ]; then
     sed -i "/^[[:space:]]*end_step/c\    end_step      $steps" ./controls
+    sed -i "/print_time/d" ./controls
 fi
 
 #run

@@ -37,6 +37,8 @@ allTests=( \
 
 cd ..
 
+export OMP_NUM_THREADS=1
+
 for i in "${allTests[@]}"; do
     echo "Running test case: $i"
     ./test.sh -s 10 -n 1 -c examples/$i

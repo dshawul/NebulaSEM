@@ -99,6 +99,7 @@ class AmrIteration {
         AmrIteration() {
             starti = Controls::start_step / Controls::write_interval - Controls::amr_step;
             endi = Controls::end_step / Controls::write_interval;
+            if(endi < 1) endi = 1;
             if(!Controls::amr_step)
                 Controls::amr_step = endi;
             i = starti;
