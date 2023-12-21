@@ -34,8 +34,9 @@ different test case.
     Usage: ./test.sh [options]
     
        -n,--np       Number of processors to use.
-       -c,--case     Path to grid name under a test case directory.
-       -b,--bin-path Path to biary files mesh, prepare and solvers.
+       -c,--case     Path to grid file name that is under a test case directory.
+       -b,--bin-path Path to binaries: mesh, prepare and solvers.
+       -s,--steps    Number of time steps, which overwrites the one in control file.
        -h,--help     Display this help message.
 
 #### Lid-driven cavity flow

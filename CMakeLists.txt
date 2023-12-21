@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.16)
 set (CMAKE_CXX_STANDARD 17) 
-project (nebulasem)
+project (nebulasem VERSION 1.0)
 
 # options
 option( USE_OMP "Build with OpenMP enabled" OFF )
