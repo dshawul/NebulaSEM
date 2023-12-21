@@ -1,7 +1,12 @@
 ## NebulaSEM
 
-NebulaSEM is an experimental finite volume and discontinous galerkin code 
-for solving partial differential equations.
+NebulaSEM is an experimental finite volume (FV) and discontinous galerkin spectral element (dGSEM) code 
+for solving partial differential equations (PDEs) of fluid dynamics. It comes with solvers for compressible
+and incompressible flow, and also provides infrastructure for writing PDE solvers easily with support 
+for adaptive mesh refinement (AMR). The primary focus of the software is research in a high-order 
+non-hydrostatic dynamical core for atmospheric simulations. Several examples are provided to demonstrate this
+capability.
+
 
 ### Build
 
@@ -14,6 +19,10 @@ To build and install NebulaSEM
 This will install tools for pre-processing, solution and post-processing.
 The tool 'mesh' generates the grid, 'prepare' does various pre- and post-processing,
 and several other binaries for solving PDEs e.g. euler, convection etc
+
+### Requirements
+- [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)
+
 
 ### Testing
 

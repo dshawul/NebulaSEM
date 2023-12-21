@@ -11,5 +11,3 @@
 ## Long term
 
 - [x] Implement elliptic DG operator
-- [ ] Fix CUDA implementation of solver
-- [ ] Add CG
