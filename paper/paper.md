@@ -41,7 +41,7 @@ high-fidelity simulations in diverse areas, offering an efficient and scalable s
 NebulaSEM supports arbitrarily high-order discontinuous Galerkin spectral element discretization of PDEs besides
 finite-volume discretization, which is a subset of dGSEM with the lowest polynomial order of zero. The spectral element discretization
 is significantly more efficient than dG on unstructured grid because it exploits the tensor-product nature of
-computations to reduce computations from O(N^3) to O(3N). The dGSEM possesses several desirable characteristics 
+computations to reduce computations from O(N^3) to O(3N). The dGSEM possesses several desirable characteristics [@abdi8] 
 such as: high-order accuracy, geometrical flexibility compared to global spectral methods, high scalability due to 
 the high arithmetic intensity per element, suitability for GPU acceleration, and support for both h- and p- refinement.
 
@@ -49,9 +49,10 @@ the high arithmetic intensity per element, suitability for GPU acceleration, and
 Modeling of the atmosphere is challenging in that a range of spatial and temporal scales are involved [@wallace2006].
 Adaptive Mesh Refinement (AMR) provides the tool to address multi-scale phenomenon efficiently by focusing resources
 where they are needed. NebulaSEM implements oct-tree cell-based AMR using the forest-of-octrees approach pioneered in [@p4est].
-The AmrIteration class provides a high-level interface to enable AMR for any solver written using NebulaSEM.
+The `AmrIteration` class provides a high-level interface to enable AMR for any solver written using the library.
 A single loop enclosing the timestep iterations and declaration of fields involved in the PDE is enough to provide AMR 
-capability for any solver.
+capability for any solver. The details of regridding the domain, memory management, resizing and transferring fields in 
+a conservative manner etc are all taken care of behind the scenes without involving the developer.
 
 ## Support for new solver development
 NebulaSEM offers a range of operators for spatial and temporal discretization, streamlining the development of 
@@ -90,11 +91,27 @@ built environment and complex terrain in [@abdi5].
 NebulaSEM achieves scalability on supercomputers through a combination of coarse- and fine-grained parallelism. 
 The Message Passing Interface (MPI) is employed for distributed computing, while directive-based threading libraries 
 such as OpenMP for CPUs and OpenACC for GPUs optimize fine-grained parallelism, minimizing communication overhead.
+Details of parallelization of the linear system of equations solvers, such as the preconditioned gradient solver, 
+can be found in [@abdi9]. In addition, NebulaSEM implements a unique approach of asynchronous parallelization that is
+not commonly found in CFD applications.
 
+Efficient GPU implementation of dGSEM is achieved through offloading of all field computations to the GPU [@abdi8], 
+using a memory pool to recycle memory previously allocated memory by fields that went out of scope, utilization of
+managed memory to simplify the data transfer logic between CPU and GPU etc.
 
 # Showcases
-We demonstrate the capabilities of NebulaSEM using two example applications: a) as a generic CFD application
-depicted in \autoref{fig:pitz-daily} b) as a non-hydrostatic dynamical core for atmospheric simulation \autoref{fig:srtb}.
+We showcase the capabilities of NebulaSEM through two example applications:
+
+a) Generic CFD Application:
+We employ the Pressure-Implicit Splitting of Operators (PISO) solver for incompressible fluid flow to solve the 
+Pitz-Daily problem [@pitz1983], utilizing the Smagornisky-Lilly large eddy simulation. The instantaneous velocity 
+profiles are depicted in \autoref{fig:pitz-daily}.
+
+b) Atmospheric Simulation:
+NebulaSEM can serve as a non-hydrostatic dynamical core for atmospheric simulation.
+To evaluate the dynamical core, we solve the rising thermal bubble problem [@robert1993] using the non-hydrostatic 
+Euler equations solver. The test involves adaptive mesh refinement and discontinuous Galerkin spectral element 
+discretization with polynomial order of 4. The result is depicted in \autoref{fig:srtb}
 
 ![Simulation results for the Pitz-Daily problem [@pitz1983] that aims to evaluate the effect of combustion
 on mixing layer growth. A snapshot of large eddy simulation (LES) results using finite-volume method of NebulaSEM is presented.
@@ -102,7 +119,9 @@ on mixing layer growth. A snapshot of large eddy simulation (LES) results using 
 
 ![Simulation results for the Robert Rising Thermal Bubble (RRTB) problem [@robert1993] using oct-tree cell-based AMR
 with two levels of refinement. The discontinuous Galerkin spectral element method is used with polynomial order of 4.
-\label{fig:srtb}](srtb-amr.png){width=50%, height=50%}
+\label{fig:srtb}](srtb-amr.png){width=30%, height=30%}
+
+Several other examples are provided in the repository to showcase NebulaSEM's capabilities in both applications.
 
 # Statement of need
 
