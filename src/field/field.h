@@ -15,13 +15,13 @@ enum ENTITY {
 
 /** AMR parameters */
 struct RefineParams {
-    Vector dir;
-    std::string field;
-    Scalar field_max;
-    Scalar field_min;
-    Int max_level;
-    Int buffer_zone;
-    Int limit;
+    Vector dir;    /**< Refinement direction for 2D refinement */
+    std::string field; /**< Field name for refinment criteria */
+    Scalar field_max; /**< Max field value above which refinement occurs */
+    Scalar field_min; /**< Min field value below which coarsening occurs */
+    Int max_level;  /**< Max level of refinement allowed */
+    Int buffer_zone; /**< Buffer zone thickness around cells tagged for refinement */
+    Int limit; /**< Maximum number of cells to refine */
     RefineParams() {
         dir = Scalar(0);
         field = "U";
@@ -35,9 +35,9 @@ struct RefineParams {
 
 /** Decomposition parameters */
 struct DecomposeParams {
-    Int type;
-    IntVector n;
-    ScalarVector axis;
+    Int type; /**< Decomposition type: METIS, XYZ, CELLID */
+    IntVector n; /**< For XYZ decomposition, n[3] contains number of cells in each direction*/
+    ScalarVector axis; /**< Normal of plane for 2D refinement */
     DecomposeParams() {
         type = 2;
         axis.assign(4,0);
@@ -74,10 +74,10 @@ constexpr bool form_strong = false;
   \endverbatim
  */
 struct LawOfWall {
-    Scalar E;
-    Scalar kappa;
-    Scalar ks;
-    Scalar cks;
+    Scalar E; /**< Constant multiplying the dimensionless wall distance y+ */
+    Scalar kappa; /**< Von karman constant */
+    Scalar ks; /**< Sand grain roughness, 0 for smooth wall */
+    Scalar cks; /**< Constant multiply the dimensionless ks+ */
 
     Scalar yLog;
 
@@ -138,28 +138,28 @@ namespace Mesh {
 }
 /** Basic boundary condition */
 struct BasicBCondition {
-    IntVector* bdry;
-    Int     fIndex;
-    Int     cIndex;
-    std::string cname;
-    std::string bname;
-    std::string fname;
-    std::string neighbor;
-    LawOfWall low;
+    IntVector* bdry; /**< List of faces forming the boundary */
+    Int     fIndex; /**< Hash index for the field name, fname*/
+    Int     cIndex; /**< Hash index for the boundary condition type name, cname */
+    std::string cname; /* Boundary condition type name */
+    std::string bname; /**< Boundary name */
+    std::string fname; /**< Field name for which this BC is for */
+    std::string neighbor; /**< For periodic/cyclic BC, this specifies the neighbor patch name */
+    LawOfWall low; /**< Law of the wall*/
 };
 /** Template boundary condition's class for different tensors */
 template <class type>
 struct BCondition : public BasicBCondition {
-    type   value;
-    Scalar shape;
+    type   value; /**< Boundary condition value e.g. for DIRICHLET */
+    Scalar shape; /**< Boundary condition slopw e.g. for NEUMANN */
     type   tvalue;
     Scalar tshape;
-    Scalar zMin;
-    Scalar zMax;
-    Vector dir;
+    Scalar zMin; /**< Minimum height */
+    Scalar zMax; /**< Maximum height */
+    Vector dir; /**< Direction */
     bool   first;
     bool   read;
-    std::vector<type> fixed;
+    std::vector<type> fixed; /**< List of values for DIRICHLET type BCs */
 
     BCondition(std::string tfname) {
         fname = tfname;
@@ -405,14 +405,17 @@ enum ACCESS {
 };
 
 namespace DG {
-    extern Int Nop[3];
-    extern Int NP, NPI, NPMAT, NPF;
+    extern Int Nop[3]; /**< The number of Legendre-Gauss-Lobatoo points in xyz directions */
+    extern Int NP; /**< The total number of points per element */
+    extern Int NPI; /**< Sum of LGL points in each directioni = 3N */
+    extern Int  NPMAT; /**< Matrix coefficient size per element = 3N * N^3 */
+    extern Int  NPF; /**< Maximum number of nodes per face of an elmement */
 };
 
 namespace Mesh {
-    extern IntVector  probeCells;
-    extern Int  gBCSfield; 
-    extern Int  gALLfield;
+    extern IntVector  probeCells; /**< List of cell IDs for probing values */
+    extern Int  gBCSfield; /**< Total number of nodes excluding boundary cells */
+    extern Int  gALLfield; /**< Total number of nodes */
 };
 
 /* *****************************************************************************
@@ -422,7 +425,7 @@ namespace Mesh {
 /** Base field class */
 class BaseField {   
     public:
-        std::string  fName;
+        std::string  fName; /**< Field name */
     public:
         virtual void deallocate(bool) = 0;
         virtual void refineField(Int,const IntVector&,const IntVector&,const IntVector&,
@@ -1317,16 +1320,16 @@ auto eval_expr(const MeshField<T,E>& f) {
  * global mesh fields
  * ***************************************/
 namespace Mesh {
-    extern VectorVertexField vC;
-    extern VectorFacetField  fC;
-    extern VectorCellField   cC;
-    extern VectorFacetField  fN;
-    extern ScalarCellField   cV;
-    extern ScalarFacetField  fI;
-    extern ScalarFacetField  fD;
-    extern ScalarCellField   yWall;
-    extern IntFacetField     FO;
-    extern IntFacetField     FN; 
+    extern VectorVertexField vC; /**< Coordinates of vertices */
+    extern VectorFacetField  fC; /**< Coordinates of face centers */
+    extern VectorCellField   cC; /**< Coordinates of cell centers */
+    extern VectorFacetField  fN; /**< Facet normals */
+    extern ScalarCellField   cV; /**< Cell volumes */
+    extern ScalarFacetField  fI; /**< Facet interpolation factors */
+    extern ScalarFacetField  fD; /**< Diffusivity coefficient */
+    extern ScalarCellField   yWall; /**< Wall distance */
+    extern IntFacetField     FO; /**< Facet owners */
+    extern IntFacetField     FN;  /**< Facet neighbors */
     extern Int*              allFaces;
     extern Int**             faceIndices;
 

@@ -58,11 +58,11 @@
 */
 struct Turbulence_Model {
 
-    VectorCellField& U;
-    VectorCellField& Fc;
-    ScalarFacetField& F;
-    ScalarCellField& rho;
-    ScalarCellField& mu;
+    VectorCellField& U; /**< Velocity field */
+    VectorCellField& Fc; /**< Mass flux field at cells */
+    ScalarFacetField& F; /**< Mass flux field at faces */
+    ScalarCellField& rho; /**< Density */
+    ScalarCellField& mu; /**< Viscosity */
 
     Util::ParamList params;
     bool writeStress;
@@ -119,15 +119,15 @@ struct Turbulence_Model {
  * that the action of Reynolds and Viscous stress are similar.
  */
 struct EddyViscosity_Model : public Turbulence_Model {
-    ScalarCellField eddy_mu; 
+    ScalarCellField eddy_mu; /**< Eddy viscosity */ 
     enum Model {
         SMAGORNSKY,BALDWIN,KATO
     };
     enum WallModel {
         NONE,STANDARD,LAUNDER
     };
-    Model modelType;
-    WallModel wallModel;
+    Model modelType; /**< Type of model */
+    WallModel wallModel; /**< Type of wall model */
     
     /*constructor*/
     EddyViscosity_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :

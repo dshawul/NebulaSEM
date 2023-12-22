@@ -1,4 +1,5 @@
 [![NebulaSEM](https://github.com/dshawul/NebulaSEM/actions/workflows/NebulaSEM.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/NebulaSEM.yml)
+[![APIdoc](https://github.com/dshawul/NebulaSEM/actions/workflows/APIdoc.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/APIdoc.yml)
 [![JOSS](https://github.com/dshawul/NebulaSEM/actions/workflows/paper.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/paper.yml)
 
 ## NebulaSEM
@@ -114,4 +115,10 @@ and collides with the top boundary.
 <p align="center">
   <img width="500px" src="./images/rtb-temp.gif"/>
 </p>
+
+## Contribution
+
+Users are welcome to suggest and implement new features such as new solvers, turbulence models, new
+test cases, as well as report bugs or issues they encounter. Please feel free to [open an issue on this repository](https://github.com/dshawul/NebulaSEM/issues/new/choose) 
+describing your desired change/bug-fix. Pull requests are also welcome!
 

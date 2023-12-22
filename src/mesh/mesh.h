@@ -26,18 +26,18 @@ typedef std::map<std::string,IntVector> Boundaries;
 namespace Mesh {
     /** Inter-processor boundary */
     struct interBoundary {
-        IntVector* f;
-        Int from;
-        Int to;
-        Int buffer_index;
+        IntVector* f; /**< List of faces */
+        Int from; /**< starting face ID */
+        Int to; /**< ending face ID */
+        Int buffer_index; /**< starting index within the buffer of communication. */
     };
 
     /** Boundary patch */
     struct Patch {
-        Int from;
-        Int to;
-        Vector N;
-        Vector C;
+        Int from; /**< starting face ID */
+        Int to; /**< ending face ID */
+        Vector N; /**< Patch normal */
+        Vector C; /**< Patch center */
         Patch() {
             from = 0;
             to = 0;

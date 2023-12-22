@@ -75,15 +75,15 @@
 #define DPSIR(dij,i,j,k) DPSI_(dij,ii,jj,kk,i,j,k)
             
 namespace DG {
-    extern Scalar **psi;
-    extern Scalar **dpsi;
-    extern Scalar **xgl;
-    extern Scalar **wgl;
-    extern TensorCellField Jinv;
-    extern Int NPX, NPY, NPZ;
-    extern Scalar Penalty;
-    extern Scalar** psiRef;
-    extern Scalar** psiCor;
+    extern Scalar **psi; /**< Basis function values at LGL points */
+    extern Scalar **dpsi; /**< Derivatives of basis functon values at LGL points */
+    extern Scalar **xgl; /**< Quadrature points */
+    extern Scalar **wgl; /**< Quarature weights */
+    extern TensorCellField Jinv; /**< Jacobian matrix*/
+    extern Int NPX, NPY, NPZ; /**< Number of LGL points in each direction */
+    extern Scalar Penalty; /**< Factor for interior penalty method */
+    extern Scalar** psiRef; /**< psi for refinement in a 2:1 situation */
+    extern Scalar** psiCor; /**< psi for coarsening in a 2:1 situation */
 
     void legendre(int p, Scalar x,Scalar& L0,Scalar& L0_1,Scalar& L0_2);
     void legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl);

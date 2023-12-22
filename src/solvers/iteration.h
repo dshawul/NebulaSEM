@@ -7,12 +7,12 @@
  */
 class Iteration {
     private:
-        Int starti;
-        Int endi;
-        Int i;
-        Int n_deferred;
-        Int idf;
-        bool skip;
+        Int starti; /**< start index */
+        Int endi; /**< end index */
+        Int i; /**< current iteration index */
+        Int n_deferred; /**< number of deferred correction steps */
+        Int idf; /**< current deferred correction index */
+        bool skip; /**< skip iteration */
     public:
         Iteration(int step) {
             skip = false;
@@ -92,9 +92,9 @@ class Iteration {
  */
 class AmrIteration {
     private:
-        int starti;
-        int endi;
-        int i;
+        int starti; /**< start index */
+        int endi; /**< end index */
+        int i; /**< current index */
     public:
         AmrIteration() {
             starti = Controls::start_step / Controls::write_interval - Controls::amr_step;
