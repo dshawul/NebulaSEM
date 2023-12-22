@@ -11,7 +11,11 @@ non-hydrostatic dynamical core for atmospheric simulations. Several examples are
 capability.
 
 
-### Build
+### Build and install
+
+Clone the repository
+
+    git clone https://github.com/dshawul/NebulaSEM.git
 
 To build and install NebulaSEM
 
@@ -19,13 +23,25 @@ To build and install NebulaSEM
     cmake -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=.. ..
     make && make install
 
+Additional options to enable fine-grained parallelization on CPUs and GPUs
+
+    -DUSE_ACC=ON
+    -DUSE_OMP=ON
+
 This will install tools for pre-processing, solution and post-processing.
 The tool `mesh` generates the grid, `prepare` does various pre- and post-processing,
 and several other binaries for solving PDEs e.g. euler, convection etc
 
 ### Requirements
 - [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)
+- [OpenMPI](http://open-mpi.org) or other MPI library compatible with your C++ compiler
+- [CMake](https://cmake.org) for makefile generation
+- [GCC](https://gcc.gnu.org/) or other C++ compiler with atleast C++17 standard support
 
+Optional packages
+- [DOxygen](http://www.doxygen.nl/) for API documentation
+- [ParaView](https://www.paraview.org/) for visualization
+- [NVHPC](https://developer.nvidia.com/hpc-sdk) or other OpenACC compiler
 
 ### Testing
 
