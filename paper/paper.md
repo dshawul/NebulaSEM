@@ -53,12 +53,10 @@ The AmrIteration class provides a high-level interface to enable AMR for any sol
 A single loop enclosing the timestep iterations and declaration of fields involved in the PDE is enough to provide AMR 
 capability for any solver.
 
-## New solver development support
-NebulaSEM provides various operators for spatial and temporal discretization to facilitate the development of
-solvers for PDEs. An example solver for the advection-diffusion equation is provided in the code snippet below. 
-Spatial operators for dGSEM include divergence, gradient, laplacian etc. Temporal discretization is achieved with 
-explicit and implicit methods including first-order Euler explicit and implicit methods, Adams-Moulton and Adams-Bashforth 
-methods, Runge-Kutta of upto 4th order, and fully-implicit Backward differencing (BDF) methods.
+## Support for new solver development
+NebulaSEM offers a range of operators for spatial and temporal discretization, streamlining the development of 
+solvers for Partial Differential Equations (PDEs). The provided code snippet includes an example solver for 
+the advection-diffusion equation.
 
 ```C++
 void transport() {
@@ -77,11 +75,16 @@ void transport() {
 }
 ```
 
+Spatial operators within dGSEM encompass divergence, gradient, laplacian, and more. Temporal discretization is 
+accomplished through explicit and implicit schemes, including first-order Euler explicit and implicit schemes, 
+linear multi-step methods such as Adams-Moulton and Adams-Bashforth, the Runge-Kutta method up to 4th order, 
+and fully-implicit Backward Differencing (BDF) methods.
+
 ## Turbulence models
 The software includes turbulence models for high-Reynolds CFD simulations including a suite of Reynolds Averaged Navier Stokes (RANS) 
 [@henk1972] and Large Eddy Simulation (LES) models [@les]. The list includes a mixing-length model, k-epsilon, k-omega, RNG k-epsilon, RNG k-omega
-and the Smagornisky-Lilly LES model. The author has utilized these turbulence models to evaluate the aerodynamic roughness of the 
-built environment and complex terrain [@abdi5].
+and the Smagornisky-Lilly LES model. Theese turbulence models has been utilized to evaluate the aerodynamic roughness of the 
+built environment and complex terrain in [@abdi5].
 
 ## Parallelization with MPI+OpenMP/OpenACC
 NebulaSEM achieves scalability on supercomputers through a combination of coarse- and fine-grained parallelism. 

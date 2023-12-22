@@ -20,7 +20,7 @@ To build and install NebulaSEM
     make && make install
 
 This will install tools for pre-processing, solution and post-processing.
-The tool 'mesh' generates the grid, 'prepare' does various pre- and post-processing,
+The tool `mesh` generates the grid, `prepare` does various pre- and post-processing,
 and several other binaries for solving PDEs e.g. euler, convection etc
 
 ### Requirements
@@ -30,9 +30,14 @@ and several other binaries for solving PDEs e.g. euler, convection etc
 ### Testing
 
 A testing script `test.sh` is provided. By default it runs the lid-driven test case
-under `examples/cavity`, but you can modify the script to run any test case.
-To run the test case execute is specifying the number of processors if >1 or a 
-different test case.
+under `examples/cavity`..
+
+To run a test case, execute the script specifying the number of MPI ranks if greater than 1, the
+test case name.
+
+    ./test.sh -n 2 -c examples/atmo/advection-leveque/bubble
+
+The path to the test case should point to the grid file, in this case `bubble` not to the directory itself.
 
     Usage: ./test.sh [options]
     
@@ -42,16 +47,17 @@ different test case.
        -s,--steps    Number of time steps, which overwrites the one in control file.
        -h,--help     Display this help message.
 
+
+
 #### Lid-driven cavity flow
 
 This test case uses the Pressure Implicit Splitting of Operators (PISO) solver for incompressible
 flow at low Reynolds number i.e. no turbulence.
 
-    $ ./test.sh -n 1 -c examples/cavity/cavity
-    $ ./test.sh
+    $ ./test.sh -n 1 -c examples/cavity/cavity-amr
 
-This will generate a `run1` directory in which you can find the results including VTK
-files needed for visualization by paraview.
+This will generate a `run-examples-cavity-amr` directory in which you can find the results including VTK
+files for visualization by paraview.
 
 Here are images of the decompostion using METIS with 12 mpi ranks, and the magnitude of
 velocity plots.
@@ -63,7 +69,7 @@ velocity plots.
 
 #### Pitz-Daily test case
 
-A second, more beautiful images for the Pitz and Daily test case using LES is shown below.
+Another test case, namely the Pitz and Daily, solved using LES is shown below.
 You can see the formation of eddies at the backward facing step and later convection towards
 the outlet.
 
@@ -83,9 +89,10 @@ turbulence scheme so only mean state is displayed.
 This is a popular test case for numerical weather prediction models that solve the Euler equations
 using explicit time-stepping unlike other CFD applications that often use implicit solvers.
 Moreover this test cases uses Discontinous Galerkin method (spectral-element version) on hexahedral
-grids. Thanks to my postdoc supervisor Francis X. Giraldo, from whom I learned this stuff!
+grids, and adaptive mesh refinement. Thanks to my postdoc supervisor Francis X. Giraldo, from 
+whom I learned this stuff!
 
-A thermal bubble (of gaussian distribution) rises up due to bouyancy, while deforming on the way,
+A thermal bubble of gaussian distribution rises up due to bouyancy, while deforming on the way,
 and collides with the top boundary.
 
 <p align="center">
