@@ -34,7 +34,7 @@ The tool `mesh` generates the grid, `prepare` does various pre- and post-process
 and several other binaries for solving PDEs e.g. euler, convection etc
 
 ### Requirements
-- [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)
+- [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) for domain decomposition
 - [OpenMPI](http://open-mpi.org) or other MPI library compatible with your C++ compiler
 - [CMake](https://cmake.org) for makefile generation
 - [GCC](https://gcc.gnu.org/) or other C++ compiler with atleast C++17 standard support

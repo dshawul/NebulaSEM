@@ -1,6 +1,6 @@
 #include "realizableke.h"
-
-/*
+/**
+REALIZABLE-KE turbulence model constructor
 References:
     http://www.cfd-online.com/Wiki/Realisable_k-epsilon_model
     http://www.laturbolenza.com/?p=92
@@ -14,6 +14,7 @@ REALIZABLE_KE_Model::REALIZABLE_KE_Model(VectorCellField& tU,VectorCellField& tF
     SigmaX = 1.2;
     C2x = 1.9;
 }
+/** Enroll parameters */
 void REALIZABLE_KE_Model::enroll() {
     using namespace Util;
     KX_Model::enroll();
@@ -21,6 +22,7 @@ void REALIZABLE_KE_Model::enroll() {
     params.enroll("SigmaE",&SigmaX);
     params.enroll("C2e",&C2x);
 }
+/** Calculate eddy viscosity */
 void REALIZABLE_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
     /*calculate CmuF*/
     STensorCellField S = sym(gradU);
@@ -43,6 +45,7 @@ void REALIZABLE_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
     /*calculate viscosity*/
     KX_Model::calcEddyViscosity(gradU);
 }
+/** Solver transport of turbulent dissipation and kinetic energy */
 void REALIZABLE_KE_Model::solve() {
     ScalarCellMatrix M;
     ScalarCellField eff_mu;

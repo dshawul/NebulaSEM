@@ -1,5 +1,6 @@
 #include "kw.h"
-/*
+/**
+KW turbulence model constructor
 References:
     http://www.cfd-online.com/Wiki/Wilcox%27s_k-omega_model
  */
@@ -12,6 +13,7 @@ KW_Model::KW_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF
     C1x = 5./9;
     C2x = 3./40;
 }
+/** Enroll parameters */
 void KW_Model::enroll() {
     using namespace Util;
     KX_Model::enroll();
@@ -21,6 +23,7 @@ void KW_Model::enroll() {
     params.enroll("C1w",&C1x);
     params.enroll("C2w",&C2x);
 }
+/** Solver transport of turbulent dissipation and kinetic energy */
 void KW_Model::solve() {
     ScalarCellMatrix M;
     ScalarCellField eff_mu;

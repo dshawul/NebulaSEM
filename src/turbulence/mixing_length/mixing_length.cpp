@@ -35,6 +35,7 @@ MixingLength_Model::MixingLength_Model(VectorCellField& tU,VectorCellField& tFc,
     kappa(0.41)
 {
 }
+/** Enroll parameters */
 void MixingLength_Model::enroll() {
     using namespace Util;
     params.enroll("mixing_length",&mixingLength);
@@ -44,15 +45,18 @@ void MixingLength_Model::enroll() {
     params.enroll("C",&C);
     EddyViscosity_Model::enroll();
 }
+/** Calculate turbulent kinetic energy */
 ScalarCellField MixingLength_Model::getK() {
     return pow(lm / C,2.0) * getS2(gradf(U,true));
 }
+/** Calculate eddy viscosity */
 void MixingLength_Model::calcEddyViscosity(const TensorCellField& gradU) {
     calcLengthScale();
     if(wallDamping)
         lm = min(kappa * Mesh::yWall,lm);
     eddy_mu = rho * pow(lm,Scalar(2)) * sqrt(getS2(gradU));
 }
+/** Apply wall function */
 void MixingLength_Model::applyWallFunction(Int f,LawOfWall& low) {
     using namespace Mesh;
     Int c1 = FO[f];

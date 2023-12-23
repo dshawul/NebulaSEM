@@ -555,7 +555,7 @@ void Mesh::enroll(Util::ParamList& params) {
 /**
   Create fields
  */
-void Prepare::createFields(vector<string>& fields,Int step) {
+void Prepare::createFields(std::vector<std::string>& fields,Int step) {
     BaseField::destroyFields();
 
     /*for each field*/
@@ -593,7 +593,7 @@ void Prepare::createFields(vector<string>& fields,Int step) {
 /**
   Read fields
  */
-void Prepare::readFields(vector<string>& fields,Int step) {
+void Prepare::readFields(std::vector<std::string>& fields,Int step) {
     Mesh::read_fields(step);
 }
 /*********************************

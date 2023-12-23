@@ -66,7 +66,7 @@ struct Turbulence_Model {
 
     Util::ParamList params;
     bool writeStress;
-    /*constructor*/
+    /** Turbulence model constructor*/
     Turbulence_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,
                      ScalarCellField& trho,ScalarCellField& tmu) :
         U(tU),
@@ -78,45 +78,47 @@ struct Turbulence_Model {
         writeStress(false)
     {
     }
+    /** Turbulence model destructor */
     virtual ~Turbulence_Model() {};
-    /*overridable functions*/
+    /** Enroll turbulence parameters */
     virtual void enroll() {
         using namespace Util;
         Option* op = new BoolOption(&writeStress);
         params.enroll("writeStress",op);
     };
+    /** Solve turbulence equations */
     virtual void solve() {};
-    /* Turbulence viscosity */
+    /** Get turbulence viscosity */
     virtual ScalarCellField getTurbVisc() {
         return Scalar(0);
     }
-    /* Explicit V */
+    /** Calculate explicit stress */
     virtual VectorCellField getExplicitStresses() {
         return divf(mu * dev(trn(gradf(U,true)),2.0),true);
     };
-    /* V */
+    /** Calculate viscous stress V*/
     STensorCellField getViscousStress() {
         return 2.0 * mu * dev(sym(gradf(U,true)),1.0);
     }
-    /* R */
+    /** Calculate Reynolds stress R */
     virtual STensorCellField getReynoldsStress() {
         return STensor(0);
     }
-    /* TKE */
+    /** Calculate turbulent kinetic energy TKE */
     virtual ScalarCellField getK() {
         return Scalar(0);
     }
-    /* Turbulence model selection */
-    static Int turb_model;
-    static bool bneedWallDist;
+    static Int turb_model; /**< The turbulence model */
+    static bool bneedWallDist; /**< Flag that indicates whether wall distance is required */
+    /** Does the turbulence model need wall distance */
     static bool needWallDist() { return bneedWallDist;}
     static void RegisterTable(Util::ParamList& params);
     static Turbulence_Model* Select(VectorCellField& U,VectorCellField& Fc,ScalarFacetField& F,
         ScalarCellField& rho,ScalarCellField& mu);
 };
 /**
- * Eddy viscosity models based on Boussinesq's assumption
- * that the action of Reynolds and Viscous stress are similar.
+ Eddy viscosity models based on Boussinesq's assumption
+ that the action of Reynolds and Viscous stress are similar.
  */
 struct EddyViscosity_Model : public Turbulence_Model {
     ScalarCellField eddy_mu; /**< Eddy viscosity */ 
@@ -129,7 +131,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
     Model modelType; /**< Type of model */
     WallModel wallModel; /**< Type of wall model */
     
-    /*constructor*/
+    /** Eddy viscosity model constructor*/
     EddyViscosity_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu) :
         Turbulence_Model(tU,tFc,tF,trho,tmu),
         eddy_mu("emu",READWRITE),
@@ -137,7 +139,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
         wallModel(STANDARD)
     {
     }
-    /*Register options*/
+    /** Enroll options*/
     virtual void enroll() {
         using namespace Util;
         Option* op = new Option(&modelType,
@@ -145,12 +147,13 @@ struct EddyViscosity_Model : public Turbulence_Model {
         params.enroll("modelType",op);
         Turbulence_Model::enroll();
     }
-    /*eddy_mu*/
+    /** Calculate eddy viscosity*/
     virtual void calcEddyViscosity(const TensorCellField& gradU) = 0;
+    /** Calculate turbulent viscosity*/
     virtual ScalarCellField getTurbVisc() {
         return eddy_mu;
     }
-    /* Explicit V + R */
+    /** Calculate explicit stresses V + R */
     virtual VectorCellField getExplicitStresses() {
         TensorCellField gradU = gradf(U,true);
         calcEddyViscosity(gradU);
@@ -159,13 +162,13 @@ struct EddyViscosity_Model : public Turbulence_Model {
         return divf((eddy_mu + mu) * dev(trn(gradU),2.0),true);
     };
 
-    /* R */
+    /** Calculate Reynolds stress */
     virtual STensorCellField getReynoldsStress() {
         STensorCellField R = 2 * eddy_mu * dev(sym(gradf(U,true)),1.0) - 
                  STensorCellField(Constants::I_ST) * (2 * rho * getK() / 3);
         return R;
     }
-    /* S2 */
+    /** Calculate S2 */
     ScalarCellField getS2(const TensorCellField& gradU) {
         ScalarCellField magS;
         if(modelType == SMAGORNSKY) {
@@ -181,7 +184,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
         }
         return (2 * magS);
     }
-    /*Fix near wall cell values*/
+    /** Fix near wall cell values*/
     void FixNearWallValues(ScalarCellMatrix& M) {
         using namespace Mesh;
         BasicBCondition* bbc;
@@ -200,7 +203,7 @@ struct EddyViscosity_Model : public Turbulence_Model {
             }
         }
     }
-    /* Wall functions */
+    /** Set eddy viscosity at walls */
     void setWallEddyMu() {
         using namespace Mesh;
         BasicBCondition* bbc;
@@ -217,11 +220,11 @@ struct EddyViscosity_Model : public Turbulence_Model {
             }
         }
     }
-    /*overridable*/
+    /** Apply wall function*/
     virtual void applyWallFunction(Int f,LawOfWall& low) = 0;
 };
 /**
- * Base two equation K-X turbulence model
+ Base for two equation K-X turbulence model
  */ 
 struct KX_Model : public EddyViscosity_Model {
     /*model coefficients*/
@@ -239,7 +242,7 @@ struct KX_Model : public EddyViscosity_Model {
     ScalarCellField x;        
     ScalarCellField Pk;       
 
-    /*constructor*/
+    /** KX model constructor*/
     KX_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF,ScalarCellField& trho,ScalarCellField& tmu,const char* xname) :
         EddyViscosity_Model(tU,tFc,tF,trho,tmu),
         k_UR(0.7),
@@ -249,27 +252,29 @@ struct KX_Model : public EddyViscosity_Model {
     {
         wallModel = LAUNDER;
     }
-    /*TKE*/
+    /** Calculate TKE*/
     virtual ScalarCellField getK() { return k; }
-    /*Register options*/
+    /** Enroll options*/
     virtual void enroll() {
         using namespace Util;
         params.enroll("k_UR",&k_UR);
         params.enroll("x_UR",&x_UR);
         EddyViscosity_Model::enroll();
     }
-    /* k-x model specific over-ridables*/
+    /** Calculate eddy viscosity*/
     virtual void calcEddyMu() = 0;
+    /** Calculate X */
     virtual Scalar calcX(Scalar ustar,Scalar kappa,Scalar y) = 0;
+    /** Get Cmu*/
     virtual Scalar getCmu(Int i) { 
         return Cmu; 
     }
-    /* eddy viscosity*/
+    /** Calculate eddy viscosity*/
     virtual void calcEddyViscosity(const TensorCellField& gradU) {
         calcEddyMu();
         Pk = getS2(gradU) * eddy_mu;
     }
-    /* wall function */
+    /** Apply wall function */
     virtual void applyWallFunction(Int f,LawOfWall& low) { 
         using namespace Mesh;
         Int c1 = FO[f];

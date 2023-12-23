@@ -85,20 +85,21 @@ bool equalSet(std::vector<Int>& v1,std::vector<Int>& v2) {
 
 namespace Util {
 
-    /** std::pair I/O*/
+    /** std::pair reader*/
     template <class T1, class T2, typename Ts>
     Ts& operator << (Ts& os, const std::pair<T1,T2>& p) {
         os << p.first << " " << p.second;
         return os;
     }
     
+    /** std::pair writer*/
     template <class T1, class T2, typename Ts>
     Ts& operator >> (Ts& is, std::pair<T1,T2>& p) {
         is >> p.first >> p.second;
         return is;
     }
     
-    /** std::vector I/O*/
+    /** std::vector reader*/
     template <class T, typename Ts>
     Ts& operator << (Ts& os, const std::vector<T>& p) {
         os << Int(p.size()) << "\n{\n";
@@ -108,6 +109,7 @@ namespace Util {
         return os;
     }
     
+    /** std::vector writer*/
     template <class T, typename Ts>
     Ts& operator >> (Ts& is, std::vector<T>& p) {
         Int size;
@@ -120,6 +122,7 @@ namespace Util {
         return is;
     }
     
+    /** std::vector writer for integers*/
     template<typename Ts>
     Ts& operator << (Ts& os, const std::vector<Int>& p) {
         Int sz = p.size();
@@ -136,7 +139,7 @@ namespace Util {
     }
     
     
-    /** std::map I/O */
+    /** std::map reader */
     template <class T1, class T2, typename Ts>
     Ts& operator << (Ts& os, const std::map<T1,T2>& p) {
         os << Int(p.size()) << "\n{\n";
@@ -146,6 +149,7 @@ namespace Util {
         return os;
     }
     
+    /** std::map writer */
     template <class T1, class T2, typename Ts>
     Ts& operator >> (Ts& is, std::map<T1,T2>& p) {
         Int size;
@@ -195,6 +199,7 @@ namespace Util {
             }
     };
 
+    /** Binary input file stream */
     class ifstream_bin {
         private:
             std::ifstream mos;
@@ -225,10 +230,9 @@ namespace Util {
 #undef AddB
     };
 
-    /** More utililty functions */
+    /* More utililty functions */
     Int hash_function(std::string s);
     int nextc(std::istream&);
-    void cleanup();
 
     /** Compare two strings case-insensitive */
     inline int compare(std::string& s1,std::string s2) {

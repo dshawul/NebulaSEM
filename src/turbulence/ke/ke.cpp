@@ -1,5 +1,6 @@
 #include "ke.h"
-/*
+/**
+KE turbulence model constructor
 References:
     http://www.cfd-online.com/Wiki/Standard_k-epsilon_model
  */
@@ -12,6 +13,7 @@ KE_Model::KE_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetField& tF
     C1x = 1.44;
     C2x = 1.92;
 }
+/** Enroll parameters */
 void KE_Model::enroll() {
     using namespace Util;
     KX_Model::enroll();
@@ -21,6 +23,7 @@ void KE_Model::enroll() {
     params.enroll("C1e",&C1x);
     params.enroll("C2e",&C2x);
 }
+/** Solver transport of turbulent dissipation and kinetic energy */
 void KE_Model::solve() {
     ScalarCellMatrix M;
     ScalarCellField eff_mu;

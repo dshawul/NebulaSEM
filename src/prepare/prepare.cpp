@@ -6,7 +6,7 @@ using namespace Mesh;
 /**
   Convert to VTK format
  */
-void Prepare::convertVTK(vector<string>& fields, Int start_index, Int stop_index) {
+void Prepare::convertVTK(std::vector<std::string>& fields, Int start_index, Int stop_index) {
     for(Int step = start_index; step < stop_index; step++) {
         if(LoadMesh(step,false))
             createFields(fields,step);
@@ -18,7 +18,7 @@ void Prepare::convertVTK(vector<string>& fields, Int start_index, Int stop_index
 /**
   Probe values at specified locations
  */
-void Prepare::probe(vector<string>& fields, Int start_index, Int stop_index) {
+void Prepare::probe(std::vector<std::string>& fields, Int start_index, Int stop_index) {
     /*probe points*/
     IntVector probes;
     ofstream of("probes");

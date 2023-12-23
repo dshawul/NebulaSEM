@@ -1,5 +1,6 @@
 #include "rngke.h"
-/*
+/**
+RNG-KE turbulence model constructor
 References:
     http://www.cfd-online.com/Wiki/RNG_k-epsilon_model
  */
@@ -14,12 +15,14 @@ RNG_KE_Model::RNG_KE_Model(VectorCellField& tU,VectorCellField& tFc,ScalarFacetF
     C1x = 1.42;
     C2x = 1.68;
 }
+/** Enroll parameters */
 void RNG_KE_Model::enroll() {
     using namespace Util;
     KE_Model::enroll();
     params.enroll("eta0",&eta0);
     params.enroll("beta",&beta);
 }
+/** Calculate eddy viscosity */
 void RNG_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
     /*calculate C2eStar*/
     {
@@ -31,6 +34,7 @@ void RNG_KE_Model::calcEddyViscosity(const TensorCellField& gradU) {
     /*calculate viscosity*/
     KE_Model::calcEddyViscosity(gradU);
 }
+/** Solver transport of turbulent dissipation and kinetic energy */
 void RNG_KE_Model::solve() {
     ScalarCellMatrix M;
     ScalarCellField eff_mu;

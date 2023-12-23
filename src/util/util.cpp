@@ -29,7 +29,7 @@ int Util::nextc(std::istream& is) {
 }
 
 /** Reads parameters */
-void Util::read_params(istream& is, bool output, std::string block) {
+void Util::read_params(std::istream& is, bool output, std::string block) {
     string str;
     char c;
 
