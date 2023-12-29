@@ -32,6 +32,7 @@ class MP {
         };
         MP(int argc,char* argv[]);
         ~MP();
+
     public:
         typedef MPI_Request REQUEST;
 

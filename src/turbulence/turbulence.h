@@ -57,7 +57,6 @@
      \endverbatim
 */
 struct Turbulence_Model {
-
     VectorCellField& U; /**< Velocity field */
     VectorCellField& Fc; /**< Mass flux field at cells */
     ScalarFacetField& F; /**< Mass flux field at faces */

@@ -28,10 +28,10 @@ bibliography: paper.bib
 # Summary
 
 NebulaSEM is an advanced computational fluid dynamics (CFD) model employing the high-order discontinuous Galerkin 
-spectral element method. Originally designed for generic CFD applications with polyhedral elements on unstructured grids, 
-NebulaSEM has evolved into a powerful atmospheric simulation code. This paper presents the key features, capabilities, 
+spectral elementi (dGSEM) method. Originally designed for generic CFD applications with polyhedral elements on unstructured grids, 
+NebulaSEM has recently evolved into an atmospheric simulation code. This paper presents the key features, capabilities, 
 and applications of NebulaSEM, highlighting its high-order discretization, oct-tree cell-based adaptive mesh refinement (AMR), 
-new solver development support, turbulence models, and parallelization strategies. The software addresses the need for 
+support for new solver development, turbulence models, and parallelization strategies. The software addresses the need for 
 high-fidelity simulations in diverse areas, offering an efficient and scalable solution with a focus on atmospheric modeling.
 
 
@@ -40,7 +40,7 @@ high-fidelity simulations in diverse areas, offering an efficient and scalable s
 ## High-order dGSEM discretization
 NebulaSEM supports arbitrarily high-order discontinuous Galerkin spectral element discretization of PDEs besides
 finite-volume discretization, which is a subset of dGSEM with the lowest polynomial order of zero. The spectral element discretization
-is significantly more efficient than dG on unstructured grid because it exploits the tensor-product nature of
+is significantly more efficient than standard discontinuous Galerkin on unstructured grid because the former exploits the tensor-product nature of
 computations to reduce computations from O(N^3) to O(3N). The dGSEM possesses several desirable characteristics [@abdi8] 
 such as: high-order accuracy, geometrical flexibility compared to global spectral methods, high scalability due to 
 the high arithmetic intensity per element, suitability for GPU acceleration, and support for both h- and p- refinement.
@@ -52,7 +52,7 @@ where they are needed. NebulaSEM implements oct-tree cell-based AMR using the fo
 The `AmrIteration` class provides a high-level interface to enable AMR for any solver written using the library.
 A single loop enclosing the timestep iterations and declaration of fields involved in the PDE is enough to provide AMR 
 capability for any solver. The details of regridding the domain, memory management, resizing and transferring fields in 
-a conservative manner etc are all taken care of behind the scenes without involving the developer.
+a conservative manner etc are all taken care of behind the scenes by the library.
 
 ## Support for new solver development
 NebulaSEM offers a range of operators for spatial and temporal discretization, streamlining the development of 
@@ -96,7 +96,7 @@ can be found in [@abdi9]. In addition, NebulaSEM implements a unique approach of
 not commonly found in CFD applications.
 
 Efficient GPU implementation of dGSEM is achieved through offloading of all field computations to the GPU [@abdi8], 
-using a memory pool to recycle memory previously allocated memory by fields that went out of scope, utilization of
+using a memory pool to recycle previously allocated memory by fields that went out of scope, utilization of
 managed memory to simplify the data transfer logic between CPU and GPU etc.
 
 # Showcases
@@ -121,24 +121,24 @@ on mixing layer growth. A snapshot of large eddy simulation (LES) results using 
 with two levels of refinement. The discontinuous Galerkin spectral element method is used with polynomial order of 4.
 \label{fig:srtb}](srtb-amr.png){width=30%, height=30%}
 
-Several other examples are provided in the repository to showcase NebulaSEM's capabilities in both applications.
-
 # Statement of need
 
 Over the years, NebulaSEM has undergone a transformation from being a purely Computational Fluid Dynamics (CFD) application 
-to primarily serve as an atmospheric simulation code. Consequently, it addresses specific needs inherent to both types of
+to primarily serve as an atmospheric simulation (AtmoSim) code. Consequently, it addresses specific needs inherent to both types of
 applications, as outlined below.
 
-Many CFD codes predominantly employ first or second-order accurate finite volume methods. NebulaSEM, on the other hand,
-offers high-order discretization characterized by exceptional accuracy and minimal dissipation. This feature proves 
-invaluable for tasks such as accurately capturing shocks and discontinuities, conducting highly accurate large eddy 
-simulations, simulating turbulent flows with precision, and facilitating high-fidelity aeroacoustic simulations.
+Many CFD codes prioritize robustness over other considerations. As a result, they often utilize first or at best second-order accurate 
+finite volume methods on unstructured grids. In contrast, NebulaSEM offers high-order discretization characterized 
+by high accuracy and minimal dissipation. This feature proves invaluable for tasks such as accurately capturing shocks and
+discontinuities, conducting highly accurate large eddy simulations, simulating turbulent flows with precision, and 
+facilitating high-fidelity aeroacoustic simulations.
 
-While high-order methods are more commonly associated with atmospheric modeling, such endeavors often rely on either 
+While high-order methods are more commonly associated with atmospheric modeling, such endeavors often rely on
 finite-difference discretization, which is less geometrically flexible, or global spectral methods on latitude-longitude grids, 
-which lack scalability. NebulaSEM, utilizing the discontinuous Galerkin spectral element method (dGSEM) for discretization, 
-distinguishes itself by providing both geometric flexibility and high scalability. Moreover, NebulaSEM incorporates 
-dynamic adaptive mesh refinement capabilities, a feature not commonly found in traditional atmospheric modeling approaches.
+which lack scalability. NebulaSEM provides geometrical flexibility due to its CFD roots, allowing atmospheric simulaitons on any type of grid.
+The element-based design, as opposed to global spectral-methods, ensures high-scalability for large scale simulations.
+The high-order dGSEM discretization it employs delivers the accuracy necessary for achieving high-fidelity atmospheric simulations. 
+In addition, NebulaSEM incorporates dynamic adaptive mesh refinement capabilities, a feature not commonly found in traditional atmospheric modeling approaches.
 
 
 # Acknowledgements

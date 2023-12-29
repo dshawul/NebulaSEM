@@ -886,7 +886,6 @@ void Prepare::refineMesh(Int step) {
 
     /*refine/coarsen mesh and fields*/
     {
-
         /*refine mesh*/
         IntVector refineMap,coarseMap,cellMap;
         gMesh.refineMesh(cCells,rCellsL,rLevelL,rDirsL,refineMap,coarseMap,cellMap);
@@ -909,7 +908,6 @@ void Prepare::refineMesh(Int step) {
         /*refine fields*/
         forEachIt(BaseField::allFields, it)
             (*it)->refineField(step,refineMap,coarseMap,cellMap,nCells,oldCV,oldCC,newCC);
-
     }
 
     /*Write amrTree*/
@@ -1048,7 +1046,6 @@ int Prepare::decomposeMesh(Int step) {
 
     /*Decompose mesh with master rank*/
     if(MP::host_id == 0) {
-
         Int total = MP::n_hosts;
         DecomposeParams& dp = Controls::decompose_params;
         vector<string>& fields = BaseField::fieldNames;
@@ -1208,7 +1205,6 @@ int Prepare::decomposeMesh(Int step) {
                     pmesh->mBoundaries[str.c_str()] = imesh[key];
                 }
             }
-
         }
         /**************************************
          * Write grid
@@ -1310,7 +1306,6 @@ int Prepare::decomposeMesh(Int step) {
                            os << it->first << " " << "{\n\ttype GHOST\n}\n";
                     }
                 }
-
             }
         }
 

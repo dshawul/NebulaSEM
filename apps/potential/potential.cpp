@@ -51,7 +51,6 @@ void potential(std::istream& input) {
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-
         VectorCellField U("U", READWRITE);
         ScalarCellField p("p", READWRITE);
 

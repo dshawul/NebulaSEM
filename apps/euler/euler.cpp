@@ -55,7 +55,6 @@ void euler(std::istream& input) {
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-
         ScalarCellField p("p",READWRITE);
         VectorCellField U("U",READWRITE);
         ScalarCellField T("T",READWRITE);
@@ -187,7 +186,6 @@ void euler(std::istream& input) {
 
         /*Time loop*/
         for (; !it.end(); it.next()) {
-
             /*add reference values*/
             rho += rho_ref;
             T += T0;

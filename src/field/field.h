@@ -426,6 +426,7 @@ namespace Mesh {
 class BaseField {   
     public:
         std::string  fName; /**< Field name */
+
     public:
         virtual void deallocate(bool) = 0;
         virtual void refineField(Int,const IntVector&,const IntVector&,const IntVector&,
@@ -2089,7 +2090,6 @@ template<class type>
 void scatter_non_conforming(const MeshField<type,CELL>& cF,
         MeshField<type,FACET>& fFO, MeshField<type,FACET>& fFN
 ) {
-
     using namespace Mesh;
     using namespace DG;
 
@@ -2214,6 +2214,7 @@ class ASYNC_COMM {
         Int rcount;
         std::vector<MP::REQUEST> request;
         MeshField<T,CELL> recvbuf;
+
     public:
         ASYNC_COMM(T* p) : P(p)
         {
@@ -3437,7 +3438,6 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
         const ScalarFacetField* lambdaMax = 0,
         const ScalarCellField* muc = 0
 ) {
-
     using namespace Mesh;
     using namespace DG;
     MeshMatrix<type> m;
@@ -3490,7 +3490,6 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
                     DIVD(ii,jj,k);
                 }
 #undef DIVD
-
             }
         }
     }
@@ -3510,7 +3509,6 @@ auto div(MeshField<type,CELL>& cF,const VectorCellField& fluxc,
  */
 template<bool strong=form_strong,class type>
 auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty = false) {
-
     using namespace Controls;
     using namespace Mesh;
     using namespace DG;
@@ -3556,7 +3554,6 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
     }
 
     if(NPMAT) {
-
         /*compute volume integral*/
         #pragma omp parallel for
         #pragma acc parallel loop copyin(muc,gBCS)
@@ -3609,10 +3606,8 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
                 forEachLglZ(k) if(k != kk) LAPD(ii,jj,k);
 #undef H
 #undef LAPD
-
             }
         }
-
         /* compute explicit term */
         {
             if(strong) {

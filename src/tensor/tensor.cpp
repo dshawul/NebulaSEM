@@ -168,7 +168,6 @@ Tensor inv(const Tensor& p) {
 
 /** Inverse of matrix using Gauss-Jordan elimination */
 void matinv(Scalar* A_, Scalar* X, Int N) {
-
 #define A(ii,jj) A[(ii)*N+(jj)]
 #define X(ii,jj) X[(ii)*N+(jj)]
 

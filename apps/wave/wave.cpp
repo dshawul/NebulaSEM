@@ -25,7 +25,6 @@ void wave(std::istream& input) {
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-
         ScalarCellField T("T", READWRITE);
 
         /*Time loop*/

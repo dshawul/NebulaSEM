@@ -33,11 +33,9 @@ void hydro_balance(std::istream& input) {
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-
         ScalarCellField p("p", READWRITE);
 
         for (Iteration it(ait.get_step()); it.start(); it.next()) {
-
             const ScalarCellField one = Scalar(1);
             const VectorCellField rhog = Fluid::density * Controls::gravity;
             const ScalarCellField ndivRhoG = -divf(rhog);

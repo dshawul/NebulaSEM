@@ -166,6 +166,7 @@ namespace Util {
     class ofstream_bin {
         private:
             std::ofstream mos;
+
         public:
             ofstream_bin(const std::string& filename) {
                 mos = std::ofstream(filename, std::ios::out | std::ios::binary);
@@ -203,6 +204,7 @@ namespace Util {
     class ifstream_bin {
         private:
             std::ifstream mos;
+
         public:
             ifstream_bin(const std::string& filename) {
                 mos = std::ifstream(filename, std::ios::in | std::ios::binary);

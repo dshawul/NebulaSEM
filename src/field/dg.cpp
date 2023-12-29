@@ -65,7 +65,6 @@ void DG::legendre_gauss_lobatto(int N, Scalar* xgl, Scalar* wgl) {
 
     //compute first half of roots
     for(int i = 0; i < ph; i++) {
-
         //use roots of Chebyshev polynomial as initial guess for LGL points
         x = cos((2 * i + 1) * Constants::PI / (2 * N));
 

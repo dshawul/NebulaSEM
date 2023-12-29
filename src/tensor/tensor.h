@@ -236,6 +236,7 @@ template <Int SIZE>
 class TTensor {
 public:
     Scalar P[SIZE];
+
 public:
     /*c'tors*/
     TTensor() {
@@ -522,7 +523,6 @@ template <class T>
 T Interpolate_face (Scalar r,Scalar s, T x00, T x01, T x10,
   T x11, T xr0, T xr1, T x0s, T x1s
   ) {
-
   T result =
      - ( 1.0 - r ) * ( 1.0 - s ) * x00
      + ( 1.0 - r )               * x0s
@@ -547,8 +547,7 @@ T Interpolate_cell ( Scalar r, Scalar s, Scalar t,
   T x00t, T x01t, T x10t, T x11t,
   T x0st, T x1st, T xr0t, T xr1t, T xrs0, T xrs1
   ) {
-
- T result =    
+  T result =    
          ( 1.0 - r ) * ( 1.0 - s ) * ( 1.0 - t ) * x000
        - ( 1.0 - r ) * ( 1.0 - s )               * x00t
        + ( 1.0 - r ) * ( 1.0 - s ) *         t   * x001

@@ -70,7 +70,7 @@ fi
 run $grid $nprocs
 
 #find the control field
-fields=$(cat controls | grep fields)
+fields=$(grep fields ./controls)
 fields="${fields//\{/ }"
 fields="${fields//\}/ }"
 field=$(echo $fields | awk '{print $3}')

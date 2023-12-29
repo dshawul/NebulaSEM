@@ -504,7 +504,6 @@ void merge(MeshObject& m1,MergeObject& b,MeshObject& m2) {
             found = 0;
             for(Int i = s1;i < s2;i++) {
                 if((index1[i - s1] == INVALID) && equalSet(m2.mFacets[i],b.fb[j])) {
-
                     m1.mFacets.push_back(b.fb[j]);
                     index0[j]      = m1.mFacets.size() - 1;
                     index1[i - s1] = m1.mFacets.size() - 1;

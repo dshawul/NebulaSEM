@@ -415,7 +415,6 @@ void Mesh::MeshObject::fixHexCells() {
                }
            }
        }
-
     }
 }
 /**
@@ -1059,7 +1058,6 @@ void Mesh::MeshObject::calcFaceCenter(const Facet& f,Vector& fCj) {
   Calculate cell center
  */
 void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
-
     //approximate cell centre
     Int cnt = 0;
     cCj = Vector(0);
@@ -1116,7 +1114,6 @@ void Mesh::MeshObject::calcCellCenter(const Cell& c, Vector& cCj) {
   Refine facet
  */
 void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int ivBegin) {
-
     const bool refine3D = equal(Scalar(0.0),mag(amr_direction));
 
     /*add face center*/
@@ -1209,7 +1206,6 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     }
     
     if(fmid != Constants::MAX_INT) {
-
 #define ADD(x) {                    \
     if(fr.size())                   \
         addVerticesToEdge(x,fn,fr); \
@@ -1268,14 +1264,12 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     } else {
         newf.push_back(f_);
     }
-
 }
 /**
   Refine list of facets
  */
 void Mesh::MeshObject::refineFacets(const IntVector& rFacets,IntVector& refineF, const IntVector& rfDirs,
         IntVector& startF, IntVector& endF, Int ivBegin) {
-
     Facets newf;
     forEach(rFacets,i) {
         Int fi = rFacets[i];
@@ -1301,7 +1295,6 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         IntVector& refineF,IntVector& startF,IntVector& endF,
         Cells& newc,IntVector& delFacets, Int ivBegin
         ) {
-
     using namespace Util;
 
     /* ***************************************
@@ -1366,9 +1359,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         cout << it->first << " = " << it->second.first << " = " << it->second.second <<  endl;
         cout << "----" << endl;
 #endif
-
     }
-
     /* *************************
      *
      * Form new cells (pyramids) 
@@ -1698,14 +1689,12 @@ END:;
         std::cout << "-----" << std::endl;
     }
 #endif
-
 }
 /**
   Initialize facet refinement information
  */
 void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
         const IntVector& rCells,const Cells& newCells) {
-
     forEach(rCells,i) {
         const Cell& c = newCells[rCells[i]];
         Cell& cr = crefineF[i];
@@ -1731,7 +1720,6 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
             if(!coplanar) {
                 refineF[c[j]] = 1;
             } else {
-
                 const Int id = Constants::MAX_INT / 2 + shared[0];
                 forEach(shared,k) {
                     Int v = shared[k];
@@ -1747,7 +1735,6 @@ void Mesh::MeshObject::initFaceInfo(IntVector& refineF,Cells& crefineF,
  */
 void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCells,const IntVector& rLevel,
         const IntVector& rDirs,IntVector& refineMap,IntVector& coarseMap,IntVector& cellMap) {
-
     using namespace Util;
     Int ivBegin = mVertices.size();
     IntVector delFacets;
@@ -2035,10 +2022,8 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
 
         //conduct multiple refinement levels
         for(Int m = 0; m < rlevel; m++) {
-
             //face refinement for multiple levels only
             if(m) {
-
                 //form unique set of faces to refine
                 IntVector rfFacets;
                 forEach(newc,j)

@@ -74,7 +74,6 @@ namespace Mesh {
 
     /** Mesh object */
     struct MeshObject {
-
         Vertices mVertices; /**< vertices */
         Facets   mFacets;   /**< facets */
         Cells    mCells;    /**< Cells */

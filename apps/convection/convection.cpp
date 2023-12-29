@@ -36,7 +36,6 @@ void convection(std::istream& input) {
 
     /*AMR iteration*/
     for (AmrIteration ait; !ait.end(); ait.next()) {
-
         VectorCellField U("U", READWRITE);
         ScalarCellField T("T", READWRITE);
 
@@ -113,7 +112,6 @@ void convection(std::istream& input) {
 
         /*Time loop*/
         for (; !it.end(); it.next()) {
-
             /*overwrite wind field at all time steps*/
             if(problem_init != NONE) {
                 Scalar ctime = it.get_step() * Controls::dt;
