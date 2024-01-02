@@ -46,7 +46,7 @@ such as: high-order accuracy, geometrical flexibility compared to global spectra
 the high arithmetic intensity per element, suitability for GPU acceleration, and support for both h- and p- refinement.
 
 ## Oct-tree cell-based AMR
-Modeling of the atmosphere is challenging in that a range of spatial and temporal scales are involved [@wallace2006].
+Modeling of the atmosphere is challenging in that a range of spatial and temporal scales are involved [@stefanick1981].
 Adaptive Mesh Refinement (AMR) provides the tool to address multi-scale phenomenon efficiently by focusing resources
 where they are needed. NebulaSEM implements oct-tree cell-based AMR using the forest-of-octrees approach pioneered in [@p4est].
 The `AmrIteration` class provides a high-level interface to enable AMR for any solver written using the library.

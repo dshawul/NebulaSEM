@@ -44,6 +44,12 @@ Optional packages
 - [ParaView](https://www.paraview.org/) for visualization
 - [NVHPC](https://developer.nvidia.com/hpc-sdk) or other OpenACC compiler
 
+
+### Documentation
+The API documentation built with Doxygen can be found [here](https://dshawul.github.io/html/index.html).
+Also READMEs are providied for writing new solvers under `apps/` directory, and for setting up
+test cases under `examples/` directory.
+
 ### Testing
 
 A testing script `test.sh` is provided. By default it runs the lid-driven test case
