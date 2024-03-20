@@ -47,16 +47,16 @@ Optional packages
 
 ### Documentation
 The API documentation built with Doxygen can be found [here](https://dshawul.github.io/html/index.html).
-Also READMEs are providied for writing new solvers under `apps/` directory, and for setting up
+Also READMEs are provided for writing new solvers under `apps/` directory, and for setting up
 test cases under `examples/` directory.
 
 ### Testing
 
 A testing script `test.sh` is provided. By default it runs the lid-driven test case
-under `examples/cavity`..
+under `examples/cavity` using the binaries installed with the `make install` command.
 
-To run a test case, execute the script specifying the number of MPI ranks if greater than 1, the
-test case name.
+To run a test case, set the binary folder of the installation directory in `test.sh` and execute the script
+specifying the number of MPI ranks, if greater than, 1 and the test case name.
 
     ./test.sh -n 2 -c examples/atmo/advection-leveque/bubble
 
