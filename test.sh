@@ -45,14 +45,14 @@ run() {
     #generate grid
     format=$(grep -v "^#" ./controls | grep write_format | awk '{print $2}')
     if [ "$format" == "TEXT" ]; then
-        ${bin_path}mesh $1 -o grid_0.txt
+        ${bin_path}/mesh $1 -o grid_0.txt
     else
-        ${bin_path}mesh $1 -o grid_0.bin
+        ${bin_path}/mesh $1 -o grid_0.bin
     fi
 
     #solve
     solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
-    mpirun -n $2 -bind-to numa ${bin_path}${solver} ./controls | tee log.txt
+    mpirun -n $2 -bind-to numa ${bin_path}/${solver} ./controls | tee log.txt
 }
 
 #prepare directory
@@ -80,7 +80,7 @@ if [ $nprocs -gt 1 ]; then
     t=1
     file=(./grid0/$field$t.*)
     while [ -f "$file" ]; do
-        mpirun -n $nprocs ${bin_path}prepare ./controls -merge -start $t
+        mpirun -n $nprocs ${bin_path}/prepare ./controls -merge -start $t
         t=$((t+1))
         file=(./grid0/$field$t.*)
     done
@@ -90,7 +90,7 @@ fi
 t=0
 file=(./$field$t.*)
 while [ -f "$file" ]; do
-    mpirun -n 1 ${bin_path}prepare ./controls -vtk -start $t
+    mpirun -n 1 ${bin_path}/prepare ./controls -vtk -start $t
     t=$((t+1))
     file=(./$field$t.*)
 done
