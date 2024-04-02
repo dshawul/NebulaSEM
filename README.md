@@ -55,21 +55,24 @@ test cases under `examples/` directory.
 A testing script `test.sh` is provided. By default it runs the lid-driven test case
 under `examples/cavity` using the binaries installed with the `make install` command.
 
-To run a test case, set the binary folder of the installation directory in `test.sh` and execute the script
-specifying the number of MPI ranks, if greater than, 1 and the test case name.
+To run a test case, execute the `test.sh` script specifying the number of MPI ranks, 
+if greater than, 1 and the test case name.
 
     ./test.sh -n 2 -c examples/atmo/advection-leveque/bubble
 
-The path to the test case should point to the grid file, in this case `bubble` not to the directory itself.
+If the binaries are installed other than `$PWD/bin`, pass the installation location to it using the `--bin-path` option
+
+    ./test.sh -n 2 --bin-path /usr/local/bin -c examples/atmo/advection-leveque/bubble
+
+The path to the test case should point to the grid file, in this case `bubble`, not to the directory itself.
 
     Usage: ./test.sh [options]
     
-       -n,--np       Number of processors to use.
+       -n,--np       Number of MPI processes to launch.
        -c,--case     Path to grid file name that is under a test case directory.
        -b,--bin-path Path to binaries: mesh, prepare and solvers.
        -s,--steps    Number of time steps, which overwrites the one in control file.
        -h,--help     Display this help message.
-
 
 
 #### Lid-driven cavity flow
@@ -121,6 +124,80 @@ and collides with the top boundary.
 <p align="center">
   <img width="500px" src="./images/rtb-temp.gif"/>
 </p>
+
+### A note about MPI/OpenMP/OpenACC parallelization
+
+NebulaSEM is able to exploit mulit-core CPUs either using a pure MPI approach or a hybrid MPI+OpenMP approach.
+CFD codes often utilize a pure MPI approach because that scales better than OpenMP. However, when extereme scalability
+on supercomputers is required, the hybrid MPI + OpenMP parallelization can become beneficial by reducing inter-process
+communication. To compile NebulaSEM for a hybrid MPI+OpenMP
+
+    mkdir build-omp && cd build-omp
+    cmake -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=.. -DUSE_OMP=ON ..
+    make && make install
+
+The number of threads for OpenMP is controlled by the `OMP_NUM_THREADS` environment variables.
+Then we can run the lid-driven cavity flow as usual specifiying only 1 MPI rank and 2 OpenMP threads
+for a pure OpenMP approach as:
+
+    $ export OMP_NUM_THREADS=2
+    $ ./test.sh -n 1 -c examples/cavity/cavity
+
+Or 2 mpi ranks + 2 openmp threads per rank for a hybrid MPI+OpenMP approach
+
+    $ export OMP_NUM_THREADS=2
+    $ ./test.sh -n 2 -c examples/cavity/cavity
+
+Or 2 mpi ranks with 1 threads per randk for a pure MPI approach
+
+    $ export OMP_NUM_THREADS=1
+    $ ./test.sh -n 2 -c examples/cavity/cavity
+
+Note that to obtain significant speedups from either MPI or OpenMP, the problem size should be large enough.
+For the lid-driven cavity flow we can increase the problem size to `100x100` by editing `examples/cavity/vaity`
+```diff
+-8{0 1 2 3 4 5 6 7} linear 3{20 20 1}
++8{0 1 2 3 4 5 6 7} linear 3{100 100 1}
+```
+Run single MPI rank run
+```
+$ export OMP_NUM_THREADS=1
+$ ./test.sh -n 1 -c examples/cavity/cavity 
+...
+9018 [0] Time 5.000000
+9025 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 1.47888e-11 Final Residual 1.14971e-11
+9027 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 1.44703e-11 Final Residual 1.12991e-11
+9073 [0] Exiting application run with 1 processes
+```
+Takes about 9073 milliseconds
+Run 2-mpi ranks
+```
+$ ./test.sh -n 2 -c examples/cavity/cavity
+....
+4623 [0] Time 5.000000
+4626 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 3.55206e-11 Final Residual 3.16645e-11
+4628 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 3.38580e-11 Final Residual 3.00837e-11
+4672 [0] Exiting application run with 2 processes
+```
+Takes about 4672 milliseconds for a speedup of  `1.94x` out of 2 which is good.
+
+----
+Lets do the same with the OpenMP implementation. Make sure to use the `build-omp` binaries by doing:
+```
+cd build-omp && make install
+```
+We can now run the test case with 1 mpi rank
+```
+$ export OMP_NUM_THREADS=2
+$ ./test.sh -n 1 -c examples/cavity/cavity
+....
+6686 [0] Time 5.000000
+6691 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 1.47888e-11 Final Residual 1.14971e-11
+6693 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 1.44703e-11 Final Residual 1.12991e-11
+6739 [0] Exiting application run with 1 processes
+```
+It took about 6739 milliseconds. It is slower than the MPI implementation but still faster than 
+the serial implementation with a speedup of `1.34x` times.
 
 ## Contribution
 
