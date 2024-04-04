@@ -4,7 +4,7 @@
 
 ## NebulaSEM
 
-NebulaSEM is an experimental finite volume (FV) and discontinous galerkin spectral element (dGSEM) code 
+NebulaSEM is an experimental finite volume (FV) and discontinuous galerkin spectral element (dGSEM) code 
 for solving partial differential equations (PDEs) of fluid dynamics. It comes with solvers for compressible
 and incompressible flow, and also provides infrastructure for writing PDE solvers easily with support 
 for adaptive mesh refinement (AMR). The primary focus of the software is research in a high-order 
@@ -37,7 +37,7 @@ and several other binaries for solving PDEs e.g. euler, convection etc
 - [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) for domain decomposition
 - [OpenMPI](http://open-mpi.org) or other MPI library compatible with your C++ compiler
 - [CMake](https://cmake.org) for makefile generation
-- [GCC](https://gcc.gnu.org/) or other C++ compiler with atleast C++17 standard support
+- [GCC](https://gcc.gnu.org/) or other C++ compiler with at least C++17 standard support
 
 Optional packages
 - [DOxygen](http://www.doxygen.nl/) for API documentation
@@ -83,9 +83,9 @@ flow at low Reynolds number i.e. no turbulence.
     $ ./test.sh -n 1 -c examples/cavity/cavity-amr
 
 This will generate a `run-examples-cavity-amr` directory in which you can find the results including VTK
-files for visualization by paraview.
+files for visualization by Paraview.
 
-Here are images of the decompostion using METIS with 12 mpi ranks, and the magnitude of
+Here are images of the decomposition using METIS with 12 mpi ranks, and the magnitude of
 velocity plots.
 
 <p align="center">
@@ -103,7 +103,7 @@ the outlet.
   <img width="900px" src="./images/pitz-velocity.gif"/>
 </p>
 
-The same test case simulated with the ke turbulence model is shown below. It is a Reynolds-average
+The same test case simulated with the k-e turbulence model is shown below. It is a Reynolds-average
 turbulence scheme so only mean state is displayed.
 
 <p align="center">
@@ -114,11 +114,11 @@ turbulence scheme so only mean state is displayed.
 
 This is a popular test case for numerical weather prediction models that solve the Euler equations
 using explicit time-stepping unlike other CFD applications that often use implicit solvers.
-Moreover this test cases uses Discontinous Galerkin method (spectral-element version) on hexahedral
+Moreover this test cases uses Discontinuous Galerkin method (spectral-element version) on hexahedral
 grids, and adaptive mesh refinement. Thanks to my postdoc supervisor Francis X. Giraldo, from 
 whom I learned this stuff!
 
-A thermal bubble of gaussian distribution rises up due to bouyancy, while deforming on the way,
+A thermal bubble of Gaussian distribution rises up due to buoyancy, while deforming on the way,
 and collides with the top boundary.
 
 <p align="center">
@@ -127,8 +127,8 @@ and collides with the top boundary.
 
 ### A note about MPI/OpenMP/OpenACC parallelization
 
-NebulaSEM is able to exploit mulit-core CPUs either using a pure MPI approach or a hybrid MPI+OpenMP approach.
-CFD codes often utilize a pure MPI approach because that scales better than OpenMP. However, when extereme scalability
+NebulaSEM is able to exploit multi-core CPUs either using a pure MPI approach or a hybrid MPI+OpenMP approach.
+CFD codes often utilize a pure MPI approach because that scales better than OpenMP. However, when extreme scalability
 on supercomputers is required, the hybrid MPI + OpenMP parallelization can become beneficial by reducing inter-process
 communication. To compile NebulaSEM for a hybrid MPI+OpenMP
 
@@ -137,7 +137,7 @@ communication. To compile NebulaSEM for a hybrid MPI+OpenMP
     make && make install
 
 The number of threads for OpenMP is controlled by the `OMP_NUM_THREADS` environment variables.
-Then we can run the lid-driven cavity flow as usual specifiying only 1 MPI rank and 2 OpenMP threads
+Then we can run the lid-driven cavity flow as usual specifying only 1 MPI rank and 2 OpenMP threads
 for a pure OpenMP approach as:
 
     $ export OMP_NUM_THREADS=2
@@ -148,7 +148,7 @@ Or 2 mpi ranks + 2 openmp threads per rank for a hybrid MPI+OpenMP approach
     $ export OMP_NUM_THREADS=2
     $ ./test.sh -n 2 -c examples/cavity/cavity
 
-Or 2 mpi ranks with 1 threads per randk for a pure MPI approach
+Or 2 mpi ranks with 1 threads per rank for a pure MPI approach
 
     $ export OMP_NUM_THREADS=1
     $ ./test.sh -n 2 -c examples/cavity/cavity
