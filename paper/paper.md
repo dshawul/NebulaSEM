@@ -47,7 +47,7 @@ the high arithmetic intensity per element, suitability for GPU acceleration, and
 
 ## Oct-tree cell-based AMR
 Modeling of the atmosphere is challenging in that a range of spatial and temporal scales are involved [@stefanick1981].
-Adaptive Mesh Refinement (AMR) provides the tool to address multi-scale phenomenon efficiently by focusing resources
+Adaptive Mesh Refinement (AMR) provides the tool to address multi-scale phenomena efficiently by focusing resources
 where they are needed. NebulaSEM implements oct-tree cell-based AMR using the forest-of-octrees approach pioneered in [@p4est].
 The `AmrIteration` class provides a high-level interface to enable AMR for any solver written using the library.
 A single loop enclosing the timestep iterations and declaration of fields involved in the PDE is enough to provide AMR 
@@ -84,7 +84,7 @@ and fully-implicit Backward Differencing (BDF) methods.
 ## Turbulence models
 The software includes turbulence models for high-Reynolds CFD simulations including a suite of Reynolds Averaged Navier Stokes (RANS) 
 [@henk1972] and Large Eddy Simulation (LES) models [@les]. The list includes a mixing-length model, k-epsilon, k-omega, RNG k-epsilon, RNG k-omega
-and the Smagornisky-Lilly LES model. Theese turbulence models has been utilized to evaluate the aerodynamic roughness of the 
+and the Smagornisky-Lilly LES model. These turbulence models have been utilized to evaluate the aerodynamic roughness of the 
 built environment and complex terrain in [@abdi5].
 
 ## Parallelization with MPI+OpenMP/OpenACC
@@ -135,7 +135,7 @@ facilitating high-fidelity aeroacoustic simulations.
 
 While high-order methods are more commonly associated with atmospheric modeling, such endeavors often rely on
 finite-difference discretization, which is less geometrically flexible, or global spectral methods on latitude-longitude grids, 
-which lack scalability. NebulaSEM provides geometrical flexibility due to its CFD roots, allowing atmospheric simulaitons on any type of grid.
+which lack scalability. NebulaSEM provides geometrical flexibility due to its CFD roots, allowing atmospheric simulations on any type of grid.
 The element-based design, as opposed to global spectral-methods, ensures high-scalability for large scale simulations.
 The high-order dGSEM discretization it employs delivers the accuracy necessary for achieving high-fidelity atmospheric simulations. 
 In addition, NebulaSEM incorporates dynamic adaptive mesh refinement capabilities, a feature not commonly found in traditional atmospheric modeling approaches.
