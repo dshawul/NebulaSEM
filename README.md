@@ -4,7 +4,7 @@
 
 ## NebulaSEM
 
-NebulaSEM is an experimental finite volume (FV) and discontinuous galerkin spectral element (dGSEM) code 
+NebulaSEM is an experimental finite volume (FV) and discontinuous Galerkin spectral element (dGSEM) code 
 for solving partial differential equations (PDEs) of fluid dynamics. It comes with solvers for compressible
 and incompressible flow, and also provides infrastructure for writing PDE solvers easily with support 
 for adaptive mesh refinement (AMR). The primary focus of the software is research in a high-order 
@@ -114,7 +114,7 @@ turbulence scheme so only mean state is displayed.
 
 This is a popular test case for numerical weather prediction models that solve the Euler equations
 using explicit time-stepping unlike other CFD applications that often use implicit solvers.
-Moreover this test cases uses Discontinuous Galerkin method (spectral-element version) on hexahedral
+Moreover this test cases uses discontinuous Galerkin method (spectral-element version) on hexahedral
 grids, and adaptive mesh refinement. Thanks to my postdoc supervisor Francis X. Giraldo, from 
 whom I learned this stuff!
 
@@ -169,7 +169,8 @@ $ ./test.sh -n 1 -c examples/cavity/cavity
 9027 [0] SYMM-FULL-SSOR-PCG :Iterations 1 Initial Residual 1.44703e-11 Final Residual 1.12991e-11
 9073 [0] Exiting application run with 1 processes
 ```
-Takes about 9073 milliseconds
+Takes about 9073 milliseconds.
+
 Run 2-mpi ranks
 ```
 $ ./test.sh -n 2 -c examples/cavity/cavity

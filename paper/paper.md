@@ -61,16 +61,18 @@ the advection-diffusion equation.
 
 ```C++
 void transport() {
-    for (AmrIteration ait; !ait.end(); ait.next()) {     /*AMR iteration object (ait) and loop*/
-         VectorCellField U("U", READWRITE);               /*Velocity field defined over the grid*/
-         ScalarCellField T("T", READWRITE);               /*Scalar field*/
-         ScalarFacetField F = flx(U);                     /*Compute flux field*/
-         ScalarCellField mu = 1;                          /*Diffusion parameter*/
-         for (Iteration it(ait.get_step()); !it.end(); it.next()) { /*Time loop with support for deferred correction */
-             ScalarCellMatrix M;                          /*Matrix for the PDE discretization*/
-             M = div(T,U,F,&mu) - lap(T,mu);              /*Divergence & Laplacian terms*/
-             addTemporal<1>(M);                           /*Add temporal derivative*/
-             Solve(M);                                    /*Solve the matrix */
+  /*AMR iteration loop with object (ait)*/
+    for (AmrIteration ait; !ait.end(); ait.next()) {
+         VectorCellField U("U", READWRITE);      /*Velocity field over the grid*/
+         ScalarCellField T("T", READWRITE);      /*Scalar field*/
+         ScalarFacetField F = flx(U);            /*Compute flux field*/
+         ScalarCellField mu = 1;                 /*Diffusion parameter*/
+         /*Time loop with support for deferred correction */
+         for (Iteration it(ait.get_step()); !it.end(); it.next()) {
+             ScalarCellMatrix M;                 /*Matrix for the PDE discretization*/
+             M = div(T,U,F,&mu) - lap(T,mu);     /*Divergence & Laplacian terms*/
+             addTemporal<1>(M);                  /*Add temporal derivative*/
+             Solve(M);                           /*Solve the matrix */
          }
     }
 }

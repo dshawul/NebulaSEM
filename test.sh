@@ -6,7 +6,7 @@ set -e
 usage() {
     echo "Usage: $0 [options]" >&2
     echo
-    echo "   -n,--np       Number of processors to use."
+    echo "   -n,--np       Number of MPI processes to launhc."
     echo "   -c,--case     Path to grid file name that is under a test case directory."
     echo "   -b,--bin-path Path to binaries: mesh, prepare and solvers."
     echo "   -s,--steps    Number of time steps, which overwrites the one in control file."
