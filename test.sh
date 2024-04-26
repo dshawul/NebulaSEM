@@ -58,7 +58,7 @@ run() {
 #check case/grid exists
 if ! [ -f ${case}/${grid} ]; then
   echo "Grid file does not exist: "${case}/${grid}
-  exit -1
+  exit 0
 fi
 
 #prepare directory
