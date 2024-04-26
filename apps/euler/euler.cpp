@@ -269,23 +269,22 @@ void euler(std::istream& input) {
 
             /*courant number*/
             if(Controls::state != Controls::STEADY) {
+                Vector courant = Mesh::calc_courant(U,Controls::dt);
+                Scalar mass, energy, volume;
+                {
+                    ScalarCellField sf = rho * Mesh::cV;
+                    mass = reduce_sum(sf);
+                    //potential + kinetic + internal
+                    sf = gh +
+                         0.5 * magSq(U) +
+                         pow((p + p_ref) / P0, R / cp) * T * cv;
+                    sf = rho * Mesh::cV * sf;
+                    energy = reduce_sum(sf);
+                    volume = reduce_sum(Mesh::cV);
+                }
                 if(MP::printOn) {
-                    Vector courant = Mesh::calc_courant(U,Controls::dt);
                     MP::printH("Courant number: Max: %g Min: %g Avg: %g\n",
                         courant[0], courant[1], courant[2]);
-
-                    Scalar mass, energy, volume;
-                    {
-                        ScalarCellField sf = rho * Mesh::cV;
-                        mass = reduce_sum(sf);
-                        //potential + kinetic + internal
-                        sf = gh +
-                             0.5 * magSq(U) +
-                             pow((p + p_ref) / P0, R / cp) * T * cv;
-                        sf = rho * Mesh::cV * sf;
-                        energy = reduce_sum(sf);
-                        volume = reduce_sum(Mesh::cV);
-                    }
                     MP::printH("Mass loss: %.12g Energy loss %.12g Volume loss %.12g\n",
                         (mass0 - mass) / mass0,
                         (energy0 - energy) / energy0,

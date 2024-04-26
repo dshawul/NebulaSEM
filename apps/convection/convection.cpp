@@ -137,11 +137,12 @@ void convection(std::istream& input) {
             Solve(M);
 
             /*compute scalar loss*/
+            Scalar scalar, volume;
+            ScalarCellField sf = T * Mesh::cV;
+            scalar = reduce_sum(sf);
+            volume = reduce_sum(Mesh::cV);
+
             if(MP::printOn) {
-                Scalar scalar, volume;
-                ScalarCellField sf = T * Mesh::cV;
-                scalar = reduce_sum(sf);
-                volume = reduce_sum(Mesh::cV);
                 MP::printH("Scalar loss: %.12g Volume loss: %.12g\n",
                         (scalar0 - scalar) / scalar0,
                         (volume0 - volume) / volume0);

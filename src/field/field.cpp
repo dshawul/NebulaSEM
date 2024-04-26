@@ -438,15 +438,8 @@ Vector Mesh::calc_courant(const VectorCellField& U, Scalar dt) {
 
     Scalar maxc = reduce_max(Courant);
     Scalar minc = reduce_min(Courant);
-    Scalar avgc = reduce_sum(Courant) / Courant.size();
-
-    Scalar globalmax, globalmin, globalavg;
-    MP::allreduce(&maxc,&globalmax,1,MP::OP_MAX);
-    MP::allreduce(&minc,&globalmin,1,MP::OP_MIN);
-    MP::allreduce(&avgc,&globalavg,1,MP::OP_SUM);
-    globalavg /= MP::n_hosts;
-
-    return Vector(globalmax, globalmin, globalavg);
+    Scalar avgc = reduce_avg(Courant);
+    return Vector(maxc, minc, avgc);
 }
 /**
   Write all fields
@@ -609,14 +602,14 @@ void Prepare::calcQOI(ScalarCellField& qoi) {
     BaseField* bf = BaseField::findField(Controls::refine_params.field);
     if(bf) {
         ScalarCellField dx = pow(Mesh::cV, 0.125);
-        Scalar maxdx = reduce_max(dx);
+        Scalar maxdx = reduce_max(dx, true);
         dx /= maxdx;
 
         bf->norm(&qoi);
         qoi = pow(qoi,0.5);
         qoi *= dx;
 
-        Scalar maxq = reduce_max(qoi);
+        Scalar maxq = reduce_max(qoi, true);
         qoi /= maxq;
     }
 }

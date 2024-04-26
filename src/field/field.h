@@ -946,31 +946,59 @@ class MeshField : public BaseField
 #endif
 
         /*reductions*/
-        friend type reduce_sum(const MeshField& p) {
+        friend type reduce_sum(const MeshField& p, bool local = false) {
             type sum = type(0);
             Scalar *CP = addr(sum);
             #pragma omp parallel for reduction(+:sum)
             #pragma acc parallel loop copyin(p) reduction(+:CP[0:TYPE_SIZE])
             for(Int i = 0; i < Mesh::gBCSfield; i++)
                 sum += p[i];
-            return sum;
+            if(local)
+                return sum;
+            else {
+                type globalsum;
+                MP::allreduce<type>(&sum,&globalsum,1,MP::OP_SUM);
+                return globalsum;
+            }
         }
-        friend Scalar reduce_max(const MeshField& p) {
+        friend type reduce_avg(const MeshField& p, bool local = false) {
+            type sum = reduce_sum(p, local);
+            if(local)
+                return sum;
+            else {
+                Int nCells;
+                MP::allreduce<Int>(&Mesh::gBCSfield,&nCells,1,MP::OP_SUM);
+                return sum / nCells;
+            }
+        }
+        friend Scalar reduce_max(const MeshField& p, bool local = false) {
             Scalar maxv = Scalar(-1e30);
             Scalar *CP = addr(maxv);
             #pragma omp parallel for reduction(max:maxv)
             #pragma acc parallel loop copyin(p) reduction(max:maxv)
             for(Int i = 0; i < Mesh::gBCSfield; i++)
                 if(mag(p[i]) > maxv) maxv = mag(p[i]);
-            return maxv;
+            if(local)
+                return maxv;
+            else {
+                Scalar globalmaxv;
+                MP::allreduce<type>(&maxv,&globalmaxv,1,MP::OP_MAX);
+                return globalmaxv;
+            }
         }
-        friend Scalar reduce_min(const MeshField& p) {
+        friend Scalar reduce_min(const MeshField& p, bool local = false) {
             Scalar minv = Scalar(1e30);
             #pragma omp parallel for reduction(min:minv)
             #pragma acc parallel loop copyin(p) reduction(min:minv)
             for(Int i = 0; i < Mesh::gBCSfield; i++)
                 if(mag(p[i]) < minv) minv = mag(p[i]);
-            return minv;
+            if(local)
+                return minv;
+            else {
+                Scalar globalminv;
+                MP::allreduce<type>(&minv,&globalminv,1,MP::OP_MIN);
+                return globalminv;
+            }
         }
 
         /*other member functions*/
