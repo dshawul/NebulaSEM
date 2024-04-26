@@ -62,6 +62,12 @@ run() {
     mpirun -n $2 ${bind_numa} ${bin_path}/${solver} ./controls | tee log.txt
 }
 
+#check case/grid exists
+if ! [ -f ${case}/${grid} ]; then
+  echo "Grid file does not exist: "${case}/${grid}
+  exit 0
+fi
+
 #prepare directory
 rundir="run$nproces-${case//\//-}"
 rm -rf $rundir

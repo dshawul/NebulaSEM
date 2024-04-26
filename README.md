@@ -80,7 +80,7 @@ The path to the test case should point to the grid file, in this case `bubble`, 
 This test case uses the Pressure Implicit Splitting of Operators (PISO) solver for incompressible
 flow at low Reynolds number i.e. no turbulence.
 
-    $ ./test.sh -n 1 -c examples/cavity/cavity-amr
+    $ ./test.sh -n 1 -c examples/cavity-amr/cavity
 
 This will generate a `run-examples-cavity-amr` directory in which you can find the results including VTK
 files for visualization by Paraview.
