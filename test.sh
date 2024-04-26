@@ -1,12 +1,14 @@
 #!/bin/bash
 
+platform=$(uname)
+
 set -e
 
 #display help
 usage() {
     echo "Usage: $0 [options]" >&2
     echo
-    echo "   -n,--np       Number of MPI processes to launhc."
+    echo "   -n,--np       Number of MPI processes to launch."
     echo "   -c,--case     Path to grid file name that is under a test case directory."
     echo "   -b,--bin-path Path to binaries: mesh, prepare and solvers."
     echo "   -s,--steps    Number of time steps, which overwrites the one in control file."
@@ -50,9 +52,14 @@ run() {
         ${bin_path}/mesh $1 -o grid_0.bin
     fi
 
+    bind_numa="-bind-to numa"
+    if [ "$platform" == "Darwin" ]; then
+       bind_numa=
+    fi
+
     #solve
     solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
-    mpirun -n $2 -bind-to numa ${bin_path}/${solver} ./controls | tee log.txt
+    mpirun -n $2 ${bind_numa} ${bin_path}/${solver} ./controls | tee log.txt
 }
 
 #prepare directory
