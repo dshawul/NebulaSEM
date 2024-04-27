@@ -1284,20 +1284,10 @@ int Prepare::decomposeMesh(Int step) {
 
                 if(Controls::write_format == Controls::TEXT) {
                     std::ofstream os(str + ".txt");
-                    pf->write(os, &cLoc[ID]);
-                    /*inter mesh boundaries*/
-                    forEachIt(pmesh->mBoundaries,it) {
-                        if(it->first.find("interMesh") != string::npos)
-                           os << it->first << " " << "{\n\ttype GHOST\n}\n";
-                    }
+                    pf->write(os, &cLoc[ID], pmesh);
                 } else {
                     Util::ofstream_bin os(str + ".bin");
-                    pf->write(os, &cLoc[ID]);
-                    /*inter mesh boundaries*/
-                    forEachIt(pmesh->mBoundaries,it) {
-                        if(it->first.find("interMesh") != string::npos)
-                           os << it->first << " " << "{\n\ttype GHOST\n}\n";
-                    }
+                    pf->write(os, &cLoc[ID], pmesh);
                 }
             }
         }

@@ -434,17 +434,17 @@ class BaseField {
         //------------
         virtual void writeInternal(std::ostream&,IntVector*) = 0;
         virtual Int readInternal(std::istream&,Int = 0) = 0;
-        virtual void writeBoundary(std::ostream&) = 0;
+        virtual void writeBoundary(std::ostream&, Mesh::MeshObject* = 0) = 0;
         virtual void readBoundary(std::istream&) = 0;
         virtual void read(std::istream&) = 0;
-        virtual void write(std::ostream&, IntVector* = 0) = 0;
+        virtual void write(std::ostream&, IntVector* = 0, Mesh::MeshObject* = 0) = 0;
 
         virtual void writeInternal(Util::ofstream_bin&,IntVector*) = 0;
         virtual Int readInternal(Util::ifstream_bin&,Int = 0) = 0;
-        virtual void writeBoundary(Util::ofstream_bin&) = 0;
+        virtual void writeBoundary(Util::ofstream_bin&, Mesh::MeshObject* = 0) = 0;
         virtual void readBoundary(Util::ifstream_bin&) = 0;
         virtual void read(Util::ifstream_bin&) = 0;
-        virtual void write(Util::ofstream_bin&, IntVector* = 0) = 0;
+        virtual void write(Util::ofstream_bin&, IntVector* = 0, Mesh::MeshObject* = 0) = 0;
         //------------
         virtual void read(Int) = 0;
         virtual void write(Int, IntVector* = 0) = 0;
@@ -761,11 +761,11 @@ class MeshField : public BaseField
         template<typename Ts>
         void writeInternal_(Ts&,IntVector*);
         template<typename Ts>
-        void writeBoundary_(Ts&);
+        void writeBoundary_(Ts&, Mesh::MeshObject*);
         template<typename Ts>
         void read_(Ts&);
         template<typename Ts>
-        void write_(Ts&, IntVector*);
+        void write_(Ts&, IntVector*, Mesh::MeshObject*);
         //------------
     public:
         ACCESS       access;
@@ -1007,16 +1007,16 @@ class MeshField : public BaseField
         Int readInternal(std::istream& is,Int offset = 0) override { return readInternal_(is,offset); }
         void readBoundary(std::istream& is) override { readBoundary_(is); }
         void writeInternal(std::ostream& os,IntVector* cMap) override { writeInternal_(os, cMap); };
-        void writeBoundary(std::ostream& os) override {writeBoundary_(os); }
+        void writeBoundary(std::ostream& os, Mesh::MeshObject* pmesh = 0) override {writeBoundary_(os, pmesh); }
         void read(std::istream& os) override {read_(os); }
-        void write(std::ostream& os, IntVector* cMap) override {write_(os, cMap); }
+        void write(std::ostream& os, IntVector* cMap, Mesh::MeshObject* pmesh = 0) override {write_(os, cMap, pmesh); }
 
         Int readInternal(Util::ifstream_bin& is,Int offset = 0) override { return readInternal_(is,offset); }
         void readBoundary(Util::ifstream_bin& is) override { readBoundary_(is); }
         void writeInternal(Util::ofstream_bin& os,IntVector* cMap) override { writeInternal_(os, cMap); };
-        void writeBoundary(Util::ofstream_bin& os) override {writeBoundary_(os); }
+        void writeBoundary(Util::ofstream_bin& os, Mesh::MeshObject* pmesh = 0) override {writeBoundary_(os, pmesh); }
         void read(Util::ifstream_bin& os) override {read_(os); }
-        void write(Util::ofstream_bin& os, IntVector* cMap) override {write_(os, cMap); }
+        void write(Util::ofstream_bin& os, IntVector* cMap, Mesh::MeshObject* pmesh = 0) override {write_(os, cMap, pmesh); }
         //------------
         void read(Int step);
         void write(Int step, IntVector* = 0);
@@ -1608,7 +1608,7 @@ void MeshField<T,E>::writeInternal_(Ts& os, IntVector* cMap) {
 /** Write boundary field */
 template <class T,ENTITY E> 
 template <typename Ts>
-void MeshField<T,E>::writeBoundary_(Ts& os) {
+void MeshField<T,E>::writeBoundary_(Ts& os, Mesh::MeshObject* pmesh) {
     using namespace Mesh;
 
     /*boundary field*/
@@ -1624,7 +1624,20 @@ void MeshField<T,E>::writeBoundary_(Ts& os) {
     }
 
     //write
-    os << "boundary " << size << "\n{\n";
+    if(!pmesh)
+        os << "boundary " << size << "\n{\n";
+    else {
+        //write inter mesh boundaries during decomposition
+        forEachIt(pmesh->mBoundaries,it)
+            if(it->first.find("interMesh") != std::string::npos) size++;
+
+        os << "boundary " << size << "\n{\n";
+
+        forEachIt(pmesh->mBoundaries,it) {
+            if(it->first.find("interMesh") != std::string::npos)
+               os << it->first << "\n{\n" << "\ttype " << "GHOST" << "\n}\n";
+        }
+    }
     forEach(AllBConditions,i) {
         bbc = AllBConditions[i];
         if(bbc->fIndex == this->fIndex) {
@@ -1638,10 +1651,10 @@ void MeshField<T,E>::writeBoundary_(Ts& os) {
 /** Write field */
 template <class T,ENTITY E> 
 template <typename Ts>
-void MeshField<T,E>::write_(Ts& os, IntVector* cMap) {
+void MeshField<T,E>::write_(Ts& os, IntVector* cMap, Mesh::MeshObject* pmesh) {
     os.precision(12);
     writeInternal(os,cMap);
-    writeBoundary(os);
+    writeBoundary(os,pmesh);
     os.precision(6);
 }
 
