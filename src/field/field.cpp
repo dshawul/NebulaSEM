@@ -1206,10 +1206,15 @@ int Prepare::decomposeMesh(Int step) {
         /* write master grid after reordering cells*/
         {
             Cells reordered;
+            IntVector new_order;
+            new_order.assign(gBCS, 0);
+
+            Int count = 0;
             for(ID = 0;ID < total;ID++) {
                 forEach(cLoc[ID],i) {
                     Cell& c = gCells[cLoc[ID][i]];
                     reordered.push_back(c);
+                    new_order[cLoc[ID][i]] = count++;
                 }
             }
             for(i = 0;i < gBCS;i++)
@@ -1226,6 +1231,25 @@ int Prepare::decomposeMesh(Int step) {
             } else if(System::exists(str + ".bin")) {
                 Util::ofstream_bin os(str + ".bin");
                 os << gMesh;
+            }
+
+            /*rewrite AmrTree*/
+            {
+                stringstream path;
+                int stepn = findLastRefinedGrid(step);
+                path << "amrTree" << "_" << stepn << ".bin";
+                if(System::exists(path.str())) {
+                    {
+                        Util::ifstream_bin is(path.str());
+                        is >> gAmrTree;
+                        forEach(gAmrTree,i)
+                            gAmrTree[i].id = new_order[gAmrTree[i].id];
+                    }
+                    {
+                        Util::ofstream_bin os(path.str());
+                        os << gAmrTree;
+                    }
+                }
             }
         }
 
