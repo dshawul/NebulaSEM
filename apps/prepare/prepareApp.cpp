@@ -72,6 +72,8 @@ int main(int argc,char* argv[]) {
         op = new Util::BoolOption(&Mesh::is_spherical);
         params.enroll("is_spherical",op);
         params.enroll("sphere_radius", &Mesh::sphere_radius);
+        op = new Util::Option(&Controls::write_format,{"TEXT","BINARY"});
+        params.enroll("write_format",op);
         params.read(input); 
     }
     {
