@@ -15,7 +15,7 @@ boundary 4
     top {
         type  NEUMANN
     }
-    WALLS {
+    bottom {
         type NEUMANN
     }
 }

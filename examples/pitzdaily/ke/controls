@@ -34,7 +34,7 @@ general
 ############################
 
     method                       PCG
-    tolerance                    1e-6
+    tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
     parallel_method              BLOCKED

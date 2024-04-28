@@ -25,19 +25,19 @@ general
 #  Discretization schemes
 ############################
 
-    convection_scheme            BLENDED
     nonortho_scheme              OVER_RELAXED
-    blend_factor                 0
+    time_scheme                  BDF1
+    parallel_method              BLOCKED
 
 ############################
 #  Solver options
 ############################
 
     method                       PCG
+    preconditioner               DIAG
     tolerance                    1e-5
     max_iterations               6400
     SOR_omega                    1.7
-    parallel_method              BLOCKED
 
 ############################
 #  Probe locations
@@ -70,33 +70,20 @@ decomposition
 
 refinement
 {
-    direction       0 0 0
+    direction       0 1 0
     field           U
     field_min       0.1
     field_max       0.9
+    max_level       1
     limit           100000
 }
 
 
 ######################################
-#  PISO options
+#  diffusion options
 ######################################
-piso
-{
-    turbulence_model             KE
-    velocity_UR                  0.7
-    pressure_UR                  0.3
-    n_PISO                       1
-    n_ORTHO                      0
-}
-
 diffusion
 {
     DT                           1
     t_UR                         0.7
-}
-turbulence
-{
-    k_UR                         0.5
-    x_UR                         0.5
 }
