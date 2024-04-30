@@ -28,7 +28,7 @@ bibliography: paper.bib
 # Summary
 
 NebulaSEM is an advanced computational fluid dynamics (CFD) model employing the high-order discontinuous Galerkin 
-spectral elementi (dGSEM) method. Originally designed for generic CFD applications with polyhedral elements on unstructured grids, 
+spectral element (dGSEM) method. Originally designed for generic CFD applications with polyhedral elements on unstructured grids, 
 NebulaSEM has recently evolved into an atmospheric simulation code. This paper presents the key features, capabilities, 
 and applications of NebulaSEM, highlighting its high-order discretization, oct-tree cell-based adaptive mesh refinement (AMR), 
 support for new solver development, turbulence models, and parallelization strategies. The software addresses the need for 
@@ -40,9 +40,9 @@ high-fidelity simulations in diverse areas, offering an efficient and scalable s
 ## High-order dGSEM discretization
 NebulaSEM supports arbitrarily high-order discontinuous Galerkin spectral element discretization of PDEs besides
 finite-volume discretization, which is a subset of dGSEM with the lowest polynomial order of zero. The spectral element discretization
-is significantly more efficient than standard discontinuous Galerkin on unstructured grid because the former exploits the tensor-product nature of
+is significantly more efficient than standard discontinuous Galerkin on unstructured grids because the former exploits the tensor-product nature of
 computations to reduce computations from O(N^3) to O(3N). The dGSEM possesses several desirable characteristics [@abdi8] 
-such as: high-order accuracy, geometrical flexibility compared to global spectral methods, high scalability due to 
+such as: high-order accuracy, larger geometrical flexibility compared to global spectral methods, high scalability due to 
 the high arithmetic intensity per element, suitability for GPU acceleration, and support for both h- and p- refinement.
 
 ## Oct-tree cell-based AMR
@@ -52,7 +52,7 @@ where they are needed. NebulaSEM implements oct-tree cell-based AMR using the fo
 The `AmrIteration` class provides a high-level interface to enable AMR for any solver written using the library.
 A single loop enclosing the timestep iterations and declaration of fields involved in the PDE is enough to provide AMR 
 capability for any solver. The details of regridding the domain, memory management, resizing and transferring fields in 
-a conservative manner etc are all taken care of behind the scenes by the library.
+a conservative manner etc. are all taken care of behind the scenes by the library.
 
 ## Support for new solver development
 NebulaSEM offers a range of operators for spatial and temporal discretization, streamlining the development of 
@@ -78,7 +78,7 @@ void transport() {
 }
 ```
 
-Spatial operators within dGSEM encompass divergence, gradient, laplacian, and more. Temporal discretization is 
+Spatial operators within dGSEM encompass divergence, gradient, Laplacian, and more. Temporal discretization is 
 accomplished through explicit and implicit schemes, including first-order Euler explicit and implicit schemes, 
 linear multi-step methods such as Adams-Moulton and Adams-Bashforth, the Runge-Kutta method up to 4th order, 
 and fully-implicit Backward Differencing (BDF) methods.
@@ -110,7 +110,7 @@ Pitz-Daily problem [@pitz1983], utilizing the Smagornisky-Lilly large eddy simul
 profiles are depicted in \autoref{fig:pitz-daily}.
 
 b) Atmospheric Simulation:
-NebulaSEM can serve as a non-hydrostatic dynamical core for atmospheric simulation.
+NebulaSEM can serve as a non-hydrostatic dynamical core for atmospheric simulations.
 To evaluate the dynamical core, we solve the rising thermal bubble problem [@robert1993] using the non-hydrostatic 
 Euler equations solver. The test involves adaptive mesh refinement and discontinuous Galerkin spectral element 
 discretization with polynomial order of 4. The result is depicted in \autoref{fig:srtb}
