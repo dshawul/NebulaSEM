@@ -1242,8 +1242,10 @@ int Prepare::decomposeMesh(Int step) {
                     {
                         Util::ifstream_bin is(path.str());
                         is >> gAmrTree;
-                        forEach(gAmrTree,i)
-                            gAmrTree[i].id = new_order[gAmrTree[i].id];
+                        forEach(gAmrTree,i) {
+                            if(gAmrTree[i].id < gBCS)
+                                gAmrTree[i].id = new_order[gAmrTree[i].id];
+                        }
                     }
                     {
                         Util::ofstream_bin os(path.str());
