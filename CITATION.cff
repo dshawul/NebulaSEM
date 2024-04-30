@@ -1,0 +1,33 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Abdi
+  given-names: Daniel S.
+  orcid: "https://orcid.org/0000-0003-0671-2941"
+contact:
+- family-names: Abdi
+  given-names: Daniel S.
+  orcid: "https://orcid.org/0000-0003-0671-2941"
+doi: 10.5281/zenodo.11088210
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Abdi
+    given-names: Daniel S.
+    orcid: "https://orcid.org/0000-0003-0671-2941"
+  date-published: 2024-04-30
+  doi: 10.21105/joss.06448
+  issn: 2475-9066
+  issue: 96
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 6448
+  title: "NebulaSEM: A high-order discontinuous Galerkin spectral
+    element code for atmospheric modeling"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.06448"
+  volume: 9
+title: "NebulaSEM: A high-order discontinuous Galerkin spectral element
+  code for atmospheric modeling"
+

@@ -2,6 +2,7 @@
 [![APIdoc](https://github.com/dshawul/NebulaSEM/actions/workflows/APIdoc.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/APIdoc.yml)
 [![JOSS](https://github.com/dshawul/NebulaSEM/actions/workflows/paper.yml/badge.svg)](https://github.com/dshawul/NebulaSEM/actions/workflows/paper.yml)
 [![DOI](https://zenodo.org/badge/28114781.svg)](https://zenodo.org/doi/10.5281/zenodo.11088209)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.06448/status.svg)](https://doi.org/10.21105/joss.06448)
 
 ## NebulaSEM
 
