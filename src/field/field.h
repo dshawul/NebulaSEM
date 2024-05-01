@@ -2589,7 +2589,7 @@ void applyExplicitBCs(const MeshField<T,E>& cF, bool update_ghost = false) {
            zR = Scalar(0);
     Vector C(0);
     /*update ghost cells*/
-    bool sync = (update_ghost && gInterMesh.size());
+    bool sync = (update_ghost && gInterMesh.size() && MP::n_hosts > 1);
     ASYNC_COMM<T> comm(&cF[0]);
 
     if(sync) comm.send();

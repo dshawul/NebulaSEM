@@ -229,24 +229,27 @@ void Mesh::initGeomMeshFields(bool remove_empty) {
         DG::init_basis();
         DG::init_geom();
     }
-    /*Start communicating cV and cC*/
-    ASYNC_COMM<Scalar> commv(&cV[0]);
-    ASYNC_COMM<Vector> commc(&cC[0]);
-    commv.send();
-    commc.send();
-    /*Ghost face marker*/
+    /*exchange cV and cC*/
     IntVector isGhostFace;
     isGhostFace.assign(gFacets.size(),0);
-    forEach(gInterMesh,i) {
-        interBoundary& b = gInterMesh[i];
-        forEach(*b.f,j) {
-            Int faceid = (*b.f)[j];
-            isGhostFace[faceid] = 1;
+    if(MP::n_hosts > 1) {
+        /*Start communicating cV and cC*/
+        ASYNC_COMM<Scalar> commv(&cV[0]);
+        ASYNC_COMM<Vector> commc(&cC[0]);
+        commv.send();
+        commc.send();
+        /*Ghost face marker*/
+        forEach(gInterMesh,i) {
+            interBoundary& b = gInterMesh[i];
+            forEach(*b.f,j) {
+                Int faceid = (*b.f)[j];
+                isGhostFace[faceid] = 1;
+            }
         }
+        /*finish comm*/
+        commv.recv();
+        commc.recv();
     }
-    /*finish comm*/
-    commv.recv();
-    commc.recv();
     /* Facet interpolation factor to the owner of the face.
      * Neighbor takes (1 - f) */
     forEach(gFacets,faceid) {
@@ -1273,10 +1276,10 @@ int Prepare::decomposeMesh(Int step) {
 
             if(Controls::write_format == Controls::TEXT) {
                 ofstream os(str + ".txt");
-                os << *pmesh << "\n";
+                os << *pmesh;
             } else {
                 Util::ofstream_bin os(str + ".bin");
-                os << *pmesh << "\n";
+                os << *pmesh;
             }
         }
 
