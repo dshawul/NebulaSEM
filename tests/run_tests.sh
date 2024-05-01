@@ -48,13 +48,17 @@ allParTests=( \
     pitzdaily/les/pitzDaily \
     potential/potential \
     atmo/acoustic-sphere/sphere \
+    atmo/acoustic-sphere-amr/sphere \
+    atmo/acoustic-sphere-amr-dg/sphere \
     atmo/advection-sphere/sphere \
     atmo/ctbs/bubble \
     atmo/dc/bubble \
     atmo/advection-leveque/bubble \
+    atmo/hydro-sphere/sphere \
     atmo/lrtb/bubble \
     atmo/srtb/bubble \
     atmo/srtb-amr/bubble \
+    atmo/srtb-amr-zaxis/bubble \
     atmo/srtb-curved/bubble \
     atmo/srtb-inclined/bubble \
     atmo/srtb-piso/bubble \
