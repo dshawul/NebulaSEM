@@ -1047,11 +1047,7 @@ int Prepare::decomposeMesh(Int step) {
         std::cout << "Decomposing grid at step " << step << std::endl;
 
         /*Read mesh*/
-        LoadMesh(step,false);
-
-        /*Read fields*/
-        createFields(fields,step);
-        readFields(fields,step);
+        LoadMesh(step,false,false);
 
         /**********************
          * decompose mesh
@@ -1199,9 +1195,11 @@ int Prepare::decomposeMesh(Int step) {
                 }
             }
         }
+
         /**************************************
          * Write grid
          **************************************/
+        std::string grid_path;
 
         /* write master grid after reordering cells*/
         {
@@ -1226,12 +1224,16 @@ int Prepare::decomposeMesh(Int step) {
             string str = path.str();
 
             if(System::exists(str + ".txt")) {
-                ofstream os(str + ".txt");
+                str += ".txt";
+                ofstream os(str + ".tmp");
                 os << gMesh;
             } else if(System::exists(str + ".bin")) {
-                Util::ofstream_bin os(str + ".bin");
+                str += ".bin";
+                Util::ofstream_bin os(str + ".tmp");
                 os << gMesh;
             }
+
+            grid_path = str;
 
             /*rewrite AmrTree*/
             {
@@ -1276,6 +1278,19 @@ int Prepare::decomposeMesh(Int step) {
                 Util::ofstream_bin os(str + ".bin");
                 os << *pmesh << "\n";
             }
+        }
+
+        /*Read old mesh again with extrusion on sphere*/
+        {
+            if(is_spherical)
+                LoadMesh(step,false,true);
+
+            /*Rename reordered mesh file*/
+            std::rename((grid_path + ".tmp").c_str(), grid_path.c_str());
+
+            /*Read fields*/
+            createFields(fields,step);
+            readFields(fields,step);
         }
 
         /***************************
