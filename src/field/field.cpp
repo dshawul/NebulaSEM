@@ -778,23 +778,6 @@ void Prepare::refineMesh(Int step) {
             cCells[n.id] = 0;
     }
 
-    /*Write refined/coarsened cells and level fields*/
-#if 0
-    ScalarCellField rCellsS("rCells",WRITE);
-    ScalarCellField cCellsS("cCells",WRITE);
-    ScalarCellField rDepthS("rDepth",WRITE);
-    for(Int i = 0; i < gBCS; i++) {
-        for(Int j = 0; j < DG::NP; j++) {
-            rCellsS[i * DG::NP + j] = Scalar(rCells[i]);
-            cCellsS[i * DG::NP + j] = Scalar(cCells[i]);
-            rDepthS[i * DG::NP + j] = Scalar(rDepth[i]);
-        }
-    }
-    Mesh::setNeumannBCs(rCellsS);
-    Mesh::setNeumannBCs(cCellsS);
-    Mesh::setNeumannBCs(rDepthS);
-#endif
-
     /*Ensure 2:1 balance */
     for(Int i = 0;i < gBCS;i++) {
         Cell& c = gCells[i];
@@ -879,6 +862,40 @@ void Prepare::refineMesh(Int step) {
             }
         }
     }
+
+    /*If all siblings are not flagged for coarsening, reset coarsening flag.*/
+    forEach(gAmrTree,i) {
+        Node& n = gAmrTree[i];
+        if(n.nchildren) {
+            for(Int j = 0;j < n.nchildren;j++) {
+                Node& cn = gAmrTree[n.cid + j];
+                if(cn.nchildren || !cCells[cn.id]) {
+                    for(Int k = 0;k < n.nchildren;k++) {
+                        Node& cnk = gAmrTree[n.cid + k];
+                        cCells[cnk.id] = 0;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    /*Write refined/coarsened cells and level fields*/
+#if 0
+    ScalarCellField rCellsS("rCells",WRITE);
+    ScalarCellField cCellsS("cCells",WRITE);
+    ScalarCellField rDepthS("rDepth",WRITE);
+    for(Int i = 0; i < gBCS; i++) {
+        for(Int j = 0; j < DG::NP; j++) {
+            rCellsS[i * DG::NP + j] = Scalar(rCells[i]);
+            cCellsS[i * DG::NP + j] = Scalar(cCells[i]);
+            rDepthS[i * DG::NP + j] = Scalar(rDepth[i] + rCells[i] - cCells[i]);
+        }
+    }
+    Mesh::setNeumannBCs(rCellsS);
+    Mesh::setNeumannBCs(cCellsS);
+    Mesh::setNeumannBCs(rDepthS);
+#endif
 
     /*refine/coarsen mesh and fields*/
     {
