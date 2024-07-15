@@ -665,13 +665,24 @@ void Prepare::refineMesh(Int step) {
     }
 
     /*Enforce approximate 2:1 balance*/
+    IntVector level_cells;
+    level_cells.assign(refine_params.max_level + 1,0);
+
     IntVector rDepth;
     rDepth.assign(gBCS,0);
+
     forEach(gAmrTree,i) {
         Node& n = gAmrTree[i];
-        if(!n.nchildren)
+        if(!n.nchildren) {
             rDepth[n.id] = n.level;
+            level_cells[n.level]++;
+        }
     }
+
+    std::cout << "Level cell count: ";
+    forEach(level_cells,i)
+        std::cout << level_cells[i] << " ";
+    std::cout << " Total: " << gBCS << std::endl;
 
     /*find cells to refine/coarsen*/
     IntVector rCells,cCells;
