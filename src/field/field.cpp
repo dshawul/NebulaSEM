@@ -723,33 +723,34 @@ void Prepare::refineMesh(Int step) {
         }
 
         /*add buffer zone*/
-        IntVector bufferCells;
-        bufferCells.assign(gBCS,0);
-
         for(Int b = 0; b < refine_params.buffer_zone; b++) {
-            IntVector rCellsQoi_c = rCellsQoi;
-            for(Int i = 0;i < gBCS;i++) {
-                if(!rCellsQoi_c[i]) continue;
-                Cell& c = gCells[i];
-                forEach(c,j) {
-                    Int c1 = gFOC[c[j]];
-                    Int c2 = gFNC[c[j]];
-                    if(c2 >= gBCS) continue;
-                    if(c1 == i) {
-                        if(rCellsQoi[c2] < rCellsQoi[c1])
-                            bufferCells[c2]++;
-                    } else {
-                        if(rCellsQoi[c1] < rCellsQoi[c2])
-                            bufferCells[c1]++;
+            for(Int level = 1; level < refine_params.buffer_zone; level++) {
+                IntVector bufferCells;
+                bufferCells.assign(gBCS,0);
+
+                for(Int i = 0;i < gBCS;i++) {
+                    if(rCellsQoi[i] != level) continue;
+                    Cell& c = gCells[i];
+                    forEach(c,j) {
+                        Int c1 = gFOC[c[j]];
+                        Int c2 = gFNC[c[j]];
+                        if(c2 >= gBCS) continue;
+                        if(c1 == i) {
+                            if(rCellsQoi[c2] < rCellsQoi[c1])
+                                bufferCells[c2]++;
+                        } else {
+                            if(rCellsQoi[c1] < rCellsQoi[c2])
+                                bufferCells[c1]++;
+                        }
                     }
                 }
-            }
-        }
 
-        for(Int i = 0; i < gBCS; i++) {
-            if(bufferCells[i]) { 
-                rCellsQoi[i]++;
-                cCells[i] = 0;
+                for(Int i = 0; i < gBCS; i++) {
+                    if(bufferCells[i]) { 
+                        rCellsQoi[i]++;
+                        cCells[i] = 0;
+                    }
+                }
             }
         }
 
