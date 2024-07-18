@@ -58,7 +58,7 @@ void euler(std::istream& input) {
         ScalarCellField p("p",READWRITE);
         VectorCellField U("U",READWRITE);
         ScalarCellField T("T",READWRITE);
-        ScalarCellField rho("rho",WRITE);
+        ScalarCellField rho("rho",READWRITE);
         VectorCellField g(false);
 
         /*Read fields*/
@@ -135,23 +135,46 @@ void euler(std::istream& input) {
             rho_ref = (P0 / (R*T0));
         }
 
-        /* compute rho from p*/
-        p += p_ref;
-        Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
-        applyExplicitBCs(p_ref,true);
-        applyExplicitBCs(p,true);
+#if 0
+        if(ait.start()) {
+#endif
+            /*calculate rho from p*/
+            p += p_ref;
+            Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
+            applyExplicitBCs(p_ref,true);
+            applyExplicitBCs(p,true);
 
-        /*calculate rho*/
-        Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
-        applyExplicitBCs(rho_ref,true);
+            /*calculate rho*/
+            Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
+            applyExplicitBCs(rho_ref,true);
 
-        rho = (P0 / (R*(T + T0))) * pow(p / P0, 1 / p_gamma);
-        Mesh::scaleBCs<Scalar>(p,rho,psi);
-        applyExplicitBCs(rho,true);
-        rho -= rho_ref;
-        rho.write(0);
+            rho = (P0 / (R*(T + T0))) * pow(p / P0, 1 / p_gamma);
+            Mesh::scaleBCs<Scalar>(p,rho,psi);
+            applyExplicitBCs(rho,true);
+            rho -= rho_ref;
+            rho.write(0);
 
-        p -= p_ref;
+            p -= p_ref;
+#if 0
+        } else {
+            /*calculate p from rho*/
+            rho += rho_ref;
+            Mesh::scaleBCs<Scalar>(rho,rho_ref,1.0);
+            applyExplicitBCs(rho_ref,true);
+            applyExplicitBCs(rho,true);
+
+            /*calculate p*/
+            Mesh::scaleBCs<Scalar>(rho,p_ref,1.0/psi);
+            applyExplicitBCs(p_ref,true);
+
+            p = P0 * pow((rho*(T+T0)*R) / P0, p_gamma);
+            Mesh::scaleBCs<Scalar>(rho,p,1.0/psi);
+            applyExplicitBCs(p,true);
+            p -= p_ref;
+
+            rho -= rho_ref;
+        }
+#endif
 
         /*compute total mass and energy*/
         if(ait.get_step() == 0)
