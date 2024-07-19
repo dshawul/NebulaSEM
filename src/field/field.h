@@ -964,10 +964,10 @@ class MeshField : public BaseField
         friend type reduce_avg(const MeshField& p, bool local = false) {
             type sum = reduce_sum(p, local);
             if(local)
-                return sum;
+                return sum / Mesh::gBCSfield;
             else {
                 Int nCells;
-                MP::allreduce<Int>(&Mesh::gBCSfield,&nCells,1,MP::OP_SUM);
+                MP::allreduce<Int,Int>(&Mesh::gBCSfield,&nCells,1,MP::OP_SUM);
                 return sum / nCells;
             }
         }
@@ -1165,7 +1165,7 @@ class MeshField : public BaseField
         /*IO*/
         template<typename Ts>
         friend Ts& operator << (Ts& os, MeshField& p) {
-            p.write_(os,0);
+            p.write_(os,0,0);
             return os;
         }
         template<typename Ts>
