@@ -5,12 +5,33 @@
 #include "types.h"
 
 #if defined USE_DOUBLE
-#   define MPI_SCALAR  MPI_DOUBLE
+#   define SCALAR      double
 #else
-#   define MPI_SCALAR  MPI_FLOAT
+#   define SCALAR      float
 #endif
 
 #define  MY_PATH_MAX  512
+
+// Define a traits class to map C++ types to MPI types
+template <typename T>
+struct mpi_traits;
+
+template <>
+struct mpi_traits<int> {
+    static constexpr MPI_Datatype mpi_type = MPI_INT;
+};
+template <>
+struct mpi_traits<unsigned> {
+    static constexpr MPI_Datatype mpi_type = MPI_UNSIGNED;
+};
+template <>
+struct mpi_traits<float> {
+    static constexpr MPI_Datatype mpi_type = MPI_FLOAT;
+};
+template <>
+struct mpi_traits<double> {
+    static constexpr MPI_Datatype mpi_type = MPI_DOUBLE;
+};
 
 /**
   Class for multi-processor support via MPI
@@ -52,25 +73,19 @@ class MP {
         static void print(const char* format,...);
         static bool hasElapsed(const Int);
 
-        template <class type>
+        template < typename type, typename typeb = SCALAR>
         static void recieve(type* buffer,int size,int source,int message_id) {
-            int FLOAT_SIZE;
-            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
-            const int count = (size * sizeof(type) / FLOAT_SIZE);
-            MPI_Recv(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+            const int count = (size * sizeof(type) / sizeof(typeb));
+            MPI_Recv(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         }
-        template <class type>
+        template <typename type, typename typeb = SCALAR>
         static void send(type* buffer,int size,int source,int message_id) {
-            int FLOAT_SIZE;
-            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
-            const int count = (size * sizeof(type) / FLOAT_SIZE);
-            MPI_Send(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD);
+            const int count = (size * sizeof(type) / sizeof(typeb));
+            MPI_Send(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD);
         }
-        template <class type>
+        template <typename type, typename typeb = SCALAR>
         static void allreduce(type* sendbuf,type* recvbuf,int size, Int op) {
-            int FLOAT_SIZE;
-            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
-            const int count = (size * sizeof(type) / FLOAT_SIZE);
+            const int count = (size * sizeof(type) / sizeof(typeb));
             MPI_Op mpi_op;
             switch(op) {
                 case OP_MAX: mpi_op = MPI_MAX; break;
@@ -78,13 +93,11 @@ class MP {
                 case OP_SUM: mpi_op = MPI_SUM; break;
                 case OP_PROD: mpi_op = MPI_PROD; break;
             }
-            MPI_Allreduce(sendbuf,recvbuf,count,MPI_SCALAR,mpi_op,MPI_COMM_WORLD);
+            MPI_Allreduce(sendbuf,recvbuf,count,mpi_traits<typeb>::mpi_type,mpi_op,MPI_COMM_WORLD);
         }
-        template <class type>
+        template <typename type, typename typeb = SCALAR>
         static void reduce(type* sendbuf,type* recvbuf,int size, Int op) {
-            int FLOAT_SIZE;
-            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
-            const int count = (size * sizeof(type) / FLOAT_SIZE);
+            const int count = (size * sizeof(type) / sizeof(typeb));
             MPI_Op mpi_op;
             switch(op) {
                 case OP_MAX: mpi_op = MPI_MAX; break;
@@ -92,21 +105,17 @@ class MP {
                 case OP_SUM: mpi_op = MPI_SUM; break;
                 case OP_PROD: mpi_op = MPI_PROD; break;
             }
-            MPI_Reduce(sendbuf,recvbuf,count,MPI_SCALAR,mpi_op,0,MPI_COMM_WORLD);
+            MPI_Reduce(sendbuf,recvbuf,count,mpi_traits<typeb>::mpi_type,mpi_op,0,MPI_COMM_WORLD);
         }
-        template <class type>
+        template <typename type, typename typeb = SCALAR>
         static void irecieve(type* buffer,int size,int source,int message_id,void* request) {
-            int FLOAT_SIZE;
-            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
-            const int count = (size * sizeof(type) / FLOAT_SIZE);
-            MPI_Irecv(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
+            const int count = (size * sizeof(type) / sizeof(typeb));
+            MPI_Irecv(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
         }
-        template <class type>
+        template <typename type, typename typeb = SCALAR>
         static void isend(type* buffer,int size,int source,int message_id,void* request) {
-            int FLOAT_SIZE;
-            MPI_Type_size(MPI_SCALAR, &FLOAT_SIZE);
-            const int count = (size * sizeof(type) / FLOAT_SIZE);
-            MPI_Isend(buffer,count,MPI_SCALAR,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
+            const int count = (size * sizeof(type) / sizeof(typeb));
+            MPI_Isend(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
         }
         static void waitall(int count,void* request) {
             MPI_Waitall(count,(MPI_Request*)request,MPI_STATUS_IGNORE);
