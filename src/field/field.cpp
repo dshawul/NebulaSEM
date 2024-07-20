@@ -904,9 +904,6 @@ void Prepare::refineMesh(Int step) {
             rDepthS[i * DG::NP + j] = Scalar(rDepth[i] + rCells[i] - cCells[i]);
         }
     }
-    Mesh::setNeumannBCs(rCellsS);
-    Mesh::setNeumannBCs(cCellsS);
-    Mesh::setNeumannBCs(rDepthS);
 #endif
 
     /*refine/coarsen mesh and fields*/
@@ -1019,12 +1016,17 @@ namespace Prepare {
 
         int ncon = 1;
         int edgeCut = 0;
-        int ncells = gBCS;
-        std::vector<int> xadj,adjncy;
+        int nvtxs = gBCS;
+        std::vector<int> xadj,adjncy,adjwgt;
         std::vector<int> options(METIS_NOPTIONS);
 
         /*default options*/
         METIS_SetDefaultOptions(&options[0]);
+        options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+        options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_EDGE;
+        options[METIS_OPTION_NCUTS] = 100;
+        options[METIS_OPTION_NITER] = 200;
+        options[METIS_OPTION_UFACTOR] = 30;
 
         /*build adjacency*/
         for(Int i = 0;i < gBCS;i++) {
@@ -1033,32 +1035,50 @@ namespace Prepare {
             forEach(c,j) {
                 Int f = c[j];
                 if(i == gFOC[f]) {
-                    if(gFNC[f] < gBCS)
+                    if(gFNC[f] < gBCS) {
                         adjncy.push_back(gFNC[f]);
+                        if(gFMC[f] >= 1) {
+                            adjwgt.push_back(1e3);
+                        } else
+                            adjwgt.push_back(1);
+                    }
                 } else {
-                    if(gFOC[f] < gBCS)
+                    if(gFOC[f] < gBCS) {
                         adjncy.push_back(gFOC[f]);
+                        if(gFMC[f] >= 1) {
+                            adjwgt.push_back(1e3);
+                        } else
+                            adjwgt.push_back(1);
+                    }
                 }
             }
         }
         xadj.push_back(adjncy.size());
 
         /*partition*/
-        METIS_PartGraphKway (
-                &ncells,
+        int ret = METIS_PartGraphKway (
+                &nvtxs,
                 &ncon,
                 &xadj[0],
                 &adjncy[0],
                 NULL,
                 NULL,
-                NULL,
+                &adjwgt[0],
                 &total,
                 NULL,
                 NULL,
                 &options[0],
                 &edgeCut,
                 (int*)(&blockIndex[0])
-                );
+        );
+        if (ret != METIS_OK) {
+            std::cout << "*******************************" << std::endl;
+            std::cerr << "*** METIS encountered error ***" << std::endl;
+            std::cout << "*******************************" << std::endl;
+            exit(1);
+        } else {
+            std::cout << "METIS edge cut: " << edgeCut << std::endl;
+        }
     }
 
 }
@@ -1073,13 +1093,16 @@ int Prepare::decomposeMesh(Int step) {
     if(MP::host_id == 0) {
         Int total = MP::n_hosts;
         DecomposeParams& dp = Controls::decompose_params;
-        vector<string>& fields = BaseField::fieldNames;
         Int i,j,ID,count;
 
         std::cout << "Decomposing grid at step " << step << std::endl;
 
         /*Read mesh*/
         LoadMesh(step,false,false);
+
+        /*get fields to decompose*/
+        vector<string> fields = BaseField::fieldNames;
+        eraseValue(fields, "processor");
 
         /**********************
          * decompose mesh
@@ -1191,6 +1214,12 @@ int Prepare::decomposeMesh(Int step) {
                 co = blockIndex[gFOC[i]];
                 cn = blockIndex[gFNC[i]];
                 if(co != cn) {
+                    if(gFMC[i] >= 1) {
+                        std::cout << "**********************************************" << std::endl;
+                        std::cout << "*** Error: METIS cut through mortar face *****" << std::endl;
+                        std::cout << "**********************************************" << std::endl;
+                        exit(1);
+                    }
                     imesh[std::make_pair(co,cn)].push_back(fLoc[co][i]);
                     imesh[std::make_pair(cn,co)].push_back(fLoc[cn][i]);
                 }
@@ -1388,6 +1417,18 @@ int Prepare::decomposeMesh(Int step) {
                 pf->write(os, &cLocAll);
             }
         }
+
+#if 0
+        /*write processor field*/
+        ScalarCellField processor("processor",WRITE);
+        Int idx = 0;
+        for(ID = 0;ID < total;ID++) {
+            forEach(cLoc[ID], i) {
+                processor[idx++] = ID;
+            }
+        }
+        processor.write(step);
+#endif
 
         /*destroy*/ 
         BaseField::destroyFields();
