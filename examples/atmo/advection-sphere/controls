@@ -63,7 +63,7 @@ general
 ############################
 prepare
 {
-    fields    4 { U T p rho }
+    fields    2 { U T }
 }
 
 decomposition

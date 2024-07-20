@@ -135,9 +135,10 @@ void euler(std::istream& input) {
             rho_ref = (P0 / (R*T0));
         }
 
-#if 0
+        /* Problem initialization is easier with p than rho, so use p
+           initially, but later use rho as the primary variable. 
+           You need to have both p & rho defined in problem configuration*/
         if(ait.start()) {
-#endif
             /*calculate rho from p*/
             p += p_ref;
             Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
@@ -145,17 +146,13 @@ void euler(std::istream& input) {
             applyExplicitBCs(p,true);
 
             /*calculate rho*/
-            Mesh::scaleBCs<Scalar>(p,rho_ref,psi);
-            applyExplicitBCs(rho_ref,true);
-
             rho = (P0 / (R*(T + T0))) * pow(p / P0, 1 / p_gamma);
-            Mesh::scaleBCs<Scalar>(p,rho,psi);
             applyExplicitBCs(rho,true);
+            Mesh::scaleBCs<Scalar>(rho,rho_ref,1);
+            applyExplicitBCs(rho_ref,true);
             rho -= rho_ref;
-            rho.write(0);
 
             p -= p_ref;
-#if 0
         } else {
             /*calculate p from rho*/
             rho += rho_ref;
@@ -164,17 +161,14 @@ void euler(std::istream& input) {
             applyExplicitBCs(rho,true);
 
             /*calculate p*/
-            Mesh::scaleBCs<Scalar>(rho,p_ref,1.0/psi);
-            applyExplicitBCs(p_ref,true);
-
             p = P0 * pow((rho*(T+T0)*R) / P0, p_gamma);
-            Mesh::scaleBCs<Scalar>(rho,p,1.0/psi);
             applyExplicitBCs(p,true);
+            Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
+            applyExplicitBCs(p_ref,true);
             p -= p_ref;
 
             rho -= rho_ref;
         }
-#endif
 
         /*compute total mass and energy*/
         if(ait.get_step() == 0)
