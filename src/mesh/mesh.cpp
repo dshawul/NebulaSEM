@@ -355,20 +355,22 @@ void Mesh::MeshObject::fixHexCells() {
                 Facet& fngo = fng[i];
                 Cell& cn = cng[i];
 
-                Facets newf;
-                newf.resize(cn.size());
-                forEach(fngo,k) {
-                    Int vi = fngo[k];
-                    forEach(cn,j) {
-                        Facet& f = mFacets[cn[j]];
-                        if(std::find(f.begin(),f.end(),vi) != f.end())
-                            newf[j].push_back(vi);
-                    }
-                }
-
                 forEach(cn,j) {
                     Facet& f = mFacets[cn[j]];
-                    f = newf[j];
+
+                    auto it1 = std::find_first_of(fngo.begin(), fngo.end(), f.begin(), f.end());
+                    auto it2 = std::find(f.begin(), f.end(), *it1);
+                    std::rotate(f.begin(), it2, f.end());
+
+                    forEachS(f,i,1) {
+                        auto it3 = std::find(fngo.begin(), fngo.end(), f[i]);
+                        if(it3 == fngo.end()) continue;
+                        if (it1 > it3) {
+                            std::reverse(f.begin()+1, f.end());
+                            break;
+                        }
+                        it1 = it3;
+                    }
                 }
             }
 
