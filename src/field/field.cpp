@@ -1284,11 +1284,11 @@ int Prepare::decomposeMesh(Int step) {
             path << gMeshName << "_" << step;
             string str = path.str();
 
-            if(System::exists(str + ".txt")) {
+            if(Controls::write_format == Controls::TEXT) {
                 str += ".txt";
                 ofstream os(str + ".tmp");
                 os << gMesh;
-            } else if(System::exists(str + ".bin")) {
+            } else {
                 str += ".bin";
                 Util::ofstream_bin os(str + ".tmp");
                 os << gMesh;
@@ -1409,10 +1409,10 @@ int Prepare::decomposeMesh(Int step) {
             path << fields[i] << step;
             string str = path.str();
 
-            if(System::exists(str + ".txt")) {
+            if(Controls::write_format == Controls::TEXT) {
                 ofstream os(str + ".txt");
                 pf->write(os, &cLocAll);
-            } else if(System::exists(str + ".bin")) {
+            } else {
                 Util::ofstream_bin os(str + ".bin");
                 pf->write(os, &cLocAll);
             }

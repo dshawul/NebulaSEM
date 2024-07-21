@@ -1572,13 +1572,13 @@ void MeshField<T,E>::read(Int step) {
     }
 
     /*read*/
-    if(System::exists(path.str() + ".txt")) {
-        std::ifstream is(path.str() + ".txt");
-        this->read_(is);
-    } else if(System::exists(path.str() + ".bin")) {
+    if(System::exists(path.str() + ".bin")) {
         Util::ifstream_bin is(path.str() + ".bin");
         this->read_(is);
-    }
+    } else if(System::exists(path.str() + ".txt")) {
+        std::ifstream is(path.str() + ".txt");
+        this->read_(is);
+    } 
 }
 
 /** Write internal field */
