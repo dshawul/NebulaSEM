@@ -724,7 +724,7 @@ void Prepare::refineMesh(Int step) {
 
         /*add buffer zone*/
         for(Int b = 0; b < refine_params.buffer_zone; b++) {
-            for(Int level = 1; level < refine_params.buffer_zone; level++) {
+            for(Int level = 1; level <= refine_params.max_level; level++) {
                 IntVector bufferCells;
                 bufferCells.assign(gBCS,0);
 
@@ -748,7 +748,6 @@ void Prepare::refineMesh(Int step) {
                 for(Int i = 0; i < gBCS; i++) {
                     if(bufferCells[i]) { 
                         rCellsQoi[i]++;
-                        cCells[i] = 0;
                     }
                 }
             }
@@ -760,8 +759,10 @@ void Prepare::refineMesh(Int step) {
                 RefineParams& rp = refine_params;
                 if(gBCS <= rp.limit
                    && rDepth[i] < rp.max_level
-                   && rDepth[i] < rCellsQoi[i])
+                   && rDepth[i] < rCellsQoi[i]) {
                     rCells[i] = 1;
+                    cCells[i] = 0;
+                }
             }
         }
     }
