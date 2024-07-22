@@ -1799,9 +1799,11 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                         }
                     }
                     mCells.push_back(c1);
+                    Node& cn = mAmrTree[n.cid];
                     n.nchildren = 0;
                     n.id = pid;
                     n.cid = 0;
+                    n.level = cn.level - 1;
                 }
             }
         }
@@ -2117,14 +2119,15 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
 
                 //add children to the mAmrTree
                 {
-                    Node* mnd = &mAmrTree[node_index + j];
-                    mnd->nchildren = newcn.size();
-                    mnd->cid = mAmrTree.size();
-                    mnd->id = 0;
+                    Node& mnd = mAmrTree[node_index + j];
+                    mnd.nchildren = newcn.size();
+                    mnd.cid = mAmrTree.size();
+                    mnd.id = 0;
+                    Int new_level = mnd.level + 1;
                     forEach(newcn,k) {
                         Node n;
                         n.id = start_index + k;
-                        n.level = mnd->level + 1;
+                        n.level = new_level;
                         mAmrTree.push_back(n);
                     }
                 }
