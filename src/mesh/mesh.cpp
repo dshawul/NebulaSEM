@@ -83,6 +83,7 @@ void Mesh::MeshObject::addBoundaryCells() {
         }
 
         IntVector& mDelete = mBoundaries["delete"];
+        mDelete.clear();
         forEach(mFNC,i) {
             if(mFNC[i] == MAX_INT) {
                 if(!faceInB[i])
