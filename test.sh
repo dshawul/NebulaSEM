@@ -59,7 +59,7 @@ run() {
 
     #solve
     solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
-    mpirun -n $2 ${bind_numa} ${bin_path}/${solver} ./controls | tee log.txt
+    mpirun -n $2 ${bind_numa} ${bin_path}/${solver} ./controls 2>&1 | tee log.txt
 }
 
 #check case/grid exists

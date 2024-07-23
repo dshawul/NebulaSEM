@@ -1123,8 +1123,21 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     Vector C;
     calcFaceCenter(f_,C);
 
-    mVertices.push_back(C);
-    Int fci = mVertices.size() - 1;
+    /*check if center already exists (it may happen in 3D)*/
+    Int fci = Constants::MAX_INT;
+    if(f_.size() > 6) {
+        forEach(mVertices,i) {
+            Vector& v = mVertices[i];
+            if(equal(v,C)) {
+                fci = i;
+                break;
+            }
+        }
+    }
+    if(fci == Constants::MAX_INT) {
+        mVertices.push_back(C);
+        fci = mVertices.size() - 1;
+    }
 
     /*straighten edges of face*/
     Facet f,fr;
