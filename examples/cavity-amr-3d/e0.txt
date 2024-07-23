@@ -1,0 +1,14 @@
+size 1
+internal 1
+{
+    uniform 7.65e-4
+}
+boundary 2
+{
+    top_WALL {
+        type CALC_DIRICHLET
+    }
+    all_WALL {
+        type CALC_DIRICHLET
+    }
+}

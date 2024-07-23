@@ -68,7 +68,7 @@ decomposition
 
 refinement
 {
-    direction       0 0 1
+    direction       0 0 0
     field           U
     field_min       0.1
     field_max       0.3

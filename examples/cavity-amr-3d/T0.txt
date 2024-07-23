@@ -1,0 +1,16 @@
+size 1
+internal 1
+{
+    uniform 300
+}
+boundary 2
+{
+    top_WALL {
+        type NEUMANN
+        value 0
+    }
+    all_WALL {
+        type NEUMANN
+        value 0
+    }
+}
