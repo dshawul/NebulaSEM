@@ -28,7 +28,7 @@ struct RefineParams {
         field_max = 0.6;
         field_min = 0.2;
         max_level = 1;
-        buffer_zone = 1;
+        buffer_zone = 2;
         limit = 100000;
     }
 };

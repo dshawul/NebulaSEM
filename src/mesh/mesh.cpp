@@ -340,32 +340,33 @@ void Mesh::MeshObject::fixHexCells() {
             IntVector rote = {vp[1], vp[5], vp[1], vp[2], vp[3], vp[2]};
             /*fix orientation of vertices */
             for(Int i = 0; i < 6; i++) {
+                Facet& fn = fng[i];
+                Cell& cn = cng[i];
                 Int gid = groupId[i];
                 Int rs = rots[gid];
                 Int re = rote[gid];
-                auto it = std::find(fng[i].begin(), fng[i].end(), rs);
-                std::rotate(fng[i].begin(), it, fng[i].end());
 
-                Scalar dir = dot(unit(mVertices[fng[i][1]] - mVertices[fng[i][0]]),
+                auto it = std::find(fn.begin(), fn.end(), rs);
+                std::rotate(fn.begin(), it, fn.end());
+
+                Scalar dir = dot(unit(mVertices[fn[1]] - mVertices[fn[0]]),
                                  unit(mVertices[re] - mVertices[rs]));
                 if(dir < 0.99)
-                    std::reverse(fng[i].begin()+1, fng[i].end());
-            }
-
-            for(Int i = 0; i < 6; i++) {
-                Facet& fngo = fng[i];
-                Cell& cn = cng[i];
+                    std::reverse(fn.begin()+1, fn.end());
 
                 forEach(cn,j) {
                     Facet& f = mFacets[cn[j]];
 
-                    auto it1 = std::find_first_of(fngo.begin(), fngo.end(), f.begin(), f.end());
+                    auto it1 = std::find_first_of(fn.begin(), fn.end(), f.begin(), f.end());
                     auto it2 = std::find(f.begin(), f.end(), *it1);
                     std::rotate(f.begin(), it2, f.end());
+                    //hack to get face 3 and 4 to the right orientation
+                    if(j >= 2)
+                        std::rotate(f.rbegin(), f.rbegin() + (j - 1), f.rend());
 
-                    forEachS(f,i,1) {
-                        auto it3 = std::find(fngo.begin(), fngo.end(), f[i]);
-                        if(it3 == fngo.end()) continue;
+                    forEachS(f,k,1) {
+                        auto it3 = std::find(fn.begin(), fn.end(), f[k]);
+                        if(it3 == fn.end()) continue;
                         if (it1 > it3) {
                             std::reverse(f.begin()+1, f.end());
                             break;
@@ -402,22 +403,22 @@ void Mesh::MeshObject::fixHexCells() {
                 }
             }
 #endif
-       }
+        }
 
-       /*for non-conformal*/
-       if(c.size() > 6) {
-           IntVector& fid = mFaceID[cidx];
-           forEach(c,j) {
-               Int f = c[j];
-               Int cnt = std::count(fid.begin(), fid.end(), fid[j]);
-               if(cnt > 1) {
-                   if(mFOC[f] == cidx)
-                       mFMC[f] = 2;
-                   else
-                       mFMC[f] = 1;
-               }
-           }
-       }
+        /*for non-conformal*/
+        if(c.size() > 6) {
+            IntVector& fid = mFaceID[cidx];
+            forEach(c,j) {
+                Int f = c[j];
+                Int cnt = std::count(fid.begin(), fid.end(), fid[j]);
+                if(cnt > 1) {
+                    if(mFOC[f] == cidx)
+                        mFMC[f] = 2;
+                    else
+                        mFMC[f] = 1;
+                }
+            }
+        }
     }
 }
 /**
@@ -964,7 +965,9 @@ void Mesh::MeshObject::mergeFacetsGroup(const IntVector& shared1,Facet& fn, cons
         ci = shared1;
 
     fn = mFacets[ci[0]];
+    if(ci.size() == 1) return;
     ci.erase(ci.begin());
+
     bool repeat = false;
     do {
         IntVector merged;
