@@ -718,7 +718,7 @@ void Prepare::refineMesh(Int step) {
                 }
                 rCellsQoi[i] = level;
             }
-            else if(q <= rp.field_min)
+            else if(q <= rp.field_min && rDepth[i])
                 cCells[i] = 1;
         }
 
@@ -771,24 +771,17 @@ void Prepare::refineMesh(Int step) {
     forEach(gAmrTree,i) {
         Node& n = gAmrTree[i];
         if(n.nchildren) {
-            bool coarsen = true;
             for(Int j = 0;j < n.nchildren;j++) {
                 Node& cn = gAmrTree[n.cid + j];
                 if(cn.nchildren || !cCells[cn.id]) {
-                    coarsen = false;
+                    for(Int k = 0;k < n.nchildren;k++) {
+                        Node& cnk = gAmrTree[n.cid + k];
+                        cCells[cnk.id] = 0;
+                    }
                     break;
                 }
             }
-            if(!coarsen) {
-                for(Int j = 0;j < n.nchildren;j++) {
-                    Node& cn = gAmrTree[n.cid + j];
-                    if(!cn.nchildren && cCells[cn.id]) {
-                        cCells[cn.id] = 0;
-                    }
-                }
-            }
-        } else if(n.level == 0)
-            cCells[n.id] = 0;
+        }
     }
 
     /*Ensure 2:1 balance */
@@ -862,21 +855,7 @@ void Prepare::refineMesh(Int step) {
         }
     }
 
-    /*Construct refinement vars*/
-    IntVector rCellsL,rLevelL,rDirsL;
-    {
-        for(Int i = 0;i < gBCS;i++) {
-            if(rCells[i]) {
-                constexpr Int dir = 7;
-                constexpr Int level = 1;
-                rCellsL.push_back(i);
-                rLevelL.push_back(level);
-                rDirsL.push_back(dir);
-            }
-        }
-    }
-
-    /*If all siblings are not flagged for coarsening, reset coarsening flag.*/
+    /*Adjust coarsening cells array based on amr tree*/
     forEach(gAmrTree,i) {
         Node& n = gAmrTree[i];
         if(n.nchildren) {
@@ -889,6 +868,20 @@ void Prepare::refineMesh(Int step) {
                     }
                     break;
                 }
+            }
+        }
+    }
+
+    /*Construct refinement vars*/
+    IntVector rCellsL,rLevelL,rDirsL;
+    {
+        for(Int i = 0;i < gBCS;i++) {
+            if(rCells[i]) {
+                constexpr Int dir = 7;
+                constexpr Int level = 1;
+                rCellsL.push_back(i);
+                rLevelL.push_back(level);
+                rDirsL.push_back(dir);
             }
         }
     }
