@@ -12,6 +12,7 @@ usage() {
     echo "   -c,--case     Path to grid file name that is under a test case directory."
     echo "   -b,--bin-path Path to binaries: mesh, prepare and solvers."
     echo "   -s,--steps    Number of time steps, which overwrites the one in control file."
+    echo "   -d,--debug    Debug application."
     echo "   -h,--help     Display this help message."
     echo
     exit 0
@@ -22,6 +23,7 @@ case=examples/cavity/cavity
 nprocs=1
 bin_path=../bin/
 steps=0
+debug=
 
 #process command line args
 while :; do
@@ -31,6 +33,7 @@ while :; do
         --case|-c) shift; case=$1;; 
         --bin-path|-b) shift; bin_path=$1;; 
         --steps|-s) shift; steps=$1;;
+        --debug|-d) shift; debug=$1;;
         *) break
     esac
     shift
@@ -59,7 +62,7 @@ run() {
 
     #solve
     solver=$(grep -v "^#" ./controls | grep solver | awk '{print $2}')
-    mpirun -n $2 ${bind_numa} ${bin_path}/${solver} ./controls 2>&1 | tee log.txt
+    mpirun -n $2 ${bind_numa} ${debug} ${bin_path}/${solver} ./controls 2>&1 | tee log.txt
 }
 
 #check case/grid exists
