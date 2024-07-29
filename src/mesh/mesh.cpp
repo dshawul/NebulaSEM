@@ -189,6 +189,28 @@ void Mesh::MeshObject::fixHexCells() {
                 std::cout << std::endl;
             }
 #endif
+
+#ifdef USE_HEX_REFINEMENT
+            IntVector b;
+            Int fid = 0;
+            for(Int i = 0; i < c.size(); i++) {
+                Facet& fi = mFacets[c[i]];
+                bool is_coplanar = false;
+                for(Int j = 0; j < i; j++) {
+                    Facet& fj = mFacets[c[j]];
+                    if(coplanarFaces(fi,fj)) {
+                        is_coplanar = true;
+                        b.push_back(b[j]);
+                        break;
+                    }
+                }
+                if(!is_coplanar) {
+                    b.push_back(fid);
+                    fid++;
+                }
+            }
+            mFaceID.push_back(b);
+#else
             /*Group coplanar faces*/
             std::vector<int> groupId(6);
             Cells cng;
@@ -294,7 +316,8 @@ void Mesh::MeshObject::fixHexCells() {
                     }
                 }
             }
-            
+
+#if 0
             /*switch face 0 and 1 in some cases (often after refinement)*/
             Vector N = (mVertices[f0[1]] - mVertices[f0[0]]) ^
                        (mVertices[f0[f0.size() - 1]] - mVertices[f0[0]]);
@@ -348,7 +371,6 @@ void Mesh::MeshObject::fixHexCells() {
 
                 auto it = std::find(fn.begin(), fn.end(), rs);
                 std::rotate(fn.begin(), it, fn.end());
-
                 Scalar dir = dot(unit(mVertices[fn[1]] - mVertices[fn[0]]),
                                  unit(mVertices[re] - mVertices[rs]));
                 if(dir < 0.99)
@@ -375,7 +397,7 @@ void Mesh::MeshObject::fixHexCells() {
                     }
                 }
             }
-
+#endif
             /*for new cell and face IDs*/
             IntVector b;
             for(Int idx = 0; idx < 6; idx++) {
@@ -391,7 +413,7 @@ void Mesh::MeshObject::fixHexCells() {
                 }
             }
             mFaceID.push_back(b);
-            
+
 #ifdef RDEBUG
             if(print) {
                 std::cout << "faceId: " << b << std::endl;
@@ -402,6 +424,7 @@ void Mesh::MeshObject::fixHexCells() {
                     exit(0);
                 }
             }
+#endif
 #endif
         }
 
@@ -830,7 +853,8 @@ void Mesh::MeshObject::calcUnitNormal(const Facet& f,Vector& N) {
 /**
   Straighten edges of faces
  */
-void Mesh::MeshObject::straightenEdges(const Facet& f, Facet& r, Facet& removed) {    
+Facet Mesh::MeshObject::straightenEdges(const Facet& f, Facet* removed) {
+    Facet r;
     Vector v1 = mVertices[f[f.size() - 1]];
     for(Int j = 0;j < f.size();j++) {
         const Vector& v2 = mVertices[f[j]];
@@ -839,9 +863,10 @@ void Mesh::MeshObject::straightenEdges(const Facet& f, Facet& r, Facet& removed)
         if(!Mesh::pointInLine(v2,v1,v3)) {
             r.push_back(f[j]);
             v1 = v2;
-        } else
-            removed.push_back(f[j]);
+        } else if(removed)
+            removed->push_back(f[j]);
     }
+    return r;
 }
 /**
   Check if faces are co-planar
@@ -995,11 +1020,9 @@ void Mesh::MeshObject::mergeFacetsGroup(const IntVector& shared1,Facet& fn, cons
             cout << mFacets[ci[i]] << endl;
         cout << "-----------------------\n";
         {
-            Facet r,rr;
-            straightenEdges(fn,r,rr);
+            Facet r = straightenEdges(fn);
             cout << "Merged face  : " << fn << endl;
             cout << "Straight Edge: " << r << endl;
-            cout << "Removed      : " << rr << endl;
         }
         forEach(fn,i)
             cout << mVertices[fn[i]] << " : ";
@@ -1021,6 +1044,109 @@ void Mesh::MeshObject::mergeCells(Cell& c1, const Cell& c2, IntVector& delFacets
             c1.erase(it);
         }
     }
+}
+void Mesh::MeshObject::mergeCellsHex(const Cells& cells, const Cells& ids, Cell& c2, IntVector& delFacets) {
+#define ADD_FACES(cid,fid) {            \
+    const Cell& c1 = cells[cid];        \
+    const Cell& c1_ids = ids[cid];      \
+    forEach(c1,j) {                     \
+        if(c1_ids[j] == fid)            \
+            c2.push_back(c1[j]);        \
+    }                                   \
+}
+#define DEL_FACES(cid,fid) {            \
+    const Cell& c1 = cells[cid];        \
+    const Cell& c1_ids = ids[cid];      \
+    forEach(c1,j) {                     \
+        if(c1_ids[j] == fid)            \
+            delFacets.push_back(c1[j]); \
+    }                                   \
+}
+    if(cells.size() == 4) {
+        //xy
+        ADD_FACES(0,0);
+        ADD_FACES(1,0);
+        ADD_FACES(2,0);
+        ADD_FACES(3,0);
+
+        ADD_FACES(0,1);
+        ADD_FACES(1,1);
+        ADD_FACES(2,1);
+        ADD_FACES(3,1);
+
+        //xz
+        ADD_FACES(0,2);
+        ADD_FACES(1,2);
+
+        DEL_FACES(0,3);
+        DEL_FACES(1,3);
+
+        ADD_FACES(3,3);
+        ADD_FACES(2,3);
+
+        //yz
+        ADD_FACES(0,4);
+        ADD_FACES(3,4);
+
+        DEL_FACES(0,5);
+        DEL_FACES(3,5);
+
+        ADD_FACES(1,5);
+        ADD_FACES(2,5);
+    } else if(cells.size() == 8) {
+        //xy
+        ADD_FACES(0,0);
+        ADD_FACES(1,0);
+        ADD_FACES(2,0);
+        ADD_FACES(3,0);
+
+        DEL_FACES(0,1);
+        DEL_FACES(1,1);
+        DEL_FACES(2,1);
+        DEL_FACES(3,1);
+
+        ADD_FACES(4,1);
+        ADD_FACES(5,1);
+        ADD_FACES(6,1);
+        ADD_FACES(7,1);
+
+        //xz
+        ADD_FACES(0,2);
+        ADD_FACES(1,2);
+        ADD_FACES(5,2);
+        ADD_FACES(4,2);
+
+        DEL_FACES(0,3);
+        DEL_FACES(1,3);
+        DEL_FACES(5,3);
+        DEL_FACES(4,3);
+
+        ADD_FACES(3,3);
+        ADD_FACES(2,3);
+        ADD_FACES(6,3);
+        ADD_FACES(7,3);
+
+        //yz
+        ADD_FACES(0,4);
+        ADD_FACES(3,4);
+        ADD_FACES(7,4);
+        ADD_FACES(4,4);
+
+        DEL_FACES(0,5);
+        DEL_FACES(3,5);
+        DEL_FACES(7,5);
+        DEL_FACES(4,5);
+
+        ADD_FACES(1,5);
+        ADD_FACES(2,5);
+        ADD_FACES(6,5);
+        ADD_FACES(5,5);
+    } else {
+        std::cout << " Unsupported element for merge " << cells.size() << std::endl;
+        exit(0);
+    }
+#undef ADD_FACES
+#undef DEL_FACES
 }
 /**
   Add vertices to edges of a face
@@ -1143,8 +1269,8 @@ void Mesh::MeshObject::refineFacet(const Facet& f_, Facets& newf, Int dir, Int i
     }
 
     /*straighten edges of face*/
-    Facet f,fr;
-    straightenEdges(f_,f,fr);
+    Facet fr;
+    Facet f = straightenEdges(f_, &fr);
 
     IntVector midpts;
     midpts.resize(f.size(),Constants::MAX_INT);
@@ -1335,27 +1461,40 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
             if(crj != rDir) {
                 IntVector& shared = sharedMap[j].first;
                 shared.push_back(j);
+            }
+        } else {
+            crj -= Constants::MAX_INT / 2;
+            IntVector& shared = sharedMap[crj].first;
+            shared.push_back(j);
+        }
+    }
+
+    IntVector processed;
+    processed.assign(cr.size(), 0);
+
+    forEach(cr,j) {
+        Int crj = cr[j];
+        Int si = j;
+        if(crj < Constants::MAX_INT / 2) {
+            if(crj != rDir) {
             } else {
                 c1.push_back(c[j]);
                 c1r.push_back(0);
+                continue;
             }
-            continue;
+        } else {
+            crj -= Constants::MAX_INT / 2;
+            si = crj;
         }
-        crj -= Constants::MAX_INT / 2;
 
-        IntVector& shared = sharedMap[crj].first;
-        shared.push_back(j);
-    }
+        IntVector& shared = sharedMap[si].first;
 
-    forEachIt(sharedMap,it) {
-        IntVector& shared = (it->second).first;
+        if(processed[j]) continue;
+        forEach(shared,k)
+            processed[shared[k]] = 1;
 
         Facet f;
-        if(shared.size() > 1) {
-            mergeFacetsGroup(shared,f,&c);
-        } else {
-            f = mFacets[c[shared[0]]];
-        }
+        mergeFacetsGroup(shared,f,&c);
 
         Facets newf;
         refineFacet(f,newf,rDir,ivBegin);
@@ -1368,17 +1507,345 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
                 endF.push_back(0);
                 refineF.push_back(0);
             }
-            (it->second).second.push_back(fi);
+            sharedMap[si].second.push_back(fi);
             c1.push_back(fi);
             c1r.push_back(shared[0] + Constants::MAX_INT / 2);
             delFacets.push_back(fi);
         }
+    }
 
+#ifdef USE_HEX_REFINEMENT
+    IntVector refined_faces;
+    Facets refined_straight;
+    forEach(c,j) {
+        Int fi = c[j];
+        Int crj = cr[j];
+
+        //cell is refined but face is not?
+        if(crj >= Constants::MAX_INT / 2) {
+            refined_faces.push_back(fi);
+
+            Facet r = straightenEdges(mFacets[fi]);
+            refined_straight.push_back(r);
+        } else {
+            for(Int k = startF[fi]; k < endF[fi]; k++) {
+                refined_faces.push_back(k);
+
+                Facet r = straightenEdges(mFacets[k]);
+                refined_straight.push_back(r);
+            }
+        }
 #ifdef RDEBUG
-        cout << it->first << " = " << it->second.first << " = " << it->second.second <<  endl;
-        cout << "----" << endl;
+        if(j == 0) cout << "====================================\n";
+        cout << "------------------------" << endl;
+        cout << "Face split id:  " << fi << " rdir " << rDir << " cr " << crj 
+             << " subfaces ( " << startF[fi] << " to " << endF[fi] << " ) " << endl;
 #endif
     }
+
+#ifdef RDEBUG
+    std::cout << "Refined faces: " << refined_faces << std::endl;
+    std::cout << "Cell to be refined: " << c << std::endl;
+    forEach(c,j) {
+        Facet& f = mFacets[c[j]];
+        std::cout << "Face " << j << " id " << c[j] << " " << f << std::endl;
+        forEach(f,k)
+            std::cout << k << ". " << mVertices[f[k]] << std::endl;
+    }
+#endif
+
+#define ADD_FACE() {                            \
+    interior_faces.push_back(mFacets.size());   \
+    mFacets.push_back(f);                       \
+    startF.push_back(0);                        \
+    endF.push_back(0);                          \
+    refineF.push_back(0);                       \
+}
+    if(refined_faces.size() == 16) {
+        //interior faces
+        IntVector interior_faces;
+        Facet f;
+
+        //face 0
+        f.clear();
+        f.push_back(refined_straight[0][3]);
+        f.push_back(refined_straight[0][2]);
+        f.push_back(refined_straight[4][2]);
+        f.push_back(refined_straight[4][3]);
+        ADD_FACE();
+
+        //face 1
+        f.clear();
+        f.push_back(refined_straight[1][3]);
+        f.push_back(refined_straight[1][2]);
+        f.push_back(refined_straight[5][2]);
+        f.push_back(refined_straight[5][3]);
+        ADD_FACE();
+
+        //face 2
+        f.clear();
+        f.push_back(refined_straight[0][1]);
+        f.push_back(refined_straight[0][2]);
+        f.push_back(refined_straight[4][2]);
+        f.push_back(refined_straight[4][1]);
+        ADD_FACE();
+
+        //face 3
+        f.clear();
+        f.push_back(refined_straight[3][1]);
+        f.push_back(refined_straight[3][2]);
+        f.push_back(refined_straight[7][2]);
+        f.push_back(refined_straight[7][1]);
+        ADD_FACE();
+
+        Cell c;
+
+        //cell 1
+        c.clear();
+        c.push_back(refined_faces[0]);
+        c.push_back(refined_faces[4]);
+        c.push_back(refined_faces[8]);
+        c.push_back(interior_faces[0]);
+        c.push_back(refined_faces[12]);
+        c.push_back(interior_faces[2]);
+        newc.push_back(c);
+
+        //cell 2
+        c.clear();
+        c.push_back(refined_faces[1]);
+        c.push_back(refined_faces[5]);
+        c.push_back(refined_faces[9]);
+        c.push_back(interior_faces[1]);
+        c.push_back(interior_faces[2]);
+        c.push_back(refined_faces[14]);
+        newc.push_back(c);
+
+        //cell 3
+        c.clear();
+        c.push_back(refined_faces[2]);
+        c.push_back(refined_faces[6]);
+        c.push_back(interior_faces[1]);
+        c.push_back(refined_faces[11]);
+        c.push_back(interior_faces[3]);
+        c.push_back(refined_faces[15]);
+        newc.push_back(c);
+
+        //cell 4
+        c.clear();
+        c.push_back(refined_faces[3]);
+        c.push_back(refined_faces[7]);
+        c.push_back(interior_faces[0]);
+        c.push_back(refined_faces[10]);
+        c.push_back(refined_faces[13]);
+        c.push_back(interior_faces[3]);
+        newc.push_back(c);
+    } else if(refined_faces.size() == 24) {
+        //cell center
+        Int CC;
+        {
+            Vector C;
+            calcCellCenter(c,C);
+            mVertices.push_back(C);
+            CC = mVertices.size() - 1;
+        }
+
+        //face centers
+        Int FC[6];
+        FC[0] = refined_straight[0][2];
+        FC[1] = refined_straight[4][2];
+        FC[2] = refined_straight[8][2];
+        FC[3] = refined_straight[12][2];
+        FC[4] = refined_straight[16][2];
+        FC[5] = refined_straight[20][2];
+
+        //interior faces
+        IntVector interior_faces;
+        Facet f;
+
+        //face 0
+        f.clear();
+        f.push_back(refined_straight[8][3]);
+        f.push_back(FC[2]);
+        f.push_back(CC);
+        f.push_back(FC[4]);
+        ADD_FACE();
+
+        //face 1
+        f.clear();
+        f.push_back(FC[2]);
+        f.push_back(refined_straight[9][2]);
+        f.push_back(FC[5]);
+        f.push_back(CC);
+        ADD_FACE();
+
+        //face 2
+        f.clear();
+        f.push_back(CC);
+        f.push_back(FC[5]);
+        f.push_back(refined_straight[13][2]);
+        f.push_back(FC[3]);
+        ADD_FACE();
+
+        //face 3
+        f.clear();
+        f.push_back(FC[4]);
+        f.push_back(CC);
+        f.push_back(FC[3]);
+        f.push_back(refined_straight[12][3]);
+        ADD_FACE();
+
+        //face 4
+        f.clear();
+        f.push_back(refined_straight[0][3]);
+        f.push_back(refined_straight[0][2]);
+        f.push_back(CC);
+        f.push_back(FC[4]);
+        ADD_FACE();
+
+        //face 5
+        f.clear();
+        f.push_back(refined_straight[1][3]);
+        f.push_back(refined_straight[1][2]);
+        f.push_back(FC[5]);
+        f.push_back(CC);
+        ADD_FACE();
+
+        //face 6
+        f.clear();
+        f.push_back(CC);
+        f.push_back(FC[5]);
+        f.push_back(refined_straight[5][2]);
+        f.push_back(refined_straight[5][3]);
+        ADD_FACE();
+
+        //face 7
+        f.clear();
+        f.push_back(FC[4]);
+        f.push_back(CC);
+        f.push_back(refined_straight[4][2]);
+        f.push_back(refined_straight[4][3]);
+        ADD_FACE();
+
+        //face 8
+        f.clear();
+        f.push_back(refined_straight[0][1]);
+        f.push_back(refined_straight[0][2]);
+        f.push_back(CC);
+        f.push_back(FC[2]);
+        ADD_FACE();
+
+        //face 9
+        f.clear();
+        f.push_back(refined_straight[3][1]);
+        f.push_back(refined_straight[3][2]);
+        f.push_back(FC[3]);
+        f.push_back(CC);
+        ADD_FACE();
+
+        //face 10
+        f.clear();
+        f.push_back(CC);
+        f.push_back(FC[3]);
+        f.push_back(refined_straight[7][2]);
+        f.push_back(refined_straight[7][1]);
+        ADD_FACE();
+
+        //face 11
+        f.clear();
+        f.push_back(FC[2]);
+        f.push_back(CC);
+        f.push_back(refined_straight[4][2]);
+        f.push_back(refined_straight[4][1]);
+        ADD_FACE();
+
+        Cell c;
+
+        //cell 1
+        c.clear();
+        c.push_back(refined_faces[0]);
+        c.push_back(interior_faces[0]);
+        c.push_back(refined_faces[8]);
+        c.push_back(interior_faces[4]);
+        c.push_back(refined_faces[16]);
+        c.push_back(interior_faces[8]);
+        newc.push_back(c);
+
+        //cell 2
+        c.clear();
+        c.push_back(refined_faces[1]);
+        c.push_back(interior_faces[1]);
+        c.push_back(refined_faces[9]);
+        c.push_back(interior_faces[5]);
+        c.push_back(interior_faces[8]);
+        c.push_back(refined_faces[20]);
+        newc.push_back(c);
+
+        //cell 3
+        c.clear();
+        c.push_back(refined_faces[2]);
+        c.push_back(interior_faces[2]);
+        c.push_back(interior_faces[5]);
+        c.push_back(refined_faces[13]);
+        c.push_back(interior_faces[9]);
+        c.push_back(refined_faces[21]);
+        newc.push_back(c);
+
+        //cell 4
+        c.clear();
+        c.push_back(refined_faces[3]);
+        c.push_back(interior_faces[3]);
+        c.push_back(interior_faces[4]);
+        c.push_back(refined_faces[12]);
+        c.push_back(refined_faces[17]);
+        c.push_back(interior_faces[9]);
+        newc.push_back(c);
+
+        //cell 5
+        c.clear();
+        c.push_back(interior_faces[0]);
+        c.push_back(refined_faces[4]);
+        c.push_back(refined_faces[11]);
+        c.push_back(interior_faces[7]);
+        c.push_back(refined_faces[19]);
+        c.push_back(interior_faces[11]);
+        newc.push_back(c);
+
+        //cell 6
+        c.clear();
+        c.push_back(interior_faces[1]);
+        c.push_back(refined_faces[5]);
+        c.push_back(refined_faces[10]);
+        c.push_back(interior_faces[6]);
+        c.push_back(interior_faces[11]);
+        c.push_back(refined_faces[23]);
+        newc.push_back(c);
+
+        //cell 7
+        c.clear();
+        c.push_back(interior_faces[2]);
+        c.push_back(refined_faces[6]);
+        c.push_back(interior_faces[6]);
+        c.push_back(refined_faces[14]);
+        c.push_back(interior_faces[10]);
+        c.push_back(refined_faces[22]);
+        newc.push_back(c);
+
+        //cell 8
+        c.clear();
+        c.push_back(interior_faces[3]);
+        c.push_back(refined_faces[7]);
+        c.push_back(interior_faces[7]);
+        c.push_back(refined_faces[15]);
+        c.push_back(refined_faces[18]);
+        c.push_back(interior_faces[10]);
+        newc.push_back(c);
+    } else {
+        std::cout << "Unsupported hex cell size " << refined_faces.size() << std::endl;
+        exit(0);
+    }
+#undef ADD_FACE
+
+#else
     /* *************************
      *
      * Form new cells (pyramids) 
@@ -1394,20 +1861,20 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
     cout << "Cell center: " << C << endl;
 #endif
 
-    IntVector ownerf;
+    IntVector owner_faces;
     forEach(c1,j) {
         Int fi = c1[j];
         Int crj = c1r[j];
 
         //cell is refined but face is not?
-        IntVector list;
+        IntVector refined_faces;
         if(crj) {
-            list.push_back(fi);
-            ownerf.push_back(crj);
+            refined_faces.push_back(fi);
+            owner_faces.push_back(crj);
         } else {
             for(Int k = startF[fi]; k < endF[fi];k++) {
-                list.push_back(k);
-                ownerf.push_back(fi);
+                refined_faces.push_back(k);
+                owner_faces.push_back(fi);
             }
         }
 
@@ -1419,17 +1886,13 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 #endif
 
         //refine cells
-        forEach(list,k) {
-            Int fni = list[k];
+        forEach(refined_faces,k) {
+            Int fni = refined_faces[k];
             Facet f = mFacets[fni];
 
             //straighten edges
             if(f.size() > 4)
-            {
-                Facet r,rr;
-                straightenEdges(f,r,rr);
-                f = r;
-            }
+                f = straightenEdges(f);
 
 #ifdef RDEBUG
             Vector fc;
@@ -1478,7 +1941,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
      *
      * *************************/
     forEach(newc,i) {
-        if(ownerf[i] < Constants::MAX_INT / 2)
+        if(owner_faces[i] < Constants::MAX_INT / 2)
             continue;
 
         Cell& nc = newc[i];
@@ -1487,7 +1950,7 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
 
         IntVector forg;
         pair<IntVector,IntVector> pair;
-        pair = sharedMap[ownerf[i] - Constants::MAX_INT / 2];
+        pair = sharedMap[owner_faces[i] - Constants::MAX_INT / 2];
         const IntVector& faces1 = pair.first;
         const IntVector& faces2 = pair.second;
         forEach(faces2,j) {
@@ -1539,11 +2002,11 @@ void Mesh::MeshObject::refineCell(const Cell& c,IntVector& cr, Int rDir,
         // and merge if they have a shared face
         Cells mergec;
         forEach(newc,j) {
-            Int o1 = ownerf[j];
+            Int o1 = owner_faces[j];
             Cell& c1 = newc[j];
             IntVector mg;
             forEachS(newc,k,j+1) {
-                Int o2 = ownerf[k];
+                Int o2 = owner_faces[k];
                 Cell& c2 = newc[k];
 
                 if(o1 == o2) continue;
@@ -1646,11 +2109,8 @@ END:;
                     mergeFacetsGroup(shared1,nf,&c1);
 
                     //straighten edges
-                    {
-                        Facet r,rr;
-                        straightenEdges(nf,r,rr);
-                        nf = r;
-                    }
+                    nf = straightenEdges(nf);
+
                     //merge into first face
                     Int fi = c1[shared1[0]];
                     mFacets[fi] = nf;
@@ -1688,6 +2148,7 @@ END:;
         }
         std::swap(c[0], c[bestj]);
     }
+#endif
 
 #ifdef RDEBUG
     cout << " New cells after merge " << newc.size() << endl;
@@ -1794,17 +2255,36 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                     }
                 }
                 if(coarsen) {
-                    Cell c1;
                     Int pid = mCells.size();
                     coarseMap.push_back(n.nchildren);
                     coarseMap.push_back(pid);
+#ifdef USE_HEX_REFINEMENT
+                    Cells c1;
+                    Cells c1_ids; 
+                    for(Int j = 0;j < n.nchildren;j++) {
+                        Node& cn = mAmrTree[n.cid + j];
+                        c1.push_back(mCells[cn.id]);
+                        c1_ids.push_back(mFaceID[cn.id]);
+                    }
+                    Cell c2;
+                    mergeCellsHex(c1,c1_ids,c2,delFacets);
+                    mCells.push_back(c2);
+#else
+                    Cell c1;
                     for(Int j = 0;j < n.nchildren;j++) {
                         Node& cn = mAmrTree[n.cid + j];
                         Cell& c2 = mCells[cn.id];
                         mergeCells(c1,c2,delFacets);
+                    }
+                    mCells.push_back(c1);
+#endif
+                    for(Int j = 0;j < n.nchildren;j++) {
+                        Int cid = n.cid + j;
+                        Node& cn = mAmrTree[cid];
+                        Cell& c2 = mCells[cn.id];
                         delCells.push_back(cn.id);
                         coarseMap.push_back(cn.id);
-                        delTree.push_back(n.cid + j);
+                        delTree.push_back(cid);
                         /*update owner/neighbor info*/
                         forEach(c2,k) {
                             Int fi = c2[k];
@@ -1814,7 +2294,6 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                                 mFNC[fi] = pid;
                         }
                     }
-                    mCells.push_back(c1);
                     Node& cn = mAmrTree[n.cid];
                     n.nchildren = 0;
                     n.id = pid;
@@ -1847,7 +2326,6 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
             for(Int j = 0; j < nchildren; j++)
                 cout << coarseMap[i + 2 + j] << " ";
             cout << std::endl;
-            cout << c1 << std::endl;
 #endif
 
             map<Int,IntVector> sharedMap;
@@ -2194,19 +2672,19 @@ void Mesh::MeshObject::refineMesh(const IntVector& cCells,const IntVector& rCell
                                                             \
     do {                                                    \
         has = false;                                        \
-        IntVector newF,eraseF;                              \
+        std::map<Int,IntVector> insertF;                    \
         forEach(c,j) {                                      \
             Int fi = c[j];                                  \
             if(refineF[fi] == Constants::MAX_INT) {         \
-                eraseF.push_back(j);                        \
+                IntVector newF;                             \
                 for(Int k = startF[fi]; k < endF[fi];k++) { \
                     newF.push_back(k);                      \
                     has = true;                             \
                 }                                           \
+                insertF[j] = newF;                          \
             }                                               \
         }                                                   \
-        erase_indices(c,eraseF);                            \
-        c.insert(c.end(),newF.begin(),newF.end());          \
+        erase_and_insert(c,insertF);                        \
     } while (has);                                          \
                                                             \
     IntVector eraseF;                                       \

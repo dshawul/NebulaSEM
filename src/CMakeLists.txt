@@ -37,5 +37,9 @@ if(USE_EXPR_TMPL)
     target_compile_definitions(nebulasem PUBLIC -DUSE_EXPR_TMPL)
 endif()
 
+if(USE_HEX_REFINEMENT)
+    target_compile_definitions(nebulasem PUBLIC -DUSE_HEX_REFINEMENT)
+endif()
+
 install(TARGETS nebulasem)
 

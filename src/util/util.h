@@ -62,6 +62,19 @@ void erase_indices(std::vector<T>& data, const std::vector<Int>& indicesToDelete
     data = temp;
 }
 
+/** Erase and insert elements at specified location*/
+template<typename T>
+void erase_and_insert(std::vector<T>& v1, const std::map<Int, std::vector<T>>& m) {
+    std::vector<Int> keys;
+    for (const auto& pair : m) {
+        keys.push_back(pair.first);
+    }
+    std::sort(keys.rbegin(), keys.rend());
+    for (int key : keys) {
+        v1.erase(v1.begin() + key);
+        v1.insert(v1.begin() + key, m.at(key).begin(), m.at(key).end());
+    }
+}
 /** Test if two Int vectors are equal. O(n^2) complexity but arrays
   are small since it is used for edges/faces/cells*/
 template<bool subset = false>

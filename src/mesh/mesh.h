@@ -120,11 +120,12 @@ namespace Mesh {
         void breakEdges(Int);
         void ExtrudeMesh();
 
-        void straightenEdges(const Facet&, Facet&, Facet&);
+        Facet straightenEdges(const Facet&, Facet* = 0);
         bool coplanarFaces(const Facet&,const Facet&);
         bool mergeFacets(const Facet&,const Facet&, Facet&);
         void mergeFacetsGroup(const IntVector&,Facet&,const Cell* = 0);
         void mergeCells(Cell&,const Cell&,IntVector&);
+        void mergeCellsHex(const Cells&,const Cells&, Cell&,IntVector&);
         void addVerticesToEdge(const int, Facet&, const Facet&);
         void calcFaceCenter(const Facet&,Vector&);
         void calcCellCenter(const Cell&, Vector&);
