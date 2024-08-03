@@ -19,6 +19,7 @@ general
     start_step                   0
     end_step                     2000
     write_interval               1000
+    amr_step                     1
     dt                           0.005
 
 ############################
@@ -70,11 +71,16 @@ decomposition
 
 refinement
 {
-    direction       0 0 0
-    field           U
+    direction       0 1 0
+    field           p
     field_min       0.1
-    field_max       0.9
+    field_max       0.5
     limit           100000
+}
+
+vtk
+{
+    write_polyhedral YES
 }
 
 ######################################
@@ -84,8 +90,8 @@ piso
 {
     turbulence_model             KE
     writeStress                  YES
-    velocity_UR                  0.5
-    pressure_UR                  0.2
+    velocity_UR                  0.3
+    pressure_UR                  0.1
     n_PISO                       1
     n_ORTHO                      0
 }
