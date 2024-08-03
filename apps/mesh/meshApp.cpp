@@ -171,6 +171,8 @@ int main(int argc,char* argv[]) {
                                 e.type = COSINE;
                             } else if(!compare(str,"quad")) {
                                 e.type = QUAD;
+                            } else if(!compare(str,"ridge")) {
+                                e.type = RIDGE;
                             } else {
                                 e.type = NONE;
                             }

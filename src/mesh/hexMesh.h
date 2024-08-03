@@ -16,7 +16,8 @@ enum {
     NONE = 0,   /**< Straight edge */
     ARC,        /**< Circular arc */
     COSINE,     /**< Cosine shaped edge */
-    QUAD        /**< Quadratic shaped edge */
+    QUAD,       /**< Quadratic shaped edge */
+    RIDGE       /**< Linear edge */
 };
 
 /** Edge of an element */

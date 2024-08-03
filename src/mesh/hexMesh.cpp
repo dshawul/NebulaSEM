@@ -32,6 +32,11 @@ void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
     } else if(e.type == QUAD) {
         v = (1 - m) * e.v[0] + (m) * e.v[1] + 
             (4 * m * (1 - m)) * e.N;
+    } else if(e.type == RIDGE) {
+        if(m < 0.5)
+            v = 2 * ((0.5 - m) * e.v[0] + (m) * e.v[2]);
+        else
+            v = 2 * ((1.0 - m) * e.v[2] + (m - 0.5) * e.v[1]);
     }
     vd[w] = v;
 }
@@ -104,7 +109,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             e.v[3] = C;
             e.N = (e.v[2] - e.v[0]) ^ (e.v[1] - e.v[0]);
             e.N = unit(e.N);
-        } else if(e.type == COSINE || e.type == QUAD) {
+        } else {
             Vector mid = (e.v[1] + e.v[0]) / 2;
             e.N = e.v[2] - mid;
         }
