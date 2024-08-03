@@ -87,7 +87,7 @@ void piso(std::istream& input) {
     params.read(input);
 
     /*AMR iteration*/
-    for (AmrIteration ait; !ait.end(); ait.next()) {
+    for (AmrIteration ait(true); !ait.end(); ait.next()) {
         ScalarCellField rho = Fluid::density;
         ScalarCellField mu = rho * Fluid::viscosity;
         VectorCellField U("U", READWRITE);

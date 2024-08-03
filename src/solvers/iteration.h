@@ -98,8 +98,9 @@ class AmrIteration {
         int i; /**< current index */
 
     public:
-        AmrIteration() {
-            starti = Controls::start_step / Controls::write_interval - Controls::amr_step;
+        AmrIteration(bool skip_initial = false) {
+            starti = Controls::start_step / Controls::write_interval - 
+                    (skip_initial ? 0 : Controls::amr_step);
             endi = Controls::end_step / Controls::write_interval;
             if(endi < 1) endi = 1;
             if(!Controls::amr_step)
