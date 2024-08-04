@@ -317,7 +317,6 @@ void Mesh::MeshObject::fixHexCells() {
                 }
             }
 
-#if 0
             /*switch face 0 and 1 in some cases (often after refinement)*/
             Vector N = (mVertices[f0[1]] - mVertices[f0[0]]) ^
                        (mVertices[f0[f0.size() - 1]] - mVertices[f0[0]]);
@@ -424,7 +423,6 @@ void Mesh::MeshObject::fixHexCells() {
                     exit(0);
                 }
             }
-#endif
 #endif
         }
 
