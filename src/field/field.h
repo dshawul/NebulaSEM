@@ -3123,6 +3123,8 @@ auto sum(const DVExpr<type,A>& expr) {
 /* *******************************
  * Implicit div flux
  * *******************************/
+template<bool strong=form_strong, typename T1>
+auto gradf(const MeshField<T1,CELL>&, bool = false);
 
 template<bool strong=form_strong,class T1, class T2, class T3, class T4, class T5>
 void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
@@ -3203,11 +3205,11 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
                 corr = cds(cF) - uds(cF,flux);
             } else if(convection_scheme == LUD) {
                 VectorFacetField R = fC - uds(cC,flux);
-                corr = dot(uds(gradf(cF,true),flux),R);
+                corr = dot(uds(gradf<false>(cF,true),flux),R);
             } else if(convection_scheme == MUSCL) {
                 VectorFacetField R = fC - uds(cC,flux);
                 corr  = (  blend_factor  ) * (cds(cF) - uds(cF,flux));
-                corr += (1 - blend_factor) * (dot(uds(gradf(cF,true),flux),R));
+                corr += (1 - blend_factor) * (dot(uds(gradf<false>(cF,true),flux),R));
             } else {
                 /**
                 TVD schemes
@@ -3243,10 +3245,10 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
                     /*Bruner's or Darwish way of calculating r*/
                     if(TVDbruner) {
                         VectorFacetField R = fC - uds(cC,flux);
-                        phiCU = 2 * (dot(uds(gradf(cF,true),flux),R));
+                        phiCU = 2 * (dot(uds(gradf<false>(cF,true),flux),R));
                     } else {
                         VectorFacetField R = uds(cC,nflux) - uds(cC,flux);
-                        phiCU = 2 * (dot(uds(gradf(cF,true),flux),R)) - phiDC;
+                        phiCU = 2 * (dot(uds(gradf<false>(cF,true),flux),R)) - phiDC;
                     }
                     /*end*/
                 }
@@ -3290,7 +3292,7 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
                 corr = q * phiDC * (1 - uFI);
                 /*end*/
             }
-            m.Su = sum_flux<strong>(cF,corr,flux);
+            m.Su = sum_flux<false>(cF,corr,flux);
         }
     /* only explicit for DG */
     } else {
@@ -3319,14 +3321,14 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
   Explicit gradient operator
  */
 template<bool strong=form_strong, typename T1>
-auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
+auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume) {
     using namespace Mesh;
     using namespace DG;
 
-    auto fF = cds(p);
-    auto r = grad_flux<strong>(p,fF);
-
     if(NPMAT) {
+        auto fF = cds(p);
+        auto r = grad_flux<strong>(p,fF);
+
         #pragma omp parallel for
         #pragma acc parallel loop copyin(p,gBCS)
         for(Int ci = 0; ci < gBCS;ci++) {
@@ -3349,13 +3351,20 @@ auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume = false) {
 #undef GRADD
             }
         }
+
+        if(perunit_volume) r = (r / cV);
+        fillBCs(r,p.fIndex);
+
+        return r;
+    } else {
+        auto fF = cds(p);
+        auto r = grad_flux<false>(p,fF);
+
+        if(perunit_volume) r = (r / cV);
+        fillBCs(r,p.fIndex);
+
+        return r;
     }
-
-    if(perunit_volume) r = (r / cV);
-
-    fillBCs(r,p.fIndex);
-
-    return r;
 }
 
 #ifdef USE_EXPR_TMPL
@@ -3423,9 +3432,10 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false,
                 fF = uds(p,*flux);
         }
     }
-    auto r = div_flux<strong>(p,fF);
 
     if(NPMAT) {
+        auto r = div_flux<strong>(p,fF);
+
         #pragma omp parallel for
         #pragma acc parallel loop copyin(p,gBCS)
         for(Int ci = 0; ci < gBCS;ci++) {
@@ -3448,13 +3458,19 @@ auto divf(const MeshField<T1,CELL>& p, bool perunit_volume = false,
 #undef DIVD
             }
         }
+
+        if(perunit_volume) r = (r / cV);
+        fillBCs(r);
+
+        return r;
+    } else {
+        auto r = div_flux<false>(p,fF);
+
+        if(perunit_volume) r = (r / cV);
+        fillBCs(r);
+
+        return r;
     }
-
-    if(perunit_volume) r = (r / cV);
-
-    fillBCs(r);
-
-    return r;
 }
 
 #ifdef USE_EXPR_TMPL
@@ -3651,14 +3667,9 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
         }
         /* compute explicit term */
         {
-            if(strong) {
-                auto p = gradf(cF,true);
-                p = p * muc;
-                auto fF = cds(p);
-                auto r = div_flux<strong>(p,fF);
-                m.Su += r;
-            } else
-                m.Su += sum(dot(cds(muc * gradf(cF,true)),fN));
+            auto p = eval_expr(muc * gradf<strong>(cF,true));
+            auto fF = cds(p);
+            m.Su += div_flux<strong>(p,fF);
         }
     
     } else {
@@ -3674,7 +3685,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
                 K[i] = fN[i] - fD[i] * dv;
             }
     
-            MeshField<type,FACET> r = dot(cds(muc * gradf(cF,true)),K);
+            MeshField<type,FACET> r = dot(cds(muc * gradf<false>(cF,true)),K);
             #pragma omp parallel for
             #pragma acc parallel loop
             forEach(r,i) {
