@@ -239,9 +239,9 @@ void euler(std::istream& input) {
                 M = transport(U, Fc, F, mu, velocity_UR, Sc, Sp, &lambdaMax, &rho, &rhof);
 #else
                 {
-                    TensorCellField fq = mul(Fc,U) + TensorCellField(Constants::I_T) * p;
+                    TensorCellField fq = mul(Fc,U) + TensorCellField(Constants::I_T) * p - mu * gradf(U, true);
                     VectorCellField q = rho * U;
-                    M = divf(fq,false,&F,&q,&lambdaMax) - lap(U,mu) - src(U,Sc,Sp);
+                    M = divf(fq,false,&F,&q,&lambdaMax) - src(U,Sc,Sp);
                     M.cF = &U;
                     addTemporal<1>(M,velocity_UR,&rho,&rhof);
                 }
@@ -257,9 +257,9 @@ void euler(std::istream& input) {
 #else
                 {
                     ScalarCellField imu = mu * iPr;
-                    VectorCellField fq = Fc * T;
+                    VectorCellField fq = Fc * T - imu * gradf(T,true);
                     ScalarCellField q = rho * T;
-                    M = divf(fq,false,&F,&q,&lambdaMax) - lap(T,imu);
+                    M = divf(fq,false,&F,&q,&lambdaMax);
                     M.cF = &T;
                     addTemporal<1>(M,t_UR,&rho,&rhof);
                 }
