@@ -3624,11 +3624,7 @@ auto lap(MeshField<type,CELL>& cF,const ScalarCellField& muc, const bool penalty
     Vector dpsi_jk;                                 \
     DPSI(dpsi_jk,in,jn,kn);                         \
     dpsi_jk = dot(Jin,dpsi_jk);                     \
-    Scalar val;                                     \
-    if(strong)                                      \
-        val  = dot(dpsi_ik,dpsi_jk);                \
-    else                                            \
-        val  = -dot(dpsi_ik,dpsi_jk);               \
+    Scalar val = -dot(dpsi_ik,dpsi_jk);             \
     if(index1 == index2) {                          \
         m.ap[index1] += -val;                       \
     } else {                                        \
