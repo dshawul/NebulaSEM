@@ -150,12 +150,10 @@ void euler(std::istream& input) {
             applyExplicitBCs(rho,true);
             Mesh::scaleBCs<Scalar>(rho,rho_ref,1);
             applyExplicitBCs(rho_ref,true);
-            rho -= rho_ref;
 
             p -= p_ref;
         } else {
             /*calculate p from rho*/
-            rho += rho_ref;
             Mesh::scaleBCs<Scalar>(rho,rho_ref,1.0);
             applyExplicitBCs(rho_ref,true);
             applyExplicitBCs(rho,true);
@@ -166,20 +164,18 @@ void euler(std::istream& input) {
             Mesh::scaleBCs<Scalar>(p,p_ref,1.0);
             applyExplicitBCs(p_ref,true);
             p -= p_ref;
-
-            rho -= rho_ref;
         }
 
         /*compute total mass and energy*/
         if(ait.get_step() == 0)
         {
-            ScalarCellField sf = (rho + rho_ref) * Mesh::cV;
+            ScalarCellField sf = rho * Mesh::cV;
             mass0 = reduce_sum(sf);
             //potential + kinetic + internal
             sf = gh +
                  0.5 * magSq(U) +
                  pow((p + p_ref) / P0, R / cp) * (T + T0) * cv;
-            sf = (rho + rho_ref) * Mesh::cV * sf;
+            sf = rho * Mesh::cV * sf;
             energy0 = reduce_sum(sf);
             volume0 = reduce_sum(Mesh::cV);
         }
@@ -187,7 +183,6 @@ void euler(std::istream& input) {
         /*Time loop*/
         for (; !it.end(); it.next()) {
             /*add reference values*/
-            rho += rho_ref;
             T += T0;
 
             /*fluxes*/
@@ -239,7 +234,7 @@ void euler(std::istream& input) {
                 M = transport(U, Fc, F, mu, velocity_UR, Sc, Sp, &lambdaMax, &rho, &rhof);
 #else
                 {
-                    TensorCellField fq = mul(Fc,U) + TensorCellField(Constants::I_T) * p - mu * gradf(U, true);
+                    TensorCellField fq = mul(Fc,U) + TensorCellField(Constants::I_T) * p - mu * gradf<true>(U, true);
                     VectorCellField q = rho * U;
                     M = divf(fq,false,&F,&q,&lambdaMax) - src(U,Sc,Sp);
                     M.cF = &U;
@@ -257,7 +252,7 @@ void euler(std::istream& input) {
 #else
                 {
                     ScalarCellField imu = mu * iPr;
-                    VectorCellField fq = Fc * T - imu * gradf(T,true);
+                    VectorCellField fq = Fc * T - imu * gradf<true>(T,true);
                     ScalarCellField q = rho * T;
                     M = divf(fq,false,&F,&q,&lambdaMax);
                     M.cF = &T;
@@ -293,7 +288,6 @@ void euler(std::istream& input) {
             }
 
             /*save perturbation values*/
-            rho -= rho_ref;
             T -= T0;
         }
     }
