@@ -14,6 +14,7 @@ message(STATUS "USE_ACC .................. ${USE_ACC}")
 message(STATUS "USE_SINGLE ............... ${USE_SINGLE}")
 message(STATUS "USE_EXPR_TMPL ............ ${USE_EXPR_TMPL}")
 message(STATUS "USE_HEX_REFINEMENT ....... ${USE_HEX_REFINEMENT}")
+message(STATUS "USE_STRONG_FORM .......... ${USE_STRONG_FORM}")
 
 # find required packages
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)

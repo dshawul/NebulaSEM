@@ -58,7 +58,11 @@ namespace Controls {
 }
 
 /** Descretization type */
+#ifdef USE_STRONG_FORM
+constexpr bool form_strong = true;
+#else
 constexpr bool form_strong = false;
+#endif
 
 /*******************************************************************************
  *                              Boundary conditions

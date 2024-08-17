@@ -41,5 +41,9 @@ if(USE_HEX_REFINEMENT)
     target_compile_definitions(nebulasem PUBLIC -DUSE_HEX_REFINEMENT)
 endif()
 
+if(USE_STRONG_FORM)
+    target_compile_definitions(nebulasem PUBLIC -DUSE_STRONG_FORM)
+endif()
+
 install(TARGETS nebulasem)
 
