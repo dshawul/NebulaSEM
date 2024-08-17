@@ -396,7 +396,7 @@ void Mesh::MeshObject::fixHexCells() {
                     }
                 }
             }
-#endif
+
             /*for new cell and face IDs*/
             IntVector b;
             for(Int idx = 0; idx < 6; idx++) {
@@ -423,6 +423,8 @@ void Mesh::MeshObject::fixHexCells() {
                     exit(0);
                 }
             }
+#endif
+
 #endif
         }
 

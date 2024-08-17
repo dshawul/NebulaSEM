@@ -22,21 +22,22 @@ Vector circumcenter(const Vector& v1,const Vector& v2,const Vector& v3) {
 void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
     Edge& e = edges[w];
     Vector v;
-    if(e.type == NONE) {
+    if(e.type == ARC) {
+        v = rotate(e.v[0] - e.center,e.N,e.theta * m) + e.center;
+    } else {
         v = (1 - m) * e.v[0] + (m) * e.v[1];
-    } else if(e.type == ARC) {
-        v = rotate(e.v[0] - e.v[3],e.N,e.theta * m) + e.v[3];
-    } else if(e.type == COSINE) {
-        v = (1 - m) * e.v[0] + (m) * e.v[1] + 
-            pow(cos(Constants::PI * (m - 0.5)),2) * e.N;
-    } else if(e.type == QUAD) {
-        v = (1 - m) * e.v[0] + (m) * e.v[1] + 
-            (4 * m * (1 - m)) * e.N;
-    } else if(e.type == RIDGE) {
-        if(m < 0.5)
-            v = 2 * ((0.5 - m) * e.v[0] + (m) * e.v[2]);
-        else
-            v = 2 * ((1.0 - m) * e.v[2] + (m - 0.5) * e.v[1]);
+        m = fabs(m - 0.5) / e.scale;
+        if(e.type != SCHAR && m > 0.5)
+            m = 0.5;
+        if(e.type == COSINE) {
+            v += pow(cos(Constants::PI * m),2) * e.N;
+        } else if(e.type == GAUSSIAN) {
+            v += exp(-16 * pow(m,2)) * e.N;
+        } else if(e.type == SCHAR) {
+            v += exp(-pow(m,2)) * pow(cos(Constants::PI * m),2) * e.N;
+        } else if(e.type == RIDGE) {
+            v += (1 - 2 * m) * e.N;
+        }
     }
     vd[w] = v;
 }
@@ -106,7 +107,7 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             Vector r1 = e.v[0] - C;
             Vector r2 = e.v[1] - C;
             e.theta = acos((r1 & r2) / (mag(r1) * mag(r2)));
-            e.v[3] = C;
+            e.center = C;
             e.N = (e.v[2] - e.v[0]) ^ (e.v[1] - e.v[0]);
             e.N = unit(e.N);
         } else {

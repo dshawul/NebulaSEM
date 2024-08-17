@@ -158,6 +158,7 @@ int main(int argc,char* argv[]) {
 
                 if((c = Util::nextc(input)) && (c == 'e')) {
                     Int sz,side,key;
+                    Scalar scale = 1.0;
                     input >> str;
                     if(!compare(str,"edges")) {
                         input >> sz >> symbol;
@@ -167,14 +168,19 @@ int main(int argc,char* argv[]) {
                             e.v[2] = key_points[key];
                             if(!compare(str,"arc")) {
                                 e.type = ARC;
-                            } else if(!compare(str,"cosine")) {
-                                e.type = COSINE;
-                            } else if(!compare(str,"quad")) {
-                                e.type = QUAD;
-                            } else if(!compare(str,"ridge")) {
-                                e.type = RIDGE;
                             } else {
+                                input >> scale;
                                 e.type = NONE;
+                                e.scale = scale;
+                                if(!compare(str,"cosine")) {
+                                    e.type = COSINE;
+                                } else if(!compare(str,"gaussian")) {
+                                    e.type = GAUSSIAN;
+                                } else if(!compare(str,"ridge")) {
+                                    e.type = RIDGE;
+                                } else if(!compare(str,"schar")) {
+                                    e.type = SCHAR;
+                                }
                             }
                         }
                         input >> symbol;

@@ -16,14 +16,19 @@ enum {
     NONE = 0,   /**< Straight edge */
     ARC,        /**< Circular arc */
     COSINE,     /**< Cosine shaped edge */
-    QUAD,       /**< Quadratic shaped edge */
-    RIDGE       /**< Linear edge */
+    GAUSSIAN,   /**< Gaussian shaped edge */
+    RIDGE,      /**< Linear edge */
+    SCHAR,      /**< Shcar mountain edge */
 };
 
 /** Edge of an element */
 struct Edge {
     int type;     /**< Edge shape type */
-    Scalar theta; /**< Subtended angle of arc */
+    union {
+        Scalar theta; /**< Subtended angle of arc */
+        Scalar scale; /**< Scale of feature */
+    };
+    Vector center;/**< Center of the arc */
     Vector N;     /**< Unit normal vector of edge */
     Vertex v[4];  /**< Points defining shape of edge */
     Edge() {
