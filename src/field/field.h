@@ -2023,7 +2023,7 @@ void gather_non_conforming(const MeshField<type,FACET>& fF,
     using namespace DG;
 
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(cF,gNFacets)
+    #pragma acc parallel loop copy(fFO,fFN) copyin(fF,gNFacets)
     for(Int fi = 0; fi < gNFacets; fi++) {
         for(Int n = 0; n < DG::NPF; n++) {
             Int fidg = fi * DG::NPF + n;
@@ -2139,7 +2139,7 @@ void scatter_non_conforming(const MeshField<type,CELL>& cF,
     using namespace DG;
 
     #pragma omp parallel for
-    #pragma acc parallel loop copyin(cF,gNFacets,FO,FN)
+    #pragma acc parallel loop copy(fFO,fFN) copyin(cF,gNFacets)
     for(Int fi = 0; fi < gNFacets; fi++) {
         for(Int n = 0; n < DG::NPF; n++) {
             Int fidg = fi * DG::NPF + n;
@@ -3324,7 +3324,7 @@ void div_flux_implicit(MeshMatrix<T1,T2,T3>& m, const MeshField<T5,CELL>& p,
 /**
   Explicit gradient operator
  */
-template<bool strong=form_strong, typename T1>
+template<bool strong, typename T1>
 auto gradf(const MeshField<T1,CELL>& p, bool perunit_volume) {
     using namespace Mesh;
     using namespace DG;

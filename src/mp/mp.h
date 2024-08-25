@@ -14,24 +14,27 @@
 
 // Define a traits class to map C++ types to MPI types
 template <typename T>
-struct mpi_traits;
+MPI_Datatype get_mpi_type();
 
 template <>
-struct mpi_traits<int> {
-    static constexpr MPI_Datatype mpi_type = MPI_INT;
-};
+FORCEINLINE MPI_Datatype get_mpi_type<int>() {
+    return MPI_INT;
+}
+
 template <>
-struct mpi_traits<unsigned> {
-    static constexpr MPI_Datatype mpi_type = MPI_UNSIGNED;
-};
+FORCEINLINE MPI_Datatype get_mpi_type<unsigned>() {
+    return MPI_UNSIGNED;
+}
+
 template <>
-struct mpi_traits<float> {
-    static constexpr MPI_Datatype mpi_type = MPI_FLOAT;
-};
+FORCEINLINE MPI_Datatype get_mpi_type<float>() {
+    return MPI_FLOAT;
+}
+
 template <>
-struct mpi_traits<double> {
-    static constexpr MPI_Datatype mpi_type = MPI_DOUBLE;
-};
+FORCEINLINE MPI_Datatype get_mpi_type<double>() {
+    return MPI_DOUBLE;
+}
 
 /**
   Class for multi-processor support via MPI
@@ -76,12 +79,14 @@ class MP {
         template < typename type, typename typeb = SCALAR>
         static void recieve(type* buffer,int size,int source,int message_id) {
             const int count = (size * sizeof(type) / sizeof(typeb));
-            MPI_Recv(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+            MPI_Datatype mpi_typeb = get_mpi_type<typeb>();
+            MPI_Recv(buffer,count,mpi_typeb,source,message_id,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         }
         template <typename type, typename typeb = SCALAR>
         static void send(type* buffer,int size,int source,int message_id) {
             const int count = (size * sizeof(type) / sizeof(typeb));
-            MPI_Send(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD);
+            MPI_Datatype mpi_typeb = get_mpi_type<typeb>();
+            MPI_Send(buffer,count,mpi_typeb,source,message_id,MPI_COMM_WORLD);
         }
         template <typename type, typename typeb = SCALAR>
         static void allreduce(type* sendbuf,type* recvbuf,int size, Int op) {
@@ -93,7 +98,8 @@ class MP {
                 case OP_SUM: mpi_op = MPI_SUM; break;
                 case OP_PROD: mpi_op = MPI_PROD; break;
             }
-            MPI_Allreduce(sendbuf,recvbuf,count,mpi_traits<typeb>::mpi_type,mpi_op,MPI_COMM_WORLD);
+            MPI_Datatype mpi_typeb = get_mpi_type<typeb>();
+            MPI_Allreduce(sendbuf,recvbuf,count,mpi_typeb,mpi_op,MPI_COMM_WORLD);
         }
         template <typename type, typename typeb = SCALAR>
         static void reduce(type* sendbuf,type* recvbuf,int size, Int op) {
@@ -105,17 +111,20 @@ class MP {
                 case OP_SUM: mpi_op = MPI_SUM; break;
                 case OP_PROD: mpi_op = MPI_PROD; break;
             }
-            MPI_Reduce(sendbuf,recvbuf,count,mpi_traits<typeb>::mpi_type,mpi_op,0,MPI_COMM_WORLD);
+            MPI_Datatype mpi_typeb = get_mpi_type<typeb>();
+            MPI_Reduce(sendbuf,recvbuf,count,mpi_typeb,mpi_op,0,MPI_COMM_WORLD);
         }
         template <typename type, typename typeb = SCALAR>
         static void irecieve(type* buffer,int size,int source,int message_id,void* request) {
             const int count = (size * sizeof(type) / sizeof(typeb));
-            MPI_Irecv(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
+            MPI_Datatype mpi_typeb = get_mpi_type<typeb>();
+            MPI_Irecv(buffer,count,mpi_typeb,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
         }
         template <typename type, typename typeb = SCALAR>
         static void isend(type* buffer,int size,int source,int message_id,void* request) {
             const int count = (size * sizeof(type) / sizeof(typeb));
-            MPI_Isend(buffer,count,mpi_traits<typeb>::mpi_type,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
+            MPI_Datatype mpi_typeb = get_mpi_type<typeb>();
+            MPI_Isend(buffer,count,mpi_typeb,source,message_id,MPI_COMM_WORLD,(MPI_Request*)request);
         }
         static void waitall(int count,void* request) {
             MPI_Waitall(count,(MPI_Request*)request,MPI_STATUS_IGNORE);

@@ -8,7 +8,11 @@
 typedef std::vector<Int>      IntVector;
 typedef std::vector<Scalar>   ScalarVector;
 typedef std::vector<Vector>   VectorVector;
+#ifdef _OPENACC
+typedef std::vector<char>     BoolVector;
+#else
 typedef std::vector<bool>     BoolVector;
+#endif
 
 typedef Vector           Vertex;
 typedef IntVector        Facet;  
