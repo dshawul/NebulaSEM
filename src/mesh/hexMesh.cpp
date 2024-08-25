@@ -26,7 +26,8 @@ void ADDV(int w,Scalar m,Edge* edges,Vector* vd) {
         v = rotate(e.v[0] - e.center,e.N,e.theta * m) + e.center;
     } else {
         v = (1 - m) * e.v[0] + (m) * e.v[1];
-        m = fabs(m - 0.5) / e.scale;
+        Scalar cx = mag(e.center - e.v[0]) / mag(e.v[1] - e.v[0]);
+        m = fabs(m - cx) / e.scale;
         if(e.type != SCHAR && m > 0.5)
             m = 0.5;
         if(e.type == COSINE) {
@@ -111,8 +112,10 @@ void hexMesh(Int* n,Scalar* s,Int* type,Vector* vp,Edge* edges,MeshObject& mo) {
             e.N = (e.v[2] - e.v[0]) ^ (e.v[1] - e.v[0]);
             e.N = unit(e.N);
         } else {
-            Vector mid = (e.v[1] + e.v[0]) / 2;
-            e.N = e.v[2] - mid;
+            Vector d = (e.v[1] - e.v[0]);
+            Vector p = e.v[2] - e.v[0];
+            e.center = (dot(p,d)/dot(d,d))*d + e.v[0];
+            e.N = e.v[2] - e.center;
         }
     }
     /*variables*/
