@@ -71,10 +71,9 @@ void euler(std::istream& input) {
 
         /*gas constants*/
         using namespace Fluid;
-        Scalar p_gamma, R, psi, iPr;
+        Scalar p_gamma, R, iPr;
         R = cp - cv;
         p_gamma = cp / cv;
-        psi = 1 / (R * T0);
         iPr = 1 / Pr;
 
         /*special initializations*/

@@ -1,6 +1,8 @@
 #include "field.h"
 #include "system.h"
+#ifdef USE_METIS
 #include "metis.h"
+#endif
 
 using namespace std;
 
@@ -1008,6 +1010,7 @@ namespace Prepare {
     void decomposeMetis(int total,IntVector& blockIndex) {
         using namespace Mesh;
 
+#ifdef USE_METIS
         int ncon = 1;
         int edgeCut = 0;
         int nvtxs = gBCS;
@@ -1073,6 +1076,7 @@ namespace Prepare {
         } else {
             std::cout << "METIS edge cut: " << edgeCut << std::endl;
         }
+#endif
     }
 
 }

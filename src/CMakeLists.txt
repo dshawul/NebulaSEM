@@ -25,6 +25,7 @@ if(MPI_FOUND)
 endif()
 
 if(METIS_FOUND)
+    target_compile_definitions(nebulasem PUBLIC -DUSE_METIS)
     target_include_directories(nebulasem PUBLIC ${METIS_INCLUDE_DIRS})
     target_link_libraries(nebulasem PUBLIC ${METIS_LIBRARIES})
 endif()

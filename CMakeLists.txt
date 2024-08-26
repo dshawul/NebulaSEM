@@ -30,13 +30,15 @@ if(USE_ACC)
 endif()
 
 find_package(MPI COMPONENTS CXX REQUIRED)
-find_package(METIS COMPONENTS CXX REQUIRED)
+find_package(METIS COMPONENTS CXX)
 
 # set release compiler flags
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -funroll-loops -march=native")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -unroll -xHost")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Munroll -tp=host")
 endif()
 
 # add subdirectories
