@@ -3985,4 +3985,11 @@ auto transport(MeshField<type,CELL>& cF,const VectorCellField& Fc,
 /* ********************
  *        End
  * ********************/
+//Hack for OpenACC template instatiation issues
+#ifdef _OPENACC
+template void scatter_non_conforming<Scalar>(const MeshField<Scalar,CELL>&, MeshField<Scalar,FACET>&, MeshField<Scalar,FACET>&);
+template void scatter_non_conforming<Vector>(const MeshField<Vector,CELL>&, MeshField<Vector,FACET>&, MeshField<Vector,FACET>&);
+template void scatter_non_conforming<Tensor>(const MeshField<Tensor,CELL>&, MeshField<Tensor,FACET>&, MeshField<Tensor,FACET>&);
+template void scatter_non_conforming<STensor>(const MeshField<STensor,CELL>&, MeshField<STensor,FACET>&, MeshField<STensor,FACET>&);
+#endif
 #endif

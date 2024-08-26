@@ -8,6 +8,7 @@ option( USE_ACC "Build with OpenACC enabled" OFF )
 option( USE_SINGLE "Use single precision" OFF )
 option( USE_EXPR_TMPL "Use expression templates" ON )
 option( USE_HEX_REFINEMENT "Use refinement strategy specific to hexahedrals" OFF )
+option( USE_STRONG_FORM "Use strong form of spatial discretization" OFF )
 
 message(STATUS "USE_OMP .................. ${USE_OMP}")
 message(STATUS "USE_ACC .................. ${USE_ACC}")
