@@ -25,7 +25,7 @@ if(USE_OMP)
 endif()
 
 if(USE_ACC)
-    set( OpenACC_ACCEL_TARGET tesla:managed )
+    set(OpenACC_ACCEL_TARGET tesla:managed)
     find_package(OpenACC COMPONENTS CXX REQUIRED)
 endif()
 

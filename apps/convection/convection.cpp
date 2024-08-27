@@ -42,7 +42,7 @@ void convection(std::istream& input) {
         /**
         Wind field intialization for Scalar advection
         */
-        auto init_wind_field = [&] (Scalar time, Scalar etime) {
+        auto init_wind_field = [] (VectorCellField& U, Scalar time, Scalar etime, PROBLEM_INIT problem_init) {
             using namespace Mesh;
             using namespace Constants;
         
@@ -51,8 +51,8 @@ void convection(std::istream& input) {
             Scalar RoT = radius / period; 
 
             #pragma omp parallel for
-            #pragma acc parallel loop
-            forEach(cC,i) {
+            #pragma acc parallel loop copyin(cC)
+            forEach(U,i) {
                 Scalar x = cC[i][0], y = cC[i][1], z = cC[i][2];
                 Scalar u,v;
         
@@ -95,7 +95,7 @@ void convection(std::istream& input) {
             if(step < 0) step = 0;
             Scalar ctime = step * Controls::dt;
             Scalar etime = Controls::end_step * Controls::dt;
-            init_wind_field(ctime, etime);
+            init_wind_field(U, ctime, etime, problem_init);
             U.write(0);
         }
         Fc = flxc(U);
@@ -116,7 +116,7 @@ void convection(std::istream& input) {
             if(problem_init != NONE) {
                 Scalar ctime = it.get_step() * Controls::dt;
                 Scalar etime = Controls::end_step * Controls::dt;
-                init_wind_field(ctime, etime);
+                init_wind_field(U, ctime, etime, problem_init);
                 Fc = flxc(U);
                 F = flx(U);
                 lambdaMax = cds(mag(U)) / 2;

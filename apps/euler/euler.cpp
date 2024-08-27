@@ -79,13 +79,13 @@ void euler(std::istream& input) {
         /*special initializations*/
         if(ait.start() && problem_init != NONE) {
             /*isentropic vortex*/
-            auto isentropic_vortex = [&]() {
+            if(problem_init == ISENTROPIC_VORTEX) {
                 using namespace Constants;
                 constexpr Scalar beta = 5;
                 ScalarCellField r = mag(Mesh::cC);
                 T = (-((p_gamma - 1) * beta * beta) / (8 * p_gamma * PI * PI)) * exp(1 - r*r);
                 #pragma omp parallel for
-                #pragma acc parallel loop
+                #pragma acc parallel loop copyin(Mesh::cC)
                 for(Int i = 0; i < Mesh::gBCSfield; i++) {
                     U[i][0] += (beta / (2 * PI)) * exp((1 - r[i]*r[i])/2.0) * -Mesh::cC[i][1];
                     U[i][1] += (beta / (2 * PI)) * exp((1 - r[i]*r[i])/2.0) *  Mesh::cC[i][0];
@@ -93,10 +93,6 @@ void euler(std::istream& input) {
                 p = pow(T + T0, p_gamma / (p_gamma - 1)) - P0;
                 rho = (P0 / (R*(T + T0))) * pow((p + P0) / P0, 1 / p_gamma) - (P0 / (R*T0));
             };
-
-            /*choose init type*/
-            if(problem_init == ISENTROPIC_VORTEX)
-                isentropic_vortex();
 
             /*write initial values*/
             T.write(0);
