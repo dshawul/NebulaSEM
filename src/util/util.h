@@ -16,19 +16,19 @@
 /** \name Container iterators */
 //@{
 #define forEach(field,i)                                \
-    for(Int i = 0;i < (field).size();i++)
+    for(Int i = 0, _N = (field).size();i < _N;i++)
 
 #define forEachR(field,i)                               \
     for(Int i = (field).size();i-- > 0;)
 
 #define forEachS(field,i,strt)                          \
-    for(Int i = strt;i < (field).size();i++)
+    for(Int i = strt, _N = (field).size();i < _N;i++)
 
 #define forEachSR(field,i,strt)                         \
     for(Int i = (field).size();i-- > strt;)
 
 #define forEachIt(field,it)                        \
-    for(auto it = (field).begin(); it != (field).end(); ++it)
+    for(auto it = (field).begin(), ite = (field).end(); it != ite; ++it)
 //@}
 
 /** Copy collection */            
